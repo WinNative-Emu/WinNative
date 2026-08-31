@@ -19,6 +19,7 @@ import com.winlator.cmod.runtime.display.connector.UnixSocketConfig;
 import com.winlator.cmod.runtime.display.environment.EnvironmentComponent;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
 import com.winlator.cmod.runtime.input.controls.FakeInputWriter;
+import com.winlator.cmod.runtime.input.controls.GamepadIdentityStore;
 import com.winlator.cmod.runtime.system.GPUInformation;
 import com.winlator.cmod.runtime.system.ProcessHelper;
 import com.winlator.cmod.runtime.wine.EnvVars;
@@ -792,14 +793,13 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     if (!byIdDir.exists()) byIdDir.mkdirs();
 
     int numControllers = getConfiguredControllerCount();
+    String vendor = GamepadIdentityStore.formatId(GamepadIdentityStore.DEFAULT_VENDOR_ID);
+    String product = GamepadIdentityStore.formatId(GamepadIdentityStore.DEFAULT_PRODUCT_ID);
+
     for (int slot = 0; slot < numControllers; slot++) {
-      int vendorId = 0x1234 + slot;
-      int productId = 0x5678 + slot;
       int eventMinor = 64 + slot;
-      String name = "Generic HID Gamepad " + slot;
+      String name = GamepadIdentityStore.getDefaultName(slot);
       File udevData = new File(udevDataDir, "c13:" + eventMinor);
-      String vendor = String.format(java.util.Locale.US, "%04x", vendorId);
-      String product = String.format(java.util.Locale.US, "%04x", productId);
       String symlink = "input/by-id/usb-WinNative_Generic_HID_Gamepad_" + slot + "-event-joystick";
       String content =
           "I:"
