@@ -381,8 +381,7 @@ read_gamepad_identity(int slot, GamepadIdentity *out) {
     return false;
 
   char path[PATH_MAX];
-  snprintf(path, PATH_MAX, "%s/c13:%u", udev_data_dir,
-           FAKE_INPUT_EVENT_MINOR_BASE + slot);
+  snprintf(path, PATH_MAX, "%s/c13:%u", udev_data_dir, FAKE_INPUT_EVENT_MINOR_BASE + slot);
 
   int fd = my_open(path, O_RDONLY);
   if (fd < 0)
@@ -538,8 +537,7 @@ open_fake_input_ring(const char *event, int flags) {
   if (fd < 0)
     return -1;
 
-  void *mapping =
-      mmap(nullptr, FAKE_INPUT_RING_SIZE, PROT_READ, MAP_SHARED, fd, 0);
+  void *mapping = mmap(nullptr, FAKE_INPUT_RING_SIZE, PROT_READ, MAP_SHARED, fd, 0);
   if (mapping == MAP_FAILED) {
     int saved_errno = errno;
     syscall(SYS_close, fd);

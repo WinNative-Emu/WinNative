@@ -62,10 +62,10 @@ public class WinHandler {
   public static final byte FLAG_DINPUT_MAPPER_STANDARD = 1;
   public static final byte FLAG_DINPUT_MAPPER_XINPUT = 2;
   public static final byte INPUT_TYPE_MIXED = 2;
+  public static final int MAX_CONTROLLERS = 4;
   private static final int GAMEPAD_SOURCE_NONE = 0;
   private static final int GAMEPAD_SOURCE_VIRTUAL = 1;
   private static final int GAMEPAD_SOURCE_CONTROLLER = 2;
-  private static final int MAX_CONTROLLERS = 4;
   private static final int OSC_DEVICE_ID = -1;
   private static final short SERVER_PORT = 7947;
   private static final long VIRTUAL_REBALANCE_AFTER_PHYSICAL_DISCONNECT_MS = 200;
@@ -1120,9 +1120,11 @@ public class WinHandler {
                 + slot
                 + " still used by sibling sub-device.");
       }
+
       // Drop the unplugged pad's published identity, or fall back to the surviving
       // sibling sub-device's, so the guest stops seeing a pad that is gone.
       GamepadIdentityStore.refreshSlot(slot, resolveDeviceForSlot(slot));
+
       this.controllers.remove(deviceId);
       if (deviceId != OSC_DEVICE_ID) {
         if (!slotStillInUse) {

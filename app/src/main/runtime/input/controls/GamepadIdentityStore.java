@@ -2,6 +2,7 @@ package com.winlator.cmod.runtime.input.controls;
 
 import android.util.Log;
 import android.view.InputDevice;
+import com.winlator.cmod.runtime.display.winhandler.WinHandler;
 import com.winlator.cmod.shared.io.FileUtils;
 import java.io.File;
 import java.util.Locale;
@@ -10,22 +11,19 @@ import java.util.Locale;
  * Publishes the real identity (name, vendor ID, product ID) of the physical controller bound to
  * each fake input slot, for the "Force External Gamepad Identity" option.
  *
- * <p>The slot's udev entry is the only place the identity lives: libudev-based enumeration in the
- * guest already reads it, and the native ioctl hooks parse the same file, so the two can never
- * disagree. Rewriting it as pads come and go is what makes hotplug work without relaunching.
+ * The slot's udev entry is the only place the identity lives: libudev-based enumeration in the
+ * guest already reads it, and the native ioctl hooks parse the same file.
  */
 public final class GamepadIdentityStore {
   public static final int DEFAULT_VENDOR_ID = 0x045E; // Microsoft
   public static final int DEFAULT_PRODUCT_ID = 0x028E; // Xbox 360 Controller
 
   private static final String TAG = "GamepadIdentityStore";
-  private static final int MAX_SLOTS = 4;
+  private static final int MAX_SLOTS = WinHandler.MAX_CONTROLLERS;
   private static final int EVENT_MINOR_BASE = 64;
   private static final int MAX_NAME_LENGTH = 80;
 
   private static File udevDataDir;
-
-  private GamepadIdentityStore() {}
 
   public static String formatId(int id) {
     return String.format(Locale.US, "%04x", id & 0xFFFF);
@@ -33,6 +31,10 @@ public final class GamepadIdentityStore {
 
   public static String getDefaultName(int slot) {
     return "Xbox 360 Controller (" + slot + ")";
+  }
+
+  public static File getUdevDataFile(File udevDir, int slot) {
+    return new File(udevDir, "c13:" + (EVENT_MINOR_BASE + slot));
   }
 
   /** Disables publishing and restores every slot to the default Xbox 360 spoof. */
@@ -91,7 +93,7 @@ public final class GamepadIdentityStore {
     if (udevDataDir == null) {
       return false;
     }
-    File udevData = new File(udevDataDir, "c13:" + (EVENT_MINOR_BASE + slot));
+    File udevData = getUdevDataFile(slot);
     if (!udevData.isFile()) {
       return false;
     }

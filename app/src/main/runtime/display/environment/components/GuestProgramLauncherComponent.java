@@ -797,9 +797,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     String product = GamepadIdentityStore.formatId(GamepadIdentityStore.DEFAULT_PRODUCT_ID);
 
     for (int slot = 0; slot < numControllers; slot++) {
-      int eventMinor = 64 + slot;
       String name = GamepadIdentityStore.getDefaultName(slot);
-      File udevData = new File(udevDataDir, "c13:" + eventMinor);
       String symlink = "input/by-id/usb-WinNative_Generic_HID_Gamepad_" + slot + "-event-joystick";
       String content =
           "I:"
@@ -834,6 +832,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
               + name
               + "\"\n"
               + "E:TAGS=:uaccess:\n";
+
+      File udevData = GamepadIdentityStore.getUdevDataFile(udevDataDir, slot);
       FileUtils.writeString(udevData, content);
 
       File eventNode = new File(devInputDir, "event" + slot);
