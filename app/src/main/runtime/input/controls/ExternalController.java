@@ -41,6 +41,7 @@ public class ExternalController {
   private String id;
   private String name;
   private int deviceId = -1;
+  private boolean useRealIdentity = false;
   private byte triggerType = TRIGGER_IS_AXIS;
   // Device exposes an analog trigger axis; gates the analog path so a stale "as button"
   // pref can't kill an analog pad's triggers. Default true = historical behavior.
@@ -190,6 +191,10 @@ public class ExternalController {
     this.triggerType = mode;
   }
 
+  public boolean isUseRealIdentity() { return useRealIdentity; }
+
+  public void setUseRealIdentity(boolean useRealIdentity) { this.useRealIdentity = useRealIdentity; }
+
   public void setContext(Context context) {
     this.context = context;
     if (context != null) {
@@ -292,6 +297,7 @@ public class ExternalController {
       JSONObject controllerJSONObject = new JSONObject();
       controllerJSONObject.put("id", this.id);
       controllerJSONObject.put("name", this.name);
+      controllerJSONObject.put("useRealIdentity", this.useRealIdentity);
       JSONArray controllerBindingsJSONArray = new JSONArray();
       Iterator<ExternalControllerBinding> it = this.controllerBindings.iterator();
       while (it.hasNext()) {

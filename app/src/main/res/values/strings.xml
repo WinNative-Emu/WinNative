@@ -335,11 +335,6 @@
     <string name="shortcuts_properties_disable_xinput">Disable Xinput (For Exclusive M/KB Control)</string>
     <string name="num_controllers">Number of Controllers</string>
     <string name="shortcuts_properties_exclusive_input">Exclusive Input</string>
-    <string name="shortcuts_properties_force_external_gamepad_identity">Force External Gamepad Identity</string>
-    <string name="shortcuts_properties_help_force_external_gamepad_identity">
-        Reports the real name, vendor ID and product ID of your connected physical controller to the game, instead of the spoofed &lt;i&gt;&lt;b&gt;Xbox 360 Controller&lt;/b&gt;&lt;/i&gt; identity.&lt;br/&gt;&lt;br/&gt;
-        Enable this for games with a dedicated input path for other controller types, such as &lt;i&gt;&lt;b&gt;PlayStation&lt;/b&gt;&lt;/i&gt; gamepads. Leave this off unless your game fails to recognize your controller correctly.
-    </string>
     <string name="shortcuts_properties_custom_game_settings">Custom Game Settings</string>
     <string name="shortcuts_properties_use_legacy_launcher">Use Legacy Launcher</string>
     <string name="shortcuts_properties_use_legacy_launcher_description">Legacy Steam emulation: runs the game through the ColdClient launcher and strips SteamStub DRM from the exe. Use only for older games that don\'t work with the Steam Launcher.</string>
@@ -1103,6 +1098,9 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="input_controls_auto_hide_section">Touchscreen Controls</string>
     <string name="input_controls_auto_hide_on_controller_title">Auto-hide on Controller</string>
     <string name="input_controls_auto_hide_on_controller_summary">Hide touchscreen controls when a controller is connected</string>
+
+    <string name="input_controls_report_real_identity_title">Report Real Identity</string>
+    <string name="input_controls_report_real_identity_summary">Send this device\'s own name and IDs to games instead of the Xbox 360 spoof.</string>
 
     <!-- Session > Gyroscope -->
     <string name="session_gyroscope_title">Gyroscope</string>

@@ -789,6 +789,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
     envVars.put("FAKE_UDEV_DATA_DIR", udevDataDir.getAbsolutePath());
 
+    GamepadIdentityStore.configure(udevDataDir);
+
     File byIdDir = new File(devInputDir, "by-id");
     if (!byIdDir.exists()) byIdDir.mkdirs();
 

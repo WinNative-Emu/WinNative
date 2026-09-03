@@ -386,8 +386,6 @@ class ShortcutSettingsComposeDialog private constructor(
         state.selectedDInputMapperType.intValue =
             if ((inputType and WinHandler.FLAG_DINPUT_MAPPER_STANDARD.toInt()) == WinHandler.FLAG_DINPUT_MAPPER_STANDARD.toInt()) 0 else 1
         state.disableXInput.value = shortcut.getExtra("disableXinput", "0") == "1"
-        state.forceExternalGamepadIdentity.value =
-            shortcut.getExtra("forceExternalGamepadIdentity", "0") == "1"
         state.shortcutExclusiveXInput.value = shortcut.getExtra("exclusiveXInput", "").let {
             if (it.isEmpty()) container.isExclusiveXInput() else it == "1"
         }
@@ -1253,11 +1251,6 @@ class ShortcutSettingsComposeDialog private constructor(
             val disableXinputValue = if (state.disableXInput.value) "1" else null
             shortcut.putExtra("disableXinput", disableXinputValue)
             if (disableXinputValue != null) hasContainerOverride = true
-
-            val forceExternalGamepadIdentityValue =
-                if (state.forceExternalGamepadIdentity.value) "1" else null
-            shortcut.putExtra("forceExternalGamepadIdentity", forceExternalGamepadIdentityValue)
-            if (forceExternalGamepadIdentityValue != null) hasContainerOverride = true
 
             shortcut.putExtra("exclusiveXInput", if (state.shortcutExclusiveXInput.value) "1" else "0")
             if (state.shortcutExclusiveXInput.value != container.isExclusiveXInput()) hasContainerOverride = true

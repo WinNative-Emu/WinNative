@@ -552,7 +552,6 @@ class GameSettingsStateHolder {
     val numControllersEntries = mutableStateOf<List<String>>(emptyList())
     val selectedNumControllers = mutableIntStateOf(0)
     val disableXInput = mutableStateOf(false)
-    val forceExternalGamepadIdentity = mutableStateOf(false)
     val simTouchScreen = mutableStateOf(false)
     val screenTouchMode = mutableIntStateOf(0)
     val gestureProfileEntries = mutableStateOf<List<String>>(emptyList())
@@ -4868,68 +4867,6 @@ private fun InputSection(state: GameSettingsStateHolder) {
                 checked = state.disableXInput.value,
                 onCheckedChange = { state.disableXInput.value = it }
             )
-
-            Spacer(Modifier.height(4.dp))
-
-            // Force External Gamepad Identity, reports the real controller's
-            // name/VID/PID instead of the spoofed Xbox 360 identity, for games with a
-            // dedicated non-Xbox (e.g. PlayStation) input path.
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(Modifier.weight(1f)) {
-                    SettingCheckbox(
-                        label = stringResource(R.string.shortcuts_properties_force_external_gamepad_identity),
-                        checked = state.forceExternalGamepadIdentity.value,
-                        onCheckedChange = { state.forceExternalGamepadIdentity.value = it }
-                    )
-                }
-                var showForceExternalGamepadIdentityHelp by remember { mutableStateOf(false) }
-                val forceExternalGamepadIdentityHelpOffset = rememberSmartDropdownOffset()
-                Box {
-                    Box(
-                        modifier = Modifier
-                            .size(30.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(InputSurface)
-                            .border(1.dp, InputBorder, RoundedCornerShape(6.dp))
-                            .paneNavItem(
-                                cornerRadius = 6.dp,
-                                onActivate = { showForceExternalGamepadIdentityHelp = !showForceExternalGamepadIdentityHelp },
-                                highlightColor = NavHighlight
-                            )
-                            .smartDropdownAnchor(offset = forceExternalGamepadIdentityHelpOffset) {
-                                showForceExternalGamepadIdentityHelp = !showForceExternalGamepadIdentityHelp
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.HelpOutline,
-                            contentDescription = null,
-                            tint = TextPrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = showForceExternalGamepadIdentityHelp,
-                        onDismissRequest = { showForceExternalGamepadIdentityHelp = false },
-                        offset = forceExternalGamepadIdentityHelpOffset.value,
-                        shape = RoundedCornerShape(8.dp),
-                        containerColor = CardSurface,
-                        modifier = Modifier
-                            .padding(10.dp)
-                            .width(280.dp)
-                    ) {
-                        HtmlText(
-                            stringResource(R.string.shortcuts_properties_help_force_external_gamepad_identity),
-                            color = TextPrimary,
-                            fontSize = SettingLabelSize,
-                            lineHeight = 16.sp
-                        )
-                    }
-                }
-            }
 
             Spacer(Modifier.height(4.dp))
 

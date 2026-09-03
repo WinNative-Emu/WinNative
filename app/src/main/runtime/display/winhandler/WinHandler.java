@@ -839,24 +839,6 @@ public class WinHandler {
       this.writers[slot] = new FakeInputWriter(this.fakeInputBasePath, slot);
       this.writers[slot].open();
     }
-    // Republish even when the writer already existed: the slot may have just changed
-    // hands (virtual pad -> physical pad, or one pad for another).
-    GamepadIdentityStore.refreshSlot(slot, resolveDeviceForSlot(slot));
-  }
-
-  // The physical pad currently bound to a fake input slot, for the per-game "Force
-  // External Gamepad Identity" option. The virtual on-screen pad has no real identity,
-  // so it leaves the slot on the default Xbox 360 spoof.
-  private InputDevice resolveDeviceForSlot(int slot) {
-    for (Map.Entry<Integer, Integer> entry : this.deviceToSlot.entrySet()) {
-      if (entry.getKey() != OSC_DEVICE_ID && entry.getValue() == slot) {
-        InputDevice device = InputDevice.getDevice(entry.getKey());
-        if (device != null) {
-          return device;
-        }
-      }
-    }
-    return null;
   }
 
   private boolean isPhysicalSlotOccupied(int slot) {
@@ -905,6 +887,9 @@ public class WinHandler {
       this.deviceToDescriptor.put(deviceId, descriptor);
     }
     ensureWriterForSlot(slot);
+    // Republish even when the writer already existed: the slot may have just changed
+    // hands (virtual pad -> physical pad, or one pad for another).
+    GamepadIdentityStore.refreshSlot(slot, getController(deviceId));
   }
 
   private boolean moveVirtualGamepadToSlot(int targetSlot, boolean releaseVacatedSlot) {
@@ -1110,6 +1095,7 @@ public class WinHandler {
           this.writers[slot] = null;
         }
         this.usedSlots.remove(slot);
+        GamepadIdentityStore.refreshSlot(slot, null);
         Log.d("WinHandler", "Device " + deviceId + " disconnected. Slot " + slot + " released.");
       } else {
         Log.d(
@@ -1120,10 +1106,6 @@ public class WinHandler {
                 + slot
                 + " still used by sibling sub-device.");
       }
-
-      // Drop the unplugged pad's published identity, or fall back to the surviving
-      // sibling sub-device's, so the guest stops seeing a pad that is gone.
-      GamepadIdentityStore.refreshSlot(slot, resolveDeviceForSlot(slot));
 
       this.controllers.remove(deviceId);
       if (deviceId != OSC_DEVICE_ID) {

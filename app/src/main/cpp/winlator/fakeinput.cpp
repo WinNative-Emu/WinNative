@@ -377,7 +377,7 @@ __attribute__((visibility("hidden"))) static bool
 read_gamepad_identity(int slot, GamepadIdentity *out) {
   if (!udev_data_dir || !*udev_data_dir || !my_open)
     return false;
-  if (slot < 0 || slot >= GAMEPAD_IDENTITY_MAX_SLOTS)
+  if (slot < 0 || slot >= static_cast<int>(GAMEPAD_IDENTITY_MAX_SLOTS))
     return false;
 
   char path[PATH_MAX];

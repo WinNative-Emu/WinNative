@@ -1,19 +1,17 @@
 package com.winlator.cmod.runtime.input.controls;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.InputDevice;
+import androidx.preference.PreferenceManager;
 import com.winlator.cmod.runtime.display.winhandler.WinHandler;
 import com.winlator.cmod.shared.io.FileUtils;
 import java.io.File;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 
-/**
- * Publishes the real identity (name, vendor ID, product ID) of the physical controller bound to
- * each fake input slot, for the "Force External Gamepad Identity" option.
- *
- * The slot's udev entry is the only place the identity lives: libudev-based enumeration in the
- * guest already reads it, and the native ioctl hooks parse the same file.
- */
 public final class GamepadIdentityStore {
   public static final int DEFAULT_VENDOR_ID = 0x045E; // Microsoft
   public static final int DEFAULT_PRODUCT_ID = 0x028E; // Xbox 360 Controller
@@ -37,7 +35,10 @@ public final class GamepadIdentityStore {
     return new File(udevDir, "c13:" + (EVENT_MINOR_BASE + slot));
   }
 
-  /** Disables publishing and restores every slot to the default Xbox 360 spoof. */
+  public static synchronized void configure(File udevDir) {
+    udevDataDir = udevDir;
+  }
+
   public static synchronized void reset() {
     if (udevDataDir != null) {
       for (int slot = 0; slot < MAX_SLOTS; slot++) {
@@ -47,20 +48,22 @@ public final class GamepadIdentityStore {
     udevDataDir = null;
   }
 
-  /** Re-publishes the identity for one slot; call whenever its bound device may have changed. */
-  public static synchronized void refreshSlot(int slot, InputDevice slotDevice) {
+  public static synchronized void refreshSlot(int slot, ExternalController slotDevice) {
     if (udevDataDir == null) {
       return;
     }
     refreshSlotLocked(slot, slotDevice);
   }
 
-  private static void refreshSlotLocked(int slot, InputDevice device) {
-    if (device == null) {
+  private static void refreshSlotLocked(int slot, ExternalController controller) {
+    // No pad in the slot (or the virtual on-screen one), or a pad the user did not opt in:
+    // either way the slot keeps the Xbox 360 identity every game already recognizes.
+    if (controller == null || !controller.isUseRealIdentity()) {
       clearSlotLocked(slot);
       return;
     }
 
+    InputDevice device = InputDevice.getDevice(controller.getDeviceId());
     String name = sanitizeName(device.getName());
     String vendor = formatId(device.getVendorId());
     String product = formatId(device.getProductId());
@@ -93,7 +96,7 @@ public final class GamepadIdentityStore {
     if (udevDataDir == null) {
       return false;
     }
-    File udevData = getUdevDataFile(slot);
+    File udevData = getUdevDataFile(udevDataDir, slot);
     if (!udevData.isFile()) {
       return false;
     }
