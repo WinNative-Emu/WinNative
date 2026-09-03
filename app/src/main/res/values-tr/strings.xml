@@ -1023,6 +1023,9 @@ E.g. <b>META</b> için <i>META tuşu</i>, \n
     <string name="input_controls_auto_hide_on_controller_title">Kumandada Otomatik Gizle</string>
     <string name="input_controls_auto_hide_on_controller_summary">Bir kumanda bağlıyken dokunmatik ekran denetimlerini gizle</string>
 
+    <string name="input_controls_report_real_identity_title">Gerçek kimliği kullan</string>
+    <string name="input_controls_report_real_identity_summary">Xbox 360 kumandası gibi görünmek yerine bu cihazın kendi adını ve kimliklerini oyunlara gönder.</string>
+
     <!-- Session > Gyroscope -->
     <string name="session_gyroscope_title">Jiroskop</string>
     <string name="session_gyroscope_calibrate">Jiroskopu Kalibre Et</string>

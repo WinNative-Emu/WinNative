@@ -738,6 +738,10 @@
     <string name="input_controls_auto_hide_section">터치스크린 컨트롤</string>
     <string name="input_controls_auto_hide_on_controller_title">컨트롤러 연결 시 자동 숨김</string>
     <string name="input_controls_auto_hide_on_controller_summary">컨트롤러가 연결되면 터치스크린 컨트롤 숨기기</string>
+
+    <string name="input_controls_report_real_identity_title">실제 ID 사용</string>
+    <string name="input_controls_report_real_identity_summary">Xbox 360 컨트롤러로 위장하는 대신 이 기기의 실제 이름과 ID를 게임에 전달합니다.</string>
+
     <string name="session_gyroscope_title">자이로스코프</string>
     <string name="session_gyroscope_calibrate">자이로스코프 보정</string>
     <string name="session_gyroscope_enable_right_stick">오른쪽 스틱 자이로스코프 모션 활성화</string>

@@ -744,6 +744,10 @@
     <string name="input_controls_auto_hide_section">Сенсорне керування</string>
     <string name="input_controls_auto_hide_on_controller_title">Автоприховування з контролером</string>
     <string name="input_controls_auto_hide_on_controller_summary">Приховувати сенсорне керування, коли під\'єднано контролер</string>
+
+    <string name="input_controls_report_real_identity_title">Використовувати справжні дані пристрою</string>
+    <string name="input_controls_report_real_identity_summary">Надсилати іграм власну назву та ідентифікатори цього пристрою замість імітації контролера Xbox 360.</string>
+
     <string name="session_gyroscope_title">Гіроскоп</string>
     <string name="session_gyroscope_calibrate">Калібрувати гіроскоп</string>
     <string name="session_gyroscope_enable_right_stick">Увімкнути гіроскопічний рух правого стіка</string>

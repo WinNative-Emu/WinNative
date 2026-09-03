@@ -738,6 +738,10 @@ Ej. <b>META</b> para la <i>tecla META</i>, \n
     <string name="input_controls_auto_hide_section">Controles táctiles</string>
     <string name="input_controls_auto_hide_on_controller_title">Ocultar automáticamente con mando</string>
     <string name="input_controls_auto_hide_on_controller_summary">Oculta los controles táctiles cuando se conecta un mando</string>
+
+    <string name="input_controls_report_real_identity_title">Usar identidad real</string>
+    <string name="input_controls_report_real_identity_summary">Envía a los juegos el nombre y los ID propios de este dispositivo en lugar de simular un mando de Xbox 360.</string>
+
     <string name="session_gyroscope_title">Giroscopio</string>
     <string name="session_gyroscope_calibrate">Calibrar giroscopio</string>
     <string name="session_gyroscope_enable_right_stick">Activar movimiento giroscópico del joystick derecho</string>
