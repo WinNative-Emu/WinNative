@@ -246,9 +246,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         controller.setContext(context);
         controller.setId(id);
         controller.setName(controllerJSONObject.getString("name"));
-        controller.setUseRealIdentity(controllerJSONObject.optBoolean("useRealIdentity"));
 
-        JSONArray controllerBindingsJSONArray = controllerJSONObject.getJSONArray("controllerBindings");
+        JSONArray controllerBindingsJSONArray =
+            controllerJSONObject.getJSONArray("controllerBindings");
         for (int j = 0; j < controllerBindingsJSONArray.length(); j++) {
           JSONObject controllerBindingJSONObject = controllerBindingsJSONArray.getJSONObject(j);
           ExternalControllerBinding controllerBinding = new ExternalControllerBinding();

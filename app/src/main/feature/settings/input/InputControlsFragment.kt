@@ -372,10 +372,10 @@ class InputControlsFragment : Fragment() {
         useRealIdentity: Boolean,
     ) {
         val controller = findVisibleController(controllerId) ?: return
+        val activity = activity ?: return
         controller.setUseRealIdentity(useRealIdentity)
-        currentProfile?.putController(controller)
+        controller.savePreferences(activity)
         lifecycleScope.launch(Dispatchers.IO) {
-            currentProfile?.save()
             launch(Dispatchers.Main) {
                 publishUiState()
             }
@@ -438,6 +438,8 @@ class InputControlsFragment : Fragment() {
         } else {
             visibleControllers.addAll(ExternalController.getControllers())
         }
+
+        visibleControllers.forEach { controller -> controller.loadPreferences(activity) }
 
         activeBindingController =
             activeId?.let { id ->

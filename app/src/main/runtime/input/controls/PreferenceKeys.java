@@ -11,4 +11,5 @@ public class PreferenceKeys {
   public static final String INVERT_RIGHT_Y = "invert_right_y";
   public static final String SQUARE_DEADZONE_LEFT = "square_deadzone_left";
   public static final String TRIGGER_TYPE = "trigger_type";
+  public static final String USE_REAL_IDENTITY = "use_real_id";
 }
