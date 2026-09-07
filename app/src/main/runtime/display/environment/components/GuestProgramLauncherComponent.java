@@ -796,54 +796,13 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
     envVars.put("FAKE_UDEV_DATA_DIR", udevDataDir.getAbsolutePath());
 
-    GamepadIdentityStore.configure(udevDataDir);
-
     File byIdDir = new File(devInputDir, "by-id");
     if (!byIdDir.exists()) byIdDir.mkdirs();
 
     int numControllers = getConfiguredControllerCount();
-    String vendor = GamepadIdentityStore.formatId(GamepadIdentityStore.DEFAULT_VENDOR_ID);
-    String product = GamepadIdentityStore.formatId(GamepadIdentityStore.DEFAULT_PRODUCT_ID);
 
     for (int slot = 0; slot < numControllers; slot++) {
-      String name = GamepadIdentityStore.getDefaultName(slot);
-      String symlink = "input/by-id/usb-WinNative_Generic_HID_Gamepad_" + slot + "-event-joystick";
-      String content =
-          "I:"
-              + slot
-              + "\n"
-              + "N:input/event"
-              + slot
-              + "\n"
-              + "S:"
-              + symlink
-              + "\n"
-              + "E:DEVNAME=/dev/input/event"
-              + slot
-              + "\n"
-              + "E:ID_INPUT=1\n"
-              + "E:ID_INPUT_JOYSTICK=1\n"
-              + "E:ID_BUS=usb\n"
-              + "E:ID_VENDOR=WinNative\n"
-              + "E:ID_VENDOR_ID="
-              + vendor
-              + "\n"
-              + "E:ID_MODEL=Generic_HID_Gamepad_"
-              + slot
-              + "\n"
-              + "E:ID_MODEL_ID="
-              + product
-              + "\n"
-              + "E:ID_SERIAL=WinNative_Generic_HID_Gamepad_"
-              + slot
-              + "\n"
-              + "E:NAME=\""
-              + name
-              + "\"\n"
-              + "E:TAGS=:uaccess:\n";
-
-      File udevData = GamepadIdentityStore.getUdevDataFile(udevDataDir, slot);
-      FileUtils.writeString(udevData, content);
+      GamepadIdentityStore.configureSlot(slot, udevDataDir);
 
       File eventNode = new File(devInputDir, "event" + slot);
       if (!eventNode.exists()) {

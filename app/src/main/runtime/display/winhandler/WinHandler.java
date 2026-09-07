@@ -209,6 +209,7 @@ public class WinHandler {
       }
     }
 
+    GamepadIdentityStore.configurePreAssignedControllers(this.controllers, this.deviceToSlot);
     Log.d("WinHandler", "Pre-assigned " + assignedCount + " controller(s) before Wine startup.");
     return assignedCount;
   }
