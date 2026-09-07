@@ -19,7 +19,7 @@ VkrLsfg* vkr_lsfg_create(VkDevice device, VkPhysicalDevice physical_device,
 void vkr_lsfg_destroy(VkrLsfg* lsfg);
 
 void vkr_lsfg_configure(VkrLsfg* lsfg, uint32_t multiplier, uint32_t target_rate,
-                        float flow_scale, float refresh_rate);
+                        float flow_scale, float refresh_rate, float source_rate);
 
 void vkr_lsfg_set_refresh_rate(VkrLsfg* lsfg, float refresh_rate);
 

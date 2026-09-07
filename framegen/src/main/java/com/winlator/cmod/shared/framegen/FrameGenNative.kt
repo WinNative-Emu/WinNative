@@ -29,6 +29,7 @@ object FrameGenNative {
         targetRate: Int,
         flowScale: Int,
         refreshRate: Float,
+        sourceRate: Float,
     ): Long
 
     @JvmStatic
@@ -41,6 +42,7 @@ object FrameGenNative {
         targetRate: Int,
         flowScale: Int,
         refreshRate: Float,
+        sourceRate: Float,
     )
 
     @JvmStatic

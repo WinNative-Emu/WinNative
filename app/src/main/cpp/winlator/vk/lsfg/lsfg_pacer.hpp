@@ -16,6 +16,7 @@ struct LsfgPacerConfig {
     uint32_t multiplier{2};
     uint32_t target_rate{};
     float refresh_rate{};
+    float source_rate{};
 };
 
 struct LsfgPlan {
@@ -60,7 +61,9 @@ private:
     void TrackSourceRate(Clock::time_point now, uint64_t source_frames);
     void TrackLoopRate(float interval_seconds);
     [[nodiscard]] bool RatesSettled() const;
+    [[nodiscard]] float SourceInterval() const;
     [[nodiscard]] size_t HeadroomLimit() const;
+    [[nodiscard]] size_t SlotLimit() const;
 
     LsfgPacerConfig config;
 

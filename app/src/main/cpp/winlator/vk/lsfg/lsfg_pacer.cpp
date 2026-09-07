@@ -74,14 +74,29 @@ bool LsfgPacer::RatesSettled() const {
     return source_samples >= MIN_RATE_SAMPLES && loop_samples >= MIN_RATE_SAMPLES;
 }
 
+float LsfgPacer::SourceInterval() const {
+    if (config.source_rate > 0.0f) return 1.0f / config.source_rate;
+    return source_samples >= MIN_RATE_SAMPLES ? source_interval : 0.0f;
+}
+
 size_t LsfgPacer::HeadroomLimit() const {
-    if (config.refresh_rate <= 0.0f || source_interval <= 0.0f ||
-        source_samples < MIN_RATE_SAMPLES) {
+    const float interval = SourceInterval();
+    if (config.refresh_rate <= 0.0f || interval <= 0.0f) {
         return LSFG_MAX_MULTIPLIER - 1;
     }
 
-    const float budget = std::ceil(config.refresh_rate * source_interval - HEADROOM_EPSILON);
+    const float budget = std::ceil(config.refresh_rate * interval - HEADROOM_EPSILON);
     return budget < 2.0f ? 0 : static_cast<size_t>(budget) - 1;
+}
+
+size_t LsfgPacer::SlotLimit() const {
+    const float interval = SourceInterval();
+    if (config.refresh_rate <= 0.0f || interval <= 0.0f) {
+        return LSFG_MAX_MULTIPLIER - 1;
+    }
+
+    const float slots = std::floor(config.refresh_rate * interval + HEADROOM_EPSILON);
+    return slots < 2.0f ? 0 : static_cast<size_t>(slots) - 1;
 }
 
 LsfgPlan LsfgPacer::Plan(size_t capacity, uint64_t source_frames) {
@@ -115,7 +130,7 @@ LsfgPlan LsfgPacer::Plan(size_t capacity, uint64_t source_frames) {
 
     if (target_rate == 0.0f) {
         output_credit = 0.0f;
-        limit = ceiling;
+        limit = std::min(ceiling, SlotLimit());
         return LsfgPlan{limit, true};
     }
 

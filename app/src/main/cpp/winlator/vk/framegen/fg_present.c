@@ -99,6 +99,7 @@ struct FgPresenter {
     uint32_t target_rate;
     float flow_scale;
     float refresh_rate;
+    float source_rate;
     bool config_dirty;
 
     uint64_t source_frames;
@@ -391,7 +392,9 @@ static bool fg_create_swapchain(FgPresenter* fg) {
     sci.imageArrayLayers = 1;
     sci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     sci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    sci.preTransform = caps.currentTransform;
+    sci.preTransform = (caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+                           ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR
+                           : caps.currentTransform;
     sci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     sci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     sci.clipped = VK_TRUE;
@@ -416,8 +419,9 @@ static bool fg_create_swapchain(FgPresenter* fg) {
         }
     }
 
-    FG_LOGI("swapchain %ux%u format=%d images=%u", extent.width, extent.height, (int)chosen.format,
-            got);
+    FG_LOGI("swapchain %ux%u format=%d images=%u currentTransform=0x%x preTransform=0x%x",
+            extent.width, extent.height, (int)chosen.format, got, caps.currentTransform,
+            sci.preTransform);
     return true;
 }
 
@@ -670,13 +674,15 @@ static void fg_apply_config(FgPresenter* fg) {
     bool dirty = fg->config_dirty;
     uint32_t multiplier = fg->multiplier;
     uint32_t target_rate = fg->target_rate;
+    float source_rate = fg->source_rate;
     float flow_scale = fg->flow_scale;
     float refresh_rate = fg->refresh_rate;
     fg->config_dirty = false;
     pthread_mutex_unlock(&fg->lock);
 
     if (dirty && fg->lsfg) {
-        vkr_lsfg_configure(fg->lsfg, multiplier, target_rate, flow_scale, refresh_rate);
+        vkr_lsfg_configure(fg->lsfg, multiplier, target_rate, flow_scale, refresh_rate,
+                           source_rate);
     }
 }
 
@@ -946,7 +952,7 @@ static void* fg_thread(void* arg) {
 FgPresenter* fg_create(JNIEnv* env, jobject context, const char* driver_name,
                        ANativeWindow* output, uint32_t width, uint32_t height,
                        const char* cache_path, uint32_t multiplier, uint32_t target_rate,
-                       float flow_scale, float refresh_rate) {
+                       float flow_scale, float refresh_rate, float source_rate) {
     if (!output || width == 0 || height == 0 || !cache_path) return NULL;
 
     FgPresenter* fg = calloc(1, sizeof(FgPresenter));
@@ -961,6 +967,7 @@ FgPresenter* fg_create(JNIEnv* env, jobject context, const char* driver_name,
     fg->target_rate = target_rate;
     fg->flow_scale = flow_scale;
     fg->refresh_rate = refresh_rate;
+    fg->source_rate = source_rate;
     fg->cache_path = strdup(cache_path);
     ANativeWindow_acquire(output);
 
@@ -997,7 +1004,7 @@ FgPresenter* fg_create(JNIEnv* env, jobject context, const char* driver_name,
         goto fail;
     }
     vkr_lsfg_configure(fg->lsfg, multiplier ? multiplier : 2u, target_rate,
-                       flow_scale > 0.0f ? flow_scale : 0.7f, refresh_rate);
+                       flow_scale > 0.0f ? flow_scale : 0.7f, refresh_rate, source_rate);
 
     if (AImageReader_newWithUsage((int32_t)fg->extent.width, (int32_t)fg->extent.height,
                                   AIMAGE_FORMAT_PRIVATE, AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE,
@@ -1036,13 +1043,14 @@ ANativeWindow* fg_producer_window(FgPresenter* fg) {
 }
 
 void fg_configure(FgPresenter* fg, uint32_t multiplier, uint32_t target_rate, float flow_scale,
-                  float refresh_rate) {
+                  float refresh_rate, float source_rate) {
     if (!fg) return;
     pthread_mutex_lock(&fg->lock);
     fg->multiplier = multiplier;
     fg->target_rate = target_rate;
     fg->flow_scale = flow_scale;
     fg->refresh_rate = refresh_rate;
+    fg->source_rate = source_rate;
     fg->config_dirty = true;
     pthread_mutex_unlock(&fg->lock);
 }

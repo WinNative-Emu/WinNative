@@ -20,7 +20,8 @@ static char* fg_copy_utf(JNIEnv* env, jstring value) {
 JNIEXPORT jlong JNICALL FG_FN(nativeCreate)(JNIEnv* env, jclass clazz, jobject context,
                                             jobject output, jint width, jint height,
                                             jstring cachePath, jstring driverName, jint multiplier,
-                                            jint targetRate, jint flowScale, jfloat refreshRate) {
+                                            jint targetRate, jint flowScale, jfloat refreshRate,
+                                            jfloat sourceRate) {
     (void)clazz;
     if (!output || width <= 0 || height <= 0) return 0;
 
@@ -33,7 +34,7 @@ JNIEXPORT jlong JNICALL FG_FN(nativeCreate)(JNIEnv* env, jclass clazz, jobject c
     float flow = flowScale > 0 ? (float)flowScale / 100.0f : 0.7f;
     FgPresenter* fg = fg_create(env, context, driver, window, (uint32_t)width, (uint32_t)height,
                                 cache, (uint32_t)multiplier, (uint32_t)targetRate, flow,
-                                refreshRate);
+                                refreshRate, sourceRate);
 
     ANativeWindow_release(window);
     free(cache);
@@ -51,12 +52,12 @@ JNIEXPORT jobject JNICALL FG_FN(nativeProducerSurface)(JNIEnv* env, jclass clazz
 
 JNIEXPORT void JNICALL FG_FN(nativeConfigure)(JNIEnv* env, jclass clazz, jlong handle,
                                               jint multiplier, jint targetRate, jint flowScale,
-                                              jfloat refreshRate) {
+                                              jfloat refreshRate, jfloat sourceRate) {
     (void)env;
     (void)clazz;
     FgPresenter* fg = (FgPresenter*)(intptr_t)handle;
     float flow = flowScale > 0 ? (float)flowScale / 100.0f : 0.7f;
-    fg_configure(fg, (uint32_t)multiplier, (uint32_t)targetRate, flow, refreshRate);
+    fg_configure(fg, (uint32_t)multiplier, (uint32_t)targetRate, flow, refreshRate, sourceRate);
 }
 
 JNIEXPORT jlong JNICALL FG_FN(nativeRealFrames)(JNIEnv* env, jclass clazz, jlong handle) {

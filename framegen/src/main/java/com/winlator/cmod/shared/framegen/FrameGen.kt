@@ -86,6 +86,7 @@ object FrameGen {
                     options.targetRate,
                     options.flowScale,
                     refreshRate,
+                    options.sourceRate.toFloat(),
                 )
             }.getOrElse {
                 Log.w(TAG, "frame generation could not start: ${it.message}")
@@ -133,7 +134,14 @@ object FrameGen {
         val target = if (generatingEnabled) options.targetRate else 0
         val outcome =
             runCatching {
-                FrameGenNative.nativeConfigure(handle, multiplier, target, options.flowScale, refreshRate)
+                FrameGenNative.nativeConfigure(
+                    handle,
+                    multiplier,
+                    target,
+                    options.flowScale,
+                    refreshRate,
+                    options.sourceRate.toFloat(),
+                )
             }
         Log.i(TAG, "frame generation reconfigured multiplier=$multiplier target=$target " +
             "flow=${options.flowScale} refresh=$refreshRate ok=${outcome.isSuccess}")

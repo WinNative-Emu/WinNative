@@ -144,13 +144,14 @@ void vkr_lsfg_destroy(VkrLsfg* lsfg) {
 }
 
 void vkr_lsfg_configure(VkrLsfg* lsfg, uint32_t multiplier, uint32_t target_rate,
-                        float flow_scale, float refresh_rate) {
+                        float flow_scale, float refresh_rate, float source_rate) {
     if (!lsfg) return;
 
     lsfg::LsfgPacerConfig config = lsfg->pacer.Config();
     config.multiplier = multiplier;
     config.target_rate = target_rate;
     config.refresh_rate = refresh_rate;
+    config.source_rate = source_rate > 0.0f ? source_rate : 0.0f;
     lsfg->pacer.SetConfig(config);
     lsfg->flow_scale = std::clamp(flow_scale, LSFG_FLOW_SCALE_MIN, LSFG_FLOW_SCALE_MAX);
 }
