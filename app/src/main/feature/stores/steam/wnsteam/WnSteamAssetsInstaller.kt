@@ -153,11 +153,14 @@ object WnSteamAssetsInstaller {
         val dllFile    = File(binDir, "steamservice.dll")
         val curVdfFile = File(binDir, "service_current_versions.vdf")
         val minVdfFile = File(binDir, "service_minimum_versions.vdf")
+        val commonFilesExe = File(container.rootDir,
+            ".wine/drive_c/Program Files (x86)/Common Files/Steam/steamservice.exe")
         if (!stampStale(stageStamp, apkId)
             && exeFile.isFile && exeFile.length() > 0
             && dllFile.isFile && dllFile.length() > 0
             && curVdfFile.isFile && curVdfFile.length() > 0
-            && minVdfFile.isFile && minVdfFile.length() > 0) {
+            && minVdfFile.isFile && minVdfFile.length() > 0
+            && commonFilesExe.isFile && commonFilesExe.length() > 0) {
             Timber.tag(TAG).d("planW: steamservice bundle already staged (apk=%s) — skipping per-launch copy", apkId)
             return true
         }
@@ -178,13 +181,21 @@ object WnSteamAssetsInstaller {
             }
         }
 
+        val commonFilesDir = File(container.rootDir,
+            ".wine/drive_c/Program Files (x86)/Common Files/Steam").apply { mkdirs() }
+
         return try {
             val exeOk    = stage(exeAsset,    exeFile)
             val dllOk    = stage(dllAsset,    dllFile)
             val curVdfOk = stage(curVdfAsset, curVdfFile)
             val minVdfOk = stage(minVdfAsset, minVdfFile)
-            Timber.tag(TAG).i("planW: steamservice bundle staged exe=%b dll=%b curVdf=%b minVdf=%b",
-                exeOk, dllOk, curVdfOk, minVdfOk)
+            val commonOk = stage(exeAsset,    File(commonFilesDir, "steamservice.exe")) &&
+                stage(dllAsset,    File(commonFilesDir, "steamservice.dll")) &&
+                stage(curVdfAsset, File(commonFilesDir, "service_current_versions.vdf")) &&
+                stage(minVdfAsset, File(commonFilesDir, "service_minimum_versions.vdf"))
+            stage(dllAsset, File(steamDir, "steamservice.dll"))
+            Timber.tag(TAG).i("planW: steamservice bundle staged exe=%b dll=%b curVdf=%b minVdf=%b commonFiles=%b",
+                exeOk, dllOk, curVdfOk, minVdfOk, commonOk)
             // Stamp only when the full bundle is on disk — a partial copy must
             // re-run next launch, never get locked in by a fresh stamp.
             if (exeOk && dllOk && curVdfOk && minVdfOk) {
@@ -400,7 +411,14 @@ object WnSteamAssetsInstaller {
         val dst = File(steamDir, "steam.exe")
         File(steamDir, "wn-steam-launcher.exe").let { if (it.exists()) it.delete() }
 
-        val apkId = apkStamp(context)
+        val marker32 = File(context.filesDir, ".wn_steam_agent_32")
+        val marker64 = File(context.filesDir, ".wn_steam_agent_64")
+        val use32 = !marker64.isFile &&
+            (marker32.isFile ||
+                com.winlator.cmod.feature.stores.steam.utils.PrefManager.wnSteamAgent32)
+        val agentAsset = if (use32) "$ASSET_DIR/bionic/steam32.exe" else "$ASSET_DIR/bionic/steam.exe"
+        val archTag = if (use32) "x86" else "x86_64"
+        val apkId = apkStamp(context) + ":" + archTag
         val stageStamp = File(steamDir, ".wn-planw-launcher.stamp")
         val staged = !stampStale(stageStamp, apkId) && dst.isFile && dst.length() > 0
         val ok: Boolean
@@ -411,11 +429,11 @@ object WnSteamAssetsInstaller {
         } else {
             if (dst.exists()) { try { dst.delete() } catch (_: Exception) {} }
             ok = try {
-                context.assets.open("$ASSET_DIR/bionic/steam.exe").use { input ->
+                context.assets.open(agentAsset).use { input ->
                     dst.outputStream().use { output -> input.copyTo(output) }
                 }
-                Timber.tag(TAG).i("planW: installed steam.exe (%d bytes) at %s",
-                    dst.length(), dst.absolutePath)
+                Timber.tag(TAG).i("planW: installed steam.exe from %s (%s, %d bytes) at %s",
+                    agentAsset, archTag, dst.length(), dst.absolutePath)
                 true
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "planW: failed to install steam.exe")
@@ -424,6 +442,14 @@ object WnSteamAssetsInstaller {
             if (ok) {
                 try { stageStamp.writeText(apkId) } catch (_: Exception) {}
             }
+        }
+        for (probeName in listOf("wn-iface-probe.exe", "wn-iface-probe32.exe")) {
+            try {
+                val probeDst = File(steamDir, probeName)
+                context.assets.open("$ASSET_DIR/bionic/$probeName").use { input ->
+                    probeDst.outputStream().use { output -> input.copyTo(output) }
+                }
+            } catch (_: Exception) {}
         }
         try {
             val caSrc = File(context.filesDir, "wnsteam_cacert.pem")
@@ -444,7 +470,83 @@ object WnSteamAssetsInstaller {
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "planW: CA bundle stage failed")
         }
+        applyControllerPassthrough(steamDir)
         return ok
+    }
+
+    private val OVERLAY_DLLS = arrayOf("GameOverlayRenderer.dll", "GameOverlayRenderer64.dll")
+
+    private val STEAM_INPUT_KEYS = arrayOf(
+        "SteamController_XBoxSupport",
+        "SteamController_GenericGamepadSupport",
+        "SteamController_PSSupport",
+        "SteamController_SwitchSupport",
+    )
+
+    private fun applyControllerPassthrough(steamDir: File) {
+        try {
+            for (dll in OVERLAY_DLLS) {
+                val f = File(steamDir, dll)
+                if (f.isFile && f.delete()) {
+                    Timber.tag(TAG).i("passthrough: removed %s", dll)
+                }
+            }
+            val localConfig = resolveLocalConfig(steamDir)
+            if (localConfig == null) {
+                Timber.tag(TAG).w("passthrough: no localconfig.vdf resolvable — Steam Input keys skipped")
+            } else {
+                disableSteamControllerSupport(localConfig)
+            }
+        } catch (t: Throwable) {
+            Timber.tag(TAG).w("passthrough: apply failed (non-fatal): %s", t.message ?: "")
+        }
+    }
+
+    private fun resolveLocalConfig(steamDir: File): File? {
+        val userdata = File(steamDir, "userdata")
+        val users = userdata.listFiles() ?: return null
+        for (u in users) {
+            val cfg = File(u, "config/localconfig.vdf")
+            if (cfg.isFile) return cfg
+        }
+        return null
+    }
+
+    private fun disableSteamControllerSupport(localConfig: File) {
+        try {
+            val original = localConfig.readText()
+            if (!original.contains("UserLocalConfigStore")) {
+                Timber.tag(TAG).w("passthrough: %s root is not UserLocalConfigStore — left untouched",
+                    localConfig.name)
+                return
+            }
+            var text = original
+            var changed = false
+            for (key in STEAM_INPUT_KEYS) {
+                val rx = Regex("(\"" + Regex.escape(key) + "\"\\s*)\"[^\"]*\"")
+                if (rx.containsMatchIn(text)) {
+                    val replaced = rx.replace(text) { m -> m.groupValues[1] + "\"0\"" }
+                    if (replaced != text) { text = replaced; changed = true }
+                } else {
+                    val sys = Regex("(\"system\"\\s*\\r?\\n\\s*\\{\\s*\\r?\\n)")
+                    val m = sys.find(text)
+                    if (m != null) {
+                        text = text.substring(0, m.range.last + 1) +
+                            "\t\t\t\"" + key + "\"\t\t\"0\"\n" +
+                            text.substring(m.range.last + 1)
+                        changed = true
+                    }
+                }
+            }
+            if (changed) {
+                localConfig.writeText(text)
+                Timber.tag(TAG).i("passthrough: Steam Input keys disabled in %s", localConfig.absolutePath)
+            } else {
+                Timber.tag(TAG).i("passthrough: Steam Input keys already disabled")
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).w("passthrough: localconfig edit failed (non-fatal): %s", e.message ?: "")
+        }
     }
 
     private fun stageBridgeLibsteamclient(context: Context, imageFs: ImageFs): Boolean {

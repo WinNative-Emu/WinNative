@@ -143,7 +143,7 @@ internal fun LibraryGameLaunchScreen(
     playCount: Int,
     lastPlayedMillis: Long,
     installSizeText: String?,
-    isCustom: Boolean,
+    removalKeepsFiles: Boolean,
     isRetro: Boolean = false,
     showBootToDesktop: Boolean = !isRetro,
     showSaveTransfer: Boolean = false,
@@ -482,7 +482,9 @@ internal fun LibraryGameLaunchScreen(
                             LaunchIconActionButton(
                                 icon = Icons.Outlined.Delete,
                                 contentDescription =
-                                    stringResource(if (isCustom) R.string.common_ui_remove else R.string.common_ui_uninstall),
+                                    stringResource(
+                                        if (removalKeepsFiles) R.string.common_ui_remove else R.string.common_ui_uninstall,
+                                    ),
                                 size = actionIconSize,
                                 onClick = { uninstallMenuOpen = true },
                                 tint = LaunchDanger,
@@ -490,7 +492,7 @@ internal fun LibraryGameLaunchScreen(
                             LaunchUninstallMenu(
                                 expanded = uninstallMenuOpen,
                                 appName = appName,
-                                isCustom = isCustom,
+                                removalKeepsFiles = removalKeepsFiles,
                                 onDismissRequest = { uninstallMenuOpen = false },
                                 onConfirm = {
                                     uninstallMenuOpen = false
@@ -609,15 +611,19 @@ private fun launchScreenCutoutMode(): Int =
 private fun LaunchUninstallMenu(
     expanded: Boolean,
     appName: String,
-    isCustom: Boolean,
+    removalKeepsFiles: Boolean,
     onDismissRequest: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    val title = stringResource(if (isCustom) R.string.library_games_remove_game else R.string.library_games_uninstall_game)
-    val confirmLabel = stringResource(if (isCustom) R.string.common_ui_remove else R.string.common_ui_uninstall)
+    val title =
+        stringResource(
+            if (removalKeepsFiles) R.string.library_games_remove_game else R.string.library_games_uninstall_game,
+        )
+    val confirmLabel =
+        stringResource(if (removalKeepsFiles) R.string.common_ui_remove else R.string.common_ui_uninstall)
     val message =
         stringResource(
-            if (isCustom) R.string.library_games_remove_confirm else R.string.library_games_uninstall_confirm,
+            if (removalKeepsFiles) R.string.library_games_remove_confirm else R.string.library_games_uninstall_confirm,
             appName,
         )
 

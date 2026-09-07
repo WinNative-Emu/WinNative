@@ -1,0 +1,25 @@
+DirectAudio — native Wine → Android AAudio mmdevapi driver (winedirectaudio.drv)
+
+Copyright (C) 2026 The412Banner <205237651+The412Banner@users.noreply.github.com>
+
+Licensed under the GNU Lesser General Public License, version 2.1 or later
+(LGPL-2.1-or-later). The full license text is in COPYING.
+
+REQUIRED (LGPL-2.1): if you copy, modify, use, or distribute this code or any
+part of it, you must:
+  * keep the copyright notice above intact in every copy and derivative,
+  * include the LGPL-2.1 license (COPYING) with any distribution,
+  * make the library's source available and state any changes you made
+    (with dates), as the LGPL requires.
+
+REQUESTED (courtesy): projects that ship DirectAudio, in whole or in part, are
+asked to credit it in their documentation, About screen, or release notes as:
+
+    "DirectAudio by The412Banner (https://github.com/The412Banner/directaudio)"
+
+Provenance: DirectAudio is an original driver — Wine has no AAudio backend
+upstream. Its structure is modelled on Wine's winecoreaudio.drv, with the
+CoreAudio device layer replaced by Android AAudio. Because it derives from and
+links Wine's LGPL mmdevapi internals, it is and must remain LGPL-2.1.
+
+See AUTHORS for the list of contributors.

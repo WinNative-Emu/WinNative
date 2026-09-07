@@ -1,6 +1,7 @@
 package com.winlator.cmod.feature.settings.support
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +55,14 @@ private data class SupportLink(
     val url: String,
 )
 
+private val DONATE_LINK =
+    SupportLink(
+        iconRes = R.drawable.ic_brand_paypal,
+        titleRes = R.string.support_paypal,
+        subtitleRes = R.string.support_paypal_desc,
+        url = "https://paypal.me/MaxJividen",
+    )
+
 private val SUPPORT_LINKS =
     listOf(
         SupportLink(
@@ -83,6 +92,100 @@ private val SUPPORT_LINKS =
     )
 
 @Composable
+private fun SectionHeading(
+    textRes: Int,
+    descRes: Int,
+    topPadding: Int,
+) {
+    Text(
+        stringResource(textRes),
+        color = SupportSub,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.sp,
+        modifier = Modifier.padding(top = topPadding.dp),
+    )
+    Text(
+        stringResource(descRes),
+        color = SupportSub,
+        style = MaterialTheme.typography.labelMedium,
+    )
+    Spacer(Modifier.size(2.dp))
+}
+
+@Composable
+private fun SupportLinkRow(
+    link: SupportLink,
+    onOpen: (String) -> Unit,
+    highlighted: Boolean = false,
+) {
+    val shape = RoundedCornerShape(14.dp)
+    val surface =
+        if (highlighted) {
+            Modifier
+                .background(SupportAccent.copy(alpha = 0.08f))
+                .border(1.dp, SupportAccent.copy(alpha = 0.35f), shape)
+        } else {
+            Modifier.background(SupportCard)
+        }
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .then(surface)
+                .clickable { onOpen(link.url) }
+                .paneNavItem(
+                    cornerRadius = 14.dp,
+                    onActivate = { onOpen(link.url) },
+                    highlightColor = SupportAccent,
+                    tapToSelect = true,
+                )
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(SupportAccent.copy(alpha = if (highlighted) 0.20f else 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(link.iconRes),
+                contentDescription = null,
+                tint = SupportAccent,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+
+        Spacer(Modifier.width(14.dp))
+
+        Column(Modifier.weight(1f)) {
+            Text(
+                stringResource(link.titleRes),
+                color = SupportText,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                stringResource(link.subtitleRes),
+                color = SupportSub,
+                fontSize = 11.sp,
+            )
+        }
+
+        Icon(
+            Icons.Outlined.OpenInNew,
+            contentDescription = null,
+            tint = SupportSub,
+            modifier = Modifier.size(17.dp),
+        )
+    }
+}
+
+@Composable
 fun SupportScreen(bridge: SettingsNavBridge? = null) {
     val context = LocalContext.current
     val contentNav = rememberSettingsContentNav(bridge)
@@ -109,78 +212,22 @@ fun SupportScreen(bridge: SettingsNavBridge? = null) {
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                stringResource(R.string.support_heading),
-                color = SupportSub,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            Text(
-                stringResource(R.string.support_desc),
-                color = SupportSub,
-                style = MaterialTheme.typography.labelMedium,
+            SectionHeading(
+                textRes = R.string.support_donate_heading,
+                descRes = R.string.support_donate_desc,
+                topPadding = 4,
             )
 
-            Spacer(Modifier.size(2.dp))
+            SupportLinkRow(link = DONATE_LINK, onOpen = ::open, highlighted = true)
+
+            SectionHeading(
+                textRes = R.string.support_heading,
+                descRes = R.string.support_desc,
+                topPadding = 10,
+            )
 
             SUPPORT_LINKS.forEach { link ->
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(SupportCard)
-                            .clickable { open(link.url) }
-                            .paneNavItem(
-                                cornerRadius = 14.dp,
-                                onActivate = { open(link.url) },
-                                highlightColor = SupportAccent,
-                                tapToSelect = true,
-                            )
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(11.dp))
-                                .background(SupportAccent.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(link.iconRes),
-                            contentDescription = null,
-                            tint = SupportAccent,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-
-                    Spacer(Modifier.width(14.dp))
-
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            stringResource(link.titleRes),
-                            color = SupportText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Text(
-                            stringResource(link.subtitleRes),
-                            color = SupportSub,
-                            fontSize = 11.sp,
-                        )
-                    }
-
-                    Icon(
-                        Icons.Outlined.OpenInNew,
-                        contentDescription = null,
-                        tint = SupportSub,
-                        modifier = Modifier.size(17.dp),
-                    )
-                }
+                SupportLinkRow(link = link, onOpen = ::open)
             }
         }
     }

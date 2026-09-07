@@ -384,6 +384,7 @@ dependencies {
 
     implementation files(libretroDroidAar) { builtBy fetchLibretroDroid }
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
+    implementation project(':framegen')
     implementation project(':armsx2')
     implementation project(':dolphin')
 }

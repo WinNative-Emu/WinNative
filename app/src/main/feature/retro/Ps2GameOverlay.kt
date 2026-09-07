@@ -285,6 +285,7 @@ object Ps2GameOverlay {
                 ratingProvider = { frameRating },
                 enabledProvider = { hudVisible },
             )
+        if (com.winlator.cmod.shared.framegen.FrameGen.requested) frameSource.start()
 
         fun persistColors() {
             RetroControlLayouts.saveColors(activity, RetroSystems.PS2.id, customColors)
@@ -314,6 +315,7 @@ object Ps2GameOverlay {
             }
             rating.visibility = View.VISIBLE
             rating.reset()
+            RetroHudSupport.bindFrameGeneration(rating)
             frameSource.start()
         }
 
@@ -1023,10 +1025,18 @@ object Ps2GameOverlay {
             )
 
         menu.tabs = RetroDrawerTabs.build(activity, includePerformance = true)
+        menu.paneContentProvider = { pane ->
+            if (pane == RetroPane.FRAMEGEN) {
+                { RetroFrameGenPane.Content(activity, loadShortcut(activity), RetroSystems.PS2.id) }
+            } else {
+                null
+            }
+        }
         menu.entriesProvider = { pane ->
             when (pane) {
                 null -> mainEntries()
                 RetroPane.DISPLAY -> displayEntries()
+                RetroPane.FRAMEGEN -> emptyList()
                 RetroPane.PERFORMANCE -> performanceEntries()
                 RetroPane.SOUND -> soundEntries()
                 RetroPane.SAVES -> saveSlotEntries()

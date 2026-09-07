@@ -16,6 +16,7 @@ struct LsfgPacerConfig {
     uint32_t multiplier{2};
     uint32_t target_rate{};
     float refresh_rate{};
+    float source_rate{};
 };
 
 struct LsfgPlan {
@@ -25,6 +26,7 @@ struct LsfgPlan {
 
 struct LsfgPacerStats {
     float source_rate{};
+    size_t cost_limit{};
     float loop_rate{};
     float refresh_rate{};
     float target_rate{};
@@ -60,7 +62,10 @@ private:
     void TrackSourceRate(Clock::time_point now, uint64_t source_frames);
     void TrackLoopRate(float interval_seconds);
     [[nodiscard]] bool RatesSettled() const;
+    [[nodiscard]] float SourceInterval() const;
     [[nodiscard]] size_t HeadroomLimit() const;
+    [[nodiscard]] size_t SlotLimit() const;
+    void TrackCost(Clock::time_point now, size_t ceiling);
 
     LsfgPacerConfig config;
 
@@ -73,10 +78,18 @@ private:
     float loop_interval{};
     uint32_t source_samples{};
     uint32_t loop_samples{};
+    uint32_t rate_jumps{};
     uint64_t last_drawn{};
     float last_elapsed{};
     float output_credit{};
     size_t limit{};
+    size_t cost_limit{};
+    size_t probe_from{};
+    float raise_delay{0.25f};
+    float rate_at_raise{};
+    float rate_before_probe{};
+    bool probing{};
+    std::optional<Clock::time_point> last_cost_change;
 };
 
 }

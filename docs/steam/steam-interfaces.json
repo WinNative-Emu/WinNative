@@ -1,0 +1,8604 @@
+{
+ "IClientAppDisableUpdate": {
+  "ipc_id": "0x2a",
+  "pipe": "client",
+  "slots": 1,
+  "vtable_rva_x64": "0x12f39b0",
+  "vtable_rva_x86": "0x100cd3c",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "SetAppUpdateDisabledSecondsRemaining"
+   }
+  ]
+ },
+ "IClientAppManager": {
+  "ipc_id": "0x11",
+  "pipe": "client",
+  "slots": 113,
+  "vtable_rva_x64": "0x12e8600",
+  "vtable_rva_x86": "0x10044e4",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "InstallApp"
+   },
+   {
+    "slot": 1,
+    "name": "UninstallApp"
+   },
+   {
+    "slot": 2,
+    "name": "LaunchApp"
+   },
+   {
+    "slot": 3,
+    "name": "ShutdownApp"
+   },
+   {
+    "slot": 4,
+    "name": "GetAppInstallState"
+   },
+   {
+    "slot": 5,
+    "name": "GetAppInstallDir"
+   },
+   {
+    "slot": 6,
+    "name": "GetAppContentInfo"
+   },
+   {
+    "slot": 7,
+    "name": "GetAppStagingInfo"
+   },
+   {
+    "slot": 8,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 9,
+    "name": "IsAppDlcInstalled"
+   },
+   {
+    "slot": 10,
+    "name": "GetDlcDownloadProgress"
+   },
+   {
+    "slot": 11,
+    "name": "BIsDlcEnabled"
+   },
+   {
+    "slot": 12,
+    "name": "SetDlcEnabled"
+   },
+   {
+    "slot": 13,
+    "name": "SetDlcContext"
+   },
+   {
+    "slot": 14,
+    "name": "GetDlcSizes"
+   },
+   {
+    "slot": 15,
+    "name": "GetNumInstalledApps"
+   },
+   {
+    "slot": 16,
+    "name": "GetInstalledApps"
+   },
+   {
+    "slot": 17,
+    "name": "BIsWaitingForInstalledApps"
+   },
+   {
+    "slot": 18,
+    "name": "GetAppDependencies"
+   },
+   {
+    "slot": 19,
+    "name": "GetDependentApps"
+   },
+   {
+    "slot": 20,
+    "name": "GetUpdateInfo"
+   },
+   {
+    "slot": 21,
+    "name": "BIsAppUpToDate"
+   },
+   {
+    "slot": 22,
+    "name": "GetAvailableLanguages"
+   },
+   {
+    "slot": 23,
+    "name": "GetCurrentLanguage"
+   },
+   {
+    "slot": 24,
+    "name": "GetCurrentLanguage"
+   },
+   {
+    "slot": 25,
+    "name": "GetFallbackLanguage"
+   },
+   {
+    "slot": 26,
+    "name": "SetCurrentLanguage"
+   },
+   {
+    "slot": 27,
+    "name": "StartValidatingApp"
+   },
+   {
+    "slot": 28,
+    "name": "CancelValidation"
+   },
+   {
+    "slot": 29,
+    "name": "MarkContentCorrupt"
+   },
+   {
+    "slot": 30,
+    "name": "GetInstalledDepots"
+   },
+   {
+    "slot": 31,
+    "name": "GetFileDetails"
+   },
+   {
+    "slot": 32,
+    "name": "VerifySignedFiles"
+   },
+   {
+    "slot": 33,
+    "name": "GetNumBetas"
+   },
+   {
+    "slot": 34,
+    "name": "GetBetaInfo"
+   },
+   {
+    "slot": 35,
+    "name": "CheckBetaPassword"
+   },
+   {
+    "slot": 36,
+    "name": "SetActiveBeta"
+   },
+   {
+    "slot": 37,
+    "name": "GetActiveBeta"
+   },
+   {
+    "slot": 38,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 39,
+    "name": "SetDownloadingEnabled"
+   },
+   {
+    "slot": 40,
+    "name": "BIsDownloadingEnabled"
+   },
+   {
+    "slot": 41,
+    "name": "GetDownloadStats"
+   },
+   {
+    "slot": 42,
+    "name": "GetDownloadingAppID"
+   },
+   {
+    "slot": 43,
+    "name": "GetAutoUpdateTimeRestrictionEnabled"
+   },
+   {
+    "slot": 44,
+    "name": "SetAutoUpdateTimeRestrictionEnabled"
+   },
+   {
+    "slot": 45,
+    "name": "GetAutoUpdateTimeRestrictionHours"
+   },
+   {
+    "slot": 46,
+    "name": "SetAutoUpdateTimeRestrictionStartHour"
+   },
+   {
+    "slot": 47,
+    "name": "SetAutoUpdateTimeRestrictionEndHour"
+   },
+   {
+    "slot": 48,
+    "name": "GetAppAutoUpdateBehavior"
+   },
+   {
+    "slot": 49,
+    "name": "SetAppAutoUpdateBehavior"
+   },
+   {
+    "slot": 50,
+    "name": "SetGlobalAppUpdateBehavior"
+   },
+   {
+    "slot": 51,
+    "name": "GetGlobalAppUpdateBehavior"
+   },
+   {
+    "slot": 52,
+    "name": "SetAppAllowDownloadsWhileRunningBehavior"
+   },
+   {
+    "slot": 53,
+    "name": "GetAppAllowDownloadsWhileRunningBehavior"
+   },
+   {
+    "slot": 54,
+    "name": "SetAllowDownloadsWhileAnyAppRunning"
+   },
+   {
+    "slot": 55,
+    "name": "BAllowDownloadsWhileAnyAppRunning"
+   },
+   {
+    "slot": 56,
+    "name": "ChangeAppDownloadQueuePlacement"
+   },
+   {
+    "slot": 57,
+    "name": "SetAppDownloadQueueIndex"
+   },
+   {
+    "slot": 58,
+    "name": "GetAppDownloadQueueIndex"
+   },
+   {
+    "slot": 59,
+    "name": "GetAppAutoUpdateDelayedUntilTime"
+   },
+   {
+    "slot": 60,
+    "name": "GetNumAppsInDownloadQueue"
+   },
+   {
+    "slot": 61,
+    "name": "BHasLocalContentServer"
+   },
+   {
+    "slot": 62,
+    "name": "BuildBackup"
+   },
+   {
+    "slot": 63,
+    "name": "BuildInstaller"
+   },
+   {
+    "slot": 64,
+    "name": "CancelBackup"
+   },
+   {
+    "slot": 65,
+    "name": "RestoreAppFromBackup"
+   },
+   {
+    "slot": 66,
+    "name": "RecoverAppFromFolder"
+   },
+   {
+    "slot": 67,
+    "name": "CanMoveApp"
+   },
+   {
+    "slot": 68,
+    "name": "MoveApp"
+   },
+   {
+    "slot": 69,
+    "name": "GetMoveAppProgress"
+   },
+   {
+    "slot": 70,
+    "name": "CancelMoveApp"
+   },
+   {
+    "slot": 71,
+    "name": "GetAppStateInfo"
+   },
+   {
+    "slot": 72,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 73,
+    "name": "BCanRemotePlayTogether"
+   },
+   {
+    "slot": 74,
+    "name": "BIsLocalMultiplayerApp"
+   },
+   {
+    "slot": 75,
+    "name": "GetNumLibraryFolders"
+   },
+   {
+    "slot": 76,
+    "name": "GetLibraryFolderPath"
+   },
+   {
+    "slot": 77,
+    "name": "AddLibraryFolder"
+   },
+   {
+    "slot": 78,
+    "name": "SetLibraryFolderLabel"
+   },
+   {
+    "slot": 79,
+    "name": "GetLibraryFolderLabel"
+   },
+   {
+    "slot": 80,
+    "name": "RemoveLibraryFolder"
+   },
+   {
+    "slot": 81,
+    "name": "BGetLibraryFolderInfo"
+   },
+   {
+    "slot": 82,
+    "name": "GetAppLibraryFolder"
+   },
+   {
+    "slot": 83,
+    "name": "RefreshLibraryFolders"
+   },
+   {
+    "slot": 84,
+    "name": "GetNumAppsInFolder"
+   },
+   {
+    "slot": 85,
+    "name": "GetAppsInFolder"
+   },
+   {
+    "slot": 86,
+    "name": "ForceInstallDirOverride"
+   },
+   {
+    "slot": 87,
+    "name": "SetDebugInstallDir"
+   },
+   {
+    "slot": 88,
+    "name": "SetDownloadThrottleRateKbps"
+   },
+   {
+    "slot": 89,
+    "name": "GetDownloadThrottleRateKbps"
+   },
+   {
+    "slot": 90,
+    "name": "SuspendDownloadThrottling"
+   },
+   {
+    "slot": 91,
+    "name": "SetThrottleDownloadsWhileStreaming"
+   },
+   {
+    "slot": 92,
+    "name": "BThrottleDownloadsWhileStreaming"
+   },
+   {
+    "slot": 93,
+    "name": "GetLaunchQueryParam"
+   },
+   {
+    "slot": 94,
+    "name": "BeginLaunchQueryParams"
+   },
+   {
+    "slot": 95,
+    "name": "SetLaunchQueryParam"
+   },
+   {
+    "slot": 96,
+    "name": "CommitLaunchQueryParams"
+   },
+   {
+    "slot": 97,
+    "name": "GetLaunchCommandLine"
+   },
+   {
+    "slot": 98,
+    "name": "AllowExternalArguments"
+   },
+   {
+    "slot": 99,
+    "name": "AddContentLogLine"
+   },
+   {
+    "slot": 100,
+    "name": "SetUseHTTPSForDownloads"
+   },
+   {
+    "slot": 101,
+    "name": "GetUseHTTPSForDownloads"
+   },
+   {
+    "slot": 102,
+    "name": "SetPeerContentServerMode"
+   },
+   {
+    "slot": 103,
+    "name": "SetPeerContentClientMode"
+   },
+   {
+    "slot": 104,
+    "name": "GetPeerContentServerMode"
+   },
+   {
+    "slot": 105,
+    "name": "GetPeerContentClientMode"
+   },
+   {
+    "slot": 106,
+    "name": "GetPeerContentServerStats"
+   },
+   {
+    "slot": 107,
+    "name": "SuspendPeerContentClient"
+   },
+   {
+    "slot": 108,
+    "name": "SuspendPeerContentServer"
+   },
+   {
+    "slot": 109,
+    "name": "GetPeerContentServerForApp"
+   },
+   {
+    "slot": 110,
+    "name": "NotifyDriveAdded"
+   },
+   {
+    "slot": 111,
+    "name": "NotifyDriveRemoved"
+   },
+   {
+    "slot": 112,
+    "name": "SetAudioDownloadQuality"
+   }
+  ]
+ },
+ "IClientApps": {
+  "ipc_id": "0x8",
+  "pipe": "client",
+  "slots": 16,
+  "vtable_rva_x64": "0x12e8070",
+  "vtable_rva_x86": "0x1004190",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetAppData"
+   },
+   {
+    "slot": 1,
+    "name": "SetLocalAppConfig"
+   },
+   {
+    "slot": 2,
+    "name": "GetInternalAppIDFromGameID"
+   },
+   {
+    "slot": 3,
+    "name": "GetAllOwnedMultiplayerApps"
+   },
+   {
+    "slot": 4,
+    "name": "GetAvailableLaunchOptions"
+   },
+   {
+    "slot": 5,
+    "name": "GetAppDataSection"
+   },
+   {
+    "slot": 6,
+    "name": "GetMultipleAppDataSections"
+   },
+   {
+    "slot": 7,
+    "name": "RequestAppInfoUpdate"
+   },
+   {
+    "slot": 8,
+    "name": "GetDLCCount"
+   },
+   {
+    "slot": 9,
+    "name": "BGetDLCDataByIndex"
+   },
+   {
+    "slot": 10,
+    "name": "GetAppType"
+   },
+   {
+    "slot": 11,
+    "name": "TakeUpdateLock"
+   },
+   {
+    "slot": 12,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 13,
+    "name": "ReleaseUpdateLock"
+   },
+   {
+    "slot": 14,
+    "name": "PrintAppInfo"
+   },
+   {
+    "slot": 15,
+    "name": "GetLastChangeNumberReceived"
+   }
+  ]
+ },
+ "IClientAudio": {
+  "ipc_id": "0x18",
+  "pipe": "client",
+  "slots": 11,
+  "vtable_rva_x64": "0x12ed0d8",
+  "vtable_rva_x86": "0x1007d9c",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "StartVoiceRecording"
+   },
+   {
+    "slot": 1,
+    "name": "StopVoiceRecording"
+   },
+   {
+    "slot": 2,
+    "name": "ResetVoiceRecording"
+   },
+   {
+    "slot": 3,
+    "name": "GetAvailableVoice"
+   },
+   {
+    "slot": 4,
+    "name": "GetVoice"
+   },
+   {
+    "slot": 5,
+    "name": "GetCompressedVoice"
+   },
+   {
+    "slot": 6,
+    "name": "DecompressVoice"
+   },
+   {
+    "slot": 7,
+    "name": null
+   },
+   {
+    "slot": 8,
+    "name": "BAppUsesVoice"
+   },
+   {
+    "slot": 9,
+    "name": "GetGameSystemVolume"
+   },
+   {
+    "slot": 10,
+    "name": "SetGameSystemVolume"
+   }
+  ]
+ },
+ "IClientBilling": {
+  "ipc_id": "0x5",
+  "pipe": "client",
+  "slots": 7,
+  "vtable_rva_x64": "0x12e6280",
+  "vtable_rva_x86": "0x1002b1c",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "PurchaseWithActivationCode"
+   },
+   {
+    "slot": 1,
+    "name": "HasActiveLicense"
+   },
+   {
+    "slot": 2,
+    "name": "GetLicenseInfo"
+   },
+   {
+    "slot": 3,
+    "name": "EnableTestLicense"
+   },
+   {
+    "slot": 4,
+    "name": "DisableTestLicense"
+   },
+   {
+    "slot": 5,
+    "name": "GetAppsInPackage"
+   },
+   {
+    "slot": 6,
+    "name": "RequestFreeLicenseForApps"
+   }
+  ]
+ },
+ "IClientCompat": {
+  "ipc_id": "0x30",
+  "pipe": "client",
+  "slots": 19,
+  "vtable_rva_x64": "0x12f3ee0",
+  "vtable_rva_x86": "0x100d11c",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "BIsCompatLayerEnabled"
+   },
+   {
+    "slot": 1,
+    "name": "GetAvailableCompatTools"
+   },
+   {
+    "slot": 2,
+    "name": "GetAvailableCompatToolsFiltered"
+   },
+   {
+    "slot": 3,
+    "name": "GetAvailableCompatToolsForApp"
+   },
+   {
+    "slot": 4,
+    "name": "SpecifyCompatTool"
+   },
+   {
+    "slot": 5,
+    "name": "SpecifyCompatExperiment"
+   },
+   {
+    "slot": 6,
+    "name": "BIsCompatibilityToolEnabled"
+   },
+   {
+    "slot": 7,
+    "name": "GetCompatToolName"
+   },
+   {
+    "slot": 8,
+    "name": "GetCompatToolMappingPriority"
+   },
+   {
+    "slot": 9,
+    "name": "GetCompatToolDisplayName"
+   },
+   {
+    "slot": 10,
+    "name": "GetCompatExperiment"
+   },
+   {
+    "slot": 11,
+    "name": "GetAppCompatCategories"
+   },
+   {
+    "slot": 12,
+    "name": "StartSession"
+   },
+   {
+    "slot": 13,
+    "name": "ReleaseSession"
+   },
+   {
+    "slot": 14,
+    "name": "BIsLauncherServiceEnabled"
+   },
+   {
+    "slot": 15,
+    "name": "DeleteCompatData"
+   },
+   {
+    "slot": 16,
+    "name": "GetCompatibilityDataDiskSize"
+   },
+   {
+    "slot": 17,
+    "name": "BNeedsUnlockH264"
+   },
+   {
+    "slot": 18,
+    "name": "BNeedsProtonVoiceFiles"
+   }
+  ]
+ },
+ "IClientConfigStore": {
+  "ipc_id": "0x12",
+  "pipe": "client",
+  "slots": 21,
+  "vtable_rva_x64": "0x12ec0f8",
+  "vtable_rva_x86": "0x10071f4",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "IsSet"
+   },
+   {
+    "slot": 1,
+    "name": "GetBool"
+   },
+   {
+    "slot": 2,
+    "name": "GetInt"
+   },
+   {
+    "slot": 3,
+    "name": "GetUint64"
+   },
+   {
+    "slot": 4,
+    "name": "GetFloat"
+   },
+   {
+    "slot": 5,
+    "name": "GetString"
+   },
+   {
+    "slot": 6,
+    "name": "GetBinary"
+   },
+   {
+    "slot": 7,
+    "name": "GetBinary"
+   },
+   {
+    "slot": 8,
+    "name": "GetBinaryWatermarked"
+   },
+   {
+    "slot": 9,
+    "name": "SetBool"
+   },
+   {
+    "slot": 10,
+    "name": "SetInt"
+   },
+   {
+    "slot": 11,
+    "name": "SetUint64"
+   },
+   {
+    "slot": 12,
+    "name": "SetFloat"
+   },
+   {
+    "slot": 13,
+    "name": "SetString"
+   },
+   {
+    "slot": 14,
+    "name": "SetBinary"
+   },
+   {
+    "slot": 15,
+    "name": "SetBinaryWatermarked"
+   },
+   {
+    "slot": 16,
+    "name": "RemoveKey"
+   },
+   {
+    "slot": 17,
+    "name": "GetKeySerialized"
+   },
+   {
+    "slot": 18,
+    "name": "FlushToDisk"
+   },
+   {
+    "slot": 19,
+    "name": "GetSubKeyCount"
+   },
+   {
+    "slot": 20,
+    "name": "GetSubKeyName"
+   }
+  ]
+ },
+ "IClientControllerSerialized": {
+  "ipc_id": "0x29",
+  "pipe": "client",
+  "slots": 157,
+  "vtable_rva_x64": "0x12f2360",
+  "vtable_rva_x86": "0x100bab8",
+  "methods": [
+   {
+    "slot": 0,
+    "name": null
+   },
+   {
+    "slot": 1,
+    "name": "ShowBindingPanel"
+   },
+   {
+    "slot": 2,
+    "name": "GetControllerTypeForHandle"
+   },
+   {
+    "slot": 3,
+    "name": "GetGamepadIndexForHandle"
+   },
+   {
+    "slot": 4,
+    "name": "GetHandleForGamepadIndex"
+   },
+   {
+    "slot": 5,
+    "name": "GetActionSetHandle"
+   },
+   {
+    "slot": 6,
+    "name": "GetActionSetHandleByTitle"
+   },
+   {
+    "slot": 7,
+    "name": "GetDigitalActionHandle"
+   },
+   {
+    "slot": 8,
+    "name": "GetAnalogActionHandle"
+   },
+   {
+    "slot": 9,
+    "name": "StopAnalogActionMomentum"
+   },
+   {
+    "slot": 10,
+    "name": "EnableDeviceCallbacks"
+   },
+   {
+    "slot": 11,
+    "name": "GetStringForDigitalActionName"
+   },
+   {
+    "slot": 12,
+    "name": "GetStringForAnalogActionName"
+   },
+   {
+    "slot": 13,
+    "name": "BCheckGameDirectoryAndReloadConfigIfNecessary"
+   },
+   {
+    "slot": 14,
+    "name": "GetActionManifestPath"
+   },
+   {
+    "slot": 15,
+    "name": "GetActionManifestPath"
+   },
+   {
+    "slot": 16,
+    "name": "InvalidateActionManifestPath"
+   },
+   {
+    "slot": 17,
+    "name": "DumpConfigurationToDisk"
+   },
+   {
+    "slot": 18,
+    "name": "FlushCloudedConfigFilesToDisk"
+   },
+   {
+    "slot": 19,
+    "name": "StartBindingVisualization"
+   },
+   {
+    "slot": 20,
+    "name": "StopBindingVisualization"
+   },
+   {
+    "slot": 21,
+    "name": "SetControllerStateDropEnabled"
+   },
+   {
+    "slot": 22,
+    "name": "GetNumConnectedControllers"
+   },
+   {
+    "slot": 23,
+    "name": "GetAllControllersStatus"
+   },
+   {
+    "slot": 24,
+    "name": "QueueFetchingControllerDetails"
+   },
+   {
+    "slot": 25,
+    "name": "SetDefaultConfig"
+   },
+   {
+    "slot": 26,
+    "name": "CalibrateTrackpads"
+   },
+   {
+    "slot": 27,
+    "name": "CalibrateJoystick"
+   },
+   {
+    "slot": 28,
+    "name": "CalibrateIMU"
+   },
+   {
+    "slot": 29,
+    "name": "SetEditingTritonCapSenseSettings"
+   },
+   {
+    "slot": 30,
+    "name": "SetAudioMapping"
+   },
+   {
+    "slot": 31,
+    "name": "PlayAudio"
+   },
+   {
+    "slot": 32,
+    "name": "BIsStreamingController"
+   },
+   {
+    "slot": 33,
+    "name": "SetUserLedColor"
+   },
+   {
+    "slot": 34,
+    "name": "IdentifyControllerRumbleEffect"
+   },
+   {
+    "slot": 35,
+    "name": "SetGyroAutoCalibrate"
+   },
+   {
+    "slot": 36,
+    "name": "SetGyroOneEuroFilterActive"
+   },
+   {
+    "slot": 37,
+    "name": "RequestGyroActive"
+   },
+   {
+    "slot": 38,
+    "name": "LoadConfigFromVDFString"
+   },
+   {
+    "slot": 39,
+    "name": "InvalidateBindingCache"
+   },
+   {
+    "slot": 40,
+    "name": "ActivateConfig"
+   },
+   {
+    "slot": 41,
+    "name": "WarmOptInStatus"
+   },
+   {
+    "slot": 42,
+    "name": "GetGamepadIndexForControllerIndex"
+   },
+   {
+    "slot": 43,
+    "name": "CreateBindingInstanceFromVDFString"
+   },
+   {
+    "slot": 44,
+    "name": "FreeBindingInstance"
+   },
+   {
+    "slot": 45,
+    "name": "GetControllerConfiguration"
+   },
+   {
+    "slot": 46,
+    "name": "SetControllerActionSet"
+   },
+   {
+    "slot": 47,
+    "name": "SetControllerSourceMode"
+   },
+   {
+    "slot": 48,
+    "name": "DuplicateControllerSourceMode"
+   },
+   {
+    "slot": 49,
+    "name": "SwapControllerConfigurationSourceModes"
+   },
+   {
+    "slot": 50,
+    "name": "SetControllerInputActivator"
+   },
+   {
+    "slot": 51,
+    "name": "SetControllerInputBinding"
+   },
+   {
+    "slot": 52,
+    "name": "SetControllerInputActivatorEnabled"
+   },
+   {
+    "slot": 53,
+    "name": "SetControllerMiscMappingSettings"
+   },
+   {
+    "slot": 54,
+    "name": "SwapControllerModeInputBindings"
+   },
+   {
+    "slot": 55,
+    "name": "SetControllerModeShiftBinding"
+   },
+   {
+    "slot": 56,
+    "name": "IsModified"
+   },
+   {
+    "slot": 57,
+    "name": "ClearModified"
+   },
+   {
+    "slot": 58,
+    "name": "GetLocalizationTokenCount"
+   },
+   {
+    "slot": 59,
+    "name": "GetLocalizationToken"
+   },
+   {
+    "slot": 60,
+    "name": "GetLocalizedString"
+   },
+   {
+    "slot": 61,
+    "name": "GetBindingVDFString"
+   },
+   {
+    "slot": 62,
+    "name": "GetBindingTitle"
+   },
+   {
+    "slot": 63,
+    "name": "SetBindingTitle"
+   },
+   {
+    "slot": 64,
+    "name": "GetBindingDescription"
+   },
+   {
+    "slot": 65,
+    "name": "GetBindingRevision"
+   },
+   {
+    "slot": 66,
+    "name": "BBindingMajorRevisionMismatch"
+   },
+   {
+    "slot": 67,
+    "name": "SetBindingDescription"
+   },
+   {
+    "slot": 68,
+    "name": "GetConfigBindingInfo"
+   },
+   {
+    "slot": 69,
+    "name": "SetBindingControllerType"
+   },
+   {
+    "slot": 70,
+    "name": "GetBindingControllerType"
+   },
+   {
+    "slot": 71,
+    "name": "SetBindingCreator"
+   },
+   {
+    "slot": 72,
+    "name": "GetBindingCreator"
+   },
+   {
+    "slot": 73,
+    "name": "GetBindingProgenitor"
+   },
+   {
+    "slot": 74,
+    "name": "SetBindingProgenitor"
+   },
+   {
+    "slot": 75,
+    "name": "GetBindingURL"
+   },
+   {
+    "slot": 76,
+    "name": "SetBindingURL"
+   },
+   {
+    "slot": 77,
+    "name": "GetBindingExportType"
+   },
+   {
+    "slot": 78,
+    "name": "SetBindingExportType"
+   },
+   {
+    "slot": 79,
+    "name": "GetConfigFeatures"
+   },
+   {
+    "slot": 80,
+    "name": "PS4SettingsChanged"
+   },
+   {
+    "slot": 81,
+    "name": "SwitchSettingsChanged"
+   },
+   {
+    "slot": 82,
+    "name": "ControllerSettingsChanged"
+   },
+   {
+    "slot": 83,
+    "name": "SetTrackpadPressureCurve"
+   },
+   {
+    "slot": 84,
+    "name": "SetDefaultNintendoButtonLayout"
+   },
+   {
+    "slot": 85,
+    "name": "IsControllerConnected"
+   },
+   {
+    "slot": 86,
+    "name": "TriggerHapticPulse"
+   },
+   {
+    "slot": 87,
+    "name": "TriggerSimpleHapticEvent"
+   },
+   {
+    "slot": 88,
+    "name": "TriggerVibration"
+   },
+   {
+    "slot": 89,
+    "name": "TriggerVibrationExtended"
+   },
+   {
+    "slot": 90,
+    "name": "SetLEDColor"
+   },
+   {
+    "slot": 91,
+    "name": "SetDonglePairingMode"
+   },
+   {
+    "slot": 92,
+    "name": "ReserveSteamController"
+   },
+   {
+    "slot": 93,
+    "name": "CancelSteamControllerReservations"
+   },
+   {
+    "slot": 94,
+    "name": "OpenStreamingSession"
+   },
+   {
+    "slot": 95,
+    "name": "CloseStreamingSession"
+   },
+   {
+    "slot": 96,
+    "name": "UpdateStreamingSessionInputPermissions"
+   },
+   {
+    "slot": 97,
+    "name": "InitiateISPFirmwareUpdate"
+   },
+   {
+    "slot": 98,
+    "name": "InitiateBootloaderFirmwareUpdate"
+   },
+   {
+    "slot": 99,
+    "name": "FlashControllerFirmware"
+   },
+   {
+    "slot": 100,
+    "name": "TurnOffController"
+   },
+   {
+    "slot": 101,
+    "name": "TurnOffAllWirelessControllers"
+   },
+   {
+    "slot": 102,
+    "name": "EnumerateControllers"
+   },
+   {
+    "slot": 103,
+    "name": "GetControllerStatusEvent"
+   },
+   {
+    "slot": 104,
+    "name": "GetActualControllerDetails"
+   },
+   {
+    "slot": 105,
+    "name": "GetControllerIdentity"
+   },
+   {
+    "slot": 106,
+    "name": "GetControllerPersonalization"
+   },
+   {
+    "slot": 107,
+    "name": "GetControllerReverseDiamondLayout"
+   },
+   {
+    "slot": 108,
+    "name": "SetControllerPairingConnectionState"
+   },
+   {
+    "slot": 109,
+    "name": "SetControllerKeyboardMouseState"
+   },
+   {
+    "slot": 110,
+    "name": "GetTouchKeysForPopupMenu"
+   },
+   {
+    "slot": 111,
+    "name": "PopupMenuTouchKeyClicked"
+   },
+   {
+    "slot": 112,
+    "name": "AccessControllerInputGeneratorMouseButton"
+   },
+   {
+    "slot": 113,
+    "name": "SetControllerSetting"
+   },
+   {
+    "slot": 114,
+    "name": "SetSelectedConfigForApp"
+   },
+   {
+    "slot": 115,
+    "name": "BControllerHasUniqueConfigForAppID"
+   },
+   {
+    "slot": 116,
+    "name": "SendOSKeyboardEvent"
+   },
+   {
+    "slot": 117,
+    "name": "SetOSKeyboardKey"
+   },
+   {
+    "slot": 118,
+    "name": "SetMousePosition"
+   },
+   {
+    "slot": 119,
+    "name": "GetGamepadIndexChangeCounter"
+   },
+   {
+    "slot": 120,
+    "name": "BSwapGamepadIndex"
+   },
+   {
+    "slot": 121,
+    "name": "GetGamepadIndexForXInputIndex"
+   },
+   {
+    "slot": 122,
+    "name": "GetControllerIndexForGamepadIndex"
+   },
+   {
+    "slot": 123,
+    "name": "AutoRegisterControllerRegistrationToAccount"
+   },
+   {
+    "slot": 124,
+    "name": "GetConfigForAppAndController"
+   },
+   {
+    "slot": 125,
+    "name": "SetControllerPersonalization"
+   },
+   {
+    "slot": 126,
+    "name": "SetPersonalizationFile"
+   },
+   {
+    "slot": 127,
+    "name": "SetGameWindowPos"
+   },
+   {
+    "slot": 128,
+    "name": "HasGameMapping"
+   },
+   {
+    "slot": 129,
+    "name": "GetControllerUsageData"
+   },
+   {
+    "slot": 130,
+    "name": "BAllowAppConfigForController"
+   },
+   {
+    "slot": 131,
+    "name": "ResetControllerEnableCache"
+   },
+   {
+    "slot": 132,
+    "name": "GetControllerEnableSupport"
+   },
+   {
+    "slot": 133,
+    "name": "GetControllerActivityByType"
+   },
+   {
+    "slot": 134,
+    "name": "GetLastActiveControllerVID"
+   },
+   {
+    "slot": 135,
+    "name": "GetLastActiveControllerPID"
+   },
+   {
+    "slot": 136,
+    "name": "LoadControllerPersonalizationFile"
+   },
+   {
+    "slot": 137,
+    "name": "SaveControllerPersonalizationFile"
+   },
+   {
+    "slot": 138,
+    "name": "LoadRemotePlayControllerPersonalizationVDF"
+   },
+   {
+    "slot": 139,
+    "name": "FindControllerByPath"
+   },
+   {
+    "slot": 140,
+    "name": "GetControllerPath"
+   },
+   {
+    "slot": 141,
+    "name": "GetControllerProductName"
+   },
+   {
+    "slot": 142,
+    "name": "SetControllerHapticsSetting"
+   },
+   {
+    "slot": 143,
+    "name": "SetControllerName"
+   },
+   {
+    "slot": 144,
+    "name": "SetControllerRumbleSetting"
+   },
+   {
+    "slot": 145,
+    "name": "SetControllerNintendoLayoutSetting"
+   },
+   {
+    "slot": 146,
+    "name": "SetControllerUseUniversalFaceButtonGlyphs"
+   },
+   {
+    "slot": 147,
+    "name": "BGetTouchConfigData"
+   },
+   {
+    "slot": 148,
+    "name": "BSaveTouchConfigLayout"
+   },
+   {
+    "slot": 149,
+    "name": "SetGyroOn"
+   },
+   {
+    "slot": 150,
+    "name": "ForceSimpleHapticEvent"
+   },
+   {
+    "slot": 151,
+    "name": "GetControllerMacAddr"
+   },
+   {
+    "slot": 152,
+    "name": "SetGameFrameLimit"
+   },
+   {
+    "slot": 153,
+    "name": "ResetGamepadIndexes"
+   },
+   {
+    "slot": 154,
+    "name": "RegisterForIMUJerkEvent"
+   },
+   {
+    "slot": 155,
+    "name": "UnregisterForIMUJerkEvent"
+   },
+   {
+    "slot": 156,
+    "name": "GetBuiltInControllerIndex"
+   }
+  ]
+ },
+ "IClientDepotBuilder": {
+  "ipc_id": "0x10",
+  "pipe": "client",
+  "slots": 6,
+  "vtable_rva_x64": "0x12e9578",
+  "vtable_rva_x86": "0x100513c",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "BGetDepotBuildStatus"
+   },
+   {
+    "slot": 1,
+    "name": "VerifyChunkStore"
+   },
+   {
+    "slot": 2,
+    "name": "DownloadDepot"
+   },
+   {
+    "slot": 3,
+    "name": "DownloadChunk"
+   },
+   {
+    "slot": 4,
+    "name": "StartDepotBuild"
+   },
+   {
+    "slot": 5,
+    "name": "CommitAppBuild"
+   }
+  ]
+ },
+ "IClientFriends": {
+  "ipc_id": "0x3",
+  "pipe": "client",
+  "slots": 246,
+  "vtable_rva_x64": "0x12e4260",
+  "vtable_rva_x86": "0x10010e8",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetPersonaName"
+   },
+   {
+    "slot": 1,
+    "name": "SetPersonaName"
+   },
+   {
+    "slot": 2,
+    "name": "SetPersonaNameSDK"
+   },
+   {
+    "slot": 3,
+    "name": "IsPersonaNameSet"
+   },
+   {
+    "slot": 4,
+    "name": "GetPersonaState"
+   },
+   {
+    "slot": 5,
+    "name": "SetPersonaState"
+   },
+   {
+    "slot": 6,
+    "name": "NotifyUIOfMenuChange"
+   },
+   {
+    "slot": 7,
+    "name": "GetFriendCount"
+   },
+   {
+    "slot": 8,
+    "name": "GetFriendArray"
+   },
+   {
+    "slot": 9,
+    "name": "GetFriendArrayInGame"
+   },
+   {
+    "slot": 10,
+    "name": "GetFriendByIndex"
+   },
+   {
+    "slot": 11,
+    "name": "GetOnlineFriendCount"
+   },
+   {
+    "slot": 12,
+    "name": "GetFriendRelationship"
+   },
+   {
+    "slot": 13,
+    "name": "GetFriendPersonaState"
+   },
+   {
+    "slot": 14,
+    "name": "GetFriendPersonaName"
+   },
+   {
+    "slot": 15,
+    "name": "GetSmallFriendAvatar"
+   },
+   {
+    "slot": 16,
+    "name": "GetMediumFriendAvatar"
+   },
+   {
+    "slot": 17,
+    "name": "GetLargeFriendAvatar"
+   },
+   {
+    "slot": 18,
+    "name": "BGetFriendAvatarURL"
+   },
+   {
+    "slot": 19,
+    "name": "GetFriendAvatarHash"
+   },
+   {
+    "slot": 20,
+    "name": "SetFriendRegValue"
+   },
+   {
+    "slot": 21,
+    "name": "GetFriendRegValue"
+   },
+   {
+    "slot": 22,
+    "name": "DeleteFriendRegValue"
+   },
+   {
+    "slot": 23,
+    "name": "GetFriendGamePlayed"
+   },
+   {
+    "slot": 24,
+    "name": "GetFriendGamePlayedExtraInfo"
+   },
+   {
+    "slot": 25,
+    "name": "GetFriendGameServer"
+   },
+   {
+    "slot": 26,
+    "name": "GetFriendPersonaStateFlags"
+   },
+   {
+    "slot": 27,
+    "name": "GetFriendBroadcastID"
+   },
+   {
+    "slot": 28,
+    "name": "GetFriendPersonaNameHistory"
+   },
+   {
+    "slot": 29,
+    "name": "RequestPersonaNameHistory"
+   },
+   {
+    "slot": 30,
+    "name": "GetFriendPersonaNameHistoryAndDate"
+   },
+   {
+    "slot": 31,
+    "name": "HasFriend"
+   },
+   {
+    "slot": 32,
+    "name": "RequestUserInformation"
+   },
+   {
+    "slot": 33,
+    "name": "SetIgnoreFriend"
+   },
+   {
+    "slot": 34,
+    "name": "ReportChatDeclined"
+   },
+   {
+    "slot": 35,
+    "name": "CreateFriendsGroup"
+   },
+   {
+    "slot": 36,
+    "name": "DeleteFriendsGroup"
+   },
+   {
+    "slot": 37,
+    "name": "RenameFriendsGroup"
+   },
+   {
+    "slot": 38,
+    "name": "AddFriendToGroup"
+   },
+   {
+    "slot": 39,
+    "name": "RemoveFriendFromGroup"
+   },
+   {
+    "slot": 40,
+    "name": "IsFriendMemberOfFriendsGroup"
+   },
+   {
+    "slot": 41,
+    "name": "GetFriendsGroupCount"
+   },
+   {
+    "slot": 42,
+    "name": "GetFriendsGroupIDByIndex"
+   },
+   {
+    "slot": 43,
+    "name": "GetFriendsGroupName"
+   },
+   {
+    "slot": 44,
+    "name": "GetFriendsGroupMembershipCount"
+   },
+   {
+    "slot": 45,
+    "name": "GetFirstFriendsGroupMember"
+   },
+   {
+    "slot": 46,
+    "name": "GetNextFriendsGroupMember"
+   },
+   {
+    "slot": 47,
+    "name": "GetGroupFriendsMembershipCount"
+   },
+   {
+    "slot": 48,
+    "name": "GetFirstGroupFriendsMember"
+   },
+   {
+    "slot": 49,
+    "name": "GetNextGroupFriendsMember"
+   },
+   {
+    "slot": 50,
+    "name": "GetPlayerNickname"
+   },
+   {
+    "slot": 51,
+    "name": "SetPlayerNickname"
+   },
+   {
+    "slot": 52,
+    "name": "GetFriendSteamLevel"
+   },
+   {
+    "slot": 53,
+    "name": "GetChatMessagesCount"
+   },
+   {
+    "slot": 54,
+    "name": "GetChatMessage"
+   },
+   {
+    "slot": 55,
+    "name": "SendMsgToFriend"
+   },
+   {
+    "slot": 56,
+    "name": "ClearChatHistory"
+   },
+   {
+    "slot": 57,
+    "name": "GetKnownClanCount"
+   },
+   {
+    "slot": 58,
+    "name": "GetKnownClanByIndex"
+   },
+   {
+    "slot": 59,
+    "name": "GetClanCount"
+   },
+   {
+    "slot": 60,
+    "name": "GetClanByIndex"
+   },
+   {
+    "slot": 61,
+    "name": "GetClanName"
+   },
+   {
+    "slot": 62,
+    "name": "GetClanTag"
+   },
+   {
+    "slot": 63,
+    "name": "GetFriendActivityCounts"
+   },
+   {
+    "slot": 64,
+    "name": "GetClanActivityCounts"
+   },
+   {
+    "slot": 65,
+    "name": "DownloadClanActivityCounts"
+   },
+   {
+    "slot": 66,
+    "name": "GetFriendsGroupActivityCounts"
+   },
+   {
+    "slot": 67,
+    "name": "IsClanPublic"
+   },
+   {
+    "slot": 68,
+    "name": "IsClanOfficialGameGroup"
+   },
+   {
+    "slot": 69,
+    "name": "JoinClanChatRoom"
+   },
+   {
+    "slot": 70,
+    "name": "LeaveClanChatRoom"
+   },
+   {
+    "slot": 71,
+    "name": "GetClanChatMemberCount"
+   },
+   {
+    "slot": 72,
+    "name": "GetChatMemberByIndex"
+   },
+   {
+    "slot": 73,
+    "name": "SendClanChatMessage"
+   },
+   {
+    "slot": 74,
+    "name": "GetClanChatMessage"
+   },
+   {
+    "slot": 75,
+    "name": "IsClanChatAdmin"
+   },
+   {
+    "slot": 76,
+    "name": "IsClanChatWindowOpenInSteam"
+   },
+   {
+    "slot": 77,
+    "name": "OpenClanChatWindowInSteam"
+   },
+   {
+    "slot": 78,
+    "name": "CloseClanChatWindowInSteam"
+   },
+   {
+    "slot": 79,
+    "name": "SetListenForFriendsMessages"
+   },
+   {
+    "slot": 80,
+    "name": "ReplyToFriendMessage"
+   },
+   {
+    "slot": 81,
+    "name": "GetFriendMessage"
+   },
+   {
+    "slot": 82,
+    "name": "InviteFriendToClan"
+   },
+   {
+    "slot": 83,
+    "name": "AcknowledgeInviteToClan"
+   },
+   {
+    "slot": 84,
+    "name": "GetFriendCountFromSource"
+   },
+   {
+    "slot": 85,
+    "name": "GetFriendFromSourceByIndex"
+   },
+   {
+    "slot": 86,
+    "name": "IsUserInSource"
+   },
+   {
+    "slot": 87,
+    "name": "GetCoplayFriendCount"
+   },
+   {
+    "slot": 88,
+    "name": "GetCoplayFriend"
+   },
+   {
+    "slot": 89,
+    "name": "GetFriendCoplayTime"
+   },
+   {
+    "slot": 90,
+    "name": "GetFriendCoplayGame"
+   },
+   {
+    "slot": 91,
+    "name": "SetRichPresence"
+   },
+   {
+    "slot": 92,
+    "name": "ClearRichPresence"
+   },
+   {
+    "slot": 93,
+    "name": "GetFriendRichPresence"
+   },
+   {
+    "slot": 94,
+    "name": "GetFriendRichPresenceKeyCount"
+   },
+   {
+    "slot": 95,
+    "name": "GetFriendRichPresenceKeyByIndex"
+   },
+   {
+    "slot": 96,
+    "name": "RequestFriendRichPresence"
+   },
+   {
+    "slot": 97,
+    "name": "JoinChatRoom"
+   },
+   {
+    "slot": 98,
+    "name": "LeaveChatRoom"
+   },
+   {
+    "slot": 99,
+    "name": "InviteUserToChatRoom"
+   },
+   {
+    "slot": 100,
+    "name": "SendChatMsg"
+   },
+   {
+    "slot": 101,
+    "name": "GetChatRoomMessagesCount"
+   },
+   {
+    "slot": 102,
+    "name": "GetChatRoomEntry"
+   },
+   {
+    "slot": 103,
+    "name": "ClearChatRoomHistory"
+   },
+   {
+    "slot": 104,
+    "name": "SerializeChatRoomDlg"
+   },
+   {
+    "slot": 105,
+    "name": "GetSizeOfSerializedChatRoomDlg"
+   },
+   {
+    "slot": 106,
+    "name": "GetSerializedChatRoomDlg"
+   },
+   {
+    "slot": 107,
+    "name": "ClearSerializedChatRoomDlg"
+   },
+   {
+    "slot": 108,
+    "name": "KickChatMember"
+   },
+   {
+    "slot": 109,
+    "name": "BanChatMember"
+   },
+   {
+    "slot": 110,
+    "name": "UnBanChatMember"
+   },
+   {
+    "slot": 111,
+    "name": "SetChatRoomType"
+   },
+   {
+    "slot": 112,
+    "name": "GetChatRoomLockState"
+   },
+   {
+    "slot": 113,
+    "name": "GetChatRoomPermissions"
+   },
+   {
+    "slot": 114,
+    "name": "SetChatRoomModerated"
+   },
+   {
+    "slot": 115,
+    "name": "BChatRoomModerated"
+   },
+   {
+    "slot": 116,
+    "name": "NotifyChatRoomDlgsOfUIChange"
+   },
+   {
+    "slot": 117,
+    "name": "TerminateChatRoom"
+   },
+   {
+    "slot": 118,
+    "name": "GetChatRoomCount"
+   },
+   {
+    "slot": 119,
+    "name": "GetChatRoomByIndex"
+   },
+   {
+    "slot": 120,
+    "name": "GetChatRoomName"
+   },
+   {
+    "slot": 121,
+    "name": "BGetChatRoomMemberDetails"
+   },
+   {
+    "slot": 122,
+    "name": "CreateChatRoom"
+   },
+   {
+    "slot": 123,
+    "name": "JoinChatRoomGroup"
+   },
+   {
+    "slot": 124,
+    "name": "ShowChatRoomGroupInvite"
+   },
+   {
+    "slot": 125,
+    "name": "VoiceCallNew"
+   },
+   {
+    "slot": 126,
+    "name": "VoiceCall"
+   },
+   {
+    "slot": 127,
+    "name": "VoiceHangUp"
+   },
+   {
+    "slot": 128,
+    "name": "SetVoiceSpeakerVolume"
+   },
+   {
+    "slot": 129,
+    "name": "SetVoiceMicrophoneVolume"
+   },
+   {
+    "slot": 130,
+    "name": "SetAutoAnswer"
+   },
+   {
+    "slot": 131,
+    "name": "VoiceAnswer"
+   },
+   {
+    "slot": 132,
+    "name": "AcceptVoiceCall"
+   },
+   {
+    "slot": 133,
+    "name": "VoicePutOnHold"
+   },
+   {
+    "slot": 134,
+    "name": "BVoiceIsLocalOnHold"
+   },
+   {
+    "slot": 135,
+    "name": "BVoiceIsRemoteOnHold"
+   },
+   {
+    "slot": 136,
+    "name": "SetDoNotDisturb"
+   },
+   {
+    "slot": 137,
+    "name": "EnableVoiceNotificationSounds"
+   },
+   {
+    "slot": 138,
+    "name": "SetPushToTalkEnabled"
+   },
+   {
+    "slot": 139,
+    "name": "IsPushToTalkEnabled"
+   },
+   {
+    "slot": 140,
+    "name": "IsPushToMuteEnabled"
+   },
+   {
+    "slot": 141,
+    "name": "SetPushToTalkKey"
+   },
+   {
+    "slot": 142,
+    "name": "GetPushToTalkKey"
+   },
+   {
+    "slot": 143,
+    "name": "IsPushToTalkKeyDown"
+   },
+   {
+    "slot": 144,
+    "name": "EnableVoiceCalibration"
+   },
+   {
+    "slot": 145,
+    "name": "IsVoiceCalibrating"
+   },
+   {
+    "slot": 146,
+    "name": "GetVoiceCalibrationSamplePeak"
+   },
+   {
+    "slot": 147,
+    "name": "SetMicBoost"
+   },
+   {
+    "slot": 148,
+    "name": "GetMicBoost"
+   },
+   {
+    "slot": 149,
+    "name": "HasHardwareMicBoost"
+   },
+   {
+    "slot": 150,
+    "name": "GetMicDeviceName"
+   },
+   {
+    "slot": 151,
+    "name": "StartTalking"
+   },
+   {
+    "slot": 152,
+    "name": "EndTalking"
+   },
+   {
+    "slot": 153,
+    "name": "VoiceIsValid"
+   },
+   {
+    "slot": 154,
+    "name": "SetAutoReflectVoice"
+   },
+   {
+    "slot": 155,
+    "name": "GetCallState"
+   },
+   {
+    "slot": 156,
+    "name": "GetVoiceMicrophoneVolume"
+   },
+   {
+    "slot": 157,
+    "name": "GetVoiceSpeakerVolume"
+   },
+   {
+    "slot": 158,
+    "name": "TimeSinceLastVoiceDataReceived"
+   },
+   {
+    "slot": 159,
+    "name": "TimeSinceLastVoiceDataSend"
+   },
+   {
+    "slot": 160,
+    "name": "BCanSend"
+   },
+   {
+    "slot": 161,
+    "name": "BCanReceive"
+   },
+   {
+    "slot": 162,
+    "name": "GetEstimatedBitsPerSecond"
+   },
+   {
+    "slot": 163,
+    "name": "GetPeakSample"
+   },
+   {
+    "slot": 164,
+    "name": "SendResumeRequest"
+   },
+   {
+    "slot": 165,
+    "name": "OpenFriendsDialog"
+   },
+   {
+    "slot": 166,
+    "name": "OpenChatDialog"
+   },
+   {
+    "slot": 167,
+    "name": "OpenInviteToTradeDialog"
+   },
+   {
+    "slot": 168,
+    "name": "StartChatRoomVoiceSpeaking"
+   },
+   {
+    "slot": 169,
+    "name": "EndChatRoomVoiceSpeaking"
+   },
+   {
+    "slot": 170,
+    "name": "GetFriendLastLogonTime"
+   },
+   {
+    "slot": 171,
+    "name": "GetFriendLastLogoffTime"
+   },
+   {
+    "slot": 172,
+    "name": "GetChatRoomVoiceTotalSlotCount"
+   },
+   {
+    "slot": 173,
+    "name": "GetChatRoomVoiceUsedSlotCount"
+   },
+   {
+    "slot": 174,
+    "name": "GetChatRoomVoiceUsedSlot"
+   },
+   {
+    "slot": 175,
+    "name": "GetChatRoomVoiceStatus"
+   },
+   {
+    "slot": 176,
+    "name": "BChatRoomHasAvailableVoiceSlots"
+   },
+   {
+    "slot": 177,
+    "name": "BIsChatRoomVoiceSpeaking"
+   },
+   {
+    "slot": 178,
+    "name": "GetChatRoomPeakSample"
+   },
+   {
+    "slot": 179,
+    "name": "ChatRoomVoiceRetryConnections"
+   },
+   {
+    "slot": 180,
+    "name": "SetPortTypes"
+   },
+   {
+    "slot": 181,
+    "name": "ReinitAudio"
+   },
+   {
+    "slot": 182,
+    "name": "SetInGameVoiceSpeaking"
+   },
+   {
+    "slot": 183,
+    "name": "IsInGameVoiceSpeaking"
+   },
+   {
+    "slot": 184,
+    "name": "ActivateGameOverlay"
+   },
+   {
+    "slot": 185,
+    "name": "ActivateGameOverlayToUser"
+   },
+   {
+    "slot": 186,
+    "name": "ActivateGameOverlayToWebPage"
+   },
+   {
+    "slot": 187,
+    "name": "ActivateGameOverlayToStore"
+   },
+   {
+    "slot": 188,
+    "name": "ActivateGameOverlayInviteDialog"
+   },
+   {
+    "slot": 189,
+    "name": "ActivateGameOverlayRemotePlayTogetherInviteDialog"
+   },
+   {
+    "slot": 190,
+    "name": "ActivateGameOverlayInviteDialogConnectString"
+   },
+   {
+    "slot": 191,
+    "name": "ProcessActivateGameOverlayInMainUI"
+   },
+   {
+    "slot": 192,
+    "name": "NotifyGameOverlayStateChanged"
+   },
+   {
+    "slot": 193,
+    "name": "NotifyGameServerChangeRequested"
+   },
+   {
+    "slot": 194,
+    "name": "NotifyLobbyJoinRequested"
+   },
+   {
+    "slot": 195,
+    "name": "NotifyRichPresenceJoinRequested"
+   },
+   {
+    "slot": 196,
+    "name": "GetClanRelationship"
+   },
+   {
+    "slot": 197,
+    "name": "GetClanInviteCount"
+   },
+   {
+    "slot": 198,
+    "name": "GetFriendClanRank"
+   },
+   {
+    "slot": 199,
+    "name": "VoiceIsAvailable"
+   },
+   {
+    "slot": 200,
+    "name": "TestVoiceDisconnect"
+   },
+   {
+    "slot": 201,
+    "name": "TestChatRoomPeerDisconnect"
+   },
+   {
+    "slot": 202,
+    "name": "TestVoicePacketLoss"
+   },
+   {
+    "slot": 203,
+    "name": "FindFriendVoiceChatHandle"
+   },
+   {
+    "slot": 204,
+    "name": "RequestFriendsWhoPlayGame"
+   },
+   {
+    "slot": 205,
+    "name": "GetCountFriendsWhoPlayGame"
+   },
+   {
+    "slot": 206,
+    "name": "GetFriendWhoPlaysGame"
+   },
+   {
+    "slot": 207,
+    "name": "GetCountFriendsInGame"
+   },
+   {
+    "slot": 208,
+    "name": "SetPlayedWith"
+   },
+   {
+    "slot": 209,
+    "name": "RequestClanOfficerList"
+   },
+   {
+    "slot": 210,
+    "name": "GetClanOwner"
+   },
+   {
+    "slot": 211,
+    "name": "GetClanOfficerCount"
+   },
+   {
+    "slot": 212,
+    "name": "GetClanOfficerByIndex"
+   },
+   {
+    "slot": 213,
+    "name": "RequestFriendProfileInfo"
+   },
+   {
+    "slot": 214,
+    "name": "GetFriendProfileInfo"
+   },
+   {
+    "slot": 215,
+    "name": "InviteUserToGame"
+   },
+   {
+    "slot": 216,
+    "name": "RequestTrade"
+   },
+   {
+    "slot": 217,
+    "name": "TradeResponse"
+   },
+   {
+    "slot": 218,
+    "name": "CancelTradeRequest"
+   },
+   {
+    "slot": 219,
+    "name": "HideFriend"
+   },
+   {
+    "slot": 220,
+    "name": "GetFollowerCount"
+   },
+   {
+    "slot": 221,
+    "name": "IsFollowing"
+   },
+   {
+    "slot": 222,
+    "name": "EnumerateFollowingList"
+   },
+   {
+    "slot": 223,
+    "name": "RequestFriendMessageHistory"
+   },
+   {
+    "slot": 224,
+    "name": "RequestFriendMessageHistoryForOfflineMessages"
+   },
+   {
+    "slot": 225,
+    "name": "GetCountFriendsWithOfflineMessages"
+   },
+   {
+    "slot": 226,
+    "name": "GetFriendWithOfflineMessage"
+   },
+   {
+    "slot": 227,
+    "name": "ClearFriendHasOfflineMessage"
+   },
+   {
+    "slot": 228,
+    "name": "RequestEmoticonList"
+   },
+   {
+    "slot": 229,
+    "name": "GetEmoticonCount"
+   },
+   {
+    "slot": 230,
+    "name": "GetEmoticonName"
+   },
+   {
+    "slot": 231,
+    "name": "ClientLinkFilterInit"
+   },
+   {
+    "slot": 232,
+    "name": "LinkDisposition"
+   },
+   {
+    "slot": 233,
+    "name": "GetFriendPersonaName_Public"
+   },
+   {
+    "slot": 234,
+    "name": "GetPlayerNickname_Public"
+   },
+   {
+    "slot": 235,
+    "name": "SetFriendsUIActiveClanChatList"
+   },
+   {
+    "slot": 236,
+    "name": "GetNumChatsWithUnreadPriorityMessages"
+   },
+   {
+    "slot": 237,
+    "name": "SetNumChatsWithUnreadPriorityMessages"
+   },
+   {
+    "slot": 238,
+    "name": "RegisterProtocolInOverlayBrowser"
+   },
+   {
+    "slot": 239,
+    "name": "HandleProtocolForOverlayBrowser"
+   },
+   {
+    "slot": 240,
+    "name": "RequestEquippedProfileItems"
+   },
+   {
+    "slot": 241,
+    "name": "BHasEquippedProfileItem"
+   },
+   {
+    "slot": 242,
+    "name": "GetProfileItemPropertyString"
+   },
+   {
+    "slot": 243,
+    "name": "GetProfileItemPropertyUint"
+   },
+   {
+    "slot": 244,
+    "name": "DownloadCommunityItemAsset"
+   },
+   {
+    "slot": 245,
+    "name": "GetMultiplayerSessionShareURL"
+   }
+  ]
+ },
+ "IClientGameCoordinator": {
+  "ipc_id": "0x13",
+  "pipe": "client",
+  "slots": 3,
+  "vtable_rva_x64": "0x12ec8f8",
+  "vtable_rva_x86": "0x10077c0",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "SendMessage"
+   },
+   {
+    "slot": 1,
+    "name": "IsMessageAvailable"
+   },
+   {
+    "slot": 2,
+    "name": "RetrieveMessage"
+   }
+  ]
+ },
+ "IClientGameNotifications": {
+  "ipc_id": "0x25",
+  "pipe": "client",
+  "slots": 5,
+  "vtable_rva_x64": "0x12f0eb0",
+  "vtable_rva_x86": "0x100ac58",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "EnumerateNotifications"
+   },
+   {
+    "slot": 1,
+    "name": "GetNotificationCount"
+   },
+   {
+    "slot": 2,
+    "name": "GetNotification"
+   },
+   {
+    "slot": 3,
+    "name": "RemoveSession"
+   },
+   {
+    "slot": 4,
+    "name": "UpdateSession"
+   }
+  ]
+ },
+ "IClientGameServerInternal": {
+  "ipc_id": "0x2",
+  "pipe": "client",
+  "slots": 68,
+  "vtable_rva_x64": "0x12e30b8",
+  "vtable_rva_x86": "0x1000560",
+  "methods": [
+   {
+    "slot": 0,
+    "name": null
+   },
+   {
+    "slot": 1,
+    "name": null
+   },
+   {
+    "slot": 2,
+    "name": "SetSDRLogin"
+   },
+   {
+    "slot": 3,
+    "name": "SDR_POPID"
+   },
+   {
+    "slot": 4,
+    "name": "InitGameServerSerialized"
+   },
+   {
+    "slot": 5,
+    "name": "SetProduct"
+   },
+   {
+    "slot": 6,
+    "name": "SetGameDescription"
+   },
+   {
+    "slot": 7,
+    "name": "SetModDir"
+   },
+   {
+    "slot": 8,
+    "name": "SetDedicatedServer"
+   },
+   {
+    "slot": 9,
+    "name": "LogOn"
+   },
+   {
+    "slot": 10,
+    "name": "LogOnAnonymous"
+   },
+   {
+    "slot": 11,
+    "name": "LogOff"
+   },
+   {
+    "slot": 12,
+    "name": "GetSteamID"
+   },
+   {
+    "slot": 13,
+    "name": "BLoggedOn"
+   },
+   {
+    "slot": 14,
+    "name": "BSecure"
+   },
+   {
+    "slot": 15,
+    "name": "WasRestartRequested"
+   },
+   {
+    "slot": 16,
+    "name": "SetMaxPlayerCount"
+   },
+   {
+    "slot": 17,
+    "name": "SetBotPlayerCount"
+   },
+   {
+    "slot": 18,
+    "name": "SetServerName"
+   },
+   {
+    "slot": 19,
+    "name": "SetMapName"
+   },
+   {
+    "slot": 20,
+    "name": "SetPasswordProtected"
+   },
+   {
+    "slot": 21,
+    "name": "SetSpectatorPort"
+   },
+   {
+    "slot": 22,
+    "name": "SetSpectatorServerName"
+   },
+   {
+    "slot": 23,
+    "name": "ClearAllKeyValues"
+   },
+   {
+    "slot": 24,
+    "name": "SetKeyValue"
+   },
+   {
+    "slot": 25,
+    "name": "SetGameTags"
+   },
+   {
+    "slot": 26,
+    "name": "SetGameData"
+   },
+   {
+    "slot": 27,
+    "name": "SetRegion"
+   },
+   {
+    "slot": 28,
+    "name": "SendUserConnectAndAuthenticate"
+   },
+   {
+    "slot": 29,
+    "name": "CreateUnauthenticatedUserConnection"
+   },
+   {
+    "slot": 30,
+    "name": "SendUserDisconnect"
+   },
+   {
+    "slot": 31,
+    "name": "BUpdateUserData"
+   },
+   {
+    "slot": 32,
+    "name": "GetAuthSessionTicket"
+   },
+   {
+    "slot": 33,
+    "name": "GetAuthSessionTicketV2"
+   },
+   {
+    "slot": 34,
+    "name": "BeginAuthSession"
+   },
+   {
+    "slot": 35,
+    "name": "EndAuthSession"
+   },
+   {
+    "slot": 36,
+    "name": "CancelAuthTicket"
+   },
+   {
+    "slot": 37,
+    "name": "IsUserSubscribedAppInTicket"
+   },
+   {
+    "slot": 38,
+    "name": "RequestUserGroupStatus"
+   },
+   {
+    "slot": 39,
+    "name": "GetGameplayStats"
+   },
+   {
+    "slot": 40,
+    "name": "GetServerReputation"
+   },
+   {
+    "slot": 41,
+    "name": "GetPublicIP"
+   },
+   {
+    "slot": 42,
+    "name": "EnableHeartbeats"
+   },
+   {
+    "slot": 43,
+    "name": "SetHeartbeatInterval"
+   },
+   {
+    "slot": 44,
+    "name": "ForceHeartbeat"
+   },
+   {
+    "slot": 45,
+    "name": "SetAdditionalAppId"
+   },
+   {
+    "slot": 46,
+    "name": "GetLogonState"
+   },
+   {
+    "slot": 47,
+    "name": "BConnected"
+   },
+   {
+    "slot": 48,
+    "name": "RaiseConnectionPriority"
+   },
+   {
+    "slot": 49,
+    "name": "ResetConnectionPriority"
+   },
+   {
+    "slot": 50,
+    "name": "SetCellID"
+   },
+   {
+    "slot": 51,
+    "name": "TrackSteamUsageEvent"
+   },
+   {
+    "slot": 52,
+    "name": "SetCountOfSimultaneousGuestUsersPerSteamAccount"
+   },
+   {
+    "slot": 53,
+    "name": "EnumerateConnectedUsers"
+   },
+   {
+    "slot": 54,
+    "name": "AssociateWithClan"
+   },
+   {
+    "slot": 55,
+    "name": "ComputeNewPlayerCompatibility"
+   },
+   {
+    "slot": 56,
+    "name": "_BGetUserAchievementStatus"
+   },
+   {
+    "slot": 57,
+    "name": "_GSSetSpawnCount"
+   },
+   {
+    "slot": 58,
+    "name": "_GSGetSteam2GetEncryptionKeyToSendToNewClient"
+   },
+   {
+    "slot": 59,
+    "name": "_GSSendSteam2UserConnect"
+   },
+   {
+    "slot": 60,
+    "name": "_GSSendSteam3UserConnect"
+   },
+   {
+    "slot": 61,
+    "name": "_GSSendUserConnect"
+   },
+   {
+    "slot": 62,
+    "name": "_GSRemoveUserConnect"
+   },
+   {
+    "slot": 63,
+    "name": "_GSUpdateStatus"
+   },
+   {
+    "slot": 64,
+    "name": "_GSCreateUnauthenticatedUser"
+   },
+   {
+    "slot": 65,
+    "name": "_GSSetServerType"
+   },
+   {
+    "slot": 66,
+    "name": "_SetBasicServerData"
+   },
+   {
+    "slot": 67,
+    "name": "_GSSendUserDisconnect"
+   }
+  ]
+ },
+ "IClientGameServerPacketHandler": {
+  "ipc_id": "0x35",
+  "pipe": "client",
+  "slots": 2,
+  "vtable_rva_x64": "0x12e38c0",
+  "vtable_rva_x86": "0x1000bb0",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "HandleIncomingPacket"
+   },
+   {
+    "slot": 1,
+    "name": "GetNextOutgoingPacket"
+   }
+  ]
+ },
+ "IClientGameServerStats": {
+  "ipc_id": "0x14",
+  "pipe": "client",
+  "slots": 11,
+  "vtable_rva_x64": "0x12e3968",
+  "vtable_rva_x86": "0x1000c1c",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "RequestUserStats"
+   },
+   {
+    "slot": 1,
+    "name": "GetUserStat"
+   },
+   {
+    "slot": 2,
+    "name": "GetUserStat"
+   },
+   {
+    "slot": 3,
+    "name": "GetUserAchievement"
+   },
+   {
+    "slot": 4,
+    "name": "SetUserStat"
+   },
+   {
+    "slot": 5,
+    "name": "SetUserStat"
+   },
+   {
+    "slot": 6,
+    "name": "UpdateUserAvgRateStat"
+   },
+   {
+    "slot": 7,
+    "name": "SetUserAchievement"
+   },
+   {
+    "slot": 8,
+    "name": "ClearUserAchievement"
+   },
+   {
+    "slot": 9,
+    "name": "StoreUserStats"
+   },
+   {
+    "slot": 10,
+    "name": "SetMaxStatsLoaded"
+   }
+  ]
+ },
+ "IClientGameStats": {
+  "ipc_id": "0x15",
+  "pipe": "client",
+  "slots": 13,
+  "vtable_rva_x64": "0x12ec9c0",
+  "vtable_rva_x86": "0x1007838",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetNewSession"
+   },
+   {
+    "slot": 1,
+    "name": "EndSession"
+   },
+   {
+    "slot": 2,
+    "name": "AddSessionAttributeInt"
+   },
+   {
+    "slot": 3,
+    "name": "AddSessionAttributeString"
+   },
+   {
+    "slot": 4,
+    "name": "AddSessionAttributeFloat"
+   },
+   {
+    "slot": 5,
+    "name": "AddNewRow"
+   },
+   {
+    "slot": 6,
+    "name": "CommitRow"
+   },
+   {
+    "slot": 7,
+    "name": "CommitOutstandingRows"
+   },
+   {
+    "slot": 8,
+    "name": "AddRowAttributeInt"
+   },
+   {
+    "slot": 9,
+    "name": "AddRowAttributeString"
+   },
+   {
+    "slot": 10,
+    "name": "AddRowAttributeFloat"
+   },
+   {
+    "slot": 11,
+    "name": "AddSessionAttributeInt64"
+   },
+   {
+    "slot": 12,
+    "name": "AddRowAttributeInt64"
+   }
+  ]
+ },
+ "IClientHTTP": {
+  "ipc_id": "0x16",
+  "pipe": "client",
+  "slots": 28,
+  "vtable_rva_x64": "0x12ecc48",
+  "vtable_rva_x86": "0x10079f8",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "CreateHTTPRequest"
+   },
+   {
+    "slot": 1,
+    "name": "SetHTTPRequestContextValue"
+   },
+   {
+    "slot": 2,
+    "name": "SetHTTPRequestNetworkActivityTimeout"
+   },
+   {
+    "slot": 3,
+    "name": "SetHTTPRequestHeaderValue"
+   },
+   {
+    "slot": 4,
+    "name": "SetHTTPRequestGetOrPostParameter"
+   },
+   {
+    "slot": 5,
+    "name": "SendHTTPRequest"
+   },
+   {
+    "slot": 6,
+    "name": "SendHTTPRequestAndStreamResponse"
+   },
+   {
+    "slot": 7,
+    "name": "DeferHTTPRequest"
+   },
+   {
+    "slot": 8,
+    "name": "PrioritizeHTTPRequest"
+   },
+   {
+    "slot": 9,
+    "name": "CancelHTTPRequest"
+   },
+   {
+    "slot": 10,
+    "name": "GetHTTPResponseHeaderSize"
+   },
+   {
+    "slot": 11,
+    "name": "GetHTTPResponseHeaderValue"
+   },
+   {
+    "slot": 12,
+    "name": "GetHTTPResponseBodySize"
+   },
+   {
+    "slot": 13,
+    "name": "GetHTTPResponseBodyData"
+   },
+   {
+    "slot": 14,
+    "name": "GetHTTPStreamingResponseBodyData"
+   },
+   {
+    "slot": 15,
+    "name": "ReleaseHTTPRequest"
+   },
+   {
+    "slot": 16,
+    "name": "GetHTTPDownloadProgressPct"
+   },
+   {
+    "slot": 17,
+    "name": "SetHTTPRequestRawPostBody"
+   },
+   {
+    "slot": 18,
+    "name": "CreateCookieContainer"
+   },
+   {
+    "slot": 19,
+    "name": "ReleaseCookieContainer"
+   },
+   {
+    "slot": 20,
+    "name": "SetCookie"
+   },
+   {
+    "slot": 21,
+    "name": "SetHTTPRequestCookieContainer"
+   },
+   {
+    "slot": 22,
+    "name": "SetHTTPRequestUserAgentInfo"
+   },
+   {
+    "slot": 23,
+    "name": "SetHTTPRequestRequiresVerifiedCertificate"
+   },
+   {
+    "slot": 24,
+    "name": "SetHTTPRequestAbsoluteTimeoutMS"
+   },
+   {
+    "slot": 25,
+    "name": "GetHTTPRequestWasTimedOut"
+   },
+   {
+    "slot": 26,
+    "name": "SetHTTPRequestRedirectsEnabled"
+   },
+   {
+    "slot": 27,
+    "name": "SaveHTTPResponseBodyToDisk"
+   }
+  ]
+ },
+ "IClientInstallUtils": {
+  "ipc_id": "0x1",
+  "pipe": "service",
+  "slots": 25,
+  "vtable_rva_x64": "0x131b0f8",
+  "vtable_rva_x86": "0x102c6d8",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "SetUniverse"
+   },
+   {
+    "slot": 1,
+    "name": "SetSteamID"
+   },
+   {
+    "slot": 2,
+    "name": "AddToGameExplorer"
+   },
+   {
+    "slot": 3,
+    "name": "RemoveFromGameExplorer"
+   },
+   {
+    "slot": 4,
+    "name": "AddRichSavedGames"
+   },
+   {
+    "slot": 5,
+    "name": "RemoveRichSavedGames"
+   },
+   {
+    "slot": 6,
+    "name": "DetectKnownBadAppCompatFlags"
+   },
+   {
+    "slot": 7,
+    "name": "ClearKnownBadAppCompatFlags"
+   },
+   {
+    "slot": 8,
+    "name": "InstallStreamingAudioDrivers"
+   },
+   {
+    "slot": 9,
+    "name": "InstallXboxDriver"
+   },
+   {
+    "slot": 10,
+    "name": "UninstallXboxDriver"
+   },
+   {
+    "slot": 11,
+    "name": "FindProcessHoldingLock"
+   },
+   {
+    "slot": 12,
+    "name": "SetProcessSchedulingPriorityClass"
+   },
+   {
+    "slot": 13,
+    "name": "SetPathReadableFromAppContainers"
+   },
+   {
+    "slot": 14,
+    "name": "SetCurrentOpenXrRuntime"
+   },
+   {
+    "slot": 15,
+    "name": "InstallVrLinkDongleDriver"
+   },
+   {
+    "slot": 16,
+    "name": "AddUninstallEntry"
+   },
+   {
+    "slot": 17,
+    "name": "RemoveUninstallEntry"
+   },
+   {
+    "slot": 18,
+    "name": "AddToFirewall"
+   },
+   {
+    "slot": 19,
+    "name": "RemoveFromFirewall"
+   },
+   {
+    "slot": 20,
+    "name": "RegisterSteamProtocolHandler"
+   },
+   {
+    "slot": 21,
+    "name": "AddInstallScriptToWhiteList"
+   },
+   {
+    "slot": 22,
+    "name": "RunInstallScript"
+   },
+   {
+    "slot": 23,
+    "name": "GetInstallScriptExitCode"
+   },
+   {
+    "slot": 24,
+    "name": "ConfigureNetworDeviceIPAddresses"
+   }
+  ]
+ },
+ "IClientInventory": {
+  "ipc_id": "0x27",
+  "pipe": "client",
+  "slots": 37,
+  "vtable_rva_x64": "0x12f0260",
+  "vtable_rva_x86": "0x100a318",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetResultStatus"
+   },
+   {
+    "slot": 1,
+    "name": "DestroyResult"
+   },
+   {
+    "slot": 2,
+    "name": "GetResultItems"
+   },
+   {
+    "slot": 3,
+    "name": "GetResultItemProperty"
+   },
+   {
+    "slot": 4,
+    "name": "GetResultTimestamp"
+   },
+   {
+    "slot": 5,
+    "name": "CheckResultSteamID"
+   },
+   {
+    "slot": 6,
+    "name": "SerializeResult"
+   },
+   {
+    "slot": 7,
+    "name": "DeserializeResult"
+   },
+   {
+    "slot": 8,
+    "name": "GetAllItems"
+   },
+   {
+    "slot": 9,
+    "name": "GetItemsByID"
+   },
+   {
+    "slot": 10,
+    "name": "GenerateItems"
+   },
+   {
+    "slot": 11,
+    "name": "AddPromoItems"
+   },
+   {
+    "slot": 12,
+    "name": "ConsumeItem"
+   },
+   {
+    "slot": 13,
+    "name": "ExchangeItems"
+   },
+   {
+    "slot": 14,
+    "name": "TransferItemQuantity"
+   },
+   {
+    "slot": 15,
+    "name": "SendItemDropHeartbeat"
+   },
+   {
+    "slot": 16,
+    "name": "TriggerItemDrop"
+   },
+   {
+    "slot": 17,
+    "name": "TradeItems"
+   },
+   {
+    "slot": 18,
+    "name": "LoadItemDefinitions"
+   },
+   {
+    "slot": 19,
+    "name": "GetItemDefinitionIDs"
+   },
+   {
+    "slot": 20,
+    "name": "GetItemDefinitionProperty"
+   },
+   {
+    "slot": 21,
+    "name": "RequestEligiblePromoItemDefinitionsIDs"
+   },
+   {
+    "slot": 22,
+    "name": "GetEligiblePromoItemDefinitionIDs"
+   },
+   {
+    "slot": 23,
+    "name": "StartPurchase"
+   },
+   {
+    "slot": 24,
+    "name": "RequestPrices"
+   },
+   {
+    "slot": 25,
+    "name": "GetNumItemsWithPrices"
+   },
+   {
+    "slot": 26,
+    "name": "GetItemsWithPrices"
+   },
+   {
+    "slot": 27,
+    "name": "GetItemPrice"
+   },
+   {
+    "slot": 28,
+    "name": "StartUpdateProperties"
+   },
+   {
+    "slot": 29,
+    "name": "RemoveProperty"
+   },
+   {
+    "slot": 30,
+    "name": "SetProperty"
+   },
+   {
+    "slot": 31,
+    "name": "SetProperty"
+   },
+   {
+    "slot": 32,
+    "name": "SetProperty"
+   },
+   {
+    "slot": 33,
+    "name": "SetProperty"
+   },
+   {
+    "slot": 34,
+    "name": "SubmitUpdateProperties"
+   },
+   {
+    "slot": 35,
+    "name": "InspectItem"
+   },
+   {
+    "slot": 36,
+    "name": "TEST_ClearMsgCache"
+   }
+  ]
+ },
+ "IClientMatchmaking": {
+  "ipc_id": "0x6",
+  "pipe": "client",
+  "slots": 47,
+  "vtable_rva_x64": "0x12e77e8",
+  "vtable_rva_x86": "0x1003b08",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetFavoriteGameCount"
+   },
+   {
+    "slot": 1,
+    "name": "GetFavoriteGame"
+   },
+   {
+    "slot": 2,
+    "name": "AddFavoriteGame"
+   },
+   {
+    "slot": 3,
+    "name": "RemoveFavoriteGame"
+   },
+   {
+    "slot": 4,
+    "name": "RequestLobbyList"
+   },
+   {
+    "slot": 5,
+    "name": "AddRequestLobbyListStringFilter"
+   },
+   {
+    "slot": 6,
+    "name": "AddRequestLobbyListNumericalFilter"
+   },
+   {
+    "slot": 7,
+    "name": "AddRequestLobbyListNearValueFilter"
+   },
+   {
+    "slot": 8,
+    "name": "AddRequestLobbyListFilterSlotsAvailable"
+   },
+   {
+    "slot": 9,
+    "name": "AddRequestLobbyListDistanceFilter"
+   },
+   {
+    "slot": 10,
+    "name": "AddRequestLobbyListResultCountFilter"
+   },
+   {
+    "slot": 11,
+    "name": "AddRequestLobbyListCompatibleMembersFilter"
+   },
+   {
+    "slot": 12,
+    "name": "GetLobbyByIndex"
+   },
+   {
+    "slot": 13,
+    "name": "CreateLobby"
+   },
+   {
+    "slot": 14,
+    "name": "JoinLobby"
+   },
+   {
+    "slot": 15,
+    "name": "LeaveLobby"
+   },
+   {
+    "slot": 16,
+    "name": "InviteUserToLobby"
+   },
+   {
+    "slot": 17,
+    "name": "GetNumLobbyMembers"
+   },
+   {
+    "slot": 18,
+    "name": "GetLobbyMemberByIndex"
+   },
+   {
+    "slot": 19,
+    "name": "GetLobbyData"
+   },
+   {
+    "slot": 20,
+    "name": "SetLobbyData"
+   },
+   {
+    "slot": 21,
+    "name": "GetLobbyDataCount"
+   },
+   {
+    "slot": 22,
+    "name": "GetLobbyDataByIndex"
+   },
+   {
+    "slot": 23,
+    "name": "DeleteLobbyData"
+   },
+   {
+    "slot": 24,
+    "name": "GetLobbyMemberData"
+   },
+   {
+    "slot": 25,
+    "name": "SetLobbyMemberData"
+   },
+   {
+    "slot": 26,
+    "name": "SendLobbyChatMsg"
+   },
+   {
+    "slot": 27,
+    "name": "GetLobbyChatEntry"
+   },
+   {
+    "slot": 28,
+    "name": "RequestLobbyData"
+   },
+   {
+    "slot": 29,
+    "name": "SetLobbyGameServer"
+   },
+   {
+    "slot": 30,
+    "name": "GetLobbyGameServer"
+   },
+   {
+    "slot": 31,
+    "name": "SetLobbyMemberLimit"
+   },
+   {
+    "slot": 32,
+    "name": "GetLobbyMemberLimit"
+   },
+   {
+    "slot": 33,
+    "name": "SetLobbyVoiceEnabled"
+   },
+   {
+    "slot": 34,
+    "name": "RequestFriendsLobbies"
+   },
+   {
+    "slot": 35,
+    "name": "SetLobbyType"
+   },
+   {
+    "slot": 36,
+    "name": "SetLobbyJoinable"
+   },
+   {
+    "slot": 37,
+    "name": "GetLobbyOwner"
+   },
+   {
+    "slot": 38,
+    "name": "SetLobbyOwner"
+   },
+   {
+    "slot": 39,
+    "name": "SetLinkedLobby"
+   },
+   {
+    "slot": 40,
+    "name": "BeginGMSQuery"
+   },
+   {
+    "slot": 41,
+    "name": "PollGMSQuery"
+   },
+   {
+    "slot": 42,
+    "name": "GetGMSQueryResults"
+   },
+   {
+    "slot": 43,
+    "name": "ReleaseGMSQuery"
+   },
+   {
+    "slot": 44,
+    "name": "QueryServerByFakeIP"
+   },
+   {
+    "slot": 45,
+    "name": "EnsureFavoriteGameAccountsUpdated"
+   },
+   {
+    "slot": 46,
+    "name": "ReportGameServerPingReply"
+   }
+  ]
+ },
+ "IClientModuleManager": {
+  "ipc_id": "0x2",
+  "pipe": "service",
+  "slots": 6,
+  "vtable_rva_x64": "0x131b4a8",
+  "vtable_rva_x86": "0x102c9c4",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "LoadModule"
+   },
+   {
+    "slot": 1,
+    "name": "UnloadModule"
+   },
+   {
+    "slot": 2,
+    "name": "CallFunction"
+   },
+   {
+    "slot": 3,
+    "name": "CallFunctionAsync"
+   },
+   {
+    "slot": 4,
+    "name": "PollResponseAsync"
+   },
+   {
+    "slot": 5,
+    "name": "SetProtonEnvironment"
+   }
+  ]
+ },
+ "IClientMusic": {
+  "ipc_id": "0x1e",
+  "pipe": "client",
+  "slots": 27,
+  "vtable_rva_x64": "0x12ed310",
+  "vtable_rva_x86": "0x1007f10",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "BIsEnabled"
+   },
+   {
+    "slot": 1,
+    "name": "Enable"
+   },
+   {
+    "slot": 2,
+    "name": "BIsPlaying"
+   },
+   {
+    "slot": 3,
+    "name": "GetQueueCount"
+   },
+   {
+    "slot": 4,
+    "name": "GetCurrentQueueEntry"
+   },
+   {
+    "slot": 5,
+    "name": "GetPlaybackStatus"
+   },
+   {
+    "slot": 6,
+    "name": "SetPlayingRepeatStatus"
+   },
+   {
+    "slot": 7,
+    "name": "GetPlayingRepeatStatus"
+   },
+   {
+    "slot": 8,
+    "name": "TogglePlayingRepeatStatus"
+   },
+   {
+    "slot": 9,
+    "name": "SetPlayingShuffled"
+   },
+   {
+    "slot": 10,
+    "name": "IsPlayingShuffled"
+   },
+   {
+    "slot": 11,
+    "name": "Play"
+   },
+   {
+    "slot": 12,
+    "name": "Pause"
+   },
+   {
+    "slot": 13,
+    "name": "PlayPrevious"
+   },
+   {
+    "slot": 14,
+    "name": "PlayNext"
+   },
+   {
+    "slot": 15,
+    "name": "PlayEntry"
+   },
+   {
+    "slot": 16,
+    "name": "TogglePlayPause"
+   },
+   {
+    "slot": 17,
+    "name": "SetVolume"
+   },
+   {
+    "slot": 18,
+    "name": "GetVolume"
+   },
+   {
+    "slot": 19,
+    "name": "ToggleMuteVolume"
+   },
+   {
+    "slot": 20,
+    "name": "IncreaseVolume"
+   },
+   {
+    "slot": 21,
+    "name": "DecreaseVolume"
+   },
+   {
+    "slot": 22,
+    "name": "SetPlaybackPosition"
+   },
+   {
+    "slot": 23,
+    "name": "GetPlaybackPosition"
+   },
+   {
+    "slot": 24,
+    "name": "GetPlaybackDuration"
+   },
+   {
+    "slot": 25,
+    "name": "ReplacePlaylistWithSoundtrackAlbum"
+   },
+   {
+    "slot": 26,
+    "name": "GetQueueSoundtrackAppID"
+   }
+  ]
+ },
+ "IClientNetworkDeviceManager": {
+  "ipc_id": "0x1d",
+  "pipe": "client",
+  "slots": 43,
+  "vtable_rva_x64": "0x12e9780",
+  "vtable_rva_x86": "0x1005274",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "IsInterfaceValid"
+   },
+   {
+    "slot": 1,
+    "name": "RefreshDevices"
+   },
+   {
+    "slot": 2,
+    "name": "GetNetworkDevicesData"
+   },
+   {
+    "slot": 3,
+    "name": "ConnectToDevice"
+   },
+   {
+    "slot": 4,
+    "name": "DisconnectFromDevice"
+   },
+   {
+    "slot": 5,
+    "name": "SetDeviceOptions"
+   },
+   {
+    "slot": 6,
+    "name": "SetWifiEnabled"
+   },
+   {
+    "slot": 7,
+    "name": "SetWifiScanningEnabled"
+   },
+   {
+    "slot": 8,
+    "name": "ForgetWirelessEndpoint"
+   },
+   {
+    "slot": 9,
+    "name": "SetCustomIPSettings"
+   },
+   {
+    "slot": 10,
+    "name": "GetCustomIPSettings"
+   },
+   {
+    "slot": 11,
+    "name": "SetProxyInfo"
+   },
+   {
+    "slot": 12,
+    "name": "GetProxyInfo"
+   },
+   {
+    "slot": 13,
+    "name": "GetObviousConnectivityProblem"
+   },
+   {
+    "slot": 14,
+    "name": "TEST_SetFakeLocalSystemStateSetting"
+   },
+   {
+    "slot": 15,
+    "name": "TEST_GetFakeLocalSystemStateSetting"
+   },
+   {
+    "slot": 16,
+    "name": "TEST_GetFakeLocalSystemEffectiveState"
+   },
+   {
+    "slot": 17,
+    "name": "TEST_SetEmulateSingleWirelessDevice"
+   },
+   {
+    "slot": 18,
+    "name": "TEST_GetEmulateSingleWirelessDevice"
+   },
+   {
+    "slot": 19,
+    "name": "LEGACY_EnumerateNetworkDevices"
+   },
+   {
+    "slot": 20,
+    "name": "LEGACY_GetDeviceType"
+   },
+   {
+    "slot": 21,
+    "name": "LEGACY_IsCurrentDevice"
+   },
+   {
+    "slot": 22,
+    "name": "LEGACY_IsCurrentlyConnected"
+   },
+   {
+    "slot": 23,
+    "name": "LEGACY_GetDeviceIP4"
+   },
+   {
+    "slot": 24,
+    "name": "LEGACY_GetDeviceBroadcastIP4"
+   },
+   {
+    "slot": 25,
+    "name": "LEGACY_GetDeviceIPV6InterfaceIndex"
+   },
+   {
+    "slot": 26,
+    "name": "LEGACY_GetDeviceVendor"
+   },
+   {
+    "slot": 27,
+    "name": "LEGACY_GetDeviceProduct"
+   },
+   {
+    "slot": 28,
+    "name": "LEGACY_GetMacAddress"
+   },
+   {
+    "slot": 29,
+    "name": "LEGACY_GetSubnetMaskBitCount"
+   },
+   {
+    "slot": 30,
+    "name": "LEGACY_GetRouterAddressIP4"
+   },
+   {
+    "slot": 31,
+    "name": "LEGACY_GetDNSResolversIP4"
+   },
+   {
+    "slot": 32,
+    "name": "LEGACY_GetDeviceState"
+   },
+   {
+    "slot": 33,
+    "name": "LEGACY_GetDevicePluggedState"
+   },
+   {
+    "slot": 34,
+    "name": "LEGACY_EnumerateWirelessEndpoints"
+   },
+   {
+    "slot": 35,
+    "name": "LEGACY_GetConnectedWirelessEndpointSSID"
+   },
+   {
+    "slot": 36,
+    "name": "LEGACY_GetWirelessSecurityCapabilities"
+   },
+   {
+    "slot": 37,
+    "name": "LEGACY_GetWirelessEndpointSSIDUserDisplayString"
+   },
+   {
+    "slot": 38,
+    "name": "LEGACY_GetWirelessEndpointStrength"
+   },
+   {
+    "slot": 39,
+    "name": "LEGACY_IsSecurityRequired"
+   },
+   {
+    "slot": 40,
+    "name": "LEGACY_GetCachedWirelessCredentials"
+   },
+   {
+    "slot": 41,
+    "name": "LEGACY_IsWirelessEndpointForgettable"
+   },
+   {
+    "slot": 42,
+    "name": "LEGACY_IsUsingDHCP"
+   }
+  ]
+ },
+ "IClientNetworking": {
+  "ipc_id": "0xc",
+  "pipe": "client",
+  "slots": 22,
+  "vtable_rva_x64": "0x12ead00",
+  "vtable_rva_x86": "0x10062d4",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "SendP2PPacket"
+   },
+   {
+    "slot": 1,
+    "name": "IsP2PPacketAvailable"
+   },
+   {
+    "slot": 2,
+    "name": "ReadP2PPacket"
+   },
+   {
+    "slot": 3,
+    "name": "AcceptP2PSessionWithUser"
+   },
+   {
+    "slot": 4,
+    "name": "CloseP2PSessionWithUser"
+   },
+   {
+    "slot": 5,
+    "name": "CloseP2PChannelWithUser"
+   },
+   {
+    "slot": 6,
+    "name": "GetP2PSessionState"
+   },
+   {
+    "slot": 7,
+    "name": "AllowP2PPacketRelay"
+   },
+   {
+    "slot": 8,
+    "name": "CreateListenSocket"
+   },
+   {
+    "slot": 9,
+    "name": "CreateP2PConnectionSocket"
+   },
+   {
+    "slot": 10,
+    "name": "CreateConnectionSocket"
+   },
+   {
+    "slot": 11,
+    "name": "DestroySocket"
+   },
+   {
+    "slot": 12,
+    "name": "DestroyListenSocket"
+   },
+   {
+    "slot": 13,
+    "name": "SendDataOnSocket"
+   },
+   {
+    "slot": 14,
+    "name": "IsDataAvailableOnSocket"
+   },
+   {
+    "slot": 15,
+    "name": "RetrieveDataFromSocket"
+   },
+   {
+    "slot": 16,
+    "name": "IsDataAvailable"
+   },
+   {
+    "slot": 17,
+    "name": "RetrieveData"
+   },
+   {
+    "slot": 18,
+    "name": "GetSocketInfo"
+   },
+   {
+    "slot": 19,
+    "name": "GetListenSocketInfo"
+   },
+   {
+    "slot": 20,
+    "name": "GetSocketConnectionType"
+   },
+   {
+    "slot": 21,
+    "name": "GetMaxPacketSize"
+   }
+  ]
+ },
+ "IClientNetworkingSocketsSerialized": {
+  "ipc_id": "0x2e",
+  "pipe": "client",
+  "slots": 13,
+  "vtable_rva_x64": "0x12f41e0",
+  "vtable_rva_x86": "0x100d374",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "SendP2PRendezvous"
+   },
+   {
+    "slot": 1,
+    "name": "SendP2PConnectionFailureLegacy"
+   },
+   {
+    "slot": 2,
+    "name": "GetCertAsync"
+   },
+   {
+    "slot": 3,
+    "name": "CacheRelayTicket"
+   },
+   {
+    "slot": 4,
+    "name": "GetCachedRelayTicketCount"
+   },
+   {
+    "slot": 5,
+    "name": "GetCachedRelayTicket"
+   },
+   {
+    "slot": 6,
+    "name": "GetSTUNServer"
+   },
+   {
+    "slot": 7,
+    "name": "AllowDirectConnectToPeerString"
+   },
+   {
+    "slot": 8,
+    "name": "BeginAsyncRequestFakeIP"
+   },
+   {
+    "slot": 9,
+    "name": null
+   },
+   {
+    "slot": 10,
+    "name": "SetAllowShareIPUserSetting"
+   },
+   {
+    "slot": 11,
+    "name": "GetAllowShareIPUserSetting"
+   },
+   {
+    "slot": 12,
+    "name": "TEST_ClearInMemoryCachedCredentials"
+   }
+  ]
+ },
+ "IClientNetworkingUtilsSerialized": {
+  "ipc_id": "0x32",
+  "pipe": "client",
+  "slots": 7,
+  "vtable_rva_x64": "0x12f43d8",
+  "vtable_rva_x86": "0x100d4fc",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetNetworkConfigJSON_DEPRECATED"
+   },
+   {
+    "slot": 1,
+    "name": "GetLauncherType"
+   },
+   {
+    "slot": 2,
+    "name": "TEST_ClearCachedNetworkConfig"
+   },
+   {
+    "slot": 3,
+    "name": "PostConnectionStateMsg"
+   },
+   {
+    "slot": 4,
+    "name": "PostConnectionStateUpdatesForAllConnections"
+   },
+   {
+    "slot": 5,
+    "name": "PostAppSummaryUpdates"
+   },
+   {
+    "slot": 6,
+    "name": "GotLocationString"
+   }
+  ]
+ },
+ "IClientParentalSettings": {
+  "ipc_id": "0x1b",
+  "pipe": "client",
+  "slots": 9,
+  "vtable_rva_x64": "0x12ed720",
+  "vtable_rva_x86": "0x1008214",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "BIsParentalLockEnabled"
+   },
+   {
+    "slot": 1,
+    "name": "BIsParentalLockLocked"
+   },
+   {
+    "slot": 2,
+    "name": "BIsAppBlocked"
+   },
+   {
+    "slot": 3,
+    "name": "BIsAppInBlockList"
+   },
+   {
+    "slot": 4,
+    "name": "BIsFeatureBlocked"
+   },
+   {
+    "slot": 5,
+    "name": "BIsFeatureInBlockList"
+   },
+   {
+    "slot": 6,
+    "name": "BGetSerializedParentalSettings"
+   },
+   {
+    "slot": 7,
+    "name": "BGetRecoveryEmail"
+   },
+   {
+    "slot": 8,
+    "name": "BIsLockFromSiteLicense"
+   }
+  ]
+ },
+ "IClientParties": {
+  "ipc_id": "0x31",
+  "pipe": "client",
+  "slots": 13,
+  "vtable_rva_x64": "0x12e7e48",
+  "vtable_rva_x86": "0x1004004",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetNumActiveBeacons"
+   },
+   {
+    "slot": 1,
+    "name": "GetBeaconByIndex"
+   },
+   {
+    "slot": 2,
+    "name": "GetBeaconDetails"
+   },
+   {
+    "slot": 3,
+    "name": "JoinParty"
+   },
+   {
+    "slot": 4,
+    "name": "GetNumAvailableBeaconLocations"
+   },
+   {
+    "slot": 5,
+    "name": "GetAvailableBeaconLocations"
+   },
+   {
+    "slot": 6,
+    "name": "CreateBeacon"
+   },
+   {
+    "slot": 7,
+    "name": "OnReservationCompleted"
+   },
+   {
+    "slot": 8,
+    "name": "CancelReservation"
+   },
+   {
+    "slot": 9,
+    "name": "ChangeNumOpenSlots"
+   },
+   {
+    "slot": 10,
+    "name": "DestroyBeacon"
+   },
+   {
+    "slot": 11,
+    "name": "GetBeaconLocationData"
+   },
+   {
+    "slot": 12,
+    "name": "ReservePartySlot"
+   }
+  ]
+ },
+ "IClientProcessMonitor": {
+  "ipc_id": "0x4",
+  "pipe": "service",
+  "slots": 5,
+  "vtable_rva_x64": "0x131b758",
+  "vtable_rva_x86": "0x102cbb4",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "RegisterProcess"
+   },
+   {
+    "slot": 1,
+    "name": "UnregisterProcess"
+   },
+   {
+    "slot": 2,
+    "name": "TerminateProcess"
+   },
+   {
+    "slot": 3,
+    "name": "SuspendProcess"
+   },
+   {
+    "slot": 4,
+    "name": "ResumeProcess"
+   }
+  ]
+ },
+ "IClientProductBuilder": {
+  "ipc_id": "0x22",
+  "pipe": "client",
+  "slots": 3,
+  "vtable_rva_x64": "0x12e94f8",
+  "vtable_rva_x86": "0x10050ec",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "SignInstallScript"
+   },
+   {
+    "slot": 1,
+    "name": "DRMWrap"
+   },
+   {
+    "slot": 2,
+    "name": "CEGWrap"
+   }
+  ]
+ },
+ "IClientRemoteClientManager": {
+  "ipc_id": "0x1f",
+  "pipe": "client",
+  "slots": 127,
+  "vtable_rva_x64": "0x12edc98",
+  "vtable_rva_x86": "0x1008540",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "SetUIReadyForStream"
+   },
+   {
+    "slot": 1,
+    "name": "StreamingAudioPreparationComplete"
+   },
+   {
+    "slot": 2,
+    "name": "StreamingAudioFinished"
+   },
+   {
+    "slot": 3,
+    "name": "ProcessStreamAvailable"
+   },
+   {
+    "slot": 4,
+    "name": "ProcessStreamShutdown"
+   },
+   {
+    "slot": 5,
+    "name": "UpdateStreamClientResolution"
+   },
+   {
+    "slot": 6,
+    "name": "ProcessStreamClientConnected"
+   },
+   {
+    "slot": 7,
+    "name": "GetStreamClientPlayer"
+   },
+   {
+    "slot": 8,
+    "name": "GetStreamClientFormFactor"
+   },
+   {
+    "slot": 9,
+    "name": "UpdateStreamClientNetworkUtilization"
+   },
+   {
+    "slot": 10,
+    "name": "ProcessStreamClientDisconnected"
+   },
+   {
+    "slot": 11,
+    "name": "BGetStreamTransportSignal"
+   },
+   {
+    "slot": 12,
+    "name": "SendStreamTransportSignal"
+   },
+   {
+    "slot": 13,
+    "name": "ConnectToRemote"
+   },
+   {
+    "slot": 14,
+    "name": "ConnectToRemoteAddress"
+   },
+   {
+    "slot": 15,
+    "name": "RefreshRemoteClients"
+   },
+   {
+    "slot": 16,
+    "name": "GetClientPlatformTypes"
+   },
+   {
+    "slot": 17,
+    "name": "GetRemoteClientCount"
+   },
+   {
+    "slot": 18,
+    "name": "GetRemoteClientIDByIndex"
+   },
+   {
+    "slot": 19,
+    "name": "GetRemoteClientNameByIndex"
+   },
+   {
+    "slot": 20,
+    "name": "GetRemoteClientConnectStateByIndex"
+   },
+   {
+    "slot": 21,
+    "name": "BRemoteClientHasStreamingSupportedByIndex"
+   },
+   {
+    "slot": 22,
+    "name": "BRemoteClientHasStreamingEnabledByIndex"
+   },
+   {
+    "slot": 23,
+    "name": "GetRemoteClientAppStateByIndex"
+   },
+   {
+    "slot": 24,
+    "name": "GetRemoteClientConnectedCount"
+   },
+   {
+    "slot": 25,
+    "name": "GetRemoteClientStreamingEnabledCount"
+   },
+   {
+    "slot": 26,
+    "name": "GetRemoteClientName"
+   },
+   {
+    "slot": 27,
+    "name": "BRemoteClientStreaming"
+   },
+   {
+    "slot": 28,
+    "name": "GetRemoteClientStreamingSession"
+   },
+   {
+    "slot": 29,
+    "name": "GetRemoteClientFormFactor"
+   },
+   {
+    "slot": 30,
+    "name": "BRemoteClientCanStreamSteamVR"
+   },
+   {
+    "slot": 31,
+    "name": "BAnyRemoteClientCanSteamVR"
+   },
+   {
+    "slot": 32,
+    "name": "GetRemoteClientConnectState"
+   },
+   {
+    "slot": 33,
+    "name": "BRemoteClientHasLocalConnection"
+   },
+   {
+    "slot": 34,
+    "name": "BRemoteClientHasStreamingSupported"
+   },
+   {
+    "slot": 35,
+    "name": "BRemoteClientHasStreamingEnabled"
+   },
+   {
+    "slot": 36,
+    "name": "GetRemoteClientAppState"
+   },
+   {
+    "slot": 37,
+    "name": "BRemoteClientIsSteamDeck"
+   },
+   {
+    "slot": 38,
+    "name": "BRemoteClientConnectedToWifiAP"
+   },
+   {
+    "slot": 39,
+    "name": "GetConnectedWifiAPClientID"
+   },
+   {
+    "slot": 40,
+    "name": "GetActiveVRStreamingInvitationClientID"
+   },
+   {
+    "slot": 41,
+    "name": "GetWifiAPStateJSONString"
+   },
+   {
+    "slot": 42,
+    "name": "BCanPairViaWifiAP"
+   },
+   {
+    "slot": 43,
+    "name": "BRemoteClientCanPairViaWifiAP"
+   },
+   {
+    "slot": 44,
+    "name": "BRemoteClientWifiAPUnpaired"
+   },
+   {
+    "slot": 45,
+    "name": "PairViaWifiAP"
+   },
+   {
+    "slot": 46,
+    "name": "UnpairLocalWifiAP"
+   },
+   {
+    "slot": 47,
+    "name": "GetRemoteDeviceCount"
+   },
+   {
+    "slot": 48,
+    "name": "GetRemoteDeviceIDByIndex"
+   },
+   {
+    "slot": 49,
+    "name": "GetRemoteDeviceNameByIndex"
+   },
+   {
+    "slot": 50,
+    "name": "GetRemoteDeviceName"
+   },
+   {
+    "slot": 51,
+    "name": "BRemoteDeviceStreaming"
+   },
+   {
+    "slot": 52,
+    "name": "GetRemoteDeviceStreamingSession"
+   },
+   {
+    "slot": 53,
+    "name": "GetRemoteDeviceFormFactor"
+   },
+   {
+    "slot": 54,
+    "name": "UnpairRemoteClient"
+   },
+   {
+    "slot": 55,
+    "name": "UnpairRemoteDevice"
+   },
+   {
+    "slot": 56,
+    "name": "UnpairRemoteDevices"
+   },
+   {
+    "slot": 57,
+    "name": "BIsStreamingSupported"
+   },
+   {
+    "slot": 58,
+    "name": "BIsStreamingDisabledBySystemPolicy"
+   },
+   {
+    "slot": 59,
+    "name": "BIsStreamingEnabled"
+   },
+   {
+    "slot": 60,
+    "name": "SetStreamingEnabled"
+   },
+   {
+    "slot": 61,
+    "name": "StartStream"
+   },
+   {
+    "slot": 62,
+    "name": "BIsRemoteLaunch"
+   },
+   {
+    "slot": 63,
+    "name": "BIsBigPictureActiveForStreaming"
+   },
+   {
+    "slot": 64,
+    "name": "BIsStreamingSessionActive"
+   },
+   {
+    "slot": 65,
+    "name": "BIsStreamingSessionActiveForGame"
+   },
+   {
+    "slot": 66,
+    "name": "BIsStreamingClientConnected"
+   },
+   {
+    "slot": 67,
+    "name": "BStreamingClientWantsRecentGames"
+   },
+   {
+    "slot": 68,
+    "name": "StopStreamingSession"
+   },
+   {
+    "slot": 69,
+    "name": "LaunchAppProgress"
+   },
+   {
+    "slot": 70,
+    "name": "LaunchAppResult"
+   },
+   {
+    "slot": 71,
+    "name": "BIsStreamStartInProgress"
+   },
+   {
+    "slot": 72,
+    "name": "LaunchAppResultRequestLaunchOption"
+   },
+   {
+    "slot": 73,
+    "name": "AcceptEULA"
+   },
+   {
+    "slot": 74,
+    "name": "GetRemoteClientPlatformName"
+   },
+   {
+    "slot": 75,
+    "name": "BIsStreamClientRunning"
+   },
+   {
+    "slot": 76,
+    "name": "BIsStreamClientRunningConnectedToClient"
+   },
+   {
+    "slot": 77,
+    "name": "BIsStreamClientRemotePlayTogether"
+   },
+   {
+    "slot": 78,
+    "name": "GetStreamClientRemoteSteamVersion"
+   },
+   {
+    "slot": 79,
+    "name": "BGetStreamingClientConfig"
+   },
+   {
+    "slot": 80,
+    "name": "BSetStreamingClientConfig"
+   },
+   {
+    "slot": 81,
+    "name": "BQueueControllerConfigMessageForRemote"
+   },
+   {
+    "slot": 82,
+    "name": "BGetControllerConfigMessageForLocal"
+   },
+   {
+    "slot": 83,
+    "name": "RequestControllerConfig"
+   },
+   {
+    "slot": 84,
+    "name": "PostControllerConfig"
+   },
+   {
+    "slot": 85,
+    "name": "GetControllerConfig"
+   },
+   {
+    "slot": 86,
+    "name": "SetRemoteDeviceAuthorized"
+   },
+   {
+    "slot": 87,
+    "name": "SetStreamingDriversInstalled"
+   },
+   {
+    "slot": 88,
+    "name": "SetStreamingPIN"
+   },
+   {
+    "slot": 89,
+    "name": "GetStreamingPINSize"
+   },
+   {
+    "slot": 90,
+    "name": "CancelRemoteClientPairing"
+   },
+   {
+    "slot": 91,
+    "name": "UsedVideoX264"
+   },
+   {
+    "slot": 92,
+    "name": "UsedVideoH264"
+   },
+   {
+    "slot": 93,
+    "name": "UsedVideoHEVC"
+   },
+   {
+    "slot": 94,
+    "name": "SetRemotePlayTogetherQualityOverride"
+   },
+   {
+    "slot": 95,
+    "name": "SetRemotePlayTogetherBitrateOverride"
+   },
+   {
+    "slot": 96,
+    "name": "BHasRemotePlayInviteAndSession"
+   },
+   {
+    "slot": 97,
+    "name": "BCreateRemotePlayGroup"
+   },
+   {
+    "slot": 98,
+    "name": "GetLocalRemotePlayTogetherGroupID"
+   },
+   {
+    "slot": 99,
+    "name": "GetRemotePlayTogetherGroupIDForOverlayPID"
+   },
+   {
+    "slot": 100,
+    "name": "GetAvailableRemotePlayTogetherGuestID"
+   },
+   {
+    "slot": 101,
+    "name": "BCreateRemotePlayInviteAndSession"
+   },
+   {
+    "slot": 102,
+    "name": "CancelRemotePlayInviteAndSession"
+   },
+   {
+    "slot": 103,
+    "name": "JoinRemotePlaySession"
+   },
+   {
+    "slot": 104,
+    "name": "BStreamingDesktopToRemotePlayTogetherEnabled"
+   },
+   {
+    "slot": 105,
+    "name": "SetStreamingDesktopToRemotePlayTogetherEnabled"
+   },
+   {
+    "slot": 106,
+    "name": "GetStreamingSessionForRemotePlayer"
+   },
+   {
+    "slot": 107,
+    "name": "SetPerUserKeyboardInputEnabled"
+   },
+   {
+    "slot": 108,
+    "name": "SetPerUserMouseInputEnabled"
+   },
+   {
+    "slot": 109,
+    "name": "SetPerUserControllerInputEnabled"
+   },
+   {
+    "slot": 110,
+    "name": "GetPerUserInputSettings"
+   },
+   {
+    "slot": 111,
+    "name": "OnClientUsedInput"
+   },
+   {
+    "slot": 112,
+    "name": "OnPlaceholderStateChanged"
+   },
+   {
+    "slot": 113,
+    "name": "OnRemoteClientRemotePlayClearControllers"
+   },
+   {
+    "slot": 114,
+    "name": "OnRemoteClientRemotePlayControllerIndexSet"
+   },
+   {
+    "slot": 115,
+    "name": "UpdateRemotePlayTogetherGroups"
+   },
+   {
+    "slot": 116,
+    "name": "UpdateRemotePlayTogetherGroup"
+   },
+   {
+    "slot": 117,
+    "name": "DisbandRemotePlayTogetherGroup"
+   },
+   {
+    "slot": 118,
+    "name": "OnRemotePlayUIMovedController"
+   },
+   {
+    "slot": 119,
+    "name": "OnSendRemotePlayTogetherInvite"
+   },
+   {
+    "slot": 120,
+    "name": "ShowRemotePlayTogetherUI"
+   },
+   {
+    "slot": 121,
+    "name": "BGetRemotePlayTogetherMouseCursor"
+   },
+   {
+    "slot": 122,
+    "name": "GetCloudGameTimeRemaining"
+   },
+   {
+    "slot": 123,
+    "name": "StopRemoteClientStream"
+   },
+   {
+    "slot": 124,
+    "name": "MarkTaskComplete"
+   },
+   {
+    "slot": 125,
+    "name": "NotifySettingsChanged"
+   },
+   {
+    "slot": 126,
+    "name": "Shutdown"
+   }
+  ]
+ },
+ "IClientRemotePlay": {
+  "ipc_id": "0x34",
+  "pipe": "client",
+  "slots": 16,
+  "vtable_rva_x64": "0x12f4568",
+  "vtable_rva_x86": "0x100d620",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetSessionCount"
+   },
+   {
+    "slot": 1,
+    "name": "GetSessionID"
+   },
+   {
+    "slot": 2,
+    "name": "BSessionRemotePlayTogether"
+   },
+   {
+    "slot": 3,
+    "name": "GetSessionSteamID"
+   },
+   {
+    "slot": 4,
+    "name": "GetSessionGuestID"
+   },
+   {
+    "slot": 5,
+    "name": "GetSmallSessionAvatar"
+   },
+   {
+    "slot": 6,
+    "name": "GetMediumSessionAvatar"
+   },
+   {
+    "slot": 7,
+    "name": "GetLargeSessionAvatar"
+   },
+   {
+    "slot": 8,
+    "name": "GetSessionClientName"
+   },
+   {
+    "slot": 9,
+    "name": "GetSessionClientFormFactor"
+   },
+   {
+    "slot": 10,
+    "name": "BGetSessionClientResolution"
+   },
+   {
+    "slot": 11,
+    "name": "ShowRemotePlayTogetherUI"
+   },
+   {
+    "slot": 12,
+    "name": "BSendRemotePlayTogetherInvite"
+   },
+   {
+    "slot": 13,
+    "name": "BEnableRemotePlayTogetherInputEvents"
+   },
+   {
+    "slot": 14,
+    "name": "DisableRemotePlayTogetherInputEvents"
+   },
+   {
+    "slot": 15,
+    "name": "CreateRemotePlayTogetherMouseCursor"
+   }
+  ]
+ },
+ "IClientRemoteStorage": {
+  "ipc_id": "0xd",
+  "pipe": "client",
+  "slots": 100,
+  "vtable_rva_x64": "0x12eb2d0",
+  "vtable_rva_x86": "0x1006690",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "FileWrite"
+   },
+   {
+    "slot": 1,
+    "name": "GetFileSize"
+   },
+   {
+    "slot": 2,
+    "name": "FileWriteAsync"
+   },
+   {
+    "slot": 3,
+    "name": "FileReadAsync"
+   },
+   {
+    "slot": 4,
+    "name": "FileReadAsyncComplete"
+   },
+   {
+    "slot": 5,
+    "name": "FileRead"
+   },
+   {
+    "slot": 6,
+    "name": "FileForget"
+   },
+   {
+    "slot": 7,
+    "name": "FileDelete"
+   },
+   {
+    "slot": 8,
+    "name": "FileShare"
+   },
+   {
+    "slot": 9,
+    "name": "FileExists"
+   },
+   {
+    "slot": 10,
+    "name": "FilePersisted"
+   },
+   {
+    "slot": 11,
+    "name": "GetFileTimestamp"
+   },
+   {
+    "slot": 12,
+    "name": "SetSyncPlatforms"
+   },
+   {
+    "slot": 13,
+    "name": "GetSyncPlatforms"
+   },
+   {
+    "slot": 14,
+    "name": "FileWriteStreamOpen"
+   },
+   {
+    "slot": 15,
+    "name": "FileWriteStreamClose"
+   },
+   {
+    "slot": 16,
+    "name": "FileWriteStreamCancel"
+   },
+   {
+    "slot": 17,
+    "name": "FileWriteStreamWriteChunk"
+   },
+   {
+    "slot": 18,
+    "name": "GetFileCount"
+   },
+   {
+    "slot": 19,
+    "name": "GetFileNameAndSize"
+   },
+   {
+    "slot": 20,
+    "name": "GetQuota"
+   },
+   {
+    "slot": 21,
+    "name": "GetUGCQuotaUsage"
+   },
+   {
+    "slot": 22,
+    "name": "InitializeUGCQuotaUsage"
+   },
+   {
+    "slot": 23,
+    "name": "IsCloudEnabledForAccount"
+   },
+   {
+    "slot": 24,
+    "name": "IsCloudEnabledForApp"
+   },
+   {
+    "slot": 25,
+    "name": "SetCloudEnabledForApp"
+   },
+   {
+    "slot": 26,
+    "name": "IsCloudSyncOnSuspendAvailableForApp"
+   },
+   {
+    "slot": 27,
+    "name": "IsCloudSyncOnSuspendEnabledForApp"
+   },
+   {
+    "slot": 28,
+    "name": "SetCloudSyncOnSuspendEnabledForApp"
+   },
+   {
+    "slot": 29,
+    "name": "UGCDownload"
+   },
+   {
+    "slot": 30,
+    "name": "UGCDownloadToLocation"
+   },
+   {
+    "slot": 31,
+    "name": "GetUGCDownloadProgress"
+   },
+   {
+    "slot": 32,
+    "name": "GetUGCDetails"
+   },
+   {
+    "slot": 33,
+    "name": "UGCRead"
+   },
+   {
+    "slot": 34,
+    "name": "GetCachedUGCCount"
+   },
+   {
+    "slot": 35,
+    "name": "GetCachedUGCHandle"
+   },
+   {
+    "slot": 36,
+    "name": "PublishFile"
+   },
+   {
+    "slot": 37,
+    "name": "PublishVideo"
+   },
+   {
+    "slot": 38,
+    "name": "PublishVideoFromURL"
+   },
+   {
+    "slot": 39,
+    "name": "CreatePublishedFileUpdateRequest"
+   },
+   {
+    "slot": 40,
+    "name": "UpdatePublishedFileFile"
+   },
+   {
+    "slot": 41,
+    "name": "UpdatePublishedFilePreviewFile"
+   },
+   {
+    "slot": 42,
+    "name": "UpdatePublishedFileTitle"
+   },
+   {
+    "slot": 43,
+    "name": "UpdatePublishedFileDescription"
+   },
+   {
+    "slot": 44,
+    "name": "UpdatePublishedFileSetChangeDescription"
+   },
+   {
+    "slot": 45,
+    "name": "UpdatePublishedFileVisibility"
+   },
+   {
+    "slot": 46,
+    "name": "UpdatePublishedFileTags"
+   },
+   {
+    "slot": 47,
+    "name": "UpdatePublishedFileURL"
+   },
+   {
+    "slot": 48,
+    "name": "CommitPublishedFileUpdate"
+   },
+   {
+    "slot": 49,
+    "name": "GetPublishedFileDetails"
+   },
+   {
+    "slot": 50,
+    "name": "DeletePublishedFile"
+   },
+   {
+    "slot": 51,
+    "name": "EnumerateUserPublishedFiles"
+   },
+   {
+    "slot": 52,
+    "name": "SubscribePublishedFile"
+   },
+   {
+    "slot": 53,
+    "name": "EnumerateUserSubscribedFiles"
+   },
+   {
+    "slot": 54,
+    "name": "UnsubscribePublishedFile"
+   },
+   {
+    "slot": 55,
+    "name": "SetUserPublishedFileAction"
+   },
+   {
+    "slot": 56,
+    "name": "EnumeratePublishedFilesByUserAction"
+   },
+   {
+    "slot": 57,
+    "name": "EnumerateUserSubscribedFilesWithUpdates"
+   },
+   {
+    "slot": 58,
+    "name": "GetCREItemVoteSummary"
+   },
+   {
+    "slot": 59,
+    "name": "UpdateUserPublishedItemVote"
+   },
+   {
+    "slot": 60,
+    "name": "GetUserPublishedItemVoteDetails"
+   },
+   {
+    "slot": 61,
+    "name": "EnumerateUserSharedWorkshopFiles"
+   },
+   {
+    "slot": 62,
+    "name": "EnumeratePublishedWorkshopFiles"
+   },
+   {
+    "slot": 63,
+    "name": "EGetFileSyncState"
+   },
+   {
+    "slot": 64,
+    "name": "BIsFileSyncing"
+   },
+   {
+    "slot": 65,
+    "name": "FilePersist"
+   },
+   {
+    "slot": 66,
+    "name": "FileFetch"
+   },
+   {
+    "slot": 67,
+    "name": "ResolvePath"
+   },
+   {
+    "slot": 68,
+    "name": "FileTouch"
+   },
+   {
+    "slot": 69,
+    "name": "SetCloudEnabledForAccount"
+   },
+   {
+    "slot": 70,
+    "name": "LoadLocalFileInfoCache"
+   },
+   {
+    "slot": 71,
+    "name": "EvaluateRemoteStorageSyncState"
+   },
+   {
+    "slot": 72,
+    "name": "GetLastKnownSyncState"
+   },
+   {
+    "slot": 73,
+    "name": "GetRemoteStorageSyncState"
+   },
+   {
+    "slot": 74,
+    "name": "HaveLatestFilesLocally"
+   },
+   {
+    "slot": 75,
+    "name": "GetConflictingFileTimestamps"
+   },
+   {
+    "slot": 76,
+    "name": "GetPendingRemoteOperationInfo"
+   },
+   {
+    "slot": 77,
+    "name": "ResolveSyncConflict"
+   },
+   {
+    "slot": 78,
+    "name": "SynchronizeApp"
+   },
+   {
+    "slot": 79,
+    "name": "IsAppSyncInProgress"
+   },
+   {
+    "slot": 80,
+    "name": "RunAutoCloudOnAppLaunch"
+   },
+   {
+    "slot": 81,
+    "name": "RunAutoCloudOnAppExit"
+   },
+   {
+    "slot": 82,
+    "name": "ResetFileRequestState"
+   },
+   {
+    "slot": 83,
+    "name": "ClearPublishFileUpdateRequests"
+   },
+   {
+    "slot": 84,
+    "name": "GetSubscribedFileDownloadCount"
+   },
+   {
+    "slot": 85,
+    "name": "BGetSubscribedFileDownloadInfo"
+   },
+   {
+    "slot": 86,
+    "name": "BGetSubscribedFileDownloadInfo"
+   },
+   {
+    "slot": 87,
+    "name": "PauseSubscribedFileDownloadsForApp"
+   },
+   {
+    "slot": 88,
+    "name": "ResumeSubscribedFileDownloadsForApp"
+   },
+   {
+    "slot": 89,
+    "name": "PauseAllSubscribedFileDownloads"
+   },
+   {
+    "slot": 90,
+    "name": "ResumeAllSubscribedFileDownloads"
+   },
+   {
+    "slot": 91,
+    "name": "CancelCurrentAndPendingOperations"
+   },
+   {
+    "slot": 92,
+    "name": "GetLocalFileChangeCount"
+   },
+   {
+    "slot": 93,
+    "name": "GetLocalFileChange"
+   },
+   {
+    "slot": 94,
+    "name": "BeginFileWriteBatch"
+   },
+   {
+    "slot": 95,
+    "name": "EndFileWriteBatch"
+   },
+   {
+    "slot": 96,
+    "name": "GetCloudEnabledForAppMap"
+   },
+   {
+    "slot": 97,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 98,
+    "name": "PerformAppPlatformChangeFileBackup"
+   },
+   {
+    "slot": 99,
+    "name": "PerformAppPlatformChangeFileRestore"
+   }
+  ]
+ },
+ "IClientScreenshots": {
+  "ipc_id": "0x17",
+  "pipe": "client",
+  "slots": 38,
+  "vtable_rva_x64": "0x12ec420",
+  "vtable_rva_x86": "0x10073f8",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetShortcutDisplayName"
+   },
+   {
+    "slot": 1,
+    "name": "SetShortcutDisplayName"
+   },
+   {
+    "slot": 2,
+    "name": "SendScreenshotStartedNotification"
+   },
+   {
+    "slot": 3,
+    "name": "WriteScreenshot"
+   },
+   {
+    "slot": 4,
+    "name": "AddScreenshotToLibrary"
+   },
+   {
+    "slot": 5,
+    "name": "TriggerScreenshot"
+   },
+   {
+    "slot": 6,
+    "name": "RequestScreenshotFromGame"
+   },
+   {
+    "slot": 7,
+    "name": "SetLocation"
+   },
+   {
+    "slot": 8,
+    "name": "TagUser"
+   },
+   {
+    "slot": 9,
+    "name": "TagPublishedFile"
+   },
+   {
+    "slot": 10,
+    "name": "ResolvePath"
+   },
+   {
+    "slot": 11,
+    "name": "GetSizeOnDisk"
+   },
+   {
+    "slot": 12,
+    "name": "GetSizeInCloud"
+   },
+   {
+    "slot": 13,
+    "name": "IsPersisted"
+   },
+   {
+    "slot": 14,
+    "name": "GetNumGamesWithLocalScreenshots"
+   },
+   {
+    "slot": 15,
+    "name": "GetGameWithLocalScreenshots"
+   },
+   {
+    "slot": 16,
+    "name": "GetLocalScreenshotCount"
+   },
+   {
+    "slot": 17,
+    "name": "GetLocalScreenshot"
+   },
+   {
+    "slot": 18,
+    "name": "GetLocalScreenshotByHandle"
+   },
+   {
+    "slot": 19,
+    "name": "SetLocalScreenshotCaption"
+   },
+   {
+    "slot": 20,
+    "name": "SetLocalScreenshotPrivacy"
+   },
+   {
+    "slot": 21,
+    "name": "SetLocalScreenshotSpoiler"
+   },
+   {
+    "slot": 22,
+    "name": "GetLocalLastScreenshot"
+   },
+   {
+    "slot": 23,
+    "name": "StartBatch"
+   },
+   {
+    "slot": 24,
+    "name": "AddToBatch"
+   },
+   {
+    "slot": 25,
+    "name": "UploadBatch"
+   },
+   {
+    "slot": 26,
+    "name": "DeleteBatch"
+   },
+   {
+    "slot": 27,
+    "name": "CancelBatch"
+   },
+   {
+    "slot": 28,
+    "name": "RecoverOldScreenshots"
+   },
+   {
+    "slot": 29,
+    "name": "GetTaggedUserCount"
+   },
+   {
+    "slot": 30,
+    "name": "GetTaggedUser"
+   },
+   {
+    "slot": 31,
+    "name": "GetLocation"
+   },
+   {
+    "slot": 32,
+    "name": "GetTaggedPublishedFileCount"
+   },
+   {
+    "slot": 33,
+    "name": "GetTaggedPublishedFile"
+   },
+   {
+    "slot": 34,
+    "name": "GetScreenshotVRType"
+   },
+   {
+    "slot": 35,
+    "name": "SetScreenshotTimelineData"
+   },
+   {
+    "slot": 36,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 37,
+    "name": "BGetUserScreenshotDirectory"
+   }
+  ]
+ },
+ "IClientSecureDesktop": {
+  "ipc_id": "0x5",
+  "pipe": "service",
+  "slots": 3,
+  "vtable_rva_x64": "0x131b808",
+  "vtable_rva_x86": "0x102cc34",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "BStartStreaming"
+   },
+   {
+    "slot": 1,
+    "name": "StopStreaming"
+   },
+   {
+    "slot": 2,
+    "name": "SendSAS"
+   }
+  ]
+ },
+ "IClientShader": {
+  "ipc_id": "0x2d",
+  "pipe": "client",
+  "slots": 25,
+  "vtable_rva_x64": "0x12f3ab8",
+  "vtable_rva_x86": "0x100cdd4",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "BIsShaderManagementEnabled"
+   },
+   {
+    "slot": 1,
+    "name": "BIsShaderBackgroundProcessingEnabled"
+   },
+   {
+    "slot": 2,
+    "name": "EnableShaderManagement"
+   },
+   {
+    "slot": 3,
+    "name": "EnableShaderBackgroundProcessing"
+   },
+   {
+    "slot": 4,
+    "name": "GetShaderDepotsTotalDiskUsage"
+   },
+   {
+    "slot": 5,
+    "name": "GetShaderCacheDiskSize"
+   },
+   {
+    "slot": 6,
+    "name": "StartShaderScan"
+   },
+   {
+    "slot": 7,
+    "name": "StartPipelineBuild"
+   },
+   {
+    "slot": 8,
+    "name": "StartShaderConversion"
+   },
+   {
+    "slot": 9,
+    "name": "StartShaderPruning"
+   },
+   {
+    "slot": 10,
+    "name": "ProcessShaderCache"
+   },
+   {
+    "slot": 11,
+    "name": "GetShaderCacheProcessingCompletion"
+   },
+   {
+    "slot": 12,
+    "name": "GetShaderCacheProcessingAppID"
+   },
+   {
+    "slot": 13,
+    "name": "SkipShaderProcessing"
+   },
+   {
+    "slot": 14,
+    "name": "BAppHasPendingShaderContentDownload"
+   },
+   {
+    "slot": 15,
+    "name": "GetAppPendingShaderDownloadSize"
+   },
+   {
+    "slot": 16,
+    "name": "CheckDepotManifestID"
+   },
+   {
+    "slot": 17,
+    "name": "GetBucketManifest"
+   },
+   {
+    "slot": 18,
+    "name": "GetStaleBucket"
+   },
+   {
+    "slot": 19,
+    "name": "ReportExternalBuild"
+   },
+   {
+    "slot": 20,
+    "name": "PrepopulatePrecompiledCache"
+   },
+   {
+    "slot": 21,
+    "name": "WritePrecompiledCache"
+   },
+   {
+    "slot": 22,
+    "name": "CompileShaders"
+   },
+   {
+    "slot": 23,
+    "name": "GetShaderBucketForGraphicsAPI"
+   },
+   {
+    "slot": 24,
+    "name": "EnableShaderManagementSystem"
+   }
+  ]
+ },
+ "IClientSharedConnection": {
+  "ipc_id": "0x2c",
+  "pipe": "client",
+  "slots": 8,
+  "vtable_rva_x64": "0x12f0948",
+  "vtable_rva_x86": "0x100a860",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "AllocateSharedConnection"
+   },
+   {
+    "slot": 1,
+    "name": "ReleaseSharedConnection"
+   },
+   {
+    "slot": 2,
+    "name": "SendMessage"
+   },
+   {
+    "slot": 3,
+    "name": "SendMessageAndAwaitResponse"
+   },
+   {
+    "slot": 4,
+    "name": "RegisterEMsgHandler"
+   },
+   {
+    "slot": 5,
+    "name": "RegisterServiceMethodHandler"
+   },
+   {
+    "slot": 6,
+    "name": "BPopReceivedMessage"
+   },
+   {
+    "slot": 7,
+    "name": "InitiateConnection"
+   }
+  ]
+ },
+ "IClientShortcuts": {
+  "ipc_id": "0x23",
+  "pipe": "client",
+  "slots": 27,
+  "vtable_rva_x64": "0x12f0b40",
+  "vtable_rva_x86": "0x100a9ac",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetUniqueLocalAppId"
+   },
+   {
+    "slot": 1,
+    "name": "GetGameIDForAppID"
+   },
+   {
+    "slot": 2,
+    "name": "GetAppIDForGameID"
+   },
+   {
+    "slot": 3,
+    "name": "GetDevkitAppIDByDevkitGameID"
+   },
+   {
+    "slot": 4,
+    "name": "GetShortcutAppIds"
+   },
+   {
+    "slot": 5,
+    "name": "GetShortcutInfos"
+   },
+   {
+    "slot": 6,
+    "name": "GetShortcutInfoByAppID"
+   },
+   {
+    "slot": 7,
+    "name": "AddShortcut"
+   },
+   {
+    "slot": 8,
+    "name": "AddTemporaryShortcut"
+   },
+   {
+    "slot": 9,
+    "name": "AddOpenVRShortcut"
+   },
+   {
+    "slot": 10,
+    "name": "SetShortcutFromFullpath"
+   },
+   {
+    "slot": 11,
+    "name": "SetShortcutAppName"
+   },
+   {
+    "slot": 12,
+    "name": "SetShortcutExe"
+   },
+   {
+    "slot": 13,
+    "name": "SetShortcutStartDir"
+   },
+   {
+    "slot": 14,
+    "name": "SetShortcutIcon"
+   },
+   {
+    "slot": 15,
+    "name": "SetShortcutCommandLine"
+   },
+   {
+    "slot": 16,
+    "name": "SetShortcutHidden"
+   },
+   {
+    "slot": 17,
+    "name": "SetAllowDesktopConfig"
+   },
+   {
+    "slot": 18,
+    "name": "SetAllowOverlay"
+   },
+   {
+    "slot": 19,
+    "name": "SetOpenVRShortcut"
+   },
+   {
+    "slot": 20,
+    "name": "SetShortcutSortAs"
+   },
+   {
+    "slot": 21,
+    "name": "SetDevkitShortcut"
+   },
+   {
+    "slot": 22,
+    "name": "SetFlatpakAppID"
+   },
+   {
+    "slot": 23,
+    "name": "RemoveShortcut"
+   },
+   {
+    "slot": 24,
+    "name": "RemoveAllTemporaryShortcuts"
+   },
+   {
+    "slot": 25,
+    "name": "LaunchShortcut"
+   },
+   {
+    "slot": 26,
+    "name": "GetAppIDByExeName"
+   }
+  ]
+ },
+ "IClientStreamClient": {
+  "ipc_id": "0x21",
+  "pipe": "client",
+  "slots": 15,
+  "vtable_rva_x64": "0x12f0708",
+  "vtable_rva_x86": "0x100a6a8",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "Launched"
+   },
+   {
+    "slot": 1,
+    "name": "FocusGained"
+   },
+   {
+    "slot": 2,
+    "name": "FocusLost"
+   },
+   {
+    "slot": 3,
+    "name": "Finished"
+   },
+   {
+    "slot": 4,
+    "name": "BGetStreamingClientConfig"
+   },
+   {
+    "slot": 5,
+    "name": "BSaveStreamingClientConfig"
+   },
+   {
+    "slot": 6,
+    "name": "SetQualityOverride"
+   },
+   {
+    "slot": 7,
+    "name": "SetBitrateOverride"
+   },
+   {
+    "slot": 8,
+    "name": "ShowOnScreenKeyboard"
+   },
+   {
+    "slot": 9,
+    "name": "BQueueControllerConfigMessageForLocal"
+   },
+   {
+    "slot": 10,
+    "name": "BGetControllerConfigMessageForRemote"
+   },
+   {
+    "slot": 11,
+    "name": "GetSystemInfo"
+   },
+   {
+    "slot": 12,
+    "name": "StartStreamingSession"
+   },
+   {
+    "slot": 13,
+    "name": "ReportStreamingSessionEvent"
+   },
+   {
+    "slot": 14,
+    "name": "FinishStreamingSession"
+   }
+  ]
+ },
+ "IClientStreamLauncher": {
+  "ipc_id": "0x1a",
+  "pipe": "client",
+  "slots": 2,
+  "vtable_rva_x64": "0x12ed860",
+  "vtable_rva_x86": "0x1008314",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "StartStreaming"
+   },
+   {
+    "slot": 1,
+    "name": "StopStreaming"
+   }
+  ]
+ },
+ "IClientSystemAudioManager": {
+  "ipc_id": "0x3b",
+  "pipe": "client",
+  "slots": 3,
+  "vtable_rva_x64": "0x12e9f90",
+  "vtable_rva_x86": "0x1005904",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "IsInterfaceValid"
+   },
+   {
+    "slot": 1,
+    "name": "GetState"
+   },
+   {
+    "slot": 2,
+    "name": "UpdateSomething"
+   }
+  ]
+ },
+ "IClientSystemDisplayManager": {
+  "ipc_id": "0x3c",
+  "pipe": "client",
+  "slots": 6,
+  "vtable_rva_x64": "0x12ea020",
+  "vtable_rva_x86": "0x1005960",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "IsInterfaceValid"
+   },
+   {
+    "slot": 1,
+    "name": "GetState"
+   },
+   {
+    "slot": 2,
+    "name": "SetMode"
+   },
+   {
+    "slot": 3,
+    "name": "ClearModeOverride"
+   },
+   {
+    "slot": 4,
+    "name": "SetCompatibilityMode"
+   },
+   {
+    "slot": 5,
+    "name": "SetGameResolutionGlobal"
+   }
+  ]
+ },
+ "IClientSystemDockManager": {
+  "ipc_id": "0x3a",
+  "pipe": "client",
+  "slots": 4,
+  "vtable_rva_x64": "0x12e9f00",
+  "vtable_rva_x86": "0x10058a0",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "IsInterfaceValid"
+   },
+   {
+    "slot": 1,
+    "name": "GetState"
+   },
+   {
+    "slot": 2,
+    "name": "UpdateFirmware"
+   },
+   {
+    "slot": 3,
+    "name": "DisarmSafetyNet"
+   }
+  ]
+ },
+ "IClientSystemManager": {
+  "ipc_id": "0x36",
+  "pipe": "client",
+  "slots": 18,
+  "vtable_rva_x64": "0x12ea168",
+  "vtable_rva_x86": "0x1005a34",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetSettings"
+   },
+   {
+    "slot": 1,
+    "name": "UpdateSettings"
+   },
+   {
+    "slot": 2,
+    "name": "ShutdownSystem"
+   },
+   {
+    "slot": 3,
+    "name": "SuspendSystem"
+   },
+   {
+    "slot": 4,
+    "name": "RestartSystem"
+   },
+   {
+    "slot": 5,
+    "name": "GetDisplayBrightness"
+   },
+   {
+    "slot": 6,
+    "name": "SetDisplayBrightness"
+   },
+   {
+    "slot": 7,
+    "name": "FormatRemovableStorage"
+   },
+   {
+    "slot": 8,
+    "name": "GetOSBranchList"
+   },
+   {
+    "slot": 9,
+    "name": "GetCurrentOSBranch"
+   },
+   {
+    "slot": 10,
+    "name": "SelectOSBranch"
+   },
+   {
+    "slot": 11,
+    "name": "GetUpdateState"
+   },
+   {
+    "slot": 12,
+    "name": "CheckForUpdate"
+   },
+   {
+    "slot": 13,
+    "name": "ApplyUpdate"
+   },
+   {
+    "slot": 14,
+    "name": "SetBackgroundUpdateCheckInterval"
+   },
+   {
+    "slot": 15,
+    "name": "ClearAudioDefaults"
+   },
+   {
+    "slot": 16,
+    "name": "RunDeckMicEnableHack"
+   },
+   {
+    "slot": 17,
+    "name": "RunDeckEchoCancellationHack"
+   }
+  ]
+ },
+ "IClientSystemPerfManager": {
+  "ipc_id": "0x39",
+  "pipe": "client",
+  "slots": 6,
+  "vtable_rva_x64": "0x12e9e18",
+  "vtable_rva_x86": "0x10057f8",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "IsInterfaceValid"
+   },
+   {
+    "slot": 1,
+    "name": "GetDiagnosticInfo"
+   },
+   {
+    "slot": 2,
+    "name": "GetState"
+   },
+   {
+    "slot": 3,
+    "name": "UpdateSettings"
+   },
+   {
+    "slot": 4,
+    "name": "SetRefreshRateExternallyManaged"
+   },
+   {
+    "slot": 5,
+    "name": "GetLegacySettings"
+   }
+  ]
+ },
+ "IClientTimeline": {
+  "ipc_id": "0x3d",
+  "pipe": "client",
+  "slots": 24,
+  "vtable_rva_x64": "0x12f1008",
+  "vtable_rva_x86": "0x100ad34",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "SetTimelineTooltip"
+   },
+   {
+    "slot": 1,
+    "name": "ClearTimelineTooltip"
+   },
+   {
+    "slot": 2,
+    "name": "SetTimelineGameMode"
+   },
+   {
+    "slot": 3,
+    "name": "AddInstantaneousTimelineEvent"
+   },
+   {
+    "slot": 4,
+    "name": "AddRangeTimelineEvent"
+   },
+   {
+    "slot": 5,
+    "name": "StartRangeTimelineEvent"
+   },
+   {
+    "slot": 6,
+    "name": "UpdateRangeTimelineEvent"
+   },
+   {
+    "slot": 7,
+    "name": "EndRangeTimelineEvent"
+   },
+   {
+    "slot": 8,
+    "name": "RemoveTimelineEvent"
+   },
+   {
+    "slot": 9,
+    "name": "DoesEventRecordingExist"
+   },
+   {
+    "slot": 10,
+    "name": "StartGamePhase"
+   },
+   {
+    "slot": 11,
+    "name": "EndGamePhase"
+   },
+   {
+    "slot": 12,
+    "name": "SetGamePhaseID"
+   },
+   {
+    "slot": 13,
+    "name": "DoesGamePhaseRecordingExist"
+   },
+   {
+    "slot": 14,
+    "name": "AddGamePhaseTag"
+   },
+   {
+    "slot": 15,
+    "name": "SetGamePhaseAttribute"
+   },
+   {
+    "slot": 16,
+    "name": "OpenOverlayToGamePhase"
+   },
+   {
+    "slot": 17,
+    "name": "OpenOverlayToTimelineEvent"
+   },
+   {
+    "slot": 18,
+    "name": "AddUserMarkerForGame"
+   },
+   {
+    "slot": 19,
+    "name": "ToggleVideoRecordingForGame"
+   },
+   {
+    "slot": 20,
+    "name": "TakeInstantClipForGame"
+   },
+   {
+    "slot": 21,
+    "name": "GetNextEventID"
+   },
+   {
+    "slot": 22,
+    "name": "AnswerDoesGamePhaseRecordingExist"
+   },
+   {
+    "slot": 23,
+    "name": "AnswerDoesEventRecordingExist"
+   }
+  ]
+ },
+ "IClientUGC": {
+  "ipc_id": "0x20",
+  "pipe": "client",
+  "slots": 110,
+  "vtable_rva_x64": "0x12ef348",
+  "vtable_rva_x86": "0x100972c",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "CreateQueryUserUGCRequest"
+   },
+   {
+    "slot": 1,
+    "name": "CreateQueryAllUGCRequest"
+   },
+   {
+    "slot": 2,
+    "name": "CreateQueryAllUGCRequest"
+   },
+   {
+    "slot": 3,
+    "name": "CreateQueryUGCDetailsRequest"
+   },
+   {
+    "slot": 4,
+    "name": "SendQueryUGCRequest"
+   },
+   {
+    "slot": 5,
+    "name": "GetQueryUGCResult"
+   },
+   {
+    "slot": 6,
+    "name": "GetQueryUGCNumTags"
+   },
+   {
+    "slot": 7,
+    "name": "GetQueryUGCTag"
+   },
+   {
+    "slot": 8,
+    "name": "GetQueryUGCTagDisplayName"
+   },
+   {
+    "slot": 9,
+    "name": "GetQueryUGCPreviewURL"
+   },
+   {
+    "slot": 10,
+    "name": "GetQueryUGCImageURL"
+   },
+   {
+    "slot": 11,
+    "name": "GetQueryUGCMetadata"
+   },
+   {
+    "slot": 12,
+    "name": "GetQueryUGCChildren"
+   },
+   {
+    "slot": 13,
+    "name": "GetQueryUGCStatistic"
+   },
+   {
+    "slot": 14,
+    "name": "GetQueryUGCNumAdditionalPreviews"
+   },
+   {
+    "slot": 15,
+    "name": "GetQueryUGCAdditionalPreview"
+   },
+   {
+    "slot": 16,
+    "name": "GetQueryUGCNumKeyValueTags"
+   },
+   {
+    "slot": 17,
+    "name": "GetQueryUGCKeyValueTag"
+   },
+   {
+    "slot": 18,
+    "name": "GetQueryUGCKeyValueTag"
+   },
+   {
+    "slot": 19,
+    "name": "GetQueryUGCContentDescriptors"
+   },
+   {
+    "slot": 20,
+    "name": "GetNumSupportedGameVersions"
+   },
+   {
+    "slot": 21,
+    "name": "GetSupportedGameVersionData"
+   },
+   {
+    "slot": 22,
+    "name": "GetQueryUGCIsDepotBuild"
+   },
+   {
+    "slot": 23,
+    "name": "ReleaseQueryUGCRequest"
+   },
+   {
+    "slot": 24,
+    "name": "AddRequiredTag"
+   },
+   {
+    "slot": 25,
+    "name": "AddRequiredTagGroup"
+   },
+   {
+    "slot": 26,
+    "name": "AddExcludedTag"
+   },
+   {
+    "slot": 27,
+    "name": "SetReturnOnlyIDs"
+   },
+   {
+    "slot": 28,
+    "name": "SetReturnKeyValueTags"
+   },
+   {
+    "slot": 29,
+    "name": "SetReturnLongDescription"
+   },
+   {
+    "slot": 30,
+    "name": "SetReturnMetadata"
+   },
+   {
+    "slot": 31,
+    "name": "SetReturnChildren"
+   },
+   {
+    "slot": 32,
+    "name": "SetReturnAdditionalPreviews"
+   },
+   {
+    "slot": 33,
+    "name": "SetReturnTotalOnly"
+   },
+   {
+    "slot": 34,
+    "name": "SetReturnPlaytimeStats"
+   },
+   {
+    "slot": 35,
+    "name": "SetLanguage"
+   },
+   {
+    "slot": 36,
+    "name": "SetAllowCachedResponse"
+   },
+   {
+    "slot": 37,
+    "name": "SetAdminQuery"
+   },
+   {
+    "slot": 38,
+    "name": "SetCloudFileNameFilter"
+   },
+   {
+    "slot": 39,
+    "name": "SetMatchAnyTag"
+   },
+   {
+    "slot": 40,
+    "name": "SetSearchText"
+   },
+   {
+    "slot": 41,
+    "name": "SetRankedByTrendDays"
+   },
+   {
+    "slot": 42,
+    "name": "SetTimeCreatedDateRange"
+   },
+   {
+    "slot": 43,
+    "name": "SetTimeUpdatedDateRange"
+   },
+   {
+    "slot": 44,
+    "name": "AddRequiredKeyValueTag"
+   },
+   {
+    "slot": 45,
+    "name": "RequestUGCDetails"
+   },
+   {
+    "slot": 46,
+    "name": "CreateItem"
+   },
+   {
+    "slot": 47,
+    "name": "StartItemUpdate"
+   },
+   {
+    "slot": 48,
+    "name": "SetItemTitle"
+   },
+   {
+    "slot": 49,
+    "name": "SetItemDescription"
+   },
+   {
+    "slot": 50,
+    "name": "SetItemUpdateLanguage"
+   },
+   {
+    "slot": 51,
+    "name": "SetItemMetadata"
+   },
+   {
+    "slot": 52,
+    "name": "SetItemVisibility"
+   },
+   {
+    "slot": 53,
+    "name": "SetItemTags"
+   },
+   {
+    "slot": 54,
+    "name": "SetItemContent"
+   },
+   {
+    "slot": 55,
+    "name": "SetItemPreview"
+   },
+   {
+    "slot": 56,
+    "name": "SetAllowLegacyUpload"
+   },
+   {
+    "slot": 57,
+    "name": "RemoveAllItemKeyValueTags"
+   },
+   {
+    "slot": 58,
+    "name": "RemoveItemKeyValueTags"
+   },
+   {
+    "slot": 59,
+    "name": "AddItemKeyValueTag"
+   },
+   {
+    "slot": 60,
+    "name": "AddItemPreviewFile"
+   },
+   {
+    "slot": 61,
+    "name": "AddItemPreviewVideo"
+   },
+   {
+    "slot": 62,
+    "name": "UpdateItemPreviewFile"
+   },
+   {
+    "slot": 63,
+    "name": "UpdateItemPreviewVideo"
+   },
+   {
+    "slot": 64,
+    "name": "RemoveItemPreview"
+   },
+   {
+    "slot": 65,
+    "name": "AddContentDescriptor"
+   },
+   {
+    "slot": 66,
+    "name": "RemoveContentDescriptor"
+   },
+   {
+    "slot": 67,
+    "name": "SetRequiredGameVersions"
+   },
+   {
+    "slot": 68,
+    "name": "SetExternalAssetID"
+   },
+   {
+    "slot": 69,
+    "name": "SubmitItemUpdate"
+   },
+   {
+    "slot": 70,
+    "name": "GetItemUpdateProgress"
+   },
+   {
+    "slot": 71,
+    "name": "SetUserItemVote"
+   },
+   {
+    "slot": 72,
+    "name": "GetUserItemVote"
+   },
+   {
+    "slot": 73,
+    "name": "AddItemToFavorites"
+   },
+   {
+    "slot": 74,
+    "name": "RemoveItemFromFavorites"
+   },
+   {
+    "slot": 75,
+    "name": "SubscribeItem"
+   },
+   {
+    "slot": 76,
+    "name": "UnsubscribeItem"
+   },
+   {
+    "slot": 77,
+    "name": "GetNumSubscribedItems"
+   },
+   {
+    "slot": 78,
+    "name": "GetSubscribedItems"
+   },
+   {
+    "slot": 79,
+    "name": "GetSubscribedItemsInternal"
+   },
+   {
+    "slot": 80,
+    "name": "SetWorkshopItemsDisabledLocally"
+   },
+   {
+    "slot": 81,
+    "name": "SetSubscriptionsLoadOrder"
+   },
+   {
+    "slot": 82,
+    "name": "SetSubscriptionsLoadOrder"
+   },
+   {
+    "slot": 83,
+    "name": "MoveSubscriptionsLoadOrder"
+   },
+   {
+    "slot": 84,
+    "name": "GetItemState"
+   },
+   {
+    "slot": 85,
+    "name": "GetItemInstallInfo"
+   },
+   {
+    "slot": 86,
+    "name": "GetItemDownloadInfo"
+   },
+   {
+    "slot": 87,
+    "name": "DownloadItem"
+   },
+   {
+    "slot": 88,
+    "name": "GetAppItemsStatus"
+   },
+   {
+    "slot": 89,
+    "name": "BInitWorkshopForGameServer"
+   },
+   {
+    "slot": 90,
+    "name": "SuspendDownloads"
+   },
+   {
+    "slot": 91,
+    "name": "GetAllItemsSizeOnDisk"
+   },
+   {
+    "slot": 92,
+    "name": "StartPlaytimeTracking"
+   },
+   {
+    "slot": 93,
+    "name": "StopPlaytimeTracking"
+   },
+   {
+    "slot": 94,
+    "name": "StopPlaytimeTrackingForAllItems"
+   },
+   {
+    "slot": 95,
+    "name": "AddDependency"
+   },
+   {
+    "slot": 96,
+    "name": "RemoveDependency"
+   },
+   {
+    "slot": 97,
+    "name": "AddAppDependency"
+   },
+   {
+    "slot": 98,
+    "name": "RemoveAppDependency"
+   },
+   {
+    "slot": 99,
+    "name": "GetAppDependencies"
+   },
+   {
+    "slot": 100,
+    "name": "DeleteItem"
+   },
+   {
+    "slot": 101,
+    "name": "ShowWorkshopEULA"
+   },
+   {
+    "slot": 102,
+    "name": "GetWorkshopEULAStatus"
+   },
+   {
+    "slot": 103,
+    "name": "GetUserContentDescriptorPreferences"
+   },
+   {
+    "slot": 104,
+    "name": "SetItemsDisabledLocally"
+   },
+   {
+    "slot": 105,
+    "name": "MarkDownloadedItemAsUnused"
+   },
+   {
+    "slot": 106,
+    "name": "GetNumDownloadedItems"
+   },
+   {
+    "slot": 107,
+    "name": "GetDownloadedItems"
+   },
+   {
+    "slot": 108,
+    "name": "GetFullQueryUGCResponse"
+   },
+   {
+    "slot": 109,
+    "name": "GetSerializedQueryUGCResponse"
+   }
+  ]
+ },
+ "IClientUnifiedMessages": {
+  "ipc_id": "0x19",
+  "pipe": "client",
+  "slots": 5,
+  "vtable_rva_x64": "0x12ed638",
+  "vtable_rva_x86": "0x1008174",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "SendMethod"
+   },
+   {
+    "slot": 1,
+    "name": "GetMethodResponseInfo"
+   },
+   {
+    "slot": 2,
+    "name": "GetMethodResponseData"
+   },
+   {
+    "slot": 3,
+    "name": "ReleaseMethod"
+   },
+   {
+    "slot": 4,
+    "name": "SendNotification"
+   }
+  ]
+ },
+ "IClientUser": {
+  "ipc_id": "0x1",
+  "pipe": "client",
+  "slots": 259,
+  "vtable_rva_x64": "0x12e0cf0",
+  "vtable_rva_x86": "0xffe8c8",
+  "methods": [
+   {
+    "slot": 0,
+    "name": null
+   },
+   {
+    "slot": 1,
+    "name": "LogOn"
+   },
+   {
+    "slot": 2,
+    "name": "InvalidateCredentials"
+   },
+   {
+    "slot": 3,
+    "name": "LogOff"
+   },
+   {
+    "slot": 4,
+    "name": "BLoggedOn"
+   },
+   {
+    "slot": 5,
+    "name": "GetLogonState"
+   },
+   {
+    "slot": 6,
+    "name": "BConnected"
+   },
+   {
+    "slot": 7,
+    "name": "BInitiateReconnect"
+   },
+   {
+    "slot": 8,
+    "name": "EConnect"
+   },
+   {
+    "slot": 9,
+    "name": "BTryingToLogin"
+   },
+   {
+    "slot": 10,
+    "name": "GetSteamID"
+   },
+   {
+    "slot": 11,
+    "name": "GetClientInstanceID"
+   },
+   {
+    "slot": 12,
+    "name": "GetUserCountry"
+   },
+   {
+    "slot": 13,
+    "name": "IsVACBanned"
+   },
+   {
+    "slot": 14,
+    "name": "SetEmail"
+   },
+   {
+    "slot": 15,
+    "name": "SetConfigString"
+   },
+   {
+    "slot": 16,
+    "name": "GetConfigString"
+   },
+   {
+    "slot": 17,
+    "name": "SetConfigInt"
+   },
+   {
+    "slot": 18,
+    "name": "GetConfigInt"
+   },
+   {
+    "slot": 19,
+    "name": "SetConfigBinaryBlob"
+   },
+   {
+    "slot": 20,
+    "name": "GetConfigBinaryBlob"
+   },
+   {
+    "slot": 21,
+    "name": "DeleteConfigKey"
+   },
+   {
+    "slot": 22,
+    "name": "GetConfigStoreKeyName"
+   },
+   {
+    "slot": 23,
+    "name": "InitiateGameConnection"
+   },
+   {
+    "slot": 24,
+    "name": "InitiateGameConnectionOld"
+   },
+   {
+    "slot": 25,
+    "name": "TerminateGameConnection"
+   },
+   {
+    "slot": 26,
+    "name": "TerminateGame"
+   },
+   {
+    "slot": 27,
+    "name": "SetSelfAsChatDestination"
+   },
+   {
+    "slot": 28,
+    "name": "IsPrimaryChatDestination"
+   },
+   {
+    "slot": 29,
+    "name": "RequestLegacyCDKey"
+   },
+   {
+    "slot": 30,
+    "name": "AckGuestPass"
+   },
+   {
+    "slot": 31,
+    "name": "RedeemGuestPass"
+   },
+   {
+    "slot": 32,
+    "name": "GetGuestPassToGiveCount"
+   },
+   {
+    "slot": 33,
+    "name": "GetGuestPassToRedeemCount"
+   },
+   {
+    "slot": 34,
+    "name": "GetGuestPassToGiveInfo"
+   },
+   {
+    "slot": 35,
+    "name": "GetGuestPassToGiveOut"
+   },
+   {
+    "slot": 36,
+    "name": "GetGuestPassToRedeem"
+   },
+   {
+    "slot": 37,
+    "name": "GetGuestPassToRedeemInfo"
+   },
+   {
+    "slot": 38,
+    "name": "GetGuestPassToRedeemSenderName"
+   },
+   {
+    "slot": 39,
+    "name": "GetNumAppsInGuestPassesToRedeem"
+   },
+   {
+    "slot": 40,
+    "name": "GetAppsInGuestPassesToRedeem"
+   },
+   {
+    "slot": 41,
+    "name": "GetCountUserNotifications"
+   },
+   {
+    "slot": 42,
+    "name": "GetCountUserNotification"
+   },
+   {
+    "slot": 43,
+    "name": "RequestStoreAuthURL"
+   },
+   {
+    "slot": 44,
+    "name": "SetLanguage"
+   },
+   {
+    "slot": 45,
+    "name": "TrackAppUsageEvent"
+   },
+   {
+    "slot": 46,
+    "name": "RaiseConnectionPriority"
+   },
+   {
+    "slot": 47,
+    "name": "ResetConnectionPriority"
+   },
+   {
+    "slot": 48,
+    "name": "GetDesiredNetQOSLevel"
+   },
+   {
+    "slot": 49,
+    "name": "BHasCachedCredentials"
+   },
+   {
+    "slot": 50,
+    "name": "SetAccountNameForCachedCredentialLogin"
+   },
+   {
+    "slot": 51,
+    "name": "DestroyCachedCredentials"
+   },
+   {
+    "slot": 52,
+    "name": "GetCurrentWebAuthToken"
+   },
+   {
+    "slot": 53,
+    "name": "RequestWebAuthToken"
+   },
+   {
+    "slot": 54,
+    "name": "SetLoginInformation"
+   },
+   {
+    "slot": 55,
+    "name": "SetTwoFactorCode"
+   },
+   {
+    "slot": 56,
+    "name": "SetLoginToken"
+   },
+   {
+    "slot": 57,
+    "name": "GetLoginTokenID"
+   },
+   {
+    "slot": 58,
+    "name": "ClearAllLoginInformation"
+   },
+   {
+    "slot": 59,
+    "name": "BEnableEmbeddedClient"
+   },
+   {
+    "slot": 60,
+    "name": "ResetEmbeddedClient"
+   },
+   {
+    "slot": 61,
+    "name": "BHasEmbeddedClientToken"
+   },
+   {
+    "slot": 62,
+    "name": "RequestEmbeddedClientToken"
+   },
+   {
+    "slot": 63,
+    "name": "AuthorizeNewDevice"
+   },
+   {
+    "slot": 64,
+    "name": "GetLanguage"
+   },
+   {
+    "slot": 65,
+    "name": "TrackSteamUsageEvent"
+   },
+   {
+    "slot": 66,
+    "name": "SetComputerInUse"
+   },
+   {
+    "slot": 67,
+    "name": "BIsGameRunning"
+   },
+   {
+    "slot": 68,
+    "name": "BIsGameWindowReady"
+   },
+   {
+    "slot": 69,
+    "name": "BUpdateAppOwnershipTicket"
+   },
+   {
+    "slot": 70,
+    "name": "GetCustomBinariesState"
+   },
+   {
+    "slot": 71,
+    "name": "RequestCustomBinaries"
+   },
+   {
+    "slot": 72,
+    "name": "SetCellID"
+   },
+   {
+    "slot": 73,
+    "name": "GetCellList"
+   },
+   {
+    "slot": 74,
+    "name": null
+   },
+   {
+    "slot": 75,
+    "name": "GetUserDataFolder"
+   },
+   {
+    "slot": 76,
+    "name": "GetUserConfigFolder"
+   },
+   {
+    "slot": 77,
+    "name": "GetAccountName"
+   },
+   {
+    "slot": 78,
+    "name": "GetAccountName"
+   },
+   {
+    "slot": 79,
+    "name": "IsPasswordRemembered"
+   },
+   {
+    "slot": 80,
+    "name": "IsSiteLicenseAssociationPending"
+   },
+   {
+    "slot": 81,
+    "name": "CheckoutSiteLicenseSeat"
+   },
+   {
+    "slot": 82,
+    "name": "GetAvailableSeats"
+   },
+   {
+    "slot": 83,
+    "name": "GetAssociatedSiteName"
+   },
+   {
+    "slot": 84,
+    "name": "BIsRunningInCafe"
+   },
+   {
+    "slot": 85,
+    "name": "BAllowCachedCredentialsInCafe"
+   },
+   {
+    "slot": 86,
+    "name": "RequiresLegacyCDKey"
+   },
+   {
+    "slot": 87,
+    "name": "GetLegacyCDKey"
+   },
+   {
+    "slot": 88,
+    "name": "SetLegacyCDKey"
+   },
+   {
+    "slot": 89,
+    "name": "WriteLegacyCDKey"
+   },
+   {
+    "slot": 90,
+    "name": "RemoveLegacyCDKey"
+   },
+   {
+    "slot": 91,
+    "name": "RequestLegacyCDKeyFromApp"
+   },
+   {
+    "slot": 92,
+    "name": "BIsAnyGameRunning"
+   },
+   {
+    "slot": 93,
+    "name": "GetSteamGuardDetails"
+   },
+   {
+    "slot": 94,
+    "name": "GetTwoFactorDetails"
+   },
+   {
+    "slot": 95,
+    "name": "BHasTwoFactor"
+   },
+   {
+    "slot": 96,
+    "name": "GetEmail"
+   },
+   {
+    "slot": 97,
+    "name": "Test_FakeConnectionTimeout"
+   },
+   {
+    "slot": 98,
+    "name": "RunInstallScript"
+   },
+   {
+    "slot": 99,
+    "name": "IsInstallScriptRunning"
+   },
+   {
+    "slot": 100,
+    "name": "GetInstallScriptState"
+   },
+   {
+    "slot": 101,
+    "name": "StopInstallScript"
+   },
+   {
+    "slot": 102,
+    "name": "ResetInstallScript"
+   },
+   {
+    "slot": 103,
+    "name": "GetAppOwnershipTicketLength"
+   },
+   {
+    "slot": 104,
+    "name": "GetAppOwnershipTicketData"
+   },
+   {
+    "slot": 105,
+    "name": "GetAppOwnershipTicketExtendedData"
+   },
+   {
+    "slot": 106,
+    "name": "GetMarketingMessageCount"
+   },
+   {
+    "slot": 107,
+    "name": "GetMarketingMessage"
+   },
+   {
+    "slot": 108,
+    "name": "MarkMarketingMessageSeen"
+   },
+   {
+    "slot": 109,
+    "name": "CheckForPendingMarketingMessages"
+   },
+   {
+    "slot": 110,
+    "name": "GetAuthSessionTicket"
+   },
+   {
+    "slot": 111,
+    "name": "GetAuthSessionTicketV2"
+   },
+   {
+    "slot": 112,
+    "name": "GetAuthSessionTicketV3"
+   },
+   {
+    "slot": 113,
+    "name": "GetAuthTicketForWebApi"
+   },
+   {
+    "slot": 114,
+    "name": "GetAuthSessionTicketForGameID"
+   },
+   {
+    "slot": 115,
+    "name": "BeginAuthSession"
+   },
+   {
+    "slot": 116,
+    "name": "EndAuthSession"
+   },
+   {
+    "slot": 117,
+    "name": "CancelAuthTicket"
+   },
+   {
+    "slot": 118,
+    "name": "IsUserSubscribedAppInTicket"
+   },
+   {
+    "slot": 119,
+    "name": "AdvertiseGame"
+   },
+   {
+    "slot": 120,
+    "name": "RequestEncryptedAppTicket"
+   },
+   {
+    "slot": 121,
+    "name": "GetEncryptedAppTicket"
+   },
+   {
+    "slot": 122,
+    "name": "GetGameBadgeLevel"
+   },
+   {
+    "slot": 123,
+    "name": "GetPlayerSteamLevel"
+   },
+   {
+    "slot": 124,
+    "name": "SetAccountLimited"
+   },
+   {
+    "slot": 125,
+    "name": "BIsAccountLimited"
+   },
+   {
+    "slot": 126,
+    "name": "SetAccountCommunityBanned"
+   },
+   {
+    "slot": 127,
+    "name": "BIsAccountCommunityBanned"
+   },
+   {
+    "slot": 128,
+    "name": "SetLimitedAccountCanInviteFriends"
+   },
+   {
+    "slot": 129,
+    "name": "BLimitedAccountCanInviteFriends"
+   },
+   {
+    "slot": 130,
+    "name": "BGameConnectTokensAvailable"
+   },
+   {
+    "slot": 131,
+    "name": "NumGamesRunning"
+   },
+   {
+    "slot": 132,
+    "name": "GetRunningGameID"
+   },
+   {
+    "slot": 133,
+    "name": "GetRunningGamePID"
+   },
+   {
+    "slot": 134,
+    "name": "RaiseWindowForGame"
+   },
+   {
+    "slot": 135,
+    "name": "GetAccountSecurityPolicyFlags"
+   },
+   {
+    "slot": 136,
+    "name": "BSupportUser"
+   },
+   {
+    "slot": 137,
+    "name": "BNeedsSSANextSteamLogon"
+   },
+   {
+    "slot": 138,
+    "name": "ClearNeedsSSANextSteamLogon"
+   },
+   {
+    "slot": 139,
+    "name": "BIsAppOverlayEnabled"
+   },
+   {
+    "slot": 140,
+    "name": "BOverlayIgnoreChildProcesses"
+   },
+   {
+    "slot": 141,
+    "name": "SetOverlayState"
+   },
+   {
+    "slot": 142,
+    "name": "NotifyOverlaySettingsChanged"
+   },
+   {
+    "slot": 143,
+    "name": "BIsBehindNAT"
+   },
+   {
+    "slot": 144,
+    "name": "GetMicroTxnAppID"
+   },
+   {
+    "slot": 145,
+    "name": "GetMicroTxnOrderID"
+   },
+   {
+    "slot": 146,
+    "name": "BGetMicroTxnPrice"
+   },
+   {
+    "slot": 147,
+    "name": "GetMicroTxnSteamRealm"
+   },
+   {
+    "slot": 148,
+    "name": "GetMicroTxnLineItemCount"
+   },
+   {
+    "slot": 149,
+    "name": "BGetMicroTxnLineItem"
+   },
+   {
+    "slot": 150,
+    "name": "BIsSandboxMicroTxn"
+   },
+   {
+    "slot": 151,
+    "name": "BMicroTxnRequiresCachedPmtMethod"
+   },
+   {
+    "slot": 152,
+    "name": "AuthorizeMicroTxn"
+   },
+   {
+    "slot": 153,
+    "name": "BGetWalletBalance"
+   },
+   {
+    "slot": 154,
+    "name": "RequestMicroTxnInfo"
+   },
+   {
+    "slot": 155,
+    "name": "BMicroTxnRefundable"
+   },
+   {
+    "slot": 156,
+    "name": "BGetAppMinutesPlayed"
+   },
+   {
+    "slot": 157,
+    "name": "GetAppLastPlayedTime"
+   },
+   {
+    "slot": 158,
+    "name": "GetAppUpdateDisabledSecondsRemaining"
+   },
+   {
+    "slot": 159,
+    "name": "BGetGuideURL"
+   },
+   {
+    "slot": 160,
+    "name": "BPromptToChangePassword"
+   },
+   {
+    "slot": 161,
+    "name": "BAccountExtraSecurity"
+   },
+   {
+    "slot": 162,
+    "name": "BAccountShouldShowLockUI"
+   },
+   {
+    "slot": 163,
+    "name": "GetCountAuthedComputers"
+   },
+   {
+    "slot": 164,
+    "name": "GetSteamGuardEnabledTime"
+   },
+   {
+    "slot": 165,
+    "name": "SetPhoneIsVerified"
+   },
+   {
+    "slot": 166,
+    "name": "BIsPhoneVerified"
+   },
+   {
+    "slot": 167,
+    "name": "SetPhoneIsIdentifying"
+   },
+   {
+    "slot": 168,
+    "name": "BIsPhoneIdentifying"
+   },
+   {
+    "slot": 169,
+    "name": "SetPhoneIsRequiringVerification"
+   },
+   {
+    "slot": 170,
+    "name": "BIsPhoneRequiringVerification"
+   },
+   {
+    "slot": 171,
+    "name": "Set2ndFactorAuthCode"
+   },
+   {
+    "slot": 172,
+    "name": "SetUserMachineName"
+   },
+   {
+    "slot": 173,
+    "name": "GetUserMachineName"
+   },
+   {
+    "slot": 174,
+    "name": "GetEmailDomainFromLogonFailure"
+   },
+   {
+    "slot": 175,
+    "name": "GetAgreementSessionUrl"
+   },
+   {
+    "slot": 176,
+    "name": "GetDurationControl"
+   },
+   {
+    "slot": 177,
+    "name": "GetDurationControlForApp"
+   },
+   {
+    "slot": 178,
+    "name": "BSetDurationControlOnlineState"
+   },
+   {
+    "slot": 179,
+    "name": "BSetDurationControlOnlineStateForApp"
+   },
+   {
+    "slot": 180,
+    "name": "BGetDurationControlExtendedResults"
+   },
+   {
+    "slot": 181,
+    "name": "BIsSubscribedApp"
+   },
+   {
+    "slot": 182,
+    "name": "GetSubscribedApps"
+   },
+   {
+    "slot": 183,
+    "name": "AckSystemIM"
+   },
+   {
+    "slot": 184,
+    "name": "RequestSpecialSurvey"
+   },
+   {
+    "slot": 185,
+    "name": "SendSpecialSurveyResponse"
+   },
+   {
+    "slot": 186,
+    "name": "RequestNotifications"
+   },
+   {
+    "slot": 187,
+    "name": "GetAppOwnershipInfo"
+   },
+   {
+    "slot": 188,
+    "name": "SendGameWebCallback"
+   },
+   {
+    "slot": 189,
+    "name": "BIsStreamingUIToRemoteDevice"
+   },
+   {
+    "slot": 190,
+    "name": "BIsCurrentlyNVStreaming"
+   },
+   {
+    "slot": 191,
+    "name": "OnBigPictureForStreamingStartResult"
+   },
+   {
+    "slot": 192,
+    "name": "OnBigPictureForStreamingDone"
+   },
+   {
+    "slot": 193,
+    "name": "OnBigPictureForStreamingRestarting"
+   },
+   {
+    "slot": 194,
+    "name": "StopStreaming"
+   },
+   {
+    "slot": 195,
+    "name": "GetAllAccountFlags"
+   },
+   {
+    "slot": 196,
+    "name": "LockParentalLock"
+   },
+   {
+    "slot": 197,
+    "name": "UnlockParentalLock"
+   },
+   {
+    "slot": 198,
+    "name": "BIsParentalLockEnabled"
+   },
+   {
+    "slot": 199,
+    "name": "BIsParentalLockLocked"
+   },
+   {
+    "slot": 200,
+    "name": "BIsAppBlocked"
+   },
+   {
+    "slot": 201,
+    "name": "BIsAppInBlockList"
+   },
+   {
+    "slot": 202,
+    "name": "BIsFeatureBlocked"
+   },
+   {
+    "slot": 203,
+    "name": "BIsFeatureInBlockList"
+   },
+   {
+    "slot": 204,
+    "name": "GetParentalUnlockTime"
+   },
+   {
+    "slot": 205,
+    "name": "BGetRecoveryEmail"
+   },
+   {
+    "slot": 206,
+    "name": "BIsLockFromSiteLicense"
+   },
+   {
+    "slot": 207,
+    "name": "EIsParentalPlaytimeBlocked"
+   },
+   {
+    "slot": 208,
+    "name": "BGetSerializedParentalSettings"
+   },
+   {
+    "slot": 209,
+    "name": "BGetParentalWebToken"
+   },
+   {
+    "slot": 210,
+    "name": "GetCommunityPreference"
+   },
+   {
+    "slot": 211,
+    "name": "SetCommunityPreference"
+   },
+   {
+    "slot": 212,
+    "name": "GetTextFilterSetting"
+   },
+   {
+    "slot": 213,
+    "name": "BTextFilterIgnoresFriends"
+   },
+   {
+    "slot": 214,
+    "name": "CanLogonOffline"
+   },
+   {
+    "slot": 215,
+    "name": "LogOnOffline"
+   },
+   {
+    "slot": 216,
+    "name": "ValidateOfflineLogonTicket"
+   },
+   {
+    "slot": 217,
+    "name": "BGetOfflineLogonTicket"
+   },
+   {
+    "slot": 218,
+    "name": "UploadLocalClientLogs"
+   },
+   {
+    "slot": 219,
+    "name": "SetAsyncNotificationEnabled"
+   },
+   {
+    "slot": 220,
+    "name": "BIsOtherSessionPlaying"
+   },
+   {
+    "slot": 221,
+    "name": "BKickOtherPlayingSession"
+   },
+   {
+    "slot": 222,
+    "name": "BIsAccountLockedDown"
+   },
+   {
+    "slot": 223,
+    "name": "RequestAccountLinkInfo"
+   },
+   {
+    "slot": 224,
+    "name": "RequestSurveySchedule"
+   },
+   {
+    "slot": 225,
+    "name": "RequestNewSteamAnnouncementState"
+   },
+   {
+    "slot": 226,
+    "name": "UpdateSteamAnnouncementLastRead"
+   },
+   {
+    "slot": 227,
+    "name": "GetMarketEligibility"
+   },
+   {
+    "slot": 228,
+    "name": "UpdateGameVrDllState"
+   },
+   {
+    "slot": 229,
+    "name": "KillVRTheaterPancakeGame"
+   },
+   {
+    "slot": 230,
+    "name": "SetVRIsHMDAwake"
+   },
+   {
+    "slot": 231,
+    "name": "BIsAnyGameOrServiceAppRunning"
+   },
+   {
+    "slot": 232,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 233,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 234,
+    "name": "SendSteamServiceStatusUpdate"
+   },
+   {
+    "slot": 235,
+    "name": "RequestSteamGroupChatMessageNotifications"
+   },
+   {
+    "slot": 236,
+    "name": "RequestSteamGroupChatMessageHistory"
+   },
+   {
+    "slot": 237,
+    "name": "RequestSendSteamGroupChatMessage"
+   },
+   {
+    "slot": 238,
+    "name": "OnNewGroupChatMsgAdded"
+   },
+   {
+    "slot": 239,
+    "name": "OnGroupChatUserStateChange"
+   },
+   {
+    "slot": 240,
+    "name": "OnReceivedGroupChatSubscriptionResponse"
+   },
+   {
+    "slot": 241,
+    "name": "GetTimedTrialStatus"
+   },
+   {
+    "slot": 242,
+    "name": "RequestTimedTrialStatus"
+   },
+   {
+    "slot": 243,
+    "name": "PrepareForSystemSuspend"
+   },
+   {
+    "slot": 244,
+    "name": "ResumeSuspendedGames"
+   },
+   {
+    "slot": 245,
+    "name": "GetClientInstallationID"
+   },
+   {
+    "slot": 246,
+    "name": "GetAppIDForGameID"
+   },
+   {
+    "slot": 247,
+    "name": "BDoNotDisturb"
+   },
+   {
+    "slot": 248,
+    "name": "SetAdditionalClientArgData"
+   },
+   {
+    "slot": 249,
+    "name": "GetFamilyGroupID"
+   },
+   {
+    "slot": 250,
+    "name": "GetFamilyGroupName"
+   },
+   {
+    "slot": 251,
+    "name": "GetFamilyGroupRole"
+   },
+   {
+    "slot": 252,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 253,
+    "name": "GetSharedAppLockInfo"
+   },
+   {
+    "slot": 254,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 255,
+    "name": "SetPreferredLender"
+   },
+   {
+    "slot": 256,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 257,
+    "name": "m_bInProcessPipe"
+   },
+   {
+    "slot": 258,
+    "name": "CancelLicenseForApp"
+   }
+  ]
+ },
+ "IClientUserStats": {
+  "ipc_id": "0xb",
+  "pipe": "client",
+  "slots": 55,
+  "vtable_rva_x64": "0x12ea538",
+  "vtable_rva_x86": "0x1005cc0",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetNumStats"
+   },
+   {
+    "slot": 1,
+    "name": "GetStatName"
+   },
+   {
+    "slot": 2,
+    "name": "GetStatType"
+   },
+   {
+    "slot": 3,
+    "name": "GetNumAchievements"
+   },
+   {
+    "slot": 4,
+    "name": "GetAchievementName"
+   },
+   {
+    "slot": 5,
+    "name": "RequestCurrentStats"
+   },
+   {
+    "slot": 6,
+    "name": "DeprecatedPublic_RequestCurrentStats"
+   },
+   {
+    "slot": 7,
+    "name": "GetStat"
+   },
+   {
+    "slot": 8,
+    "name": "GetStat"
+   },
+   {
+    "slot": 9,
+    "name": "SetStat"
+   },
+   {
+    "slot": 10,
+    "name": "SetStat"
+   },
+   {
+    "slot": 11,
+    "name": "UpdateAvgRateStat"
+   },
+   {
+    "slot": 12,
+    "name": "GetAchievement"
+   },
+   {
+    "slot": 13,
+    "name": "SetAchievement"
+   },
+   {
+    "slot": 14,
+    "name": "ClearAchievement"
+   },
+   {
+    "slot": 15,
+    "name": "GetAchievementProgress"
+   },
+   {
+    "slot": 16,
+    "name": "StoreStats"
+   },
+   {
+    "slot": 17,
+    "name": "GetAchievementIcon"
+   },
+   {
+    "slot": 18,
+    "name": "BGetAchievementIconURL"
+   },
+   {
+    "slot": 19,
+    "name": "GetAchievementDisplayAttribute"
+   },
+   {
+    "slot": 20,
+    "name": "IndicateAchievementProgress"
+   },
+   {
+    "slot": 21,
+    "name": "SetMaxStatsLoaded"
+   },
+   {
+    "slot": 22,
+    "name": "RequestUserStats"
+   },
+   {
+    "slot": 23,
+    "name": "GetUserStat"
+   },
+   {
+    "slot": 24,
+    "name": "GetUserStat"
+   },
+   {
+    "slot": 25,
+    "name": "GetUserAchievement"
+   },
+   {
+    "slot": 26,
+    "name": "GetUserAchievementProgress"
+   },
+   {
+    "slot": 27,
+    "name": "ResetAllStats"
+   },
+   {
+    "slot": 28,
+    "name": "FindOrCreateLeaderboard"
+   },
+   {
+    "slot": 29,
+    "name": "FindLeaderboard"
+   },
+   {
+    "slot": 30,
+    "name": "GetLeaderboardName"
+   },
+   {
+    "slot": 31,
+    "name": "GetLeaderboardEntryCount"
+   },
+   {
+    "slot": 32,
+    "name": "GetLeaderboardSortMethod"
+   },
+   {
+    "slot": 33,
+    "name": "GetLeaderboardDisplayType"
+   },
+   {
+    "slot": 34,
+    "name": "DownloadLeaderboardEntries"
+   },
+   {
+    "slot": 35,
+    "name": "DownloadLeaderboardEntriesForUsers"
+   },
+   {
+    "slot": 36,
+    "name": "GetDownloadedLeaderboardEntry"
+   },
+   {
+    "slot": 37,
+    "name": "AttachLeaderboardUGC"
+   },
+   {
+    "slot": 38,
+    "name": "UploadLeaderboardScore"
+   },
+   {
+    "slot": 39,
+    "name": "GetNumberOfCurrentPlayers"
+   },
+   {
+    "slot": 40,
+    "name": "GetNumAchievedAchievements"
+   },
+   {
+    "slot": 41,
+    "name": "GetLastAchievementUnlocked"
+   },
+   {
+    "slot": 42,
+    "name": "GetMostRecentAchievementUnlocked"
+   },
+   {
+    "slot": 43,
+    "name": "RequestGlobalAchievementPercentages"
+   },
+   {
+    "slot": 44,
+    "name": "GetMostAchievedAchievementInfo"
+   },
+   {
+    "slot": 45,
+    "name": "GetNextMostAchievedAchievementInfo"
+   },
+   {
+    "slot": 46,
+    "name": "GetAchievementAchievedPercent"
+   },
+   {
+    "slot": 47,
+    "name": "RequestGlobalStats"
+   },
+   {
+    "slot": 48,
+    "name": "GetGlobalStat"
+   },
+   {
+    "slot": 49,
+    "name": "GetGlobalStat"
+   },
+   {
+    "slot": 50,
+    "name": "GetGlobalStatHistory"
+   },
+   {
+    "slot": 51,
+    "name": "GetGlobalStatHistory"
+   },
+   {
+    "slot": 52,
+    "name": "GetAchievementProgressLimits"
+   },
+   {
+    "slot": 53,
+    "name": "GetAchievementProgressLimits"
+   },
+   {
+    "slot": 54,
+    "name": "BAchievementIconLoaded"
+   }
+  ]
+ },
+ "IClientUtils": {
+  "ipc_id": "0x4",
+  "pipe": "client",
+  "slots": 116,
+  "vtable_rva_x64": "0x12e6718",
+  "vtable_rva_x86": "0x1002da8",
+  "methods": [
+   {
+    "slot": 0,
+    "name": null
+   },
+   {
+    "slot": 1,
+    "name": null
+   },
+   {
+    "slot": 2,
+    "name": null
+   },
+   {
+    "slot": 3,
+    "name": null
+   },
+   {
+    "slot": 4,
+    "name": "GetSecondsSinceAppActive"
+   },
+   {
+    "slot": 5,
+    "name": "GetSecondsSinceComputerActive"
+   },
+   {
+    "slot": 6,
+    "name": "SetComputerActive"
+   },
+   {
+    "slot": 7,
+    "name": null
+   },
+   {
+    "slot": 8,
+    "name": null
+   },
+   {
+    "slot": 9,
+    "name": "GetServerRealTime"
+   },
+   {
+    "slot": 10,
+    "name": "GetIPCountry"
+   },
+   {
+    "slot": 11,
+    "name": "GetImageSize"
+   },
+   {
+    "slot": 12,
+    "name": "GetImageRGBA"
+   },
+   {
+    "slot": 13,
+    "name": "GetNumRunningApps"
+   },
+   {
+    "slot": 14,
+    "name": "GetCurrentBatteryPower"
+   },
+   {
+    "slot": 15,
+    "name": "GetBatteryInformation"
+   },
+   {
+    "slot": 16,
+    "name": "SetOfflineMode"
+   },
+   {
+    "slot": 17,
+    "name": "GetOfflineMode"
+   },
+   {
+    "slot": 18,
+    "name": "SetAppIDForCurrentPipe"
+   },
+   {
+    "slot": 19,
+    "name": "GetAppID"
+   },
+   {
+    "slot": 20,
+    "name": "SetAPIDebuggingActive"
+   },
+   {
+    "slot": 21,
+    "name": "AllocPendingAPICallHandle"
+   },
+   {
+    "slot": 22,
+    "name": "IsAPICallCompleted"
+   },
+   {
+    "slot": 23,
+    "name": "GetAPICallFailureReason"
+   },
+   {
+    "slot": 24,
+    "name": "GetAPICallResult"
+   },
+   {
+    "slot": 25,
+    "name": "SetAPICallResultWithoutPostingCallback"
+   },
+   {
+    "slot": 26,
+    "name": "SignalAppsToShutDown"
+   },
+   {
+    "slot": 27,
+    "name": "SignalServiceAppsToDisconnect"
+   },
+   {
+    "slot": 28,
+    "name": "TerminateAllApps"
+   },
+   {
+    "slot": 29,
+    "name": "GetCellID"
+   },
+   {
+    "slot": 30,
+    "name": "BIsGlobalInstance"
+   },
+   {
+    "slot": 31,
+    "name": "CheckFileSignature"
+   },
+   {
+    "slot": 32,
+    "name": "IsSteamClientBeta"
+   },
+   {
+    "slot": 33,
+    "name": "GetBuildID"
+   },
+   {
+    "slot": 34,
+    "name": "SetCurrentUIMode"
+   },
+   {
+    "slot": 35,
+    "name": "GetCurrentUIMode"
+   },
+   {
+    "slot": 36,
+    "name": "BIsWebBasedUIMode"
+   },
+   {
+    "slot": 37,
+    "name": "SetDisableOverlayScaling"
+   },
+   {
+    "slot": 38,
+    "name": "ShutdownLauncher"
+   },
+   {
+    "slot": 39,
+    "name": "SetLauncherType"
+   },
+   {
+    "slot": 40,
+    "name": null
+   },
+   {
+    "slot": 41,
+    "name": "ShowGamepadTextInput"
+   },
+   {
+    "slot": 42,
+    "name": "GetEnteredGamepadTextLength"
+   },
+   {
+    "slot": 43,
+    "name": "GetEnteredGamepadTextInput"
+   },
+   {
+    "slot": 44,
+    "name": "GamepadTextInputClosed"
+   },
+   {
+    "slot": 45,
+    "name": "ShowControllerLayoutPreview"
+   },
+   {
+    "slot": 46,
+    "name": "SetSpew"
+   },
+   {
+    "slot": 47,
+    "name": "BDownloadsDisabled"
+   },
+   {
+    "slot": 48,
+    "name": "SetFocusedWindow"
+   },
+   {
+    "slot": 49,
+    "name": "GetSteamUILanguage"
+   },
+   {
+    "slot": 50,
+    "name": "SetLastGameLaunchMethod"
+   },
+   {
+    "slot": 51,
+    "name": "SetVideoAdapterInfo"
+   },
+   {
+    "slot": 52,
+    "name": "SetOverlayWindowFocusForPipe"
+   },
+   {
+    "slot": 53,
+    "name": "GetGameOverlayUIInstanceFocusGameID"
+   },
+   {
+    "slot": 54,
+    "name": "GetFocusedGameWindow"
+   },
+   {
+    "slot": 55,
+    "name": "SetControllerConfigFileForAppID"
+   },
+   {
+    "slot": 56,
+    "name": "GetControllerConfigFileForAppID"
+   },
+   {
+    "slot": 57,
+    "name": "IsSteamRunningInVR"
+   },
+   {
+    "slot": 58,
+    "name": "StartVRDashboard"
+   },
+   {
+    "slot": 59,
+    "name": "IsVRHeadsetStreamingEnabled"
+   },
+   {
+    "slot": 60,
+    "name": "SetVRHeadsetStreamingEnabled"
+   },
+   {
+    "slot": 61,
+    "name": "GenerateSupportSystemReport"
+   },
+   {
+    "slot": 62,
+    "name": "GetSupportSystemReport"
+   },
+   {
+    "slot": 63,
+    "name": "GetAppIdForPid"
+   },
+   {
+    "slot": 64,
+    "name": "SetClientUIProcess"
+   },
+   {
+    "slot": 65,
+    "name": "BIsClientUIInForeground"
+   },
+   {
+    "slot": 66,
+    "name": "AllowSetForegroundThroughWebhelper"
+   },
+   {
+    "slot": 67,
+    "name": "SetOverlayBrowserInfo"
+   },
+   {
+    "slot": 68,
+    "name": "ClearOverlayBrowserInfo"
+   },
+   {
+    "slot": 69,
+    "name": "GetOverlayBrowserInfo"
+   },
+   {
+    "slot": 70,
+    "name": "SetOverlayNotificationPosition"
+   },
+   {
+    "slot": 71,
+    "name": "SetOverlayNotificationInset"
+   },
+   {
+    "slot": 72,
+    "name": "DispatchClientUINotification"
+   },
+   {
+    "slot": 73,
+    "name": "RespondToClientUINotification"
+   },
+   {
+    "slot": 74,
+    "name": "DispatchClientUICommand"
+   },
+   {
+    "slot": 75,
+    "name": "DispatchComputerActiveStateChange"
+   },
+   {
+    "slot": 76,
+    "name": "DispatchOpenURLInClient"
+   },
+   {
+    "slot": 77,
+    "name": "DispatchClearAllBrowsingData"
+   },
+   {
+    "slot": 78,
+    "name": "DispatchClientSettingsChanged"
+   },
+   {
+    "slot": 79,
+    "name": "DispatchClientPostMessage"
+   },
+   {
+    "slot": 80,
+    "name": null
+   },
+   {
+    "slot": 81,
+    "name": "NeedsSteamChinaWorkshop"
+   },
+   {
+    "slot": 82,
+    "name": "InitFilterText"
+   },
+   {
+    "slot": 83,
+    "name": "FilterText"
+   },
+   {
+    "slot": 84,
+    "name": "GetIPv6ConnectivityState"
+   },
+   {
+    "slot": 85,
+    "name": "ScheduleConnectivityTest"
+   },
+   {
+    "slot": 86,
+    "name": "GetConnectivityTestState"
+   },
+   {
+    "slot": 87,
+    "name": "GetCaptivePortalURL"
+   },
+   {
+    "slot": 88,
+    "name": "RecordSteamInterfaceCreation"
+   },
+   {
+    "slot": 89,
+    "name": "GetCloudGamingPlatform"
+   },
+   {
+    "slot": 90,
+    "name": "BGetMacAddresses"
+   },
+   {
+    "slot": 91,
+    "name": "BGetDiskSerialNumber"
+   },
+   {
+    "slot": 92,
+    "name": "GetSteamEnvironmentForApp"
+   },
+   {
+    "slot": 93,
+    "name": "TestHTTP"
+   },
+   {
+    "slot": 94,
+    "name": "DumpJobs"
+   },
+   {
+    "slot": 95,
+    "name": "ShowFloatingGamepadTextInput"
+   },
+   {
+    "slot": 96,
+    "name": "DismissFloatingGamepadTextInput"
+   },
+   {
+    "slot": 97,
+    "name": "DismissGamepadTextInput"
+   },
+   {
+    "slot": 98,
+    "name": "FloatingGamepadTextInputDismissed"
+   },
+   {
+    "slot": 99,
+    "name": "SetGameLauncherMode"
+   },
+   {
+    "slot": 100,
+    "name": "ClearAllHTTPCaches"
+   },
+   {
+    "slot": 101,
+    "name": "GetFocusedGameID"
+   },
+   {
+    "slot": 102,
+    "name": "GetFocusedWindowPID"
+   },
+   {
+    "slot": 103,
+    "name": "SetWebUITransportWebhelperPID"
+   },
+   {
+    "slot": 104,
+    "name": "GetWebUITransportInfo"
+   },
+   {
+    "slot": 105,
+    "name": "RecordFakeReactRouteMetric"
+   },
+   {
+    "slot": 106,
+    "name": "SteamRuntimeSystemInfo"
+   },
+   {
+    "slot": 107,
+    "name": "DumpHTTPClients"
+   },
+   {
+    "slot": 108,
+    "name": "BGetMachineID"
+   },
+   {
+    "slot": 109,
+    "name": "NotifyMissingInterface"
+   },
+   {
+    "slot": 110,
+    "name": null
+   },
+   {
+    "slot": 111,
+    "name": "DesktopLockedStateChanged"
+   },
+   {
+    "slot": 112,
+    "name": "ScheduleBootReserveJob"
+   },
+   {
+    "slot": 113,
+    "name": "GetGameFrameRateReportFrequency"
+   },
+   {
+    "slot": 114,
+    "name": "ReportGameFrameRate"
+   },
+   {
+    "slot": 115,
+    "name": "SetGameFrameRateReportingEnabled"
+   }
+  ]
+ },
+ "IClientVR": {
+  "ipc_id": "0x28",
+  "pipe": "client",
+  "slots": 27,
+  "vtable_rva_x64": "0x12f1b88",
+  "vtable_rva_x86": "0x100b5e4",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "GetCurrentHmd"
+   },
+   {
+    "slot": 1,
+    "name": "GetCompositor"
+   },
+   {
+    "slot": 2,
+    "name": "GetHeadsetView"
+   },
+   {
+    "slot": 3,
+    "name": "GetOverlay"
+   },
+   {
+    "slot": 4,
+    "name": "GetOverlayView"
+   },
+   {
+    "slot": 5,
+    "name": "GetSettings"
+   },
+   {
+    "slot": 6,
+    "name": "GetProperties"
+   },
+   {
+    "slot": 7,
+    "name": "GetPaths"
+   },
+   {
+    "slot": 8,
+    "name": "IsHmdPresent"
+   },
+   {
+    "slot": 9,
+    "name": "UpdateHmdStatus"
+   },
+   {
+    "slot": 10,
+    "name": "IsVRModeActive"
+   },
+   {
+    "slot": 11,
+    "name": "InitVR"
+   },
+   {
+    "slot": 12,
+    "name": "StartSteamVR"
+   },
+   {
+    "slot": 13,
+    "name": "CleanupVR"
+   },
+   {
+    "slot": 14,
+    "name": "QuitAllVR"
+   },
+   {
+    "slot": 15,
+    "name": "QuitApplication"
+   },
+   {
+    "slot": 16,
+    "name": "GetStringForHmdError"
+   },
+   {
+    "slot": 17,
+    "name": "LaunchApplication"
+   },
+   {
+    "slot": 18,
+    "name": "GetSteamVRAppId"
+   },
+   {
+    "slot": 19,
+    "name": "GetWebSecret"
+   },
+   {
+    "slot": 20,
+    "name": "BGetMutualCapabilities"
+   },
+   {
+    "slot": 21,
+    "name": "BSteamCanMakeVROverlays"
+   },
+   {
+    "slot": 22,
+    "name": "BServeVRGamepadUIOverlay"
+   },
+   {
+    "slot": 23,
+    "name": "BServeVRGamepadUIViaGamescope"
+   },
+   {
+    "slot": 24,
+    "name": "SetVRConnectionParams"
+   },
+   {
+    "slot": 25,
+    "name": "BVRDeviceSeenRecently"
+   },
+   {
+    "slot": 26,
+    "name": "InviteWirelessHeadsetToConnect"
+   }
+  ]
+ },
+ "IClientVideo": {
+  "ipc_id": "0x26",
+  "pipe": "client",
+  "slots": 47,
+  "vtable_rva_x64": "0x12f14a8",
+  "vtable_rva_x86": "0x100b090",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "UnlockH264"
+   },
+   {
+    "slot": 1,
+    "name": "EGetBroadcastReady"
+   },
+   {
+    "slot": 2,
+    "name": "BeginBroadcastSession"
+   },
+   {
+    "slot": 3,
+    "name": "EndBroadcastSession"
+   },
+   {
+    "slot": 4,
+    "name": "IsBroadcasting"
+   },
+   {
+    "slot": 5,
+    "name": "BIsUploadingThumbnails"
+   },
+   {
+    "slot": 6,
+    "name": "GetBroadcastSessionID"
+   },
+   {
+    "slot": 7,
+    "name": "ReceiveBroadcastChat"
+   },
+   {
+    "slot": 8,
+    "name": "PostBroadcastChat"
+   },
+   {
+    "slot": 9,
+    "name": "MuteBroadcastChatUser"
+   },
+   {
+    "slot": 10,
+    "name": "InitBroadcastVideo"
+   },
+   {
+    "slot": 11,
+    "name": "InitBroadcastAudio"
+   },
+   {
+    "slot": 12,
+    "name": "UploadBroadcastFrame"
+   },
+   {
+    "slot": 13,
+    "name": "UploadBroadcastThumbnail"
+   },
+   {
+    "slot": 14,
+    "name": "DroppedVideoFrames"
+   },
+   {
+    "slot": 15,
+    "name": "SetCurrentVideoEncodingRate"
+   },
+   {
+    "slot": 16,
+    "name": "SetMicrophoneState"
+   },
+   {
+    "slot": 17,
+    "name": "SetVideoSource"
+   },
+   {
+    "slot": 18,
+    "name": "BroadcastRecorderError"
+   },
+   {
+    "slot": 19,
+    "name": "LoadBroadcastSettings"
+   },
+   {
+    "slot": 20,
+    "name": "SetBroadcastPermissions"
+   },
+   {
+    "slot": 21,
+    "name": "GetBroadcastPermissions"
+   },
+   {
+    "slot": 22,
+    "name": "GetBroadcastMaxKbps"
+   },
+   {
+    "slot": 23,
+    "name": "GetBroadcastDelaySeconds"
+   },
+   {
+    "slot": 24,
+    "name": "BGetBroadcastDimensions"
+   },
+   {
+    "slot": 25,
+    "name": "GetBroadcastIncludeDesktop"
+   },
+   {
+    "slot": 26,
+    "name": "GetBroadcastRecordSystemAudio"
+   },
+   {
+    "slot": 27,
+    "name": "GetBroadcastRecordMic"
+   },
+   {
+    "slot": 28,
+    "name": "GetBroadcastShowChatCorner"
+   },
+   {
+    "slot": 29,
+    "name": "GetBroadcastShowDebugInfo"
+   },
+   {
+    "slot": 30,
+    "name": "GetBroadcastShowReminderBanner"
+   },
+   {
+    "slot": 31,
+    "name": "GetBroadcastEncoderSetting"
+   },
+   {
+    "slot": 32,
+    "name": "InviteToBroadcast"
+   },
+   {
+    "slot": 33,
+    "name": "IgnoreApprovalRequest"
+   },
+   {
+    "slot": 34,
+    "name": "BroadcastFirstTimeComplete"
+   },
+   {
+    "slot": 35,
+    "name": "SetInHomeStreamState"
+   },
+   {
+    "slot": 36,
+    "name": "WatchBroadcast"
+   },
+   {
+    "slot": 37,
+    "name": "GetWatchBroadcastMPD"
+   },
+   {
+    "slot": 38,
+    "name": "GetApprovalRequestCount"
+   },
+   {
+    "slot": 39,
+    "name": "GetApprovalRequests"
+   },
+   {
+    "slot": 40,
+    "name": "GetVideoURL"
+   },
+   {
+    "slot": 41,
+    "name": "GetOPFSettings"
+   },
+   {
+    "slot": 42,
+    "name": "GetOPFStringForApp"
+   },
+   {
+    "slot": 43,
+    "name": "WebRTCGetTURNAddress"
+   },
+   {
+    "slot": 44,
+    "name": "WebRTCStartResult"
+   },
+   {
+    "slot": 45,
+    "name": "WebRTCAddCandidate"
+   },
+   {
+    "slot": 46,
+    "name": "WebRTCGetAnswer"
+   }
+  ]
+ },
+ "IClientWindowsHWMonitor": {
+  "ipc_id": "0x6",
+  "pipe": "service",
+  "slots": 4,
+  "vtable_rva_x64": "0x131b878",
+  "vtable_rva_x86": "0x102cc80",
+  "methods": [
+   {
+    "slot": 0,
+    "name": "StartMonitoring"
+   },
+   {
+    "slot": 1,
+    "name": "StopMonitoring"
+   },
+   {
+    "slot": 2,
+    "name": "RefreshInformation"
+   },
+   {
+    "slot": 3,
+    "name": "GetCPUTemperature"
+   }
+  ]
+ }
+}
