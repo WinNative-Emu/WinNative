@@ -2452,6 +2452,10 @@ Installed path:
     <string name="retro_scr_tab_defaults">Defaults</string>
     <string name="retro_scr_tab_credits">Credits</string>
     <string name="settings_support_title">Support</string>
+    <string name="support_donate_heading">DONATE</string>
+    <string name="support_donate_desc">Contribute to the development of WinNative. Opens in your browser.</string>
+    <string name="support_paypal">paypal.me/MaxJividen</string>
+    <string name="support_paypal_desc">PayPal • one-time or recurring</string>
     <string name="support_heading">GET HELP</string>
     <string name="support_desc">Ask questions, report problems, or see what is being worked on. Each opens in your browser.</string>
     <string name="support_winnative_discord">#WinNative</string>
