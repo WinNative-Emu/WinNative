@@ -135,7 +135,8 @@ LsfgPlan LsfgPacer::Plan(size_t capacity, uint64_t source_frames) {
     }
 
     const size_t allowed = std::min(ceiling, HeadroomLimit());
-    const float desired_outputs = loop_interval * target_rate;
+    const float pace_interval = SourceInterval() > 0.0f ? SourceInterval() : loop_interval;
+    const float desired_outputs = pace_interval * target_rate;
     if (allowed == 0 || desired_outputs <= 1.0f) {
         output_credit = 0.0f;
         limit = 0;
