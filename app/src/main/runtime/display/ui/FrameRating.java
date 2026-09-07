@@ -1466,7 +1466,7 @@ public class FrameRating extends LinearLayout implements Runnable {
   }
 
   private boolean showOutputFps() {
-    return this.frameGenActive && this.outputFPS > 0.0f;
+    return this.frameGenActive && this.outputGenerating && this.outputFPS > 0.0f;
   }
 
   private void sampleOutputFramesLocked(long nowNano) {
@@ -1834,8 +1834,7 @@ public class FrameRating extends LinearLayout implements Runnable {
         SpannableStringBuilder b = new SpannableStringBuilder();
         append(b, String.format(Locale.US, "%.0f", this.lastFPS), this.C_FPS_OK);
         append(b, " → ", this.C_DIVISOR);
-        append(b, String.format(Locale.US, "%.0f", this.outputFPS),
-            this.outputGenerating ? this.C_FPS_GEN : this.C_FPS_OK);
+        append(b, String.format(Locale.US, "%.0f", this.outputFPS), this.C_FPS_GEN);
         this.tvFpsBig.setText(b);
       } else {
         this.tvFpsBig.setText(String.format(Locale.US, "%.0f", this.lastFPS));

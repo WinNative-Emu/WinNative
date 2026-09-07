@@ -137,7 +137,7 @@ object FrameGen {
     private fun voteFrameRate() {
         val output = boundOutput ?: return
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
-        val wanted = if (generatingEnabled) wantedRate().toFloat() else 0f
+        val wanted = if (generatingEnabled) wantedRate().toFloat() else refreshRate
         runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 output.setFrameRate(
@@ -202,7 +202,7 @@ object FrameGen {
     fun applyDisplayMode(activity: Activity?): Float {
         val window = activity?.window ?: return 0f
         val params = window.attributes
-        if (!requested || !generating) {
+        if (!requested) {
             if (params.preferredDisplayModeId != 0) {
                 params.preferredDisplayModeId = 0
                 window.attributes = params
@@ -210,6 +210,7 @@ object FrameGen {
             synchronized(this) { refreshRate = 0f }
             return 0f
         }
+        if (!generating) return synchronized(this) { refreshRate }
 
         val display = displayOf(activity) ?: return 0f
         val active = display.mode
