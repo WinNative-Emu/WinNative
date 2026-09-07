@@ -78,13 +78,14 @@ private:
     float loop_interval{};
     uint32_t source_samples{};
     uint32_t loop_samples{};
+    uint32_t rate_jumps{};
     uint64_t last_drawn{};
     float last_elapsed{};
     float output_credit{};
     size_t limit{};
     size_t cost_limit{};
     size_t probe_from{};
-    float raise_delay{0.75f};
+    float raise_delay{0.25f};
     float rate_at_raise{};
     float rate_before_probe{};
     bool probing{};

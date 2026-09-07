@@ -278,7 +278,26 @@ object RetroHudSupport {
         return rating
     }
 
+    private var boundRating: java.lang.ref.WeakReference<FrameRating>? = null
+    private var frameGenWatched = false
+
     fun bindFrameGeneration(rating: FrameRating) {
+        boundRating = java.lang.ref.WeakReference(rating)
+        if (!frameGenWatched) {
+            frameGenWatched = true
+            com.winlator.cmod.shared.framegen.FrameGen.setStateListener {
+                Handler(Looper.getMainLooper()).post { rebindFrameGeneration() }
+            }
+        }
+        applyFrameGeneration(rating)
+    }
+
+    private fun rebindFrameGeneration() {
+        val rating = boundRating?.get() ?: return
+        applyFrameGeneration(rating)
+    }
+
+    private fun applyFrameGeneration(rating: FrameRating) {
         val requested = com.winlator.cmod.shared.framegen.FrameGen.requested
         rating.setOutputFrameSource(if (requested) frameGenOutputSource else null)
         rating.setFrameGenerationActive(requested)

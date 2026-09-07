@@ -26,6 +26,7 @@ object FrameGen {
     private var refreshRate = 0f
     private var generatingEnabled = true
     private var rebinder: Runnable? = null
+    private var stateListener: Runnable? = null
     private var liveSourceRate = 0f
     private var sourceFrames = 0L
     private var sourceWindow = 0L
@@ -56,6 +57,7 @@ object FrameGen {
         options = source
         generatingEnabled = true
         if (options.usable) FrameGenNative.ensureLoaded()
+        notifyState()
     }
 
     @JvmStatic
@@ -150,6 +152,17 @@ object FrameGen {
     }
 
     @JvmStatic
+    @Synchronized
+    fun setStateListener(value: Runnable?) {
+        stateListener = value
+    }
+
+    private fun notifyState() {
+        val target = synchronized(this) { stateListener } ?: return
+        runCatching { target.run() }
+    }
+
+    @JvmStatic
     fun rebindSurface() {
         val target = synchronized(this) { rebinder } ?: return
         runCatching { target.run() }
@@ -161,6 +174,7 @@ object FrameGen {
     fun setGenerating(on: Boolean) {
         generatingEnabled = on
         pushConfig()
+        notifyState()
     }
 
     @JvmStatic

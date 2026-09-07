@@ -103,6 +103,7 @@ class Gen1EngineActivity :
         handler.removeCallbacksAndMessages(null)
         bridge.shutdown()
         store.clear()
+        com.winlator.cmod.shared.framegen.FrameGen.setSurfaceRebinder(null)
         com.winlator.cmod.shared.framegen.FrameGen.release()
         super.onDestroy()
     }
@@ -809,6 +810,16 @@ class Gen1EngineActivity :
 
         com.winlator.cmod.shared.framegen.FrameGen.installFromIntent(this, intent)
         com.winlator.cmod.shared.framegen.FrameGen.applyDisplayMode(this)
+        com.winlator.cmod.shared.framegen.FrameGen.setSurfaceRebinder {
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed && mSurface != null) {
+                    runCatching {
+                        SDLActivity.onNativeSurfaceDestroyed()
+                        SDLActivity.onNativeSurfaceCreated()
+                    }
+                }
+            }
+        }
 
         runCatching {
             if (!rom.isNullOrEmpty()) Os.setenv("POKEPORT_IMPORT_ROM", rom, true)

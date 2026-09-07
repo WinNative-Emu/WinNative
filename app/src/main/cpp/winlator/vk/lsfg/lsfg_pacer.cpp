@@ -20,8 +20,13 @@ constexpr float HEADROOM_EPSILON = 0.02f;
 constexpr float CREDIT_EPSILON = 1.0e-4f;
 constexpr float SOURCE_ACCUM_FLOOR = 0.01f;
 constexpr uint32_t MIN_RATE_SAMPLES = 12;
-constexpr float COST_RAISE_SECONDS = 0.75f;
-constexpr float COST_PROBE_SECONDS = 0.75f;
+constexpr float COST_RAISE_SECONDS = 0.25f;
+constexpr float COST_PROBE_SECONDS = 0.5f;
+constexpr float COST_BLAME_SECONDS = 1.25f;
+constexpr float BASELINE_SMOOTHING = 0.25f;
+constexpr float RATE_JUMP_HIGH = 1.4f;
+constexpr float RATE_JUMP_LOW = 0.7f;
+constexpr uint32_t RATE_JUMP_SAMPLES = 3;
 constexpr float COST_RECOVER_RATIO = 0.97f;
 constexpr float COST_HOLD_SECONDS = 5.0f;
 constexpr float COST_DROP_RATIO = 0.9f;
@@ -61,6 +66,22 @@ void LsfgPacer::TrackSourceRate(Clock::time_point now, uint64_t source_frames) {
 
     last_drawn = drawn;
     last_elapsed = elapsed;
+
+    const float instant = drawn > 0 ? elapsed / static_cast<float>(drawn) : 0.0f;
+    if (instant > 0.0f && source_interval > 0.0f &&
+        (instant > source_interval * RATE_JUMP_HIGH || instant < source_interval * RATE_JUMP_LOW)) {
+        if (++rate_jumps >= RATE_JUMP_SAMPLES) {
+            source_frame_accum = static_cast<float>(drawn);
+            source_time_accum = elapsed;
+            source_interval = instant;
+            source_samples = MIN_RATE_SAMPLES;
+            rate_jumps = 0;
+            return;
+        }
+    } else {
+        rate_jumps = 0;
+    }
+
     source_frame_accum += (static_cast<float>(drawn) - source_frame_accum) * SOURCE_SMOOTHING;
     source_time_accum += (elapsed - source_time_accum) * SOURCE_SMOOTHING;
     source_interval =
@@ -131,18 +152,20 @@ void LsfgPacer::TrackCost(Clock::time_point now, size_t ceiling) {
     }
 
     if (rate_at_raise > 0.0f && rate < rate_at_raise * COST_DROP_RATIO) {
-        if (cost_limit > 0) {
+        if (cost_limit > 0 && since <= COST_BLAME_SECONDS) {
             probe_from = cost_limit;
             rate_before_probe = rate_at_raise;
             cost_limit--;
             probing = true;
+        } else {
+            raise_delay = COST_RAISE_SECONDS;
         }
         rate_at_raise = rate;
         last_cost_change = now;
         return;
     }
 
-    rate_at_raise = std::max(rate_at_raise, rate);
+    rate_at_raise += (rate - rate_at_raise) * BASELINE_SMOOTHING;
     if (since < raise_delay || cost_limit >= ceiling || limit < cost_limit) return;
 
     float target = static_cast<float>(config.target_rate);
@@ -249,6 +272,7 @@ void LsfgPacer::Reset() {
     loop_samples = 0;
     last_drawn = 0;
     last_elapsed = 0.0f;
+    rate_jumps = 0;
     output_credit = 0.0f;
     limit = 0;
     cost_limit = 0;
