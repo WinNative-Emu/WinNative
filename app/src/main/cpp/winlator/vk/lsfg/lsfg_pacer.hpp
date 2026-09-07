@@ -26,6 +26,7 @@ struct LsfgPlan {
 
 struct LsfgPacerStats {
     float source_rate{};
+    size_t cost_limit{};
     float loop_rate{};
     float refresh_rate{};
     float target_rate{};
@@ -64,6 +65,7 @@ private:
     [[nodiscard]] float SourceInterval() const;
     [[nodiscard]] size_t HeadroomLimit() const;
     [[nodiscard]] size_t SlotLimit() const;
+    void TrackCost(Clock::time_point now, size_t ceiling);
 
     LsfgPacerConfig config;
 
@@ -80,6 +82,13 @@ private:
     float last_elapsed{};
     float output_credit{};
     size_t limit{};
+    size_t cost_limit{};
+    size_t probe_from{};
+    float raise_delay{0.75f};
+    float rate_at_raise{};
+    float rate_before_probe{};
+    bool probing{};
+    std::optional<Clock::time_point> last_cost_change;
 };
 
 }

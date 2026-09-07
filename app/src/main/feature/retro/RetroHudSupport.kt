@@ -441,14 +441,15 @@ object RetroHudSupport {
             object : Runnable {
                 override fun run() {
                     if (!running) return
-                    val rating = ratingProvider()
-                    if (enabledProvider() && rating != null &&
-                        com.armsx2.runtime.MainActivityRuntime.isNativeReady()
-                    ) {
+                    if (com.armsx2.runtime.MainActivityRuntime.isNativeReady()) {
                         val count = runCatching { kr.co.iefriends.pcsx2.NativeApp.getPresentedFrameCount() }.getOrDefault(0)
                         if (lastCount >= 0 && count >= lastCount) {
                             val delta = (count - lastCount).coerceAtMost(8)
-                            repeat(delta) { rating.recordGameFrame() }
+                            com.winlator.cmod.shared.framegen.FrameGen.noteSourceFrames(delta)
+                            val rating = ratingProvider()
+                            if (enabledProvider() && rating != null) {
+                                repeat(delta) { rating.recordGameFrame() }
+                            }
                         }
                         lastCount = count
                     }

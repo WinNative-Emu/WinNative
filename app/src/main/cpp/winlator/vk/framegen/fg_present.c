@@ -3,12 +3,14 @@
 #include <android/hardware_buffer.h>
 #include <android/log.h>
 #include <errno.h>
+#include <math.h>
 #include <media/NdkImage.h>
 #include <media/NdkImageReader.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../vk_dispatch.h"
@@ -27,8 +29,11 @@
 #define FG_IMPORT_CACHE 8u
 #define FG_ACQUIRE_TIMEOUT_NS 4000000ULL
 #define FG_ACQUIRE_TIMEOUT_MAX_NS 33000000ULL
+#define FG_MAX_RETIRED 32u
 #define FG_FENCE_WAIT_MS 250
 #define FG_TELEMETRY_FRAMES 120ULL
+#define FG_ARRIVAL_WINDOW 0.5f
+#define FG_ARRIVAL_TOLERANCE 0.08f
 
 typedef struct {
     VkImage image;
@@ -101,6 +106,15 @@ struct FgPresenter {
     float refresh_rate;
     float source_rate;
     bool config_dirty;
+
+    VkSemaphore retired[FG_MAX_RETIRED];
+    uint32_t retired_count;
+
+    uint32_t source_divisor;
+    uint32_t divisor_phase;
+    uint64_t raw_frames;
+    struct timespec raw_mark;
+    float raw_rate;
 
     uint64_t source_frames;
     uint64_t real_frames;
@@ -686,6 +700,15 @@ static void fg_apply_config(FgPresenter* fg) {
     }
 }
 
+static void fg_renew_semaphore(FgPresenter* fg, VkSemaphore* handle) {
+    if (fg->retired_count >= FG_MAX_RETIRED) return;
+    VkSemaphoreCreateInfo sci = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    VkSemaphore fresh = VK_NULL_HANDLE;
+    if (vkCreateSemaphore(fg->device, &sci, NULL, &fresh) != VK_SUCCESS) return;
+    if (*handle) fg->retired[fg->retired_count++] = *handle;
+    *handle = fresh;
+}
+
 static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* image) {
     FgFrame* f = &fg->frames[fg->frame_index];
 
@@ -707,9 +730,9 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
         return;
     }
 
-    uint64_t gen_timeout = FG_ACQUIRE_TIMEOUT_NS;
+    uint64_t gen_timeout = FG_ACQUIRE_TIMEOUT_MAX_NS;
     if (fg->refresh_rate > 1.0f) {
-        gen_timeout = (uint64_t)(1000000000.0f / fg->refresh_rate);
+        gen_timeout = (uint64_t)(2000000000.0f / fg->refresh_rate);
         if (gen_timeout < FG_ACQUIRE_TIMEOUT_NS) gen_timeout = FG_ACQUIRE_TIMEOUT_NS;
         if (gen_timeout > FG_ACQUIRE_TIMEOUT_MAX_NS) gen_timeout = FG_ACQUIRE_TIMEOUT_MAX_NS;
     }
@@ -724,6 +747,7 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
             if (fg->acquire_misses++ % 240 == 0) {
                 FG_LOGW("generated frame %u/%u dropped: acquire -> %d", g + 1, planned, (int)ga);
             }
+            fg_renew_semaphore(fg, &f->acquire_gen[g]);
             break;
         }
         gen_index[gen_count++] = index;
@@ -848,10 +872,11 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
         const uint64_t d_gen = fg->generated_frames - fg->log_generated;
         fg->log_real = fg->real_frames;
         fg->log_generated = fg->generated_frames;
-        FG_LOGI("framegen real=%llu made=%llu ratio=%.2f planned=%u got=%u images=%u misses=%llu",
+        FG_LOGI("framegen real=%llu made=%llu ratio=%.2f planned=%u got=%u images=%u div=%u misses=%llu",
                 (unsigned long long)fg->real_frames, (unsigned long long)fg->generated_frames,
                 d_real ? (double)(d_real + d_gen) / (double)d_real : 0.0, planned, gen_count,
-                fg->swapchain_image_count, (unsigned long long)fg->acquire_misses);
+                fg->swapchain_image_count, fg->source_divisor,
+                (unsigned long long)fg->acquire_misses);
     }
 
     fg->frame_index = (fg->frame_index + 1) % FG_FRAMES_IN_FLIGHT;
@@ -879,6 +904,42 @@ static bool fg_prepare_chain(FgPresenter* fg) {
     return vkr_lsfg_prepare(fg->lsfg, fg->extent.width, fg->extent.height, fg->target_format);
 }
 
+static float fg_elapsed_since(struct timespec* mark) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    if (mark->tv_sec == 0 && mark->tv_nsec == 0) {
+        *mark = now;
+        return 0.0f;
+    }
+    return (float)(now.tv_sec - mark->tv_sec) + (float)(now.tv_nsec - mark->tv_nsec) / 1.0e9f;
+}
+
+static void fg_track_arrivals(FgPresenter* fg) {
+    fg->raw_frames++;
+    const float elapsed = fg_elapsed_since(&fg->raw_mark);
+    if (elapsed < FG_ARRIVAL_WINDOW) return;
+    clock_gettime(CLOCK_MONOTONIC, &fg->raw_mark);
+    const float rate = (float)fg->raw_frames / elapsed;
+    fg->raw_frames = 0;
+    fg->raw_rate = fg->raw_rate > 0.0f ? fg->raw_rate + (rate - fg->raw_rate) * 0.5f : rate;
+
+    uint32_t divisor = 1;
+    const float guest = fg->source_rate;
+    if (guest > 1.0f && fg->raw_rate > guest) {
+        const long ratio = lroundf(fg->raw_rate / guest);
+        if (ratio > 1 && ratio <= (long)VKR_LSFG_MAX_GENERATIONS + 1) {
+            const float folded = fg->raw_rate / (float)ratio;
+            if (fabsf(folded - guest) <= guest * FG_ARRIVAL_TOLERANCE) divisor = (uint32_t)ratio;
+        }
+    }
+    if (divisor != fg->source_divisor) {
+        fg->source_divisor = divisor;
+        fg->divisor_phase = 0;
+        FG_LOGI("producer repeats every frame %u times at %.1f fps for a %.1f fps game",
+                divisor, fg->raw_rate, guest);
+    }
+}
+
 static void* fg_thread(void* arg) {
     FgPresenter* fg = (FgPresenter*)arg;
 
@@ -903,6 +964,16 @@ static void* fg_thread(void* arg) {
             media_status_t status =
                 AImageReader_acquireNextImageAsync(fg->reader, &image, &fence_fd);
             if (status != AMEDIA_OK || !image) break;
+
+            fg_track_arrivals(fg);
+            if (fg->source_divisor > 1) {
+                fg->divisor_phase = (fg->divisor_phase + 1) % fg->source_divisor;
+                if (fg->divisor_phase != 0) {
+                    if (fence_fd >= 0) close(fence_fd);
+                    AImage_delete(image);
+                    continue;
+                }
+            }
 
             AHardwareBuffer* buffer = NULL;
             if (AImage_getHardwareBuffer(image, &buffer) != AMEDIA_OK || !buffer) {
@@ -969,6 +1040,7 @@ FgPresenter* fg_create(JNIEnv* env, jobject context, const char* driver_name,
     fg->refresh_rate = refresh_rate;
     fg->source_rate = source_rate;
     fg->cache_path = strdup(cache_path);
+    fg->source_divisor = 1;
     ANativeWindow_acquire(output);
 
     VkAndroidSurfaceCreateInfoKHR asi;
@@ -1113,6 +1185,10 @@ void fg_destroy(FgPresenter* fg) {
                 if (f->acquire_gen[g]) vkDestroySemaphore(fg->device, f->acquire_gen[g], NULL);
             }
         }
+        for (uint32_t i = 0; i < fg->retired_count; i++) {
+            vkDestroySemaphore(fg->device, fg->retired[i], NULL);
+        }
+        fg->retired_count = 0;
         if (fg->command_pool) vkDestroyCommandPool(fg->device, fg->command_pool, NULL);
         vkDestroyDevice(fg->device, NULL);
     }

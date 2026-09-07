@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
 import android.view.Display
 import android.view.Surface
@@ -12,6 +13,8 @@ import android.view.WindowManager
 object FrameGen {
     private const val TAG = "WnFrameGen"
     private const val CADENCE_EPSILON = 0.01f
+    private const val SOURCE_WINDOW_NANOS = 500_000_000L
+    private const val SOURCE_RATE_EPSILON = 1.5f
 
     private var appContext: Context? = null
     private var options = FrameGenOptions()
@@ -23,6 +26,9 @@ object FrameGen {
     private var refreshRate = 0f
     private var generatingEnabled = true
     private var rebinder: Runnable? = null
+    private var liveSourceRate = 0f
+    private var sourceFrames = 0L
+    private var sourceWindow = 0L
 
     val requested: Boolean
         @Synchronized get() = options.usable
@@ -87,7 +93,7 @@ object FrameGen {
                     options.targetRate,
                     options.flowScale,
                     refreshRate,
-                    options.sourceRate.toFloat(),
+                    sourceRate(),
                 )
             }.getOrElse {
                 Log.w(TAG, "frame generation could not start: ${it.message}")
@@ -114,6 +120,27 @@ object FrameGen {
         Log.i(TAG, "frame generation active ${width}x$height multiplier=${options.multiplier} " +
             "target=${options.targetRate} flow=${options.flowScale} refresh=$refreshRate")
         return surface
+    }
+
+    @JvmStatic
+    @Synchronized
+    fun noteSourceFrames(count: Int) {
+        if (count <= 0 || handle == 0L) return
+        val now = SystemClock.elapsedRealtimeNanos()
+        if (sourceWindow == 0L) {
+            sourceWindow = now
+            sourceFrames = 0L
+            return
+        }
+        sourceFrames += count.toLong()
+        val elapsed = now - sourceWindow
+        if (elapsed < SOURCE_WINDOW_NANOS) return
+        val rate = sourceFrames * 1_000_000_000f / elapsed
+        sourceWindow = now
+        sourceFrames = 0L
+        if (rate <= 1f || Math.abs(rate - liveSourceRate) < SOURCE_RATE_EPSILON) return
+        liveSourceRate = rate
+        pushConfig()
     }
 
     @JvmStatic
@@ -169,6 +196,9 @@ object FrameGen {
         }
     }
 
+    private fun sourceRate(): Float =
+        if (liveSourceRate > 1f) liveSourceRate else options.sourceRate.toFloat()
+
     private fun pushConfig() {
         voteFrameRate()
         if (handle == 0L) return
@@ -182,7 +212,7 @@ object FrameGen {
                     target,
                     options.flowScale,
                     refreshRate,
-                    options.sourceRate.toFloat(),
+                    sourceRate(),
                 )
             }
         Log.i(TAG, "frame generation reconfigured multiplier=$multiplier target=$target " +
@@ -212,6 +242,9 @@ object FrameGen {
         producer?.let { runCatching { it.release() } }
         producer = null
         boundOutput = null
+        liveSourceRate = 0f
+        sourceFrames = 0L
+        sourceWindow = 0L
         boundWidth = 0
         boundHeight = 0
     }

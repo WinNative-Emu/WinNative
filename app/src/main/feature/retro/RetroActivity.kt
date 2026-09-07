@@ -125,6 +125,7 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
     private var rootLayout: FrameLayout? = null
     private var menuComposeView: ComposeView? = null
     private var surfaceReady = false
+    private var coreRefreshRate = 0f
     private var customColors = RetroCustomColors()
     private var savesLoadMode = false
     private var achievementsSessionStarted = false
@@ -601,7 +602,16 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
                         if (sramFile.isFile) saveRAMState = runCatching { sramFile.readBytes() }.getOrNull()
                     }
                 val view = GLRetroView(this, data)
+                coreRefreshRate = rate
                 if (frameGenOn) FrameGenGlSurface.attach(view, rate)
+                FrameGen.setSurfaceRebinder {
+                    runOnUiThread {
+                        if (!isFinishing && !isDestroyed && FrameGenGlSurface.attach(view, coreRefreshRate)) {
+                            view.onPause()
+                            view.onResume()
+                        }
+                    }
+                }
                 if (!frameGenOn && android.os.Build.VERSION.SDK_INT >= 30) {
                     view.holder.addCallback(
                         object : android.view.SurfaceHolder.Callback {
@@ -806,6 +816,7 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
             RetroAchievementsManager.hardcoreNoticeListener = null
             RetroAchievementsManager.endSession()
         }
+        FrameGen.setSurfaceRebinder(null)
         FrameGenGlSurface.detach()
         FrameGen.release()
         super.onDestroy()
@@ -908,6 +919,7 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
                 when (event) {
                     is GLRetroView.GLRetroEvents.FrameRendered -> {
                         if (hudVisible) frameRating?.recordGameFrame()
+                        FrameGen.noteSourceFrames(1)
                         RetroNetplayLobby.onFrameRendered()
                     }
                     is GLRetroView.GLRetroEvents.SurfaceCreated -> {

@@ -285,6 +285,7 @@ object Ps2GameOverlay {
                 ratingProvider = { frameRating },
                 enabledProvider = { hudVisible },
             )
+        if (com.winlator.cmod.shared.framegen.FrameGen.requested) frameSource.start()
 
         fun persistColors() {
             RetroControlLayouts.saveColors(activity, RetroSystems.PS2.id, customColors)
