@@ -566,11 +566,23 @@ class DolphinEmulationActivity :
         height: Int,
     ) {
         Log.i(TAG, "surfaceChanged ${width}x$height")
-        NativeLibrary.SurfaceChanged(FrameGen.wrap(holder.surface, width, height) ?: holder.surface)
+        bindSurface(holder, width, height)
+        FrameGen.setSurfaceRebinder { bindSurface(holder, width, height) }
+    }
+
+    private fun bindSurface(
+        holder: SurfaceHolder,
+        width: Int,
+        height: Int,
+    ) {
+        val output = holder.surface ?: return
+        if (!output.isValid) return
+        NativeLibrary.SurfaceChanged(FrameGen.wrap(output, width, height) ?: output)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
         Log.i(TAG, "surfaceDestroyed")
+        FrameGen.setSurfaceRebinder(null)
         NativeLibrary.SurfaceDestroyed()
         FrameGen.release()
     }

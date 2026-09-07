@@ -63,6 +63,26 @@ object RetroFrameGen {
         )
     }
 
+    fun liveOptions(
+        context: Context,
+        multiplier: Int,
+        targetRate: Int,
+        flowScale: Int,
+    ): FrameGenOptions {
+        if (!supported(context)) return FrameGenOptions()
+        if (!shadersReady(context)) LosslessAutoImport.sync(context)
+        val cache = LosslessScaling.resolveCacheFile(context, true) ?: return FrameGenOptions()
+        return FrameGenOptions(
+            enabled = true,
+            multiplier = FrameGenOptions.clampMultiplier(multiplier),
+            targetRate = targetRate.coerceAtLeast(0),
+            flowScale = FrameGenOptions.clampFlowScale(flowScale),
+            cachePath = cache.absolutePath,
+            driverName = SYSTEM_DRIVER,
+            sourceRate = CONSOLE_RATE,
+        )
+    }
+
     fun writeInto(context: Context, intent: Intent, shortcut: Shortcut?, systemId: String?): Intent =
         optionsFor(context, shortcut, systemId).writeTo(intent)
 }

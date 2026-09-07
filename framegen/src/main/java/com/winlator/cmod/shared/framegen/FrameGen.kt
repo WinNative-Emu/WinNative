@@ -22,6 +22,7 @@ object FrameGen {
     private var boundHeight = 0
     private var refreshRate = 0f
     private var generatingEnabled = true
+    private var rebinder: Runnable? = null
 
     val requested: Boolean
         @Synchronized get() = options.usable
@@ -113,6 +114,19 @@ object FrameGen {
         Log.i(TAG, "frame generation active ${width}x$height multiplier=${options.multiplier} " +
             "target=${options.targetRate} flow=${options.flowScale} refresh=$refreshRate")
         return surface
+    }
+
+    @JvmStatic
+    @Synchronized
+    fun setSurfaceRebinder(value: Runnable?) {
+        rebinder = value
+    }
+
+    @JvmStatic
+    fun rebindSurface() {
+        val target = synchronized(this) { rebinder } ?: return
+        runCatching { target.run() }
+            .onFailure { Log.w(TAG, "frame generation could not rebind the surface: ${it.message}") }
     }
 
     @JvmStatic

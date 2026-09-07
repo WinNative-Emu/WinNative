@@ -46,12 +46,21 @@ class EmulationSurface(context: Context) : SurfaceView(context), SurfaceHolder.C
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
         NativeApp.setDisplayRefreshRate(currentDisplayRefreshHz())
-        val output = holder.surface
+        bindSurface(holder, width, height)
+        com.winlator.cmod.shared.framegen.FrameGen.setSurfaceRebinder {
+            bindSurface(holder, width, height)
+        }
+    }
+
+    private fun bindSurface(holder: SurfaceHolder, width: Int, height: Int) {
+        val output = holder.surface ?: return
+        if (!output.isValid) return
         val target = com.winlator.cmod.shared.framegen.FrameGen.wrap(output, width, height) ?: output
         NativeApp.onNativeSurfaceChanged(target, width, height)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
+        com.winlator.cmod.shared.framegen.FrameGen.setSurfaceRebinder(null)
         NativeApp.onNativeSurfaceChanged(null, 0, 0)
         com.winlator.cmod.shared.framegen.FrameGen.release()
     }

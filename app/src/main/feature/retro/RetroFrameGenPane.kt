@@ -87,8 +87,17 @@ object RetroFrameGenPane {
                         onEnabledChanged = { value ->
                             persist(shortcut, FrameGenOptions.KEY_ENABLED, if (value) "1" else "0")
                             pending = current.copy(enabled = value)
-                            FrameGen.setGenerating(value)
-                            FrameGen.applyDisplayMode(context.findActivity())
+                            if (value && !FrameGen.active) {
+                                FrameGen.install(
+                                    context,
+                                    RetroFrameGen.liveOptions(context, multiplier, targetRate, flowScale),
+                                )
+                                FrameGen.applyDisplayMode(context.findActivity())
+                                FrameGen.rebindSurface()
+                            } else {
+                                FrameGen.setGenerating(value)
+                                FrameGen.applyDisplayMode(context.findActivity())
+                            }
                             revision++
                         },
                         onTargetRateSelected = { rate ->
