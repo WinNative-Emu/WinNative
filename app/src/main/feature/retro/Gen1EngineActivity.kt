@@ -102,6 +102,7 @@ class Gen1EngineActivity :
         handler.removeCallbacksAndMessages(null)
         bridge.shutdown()
         store.clear()
+        com.winlator.cmod.shared.framegen.FrameGen.release()
         super.onDestroy()
     }
 
@@ -797,6 +798,9 @@ class Gen1EngineActivity :
 
         bridge = Gen1EngineBridge(this)
         bridge.clearStale()
+
+        com.winlator.cmod.shared.framegen.FrameGen.installFromIntent(this, intent)
+        com.winlator.cmod.shared.framegen.FrameGen.applyDisplayMode(this)
 
         runCatching {
             if (!rom.isNullOrEmpty()) Os.setenv("POKEPORT_IMPORT_ROM", rom, true)

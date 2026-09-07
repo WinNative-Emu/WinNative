@@ -2408,6 +2408,7 @@ static uint64_t vkr_monotonic_ns(void) {
 
 static bool record_and_submit_frame(VkRenderer* r) {
     if (!r->surface_ready || !r->swapchain) return false;
+    if (!vkd_bind(r->vulkan_handle, r->instance)) return false;
 
     const uint64_t draw_begin_ns = vkr_monotonic_ns();
 

@@ -2542,6 +2542,8 @@ Caminho instalado:
     <string name="settings_frame_generation_updated">Atualizado de %1$s.</string>
     <string name="settings_frame_generation_not_owned">A geração de fotogramas usa shaders do Lossless Scaling. Compre-o no Steam com a conta com sessão iniciada para ativar isto.</string>
     <string name="settings_frame_generation_locate">Selecionar Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpola fotogramas extra para esta consola com o Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Esta GPU não expõe as funcionalidades Vulkan de que os shaders do Lossless Scaling precisam.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Transferências itch.io</string>
     <string name="itch_store_sign_in">Iniciar sessão no itch.io</string>

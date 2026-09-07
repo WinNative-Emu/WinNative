@@ -275,6 +275,7 @@ object RetroShortcuts {
                     putExtra(EXTRA_PS2_GAME_NAME, shortcut.getExtra("custom_name", shortcut.name))
                     putExtra(EXTRA_PS2_SHORTCUT_PATH, shortcut.file.absolutePath)
                     putExtra(EXTRA_PS2_CONTAINER_ID, shortcut.container.id)
+                    RetroFrameGen.writeInto(context, this, shortcut, RetroSystems.PS2.id)
                 }
             android.os.Handler(android.os.Looper.getMainLooper()).post {
                 runCatching { context.startActivity(intent) }
@@ -350,5 +351,6 @@ object RetroShortcuts {
             )
             putExtra(RetroActivity.EXTRA_HUD, RetroHudSupport.hudEnabled(context, shortcut, sysId))
             putExtra(RetroActivity.EXTRA_VARIABLES, resolvedCoreVariables(context, shortcut))
+            RetroFrameGen.writeInto(context, this, shortcut, sysId)
         }
 }

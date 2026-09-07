@@ -41,6 +41,8 @@ import com.winlator.cmod.runtime.container.Shortcut
 import com.winlator.cmod.runtime.display.ui.FrameRating
 import com.winlator.cmod.runtime.input.controls.ExternalController
 import com.winlator.cmod.shared.android.FixedFontScaleAppCompatActivity
+import com.winlator.cmod.shared.framegen.FrameGen
+import com.winlator.cmod.shared.framegen.FrameGenGlSurface
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
@@ -545,7 +547,10 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
         loadHudSettings()
         recordLaunchStats()
 
-        val sixtyRequested = requestSixtyHzDisplayMode()
+        FrameGen.installFromIntent(this, intent)
+        val frameGenOn = FrameGen.requested
+        if (frameGenOn) FrameGen.applyDisplayMode(this)
+        val sixtyRequested = if (frameGenOn) false else requestSixtyHzDisplayMode()
         var waitAttempts = 0
         lateinit var startWhenReady: Runnable
         startWhenReady =
@@ -578,7 +583,8 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
                         if (sramFile.isFile) saveRAMState = runCatching { sramFile.readBytes() }.getOrNull()
                     }
                 val view = GLRetroView(this, data)
-                if (android.os.Build.VERSION.SDK_INT >= 30) {
+                if (frameGenOn) FrameGenGlSurface.attach(view)
+                if (!frameGenOn && android.os.Build.VERSION.SDK_INT >= 30) {
                     view.holder.addCallback(
                         object : android.view.SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: android.view.SurfaceHolder) {
@@ -782,6 +788,7 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
             RetroAchievementsManager.hardcoreNoticeListener = null
             RetroAchievementsManager.endSession()
         }
+        FrameGen.release()
         super.onDestroy()
     }
 
@@ -798,6 +805,13 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
             RetroDefaults.clearNetplayArm(this, sysId)
         }
     }
+
+    private val frameGenOutputSource =
+        object : FrameRating.OutputFrameSource {
+            override fun getPresentedFrameCount(): Long = FrameGen.realFrames() + FrameGen.generatedFrames()
+
+            override fun getGeneratedFrameCount(): Long = FrameGen.generatedFrames()
+        }
 
     private fun showHud() {
         var rating = frameRating
@@ -816,6 +830,8 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
             }
             applyRetroHudSettings(rating)
         }
+        rating.setOutputFrameSource(if (FrameGen.requested) frameGenOutputSource else null)
+        rating.setFrameGenerationActive(FrameGen.active)
         rating.visibility = View.VISIBLE
         rating.reset()
         rating.post { applyDisplayGeometry() }

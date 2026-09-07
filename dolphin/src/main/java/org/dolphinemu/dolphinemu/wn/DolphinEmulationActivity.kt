@@ -11,6 +11,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.WindowManager
 import android.widget.Toast
+import com.winlator.cmod.shared.framegen.FrameGen
 import org.dolphinemu.dolphinemu.DolphinApplication
 import org.dolphinemu.dolphinemu.NativeLibrary
 import org.dolphinemu.dolphinemu.features.input.model.InputOverrider
@@ -362,6 +363,8 @@ class DolphinEmulationActivity :
         super.onCreate(savedInstanceState)
         DolphinApplication.install(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        FrameGen.installFromIntent(this, intent)
+        FrameGen.applyDisplayMode(this)
         applyImmersiveMode()
         onBackPressedDispatcher.addCallback(this) {
             if (emulationStarted) {
@@ -563,12 +566,13 @@ class DolphinEmulationActivity :
         height: Int,
     ) {
         Log.i(TAG, "surfaceChanged ${width}x$height")
-        NativeLibrary.SurfaceChanged(holder.surface)
+        NativeLibrary.SurfaceChanged(FrameGen.wrap(holder.surface, width, height) ?: holder.surface)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
         Log.i(TAG, "surfaceDestroyed")
         NativeLibrary.SurfaceDestroyed()
+        FrameGen.release()
     }
 
     override fun onResume() {
