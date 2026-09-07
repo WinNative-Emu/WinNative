@@ -661,6 +661,7 @@ class Gen1EngineActivity :
         }
         rating.visibility = android.view.View.VISIBLE
         rating.reset()
+        RetroHudSupport.bindFrameGeneration(rating)
         handler.removeCallbacks(hudTick)
         handler.post(hudTick)
     }

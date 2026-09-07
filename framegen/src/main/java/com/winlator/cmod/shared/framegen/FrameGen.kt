@@ -92,10 +92,14 @@ object FrameGen {
                 Log.w(TAG, "frame generation could not start: ${it.message}")
                 0L
             }
-        if (created == 0L) return output
+        if (created == 0L) {
+            Log.w(TAG, "frame generation presenter unavailable for ${width}x$height; frames pass through")
+            return output
+        }
 
         val surface = runCatching { FrameGenNative.nativeProducerSurface(created) }.getOrNull()
         if (surface == null || !surface.isValid) {
+            Log.w(TAG, "frame generation producer surface invalid; frames pass through")
             FrameGenNative.nativeDestroy(created)
             return output
         }

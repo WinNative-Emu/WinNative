@@ -1006,9 +1006,11 @@ FgPresenter* fg_create(JNIEnv* env, jobject context, const char* driver_name,
     vkr_lsfg_configure(fg->lsfg, multiplier ? multiplier : 2u, target_rate,
                        flow_scale > 0.0f ? flow_scale : 0.7f, refresh_rate, source_rate);
 
+    const uint64_t reader_usage =
+        AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
     if (AImageReader_newWithUsage((int32_t)fg->extent.width, (int32_t)fg->extent.height,
-                                  AIMAGE_FORMAT_PRIVATE, AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE,
-                                  FG_READER_IMAGES, &fg->reader) != AMEDIA_OK) {
+                                  AIMAGE_FORMAT_PRIVATE, reader_usage, FG_READER_IMAGES,
+                                  &fg->reader) != AMEDIA_OK) {
         FG_LOGE("AImageReader_newWithUsage failed");
         goto fail;
     }

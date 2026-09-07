@@ -314,6 +314,7 @@ object Ps2GameOverlay {
             }
             rating.visibility = View.VISIBLE
             rating.reset()
+            RetroHudSupport.bindFrameGeneration(rating)
             frameSource.start()
         }
 

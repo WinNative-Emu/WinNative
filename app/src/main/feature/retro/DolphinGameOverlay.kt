@@ -252,6 +252,7 @@ object DolphinGameOverlay {
             }
             rating.visibility = android.view.View.VISIBLE
             rating.reset()
+            RetroHudSupport.bindFrameGeneration(rating)
         }
 
         fun setHudVisible(value: Boolean) {
