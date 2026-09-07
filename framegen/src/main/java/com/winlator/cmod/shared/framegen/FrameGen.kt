@@ -105,6 +105,7 @@ object FrameGen {
         boundOutput = output
         boundWidth = width
         boundHeight = height
+        voteFrameRate()
         Log.i(TAG, "frame generation active ${width}x$height multiplier=${options.multiplier} " +
             "target=${options.targetRate} flow=${options.flowScale} refresh=$refreshRate")
         return surface
@@ -128,7 +129,30 @@ object FrameGen {
         pushConfig()
     }
 
+    private fun wantedRate(): Int {
+        val source = if (options.sourceRate > 0) options.sourceRate else 60
+        return if (options.targetRate > 0) options.targetRate else options.multiplier * source
+    }
+
+    private fun voteFrameRate() {
+        val output = boundOutput ?: return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        val wanted = if (generatingEnabled) wantedRate().toFloat() else 0f
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                output.setFrameRate(
+                    wanted,
+                    Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
+                    Surface.CHANGE_FRAME_RATE_ALWAYS,
+                )
+            } else {
+                output.setFrameRate(wanted, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
+            }
+        }
+    }
+
     private fun pushConfig() {
+        voteFrameRate()
         if (handle == 0L) return
         val multiplier = if (generatingEnabled) options.multiplier else 1
         val target = if (generatingEnabled) options.targetRate else 0
@@ -190,19 +214,11 @@ object FrameGen {
         val display = displayOf(activity) ?: return 0f
         val active = display.mode
         val source = if (options.sourceRate > 0) options.sourceRate else 60
-        val wanted =
-            when {
-                options.targetRate > 0 -> options.targetRate
-                else -> options.multiplier * source
-            }
+        val wanted = wantedRate()
 
         var best: Display.Mode? = null
         for (mode in display.supportedModes) {
-            if (mode.physicalWidth != active.physicalWidth ||
-                mode.physicalHeight != active.physicalHeight
-            ) {
-                continue
-            }
+            if (!sameSize(mode, active)) continue
             if (best == null || betterMode(mode, best!!, wanted, source)) best = mode
         }
         val selected = best ?: active
@@ -217,9 +233,16 @@ object FrameGen {
             refreshRate = rate
             pushConfig()
         }
-        Log.i(TAG, "frame generation display mode: wanted ${wanted}Hz, selected ${Math.round(rate)}Hz")
+        Log.i(TAG, "frame generation display mode: wanted ${wanted}Hz, selected ${Math.round(rate)}Hz " +
+            "from ${display.supportedModes.joinToString(" ") {
+                "${it.physicalWidth}x${it.physicalHeight}@${Math.round(it.refreshRate)}"
+            }} active ${active.physicalWidth}x${active.physicalHeight}@${Math.round(active.refreshRate)}")
         return rate
     }
+
+    private fun sameSize(mode: Display.Mode, active: Display.Mode): Boolean =
+        (mode.physicalWidth == active.physicalWidth && mode.physicalHeight == active.physicalHeight) ||
+            (mode.physicalWidth == active.physicalHeight && mode.physicalHeight == active.physicalWidth)
 
     private fun betterMode(
         candidate: Display.Mode,
