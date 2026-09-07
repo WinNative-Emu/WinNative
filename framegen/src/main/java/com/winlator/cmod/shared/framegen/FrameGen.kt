@@ -20,6 +20,7 @@ object FrameGen {
     private var boundWidth = 0
     private var boundHeight = 0
     private var refreshRate = 0f
+    private var generatingEnabled = true
 
     val requested: Boolean
         @Synchronized get() = options.usable
@@ -27,12 +28,25 @@ object FrameGen {
     val active: Boolean
         @Synchronized get() = handle != 0L
 
+    val generating: Boolean
+        @Synchronized get() = generatingEnabled
+
+    val multiplier: Int
+        @Synchronized get() = options.multiplier
+
+    val targetRate: Int
+        @Synchronized get() = options.targetRate
+
+    val flowScale: Int
+        @Synchronized get() = options.flowScale
+
     @JvmStatic
     @Synchronized
     fun install(context: Context, source: FrameGenOptions) {
         appContext = context.applicationContext
         if (options != source) release()
         options = source
+        generatingEnabled = true
         if (options.usable) FrameGenNative.ensureLoaded()
     }
 
@@ -92,6 +106,36 @@ object FrameGen {
         Log.i(TAG, "frame generation active ${width}x$height multiplier=${options.multiplier} " +
             "target=${options.targetRate} flow=${options.flowScale} refresh=$refreshRate")
         return surface
+    }
+
+    @JvmStatic
+    @Synchronized
+    fun setGenerating(on: Boolean) {
+        generatingEnabled = on
+        pushConfig()
+    }
+
+    @JvmStatic
+    @Synchronized
+    fun reconfigure(multiplier: Int, targetRate: Int, flowScale: Int) {
+        options = options.copy(
+            multiplier = FrameGenOptions.clampMultiplier(multiplier),
+            targetRate = targetRate.coerceAtLeast(0),
+            flowScale = FrameGenOptions.clampFlowScale(flowScale),
+        )
+        pushConfig()
+    }
+
+    private fun pushConfig() {
+        if (handle == 0L) return
+        val multiplier = if (generatingEnabled) options.multiplier else 1
+        val target = if (generatingEnabled) options.targetRate else 0
+        val outcome =
+            runCatching {
+                FrameGenNative.nativeConfigure(handle, multiplier, target, options.flowScale, refreshRate)
+            }
+        Log.i(TAG, "frame generation reconfigured multiplier=$multiplier target=$target " +
+            "flow=${options.flowScale} refresh=$refreshRate ok=${outcome.isSuccess}")
     }
 
     @JvmStatic
@@ -162,17 +206,7 @@ object FrameGen {
         val rate = selected.refreshRate
         synchronized(this) {
             refreshRate = rate
-            if (handle != 0L) {
-                runCatching {
-                    FrameGenNative.nativeConfigure(
-                        handle,
-                        options.multiplier,
-                        options.targetRate,
-                        options.flowScale,
-                        rate,
-                    )
-                }
-            }
+            pushConfig()
         }
         Log.i(TAG, "frame generation display mode: wanted ${wanted}Hz, selected ${Math.round(rate)}Hz")
         return rate

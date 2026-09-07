@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.AutoAwesomeMotion
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Monitor
 import androidx.compose.material.icons.outlined.SportsEsports
@@ -220,6 +221,11 @@ class Gen1EngineActivity :
                 getString(R.string.retro_tab_display),
             ),
             RetroTabSpec(
+                RetroPane.FRAMEGEN,
+                Icons.Outlined.AutoAwesomeMotion,
+                getString(R.string.session_drawer_frame_generation),
+            ),
+            RetroTabSpec(
                 RetroPane.SOUND,
                 Icons.AutoMirrored.Outlined.VolumeUp,
                 getString(R.string.retro_tab_sound),
@@ -420,6 +426,7 @@ class Gen1EngineActivity :
         when (pane) {
             null -> buildMainEntries()
             RetroPane.SAVES -> buildSaveEntries()
+            RetroPane.FRAMEGEN -> emptyList()
             RetroPane.CONTROLS -> buildControlEntries() + engineRows(RetroPane.CONTROLS)
             RetroPane.HUD -> buildHudEntries()
             else -> engineRows(pane)
@@ -811,6 +818,19 @@ class Gen1EngineActivity :
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
 
         menu.entriesProvider = { pane -> buildEntriesFor(pane) }
+        menu.paneContentProvider = { pane ->
+            if (pane == RetroPane.FRAMEGEN) {
+                {
+                    RetroFrameGenPane.Content(
+                        this,
+                        persistShortcut,
+                        persistShortcut?.let { RetroShortcuts.systemForShortcut(it) }?.id,
+                    )
+                }
+            } else {
+                null
+            }
+        }
         menu.bottomProvider = { buildBottomEntries() }
         menu.tabs = buildTabs()
 

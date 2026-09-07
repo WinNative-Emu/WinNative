@@ -459,6 +459,19 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
         root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateOverlayArea() }
 
         menu.entriesProvider = { pane -> buildEntriesFor(pane) }
+        menu.paneContentProvider = { pane ->
+            if (pane == RetroPane.FRAMEGEN) {
+                {
+                    RetroFrameGenPane.Content(
+                        this,
+                        loadShortcut(),
+                        intent.getStringExtra(EXTRA_SYSTEM_ID),
+                    )
+                }
+            } else {
+                null
+            }
+        }
         menu.bottomProvider = { buildBottomEntries() }
         val coreOpts = RetroCoreOptions.forSystem(system)
         menu.tabs =
@@ -1155,6 +1168,7 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
                     )
                     addAll(coreOptionEntries(RetroOptionCategory.DISPLAY))
                 }
+            RetroPane.FRAMEGEN -> emptyList()
             RetroPane.SOUND ->
                 buildList {
                     add(

@@ -890,6 +890,8 @@ static void* fg_thread(void* arg) {
         fg_apply_config(fg);
 
         while (true) {
+            fg_apply_config(fg);
+
             AImage* image = NULL;
             int fence_fd = -1;
             media_status_t status =
