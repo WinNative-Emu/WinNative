@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.winlator.cmod.runtime.container.Shortcut
+import com.winlator.cmod.shared.ui.dialog.findActivity
 import com.winlator.cmod.runtime.display.FrameGenerationSection
 import com.winlator.cmod.runtime.display.LocalPaneScale
 import com.winlator.cmod.runtime.display.computePaneScale
@@ -87,18 +88,21 @@ object RetroFrameGenPane {
                             persist(shortcut, FrameGenOptions.KEY_ENABLED, if (value) "1" else "0")
                             pending = current.copy(enabled = value)
                             FrameGen.setGenerating(value)
+                            FrameGen.applyDisplayMode(context.findActivity())
                             revision++
                         },
                         onTargetRateSelected = { rate ->
                             persist(shortcut, FrameGenOptions.KEY_TARGET_RATE, rate.toString())
                             pending = current.copy(targetRate = rate)
                             FrameGen.reconfigure(multiplier, rate, flowScale)
+                            FrameGen.applyDisplayMode(context.findActivity())
                             revision++
                         },
                         onMultiplierSelected = { value ->
                             persist(shortcut, FrameGenOptions.KEY_MULTIPLIER, value.toString())
                             pending = current.copy(multiplier = value)
                             FrameGen.reconfigure(value, targetRate, flowScale)
+                            FrameGen.applyDisplayMode(context.findActivity())
                             revision++
                         },
                         onFlowScaleChanged = { value ->

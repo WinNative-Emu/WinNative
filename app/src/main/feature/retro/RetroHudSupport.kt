@@ -274,8 +274,25 @@ object RetroHudSupport {
         rating.setRenderer(rendererLabel)
         rating.setHudElevation(HUD_ELEVATION)
         rating.visibility = View.GONE
+        bindFrameGeneration(rating)
         return rating
     }
+
+    fun bindFrameGeneration(rating: FrameRating) {
+        val requested = com.winlator.cmod.shared.framegen.FrameGen.requested
+        rating.setOutputFrameSource(if (requested) frameGenOutputSource else null)
+        rating.setFrameGenerationActive(requested)
+    }
+
+    private val frameGenOutputSource =
+        object : FrameRating.OutputFrameSource {
+            override fun getPresentedFrameCount(): Long =
+                com.winlator.cmod.shared.framegen.FrameGen.realFrames() +
+                    com.winlator.cmod.shared.framegen.FrameGen.generatedFrames()
+
+            override fun getGeneratedFrameCount(): Long =
+                com.winlator.cmod.shared.framegen.FrameGen.generatedFrames()
+        }
 
     fun attachFrameRating(
         parent: ViewGroup,

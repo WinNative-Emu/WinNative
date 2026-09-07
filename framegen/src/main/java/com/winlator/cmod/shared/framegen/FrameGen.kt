@@ -11,6 +11,7 @@ import android.view.WindowManager
 
 object FrameGen {
     private const val TAG = "WnFrameGen"
+    private const val CADENCE_EPSILON = 0.01f
 
     private var appContext: Context? = null
     private var options = FrameGenOptions()
@@ -169,7 +170,7 @@ object FrameGen {
     fun applyDisplayMode(activity: Activity?): Float {
         val window = activity?.window ?: return 0f
         val params = window.attributes
-        if (!requested) {
+        if (!requested || !generating) {
             if (params.preferredDisplayModeId != 0) {
                 params.preferredDisplayModeId = 0
                 window.attributes = params
@@ -194,7 +195,7 @@ object FrameGen {
             ) {
                 continue
             }
-            if (best == null || betterMode(mode, best!!, wanted)) best = mode
+            if (best == null || betterMode(mode, best!!, wanted, source)) best = mode
         }
         val selected = best ?: active
         if (selected.modeId != params.preferredDisplayModeId || params.preferredRefreshRate != 0f) {
@@ -212,14 +213,29 @@ object FrameGen {
         return rate
     }
 
-    private fun betterMode(candidate: Display.Mode, current: Display.Mode, wanted: Int): Boolean {
+    private fun betterMode(
+        candidate: Display.Mode,
+        current: Display.Mode,
+        wanted: Int,
+        sourceRate: Int,
+    ): Boolean {
         val a = candidate.refreshRate
         val b = current.refreshRate
         val aMeets = a + 0.5f >= wanted
         val bMeets = b + 0.5f >= wanted
         if (aMeets != bMeets) return aMeets
         if (!aMeets) return a > b
+        val aCadence = cadenceFits(a, sourceRate)
+        val bCadence = cadenceFits(b, sourceRate)
+        if (aCadence != bCadence) return aCadence
         return a < b
+    }
+
+    private fun cadenceFits(refreshRate: Float, sourceRate: Int): Boolean {
+        if (refreshRate <= 0f || sourceRate <= 0 || refreshRate < sourceRate) return false
+        val ratio = refreshRate / sourceRate
+        val nearest = Math.round(ratio)
+        return nearest >= 1 && Math.abs(ratio - nearest) <= CADENCE_EPSILON
     }
 
     private fun displayOf(activity: Activity): Display? {

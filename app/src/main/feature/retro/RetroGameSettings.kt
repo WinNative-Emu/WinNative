@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.AutoAwesomeMotion
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Memory
@@ -281,6 +282,7 @@ class RetroSettingsState(
 private enum class RetroSectionId {
     GENERAL,
     GRAPHICS,
+    FRAMEGEN,
     PERFORMANCE,
     HUD,
     INPUT,
@@ -300,6 +302,11 @@ private fun buildRetroSections(state: RetroSettingsState): List<RetroSection> {
     val systemId = state.system?.id
     sections += RetroSection(RetroSectionId.GENERAL, Icons.Outlined.Tune, R.string.retro_gs_section_general)
     sections += RetroSection(RetroSectionId.GRAPHICS, Icons.Outlined.Monitor, R.string.retro_gs_section_graphics)
+    sections += RetroSection(
+        RetroSectionId.FRAMEGEN,
+        Icons.Outlined.AutoAwesomeMotion,
+        R.string.session_drawer_frame_generation,
+    )
     if (state.system?.isExternal == true) {
         sections += RetroSection(RetroSectionId.PERFORMANCE, Icons.Outlined.Bolt, R.string.retro_gs_section_performance)
     }
@@ -584,6 +591,7 @@ private fun RetroSectionContent(
                 when (sections.getOrNull(idx)?.id) {
                     RetroSectionId.GENERAL -> RetroGeneralSection(state, onPickArtwork, onRemoveArtwork, onImportBios)
                     RetroSectionId.GRAPHICS -> RetroGraphicsSection(state)
+                    RetroSectionId.FRAMEGEN -> RetroFrameGenerationGroup(state)
                     RetroSectionId.PERFORMANCE -> RetroPs2PerformanceSection()
                     RetroSectionId.HUD ->
                         if (state.system?.isExternal == true) {
@@ -1287,13 +1295,9 @@ private fun RetroArtworkActionButton(
 @Composable
 private fun RetroGraphicsSection(state: RetroSettingsState) {
     if (state.system?.isExternal == true) {
-        RetroFrameGenerationGroup(state)
-        Spacer(Modifier.height(12.dp))
         RetroPs2GraphicsSection()
         return
     }
-    RetroFrameGenerationGroup(state)
-    Spacer(Modifier.height(12.dp))
     val engineCtx = androidx.compose.ui.platform.LocalContext.current
     var engine3dSupported by remember { mutableStateOf(false) }
     LaunchedEffect(state.shortcut.file.absolutePath) {

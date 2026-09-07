@@ -301,7 +301,8 @@ public final class RefreshRateUtils {
   public static void applyPreferredRefreshRate(Activity activity, int requestedHz, int fpsLimit) {
     if (activity.isFinishing() || activity.isDestroyed()) return;
 
-    if (com.winlator.cmod.shared.framegen.FrameGen.INSTANCE.getRequested()) {
+    if (com.winlator.cmod.shared.framegen.FrameGen.INSTANCE.getRequested()
+        && com.winlator.cmod.shared.framegen.FrameGen.INSTANCE.getGenerating()) {
       com.winlator.cmod.shared.framegen.FrameGen.applyDisplayMode(activity);
       return;
     }
