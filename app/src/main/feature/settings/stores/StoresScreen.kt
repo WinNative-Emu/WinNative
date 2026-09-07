@@ -102,6 +102,8 @@ data class StoreState(
     val isSteamLoggedIn: Boolean = false,
     val isEpicLoggedIn: Boolean = false,
     val isGogLoggedIn: Boolean = false,
+    val isItchLoggedIn: Boolean = false,
+    val itchUserName: String = "",
     val sharedFolder: Boolean = true,
     val downloadSpeed: Int = 24,
     val downloadServer: Int = 0,
@@ -110,6 +112,7 @@ data class StoreState(
     val steamFolder: String = "",
     val epicFolder: String = "",
     val gogFolder: String = "",
+    val itchFolder: String = "",
     val containerLanguageLabels: List<String> = emptyList(),
     val containerLanguageIndex: Int = 0,
 )
@@ -124,6 +127,8 @@ fun StoresScreen(
     onEpicSignOut: () -> Unit,
     onGogSignIn: () -> Unit,
     onGogSignOut: () -> Unit,
+    onItchSignIn: () -> Unit,
+    onItchSignOut: () -> Unit,
     onSharedFolderChanged: (Boolean) -> Unit,
     onDownloadSpeedChanged: (Int) -> Unit,
     onDownloadServerChanged: (Int) -> Unit,
@@ -131,6 +136,7 @@ fun StoresScreen(
     onPickSteamFolder: () -> Unit,
     onPickEpicFolder: () -> Unit,
     onPickGogFolder: () -> Unit,
+    onPickItchFolder: () -> Unit,
     onContainerLanguageSelected: (Int) -> Unit,
     bridge: SettingsNavBridge? = null,
 ) {
@@ -188,6 +194,14 @@ fun StoresScreen(
                 onSignIn = onGogSignIn,
                 onSignOut = onGogSignOut,
             )
+            StoreCard(
+                name = stringResource(R.string.itch_store_title),
+                icon = Icons.Outlined.Gamepad,
+                accentColor = Color(0xFFFA5C5C),
+                isLoggedIn = state.isItchLoggedIn,
+                onSignIn = onItchSignIn,
+                onSignOut = onItchSignOut,
+            )
 
             SectionLabel(stringResource(R.string.stores_accounts_download_settings), modifier = Modifier.padding(top = 8.dp))
 
@@ -229,6 +243,11 @@ fun StoresScreen(
                             stringResource(R.string.stores_accounts_gog_downloads),
                             state.gogFolder,
                             onPickGogFolder,
+                        )
+                        FolderPathCard(
+                            stringResource(R.string.itch_store_downloads),
+                            state.itchFolder,
+                            onPickItchFolder,
                         )
                     }
                 }

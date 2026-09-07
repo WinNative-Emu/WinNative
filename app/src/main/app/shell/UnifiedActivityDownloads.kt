@@ -255,6 +255,8 @@ import kotlin.math.roundToInt
 
 // Downloads tab + queue/progress UI + game/workshop managers, split out of UnifiedActivity.kt (behavior-identical).
 
+private const val LIVE_PROGRESS_TICK_MS = 250L
+
 // Downloads Tab
 @Composable
 internal fun UnifiedActivity.DownloadsTab(
@@ -315,6 +317,16 @@ internal fun UnifiedActivity.DownloadsTab(
     LaunchedEffect(syncDownloads) {
         DownloadCoordinator.changes.collect {
             latestSyncDownloads()
+        }
+    }
+
+    val hasLiveTransfer = downloads.any { (_, info) -> info.isActive() }
+
+    LaunchedEffect(hasLiveTransfer) {
+        if (!hasLiveTransfer) return@LaunchedEffect
+        while (true) {
+            delay(LIVE_PROGRESS_TICK_MS)
+            tick++
         }
     }
 
@@ -1026,6 +1038,7 @@ internal fun UnifiedActivity.DownloadItemDeck(
     val isSteam = id.startsWith("STEAM_")
     val isEpic = id.startsWith("EPIC_")
     val isGog = id.startsWith("GOG_")
+    val isItch = id.startsWith("ITCH_")
     val appId =
         if (isSteam) {
             id.removePrefix("STEAM_").toIntOrNull() ?: 0
@@ -1035,10 +1048,14 @@ internal fun UnifiedActivity.DownloadItemDeck(
             0
         }
     val gogId = if (isGog) id.removePrefix("GOG_") else ""
+    val itchId = if (isItch) id.removePrefix("ITCH_").toIntOrNull() ?: 0 else 0
 
     var steamApp by remember(appId) { mutableStateOf<SteamApp?>(null) }
     var epicGame by remember(appId) { mutableStateOf<EpicGame?>(null) }
     var gogGame by remember(gogId) { mutableStateOf<GOGGame?>(null) }
+    var itchGame by remember(itchId) {
+        mutableStateOf<com.winlator.cmod.feature.stores.itch.service.ItchInstalledGame?>(null)
+    }
     val context = LocalContext.current
     val clickInteractionSource = remember { MutableInteractionSource() }
     val animatedProgress by animateFloatAsState(
@@ -1060,7 +1077,7 @@ internal fun UnifiedActivity.DownloadItemDeck(
         previousStatus = status
     }
 
-    LaunchedEffect(appId, gogId, isSteam, isEpic, isGog) {
+    LaunchedEffect(appId, gogId, itchId, isSteam, isEpic, isGog, isItch) {
         withContext(Dispatchers.IO) {
             if (isSteam) {
                 steamApp = db.steamAppDao().findApp(appId)
@@ -1068,6 +1085,10 @@ internal fun UnifiedActivity.DownloadItemDeck(
                 epicGame = EpicService.getEpicGameOf(appId)
             } else if (isGog) {
                 gogGame = GOGService.getGOGGameOf(gogId)
+            } else if (isItch) {
+                itchGame =
+                    com.winlator.cmod.feature.stores.itch.service.ItchLibrary
+                        .find(context, itchId)
             }
         }
     }
@@ -1080,6 +1101,8 @@ internal fun UnifiedActivity.DownloadItemDeck(
             epicGame?.title
         } else if (isGog) {
             gogGame?.title
+        } else if (isItch) {
+            itchGame?.title ?: unknownGameLabel
         } else {
             unknownGameLabel
         }
@@ -1090,6 +1113,8 @@ internal fun UnifiedActivity.DownloadItemDeck(
             epicGame?.primaryImageUrl ?: epicGame?.iconUrl
         } else if (isGog) {
             gogGame?.imageUrl ?: gogGame?.iconUrl
+        } else if (isItch) {
+            itchGame?.coverUrl
         } else {
             null
         }

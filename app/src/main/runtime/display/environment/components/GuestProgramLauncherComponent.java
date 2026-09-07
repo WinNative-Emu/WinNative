@@ -11,6 +11,7 @@ import com.winlator.cmod.runtime.compat.box64.Box64Preset;
 import com.winlator.cmod.runtime.compat.box64.Box64PresetManager;
 import com.winlator.cmod.runtime.compat.fexcore.FEXCorePreset;
 import com.winlator.cmod.runtime.compat.fexcore.FEXCorePresetManager;
+import com.winlator.cmod.runtime.audio.directaudio.DirectAudioDriver;
 import com.winlator.cmod.runtime.container.Container;
 import com.winlator.cmod.runtime.container.Shortcut;
 import com.winlator.cmod.runtime.content.ContentProfile;
@@ -63,7 +64,13 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     String nativeLibDir = context.getApplicationInfo().nativeLibraryDir;
     File sourceFile = new File(nativeLibDir, libraryName);
 
-    if (sourceFile.exists() && (!destFile.exists() || destFile.length() != sourceFile.length())) {
+    long apkInstalledAt = new File(context.getApplicationInfo().sourceDir).lastModified();
+    boolean destIsStale =
+        destFile.exists()
+            && (destFile.length() != sourceFile.length()
+                || destFile.lastModified() < apkInstalledAt);
+
+    if (sourceFile.exists() && (!destFile.exists() || destIsStale)) {
       Log.d(
           "GuestLauncher",
           "Copying "
@@ -1093,6 +1100,44 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     envVars.put("PROTON_ENABLE_HIDRAW", "0");
     envVars.put("SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_GAMEPAD", "1");
     envVars.put("SDL_JOYSTICK_HIDAPI", "0");
+
+    File netshimDest = ensureImageFsNativeLibrary(context, imageFs, "libnetshim.so");
+    if (netshimDest != null && netshimDest.exists()) {
+      ld_preload = ld_preload.isEmpty()
+          ? netshimDest.getAbsolutePath()
+          : netshimDest.getAbsolutePath() + ":" + ld_preload;
+      String macSeed = android.provider.Settings.Secure.getString(
+          context.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
+      if (macSeed == null || macSeed.isEmpty()) macSeed = "winnative";
+      envVars.put("WN_NET_MAC_SEED", macSeed);
+      File netshimLog = new File(imageFs.getRootDir(), "tmp/wn-netshim.log");
+      netshimLog.getParentFile().mkdirs();
+      netshimLog.delete();
+      envVars.put("WN_NET_LOG", netshimLog.getAbsolutePath());
+      if (new File(imageFs.getRootDir(), "tmp/wn-net-tap.on").exists()) {
+        envVars.put("WN_NET_TAP", "1");
+      }
+      Log.d("GuestLauncher", "netshim preloaded; synthetic adapter MAC seed installed");
+    } else {
+      Log.w("GuestLauncher", "libnetshim.so missing — GetAdaptersInfo will report no adapters "
+          + "and titles that derive a hardware id from the MAC (e.g. Brawlhalla) will be rejected");
+    }
+
+    String effectiveAudioDriver = container.getAudioDriver();
+    if (shortcut != null) {
+      String shortcutAudioDriver = shortcut.getExtra("audioDriver");
+      if (shortcutAudioDriver != null && !shortcutAudioDriver.isEmpty()) {
+        effectiveAudioDriver = shortcutAudioDriver;
+      }
+    }
+    if (DirectAudioDriver.INSTANCE.isSelected(effectiveAudioDriver)) {
+      File audioShimDest = ensureImageFsNativeLibrary(context, imageFs, "libwaudio.so");
+      if (audioShimDest != null && audioShimDest.exists()) {
+        Log.d("GuestLauncher", "DirectAudio: libwaudio shim staged in usr/lib");
+      } else {
+        Log.w("GuestLauncher", "DirectAudio selected but libwaudio.so missing — audio may be silent");
+      }
+    }
 
     Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
     envVars.put("LD_PRELOAD", ld_preload);

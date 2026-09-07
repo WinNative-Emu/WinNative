@@ -192,8 +192,20 @@ target_link_libraries(winlator
 )
 
 # Fake evdev input shim used by the pb_controller_fix controller path.
+add_library(netshim SHARED
+        winlator/netshim.c
+)
+target_compile_options(netshim PRIVATE -Wall -Wextra)
+target_link_libraries(netshim log)
+
 add_library(fakeinput SHARED
         winlator/fakeinput.cpp
 )
 target_compile_options(fakeinput PRIVATE -Wall -Wextra -fvisibility=hidden)
 target_link_libraries(fakeinput log dl)
+
+add_library(waudio SHARED
+        wnaudiohook/wn_aaudio_shim.c
+)
+target_compile_options(waudio PRIVATE -Wall -Wextra -fvisibility=hidden)
+target_link_libraries(waudio log dl)

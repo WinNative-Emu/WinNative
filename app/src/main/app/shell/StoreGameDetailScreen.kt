@@ -128,6 +128,14 @@ internal data class StoreBranchOption(
     val isInstalled: Boolean = false,
 )
 
+internal data class StoreDetailChip(
+    val icon: ImageVector,
+    val label: String,
+    val value: String,
+    val highlight: Boolean = false,
+)
+
+private val CompactDetailWidth = 560.dp
 private val StoreBlack = Color.Black
 private val StoreCard = Color(0xFF12121B)
 private val StoreAccent = Color(0xFF1A9FFF)
@@ -154,6 +162,7 @@ internal fun StoreGameDetailScreen(
     showCustomPath: Boolean = true,
     showCloudSync: Boolean = false,
     showUninstall: Boolean = true,
+    uninstallAsPrimaryAction: Boolean = false,
     showUpdateCheck: Boolean = false,
     isCheckingForUpdate: Boolean = false,
     isUpdateAvailable: Boolean = false,
@@ -164,6 +173,7 @@ internal fun StoreGameDetailScreen(
     showWorkshop: Boolean = false,
     showVerifyFiles: Boolean = false,
     areSteamActionsEnabled: Boolean = true,
+    detailChips: List<StoreDetailChip> = emptyList(),
     dlcs: List<StoreDlcItem> = emptyList(),
     selectedDlcIds: Set<Int> = emptySet(),
     isDlcSelectionEnabled: Boolean = true,
@@ -229,6 +239,7 @@ internal fun StoreGameDetailScreen(
         val horizontalNavInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)
         val hasSelectedInstallableDlc = dlcs.any { !it.isInstalled && it.id in selectedDlcIds }
         val showDownloadCta = !isInstalled || hasSelectedInstallableDlc
+        val showUninstallCta = uninstallAsPrimaryAction && showUninstall && isInstalled
         val updateCheckAvailable = showUpdateCheck && isInstalled
         val showUpdateCta = updateCheckAvailable && isUpdateAvailable
         val verifyFilesAvailable = showVerifyFiles && isInstalled
@@ -417,188 +428,235 @@ internal fun StoreGameDetailScreen(
             }
 
             Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(contentGap),
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        if (isLoading) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = StoreAccent,
-                                    strokeWidth = 2.dp,
-                                )
-                                Text(
-                                    stringResource(R.string.common_ui_loading),
-                                    color = StoreTextSecondary,
-                                    fontSize = 12.sp,
-                                )
-                            }
-                        } else if (isInstalled) {
-                            StoreStatChip(
-                                icon = Icons.Outlined.Storage,
-                                label = stringResource(R.string.library_games_install_path),
-                                value = installPathDisplay,
-                            )
-                            if (isUpdateAvailable && updateDownloadSize > 0L) {
-                                StoreStatChip(
-                                    icon = Icons.Outlined.SystemUpdate,
-                                    label = stringResource(R.string.store_game_update),
-                                    value = StorageUtils.formatBinarySize(updateDownloadSize),
-                                )
-                            }
-                        } else {
-                            if (downloadSize > 0L) {
-                                StoreStatChip(
-                                    icon = Icons.Outlined.Download,
-                                    label = stringResource(R.string.common_ui_download),
-                                    value = StorageUtils.formatBinarySize(downloadSize),
-                                )
-                            }
-                            if (installSize > 0L) {
+                val statChips: @Composable (Modifier) -> Unit = { chipModifier ->
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = chipModifier,
+                        ) {
+                            if (isLoading) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = StoreAccent,
+                                        strokeWidth = 2.dp,
+                                    )
+                                    Text(
+                                        stringResource(R.string.common_ui_loading),
+                                        color = StoreTextSecondary,
+                                        fontSize = 12.sp,
+                                    )
+                                }
+                            } else if (isInstalled) {
+                                detailChips.forEach { chip ->
+                                    StoreStatChip(
+                                        icon = chip.icon,
+                                        label = chip.label,
+                                        value = chip.value,
+                                        valueColor = if (chip.highlight) StoreAccentGlow else null,
+                                    )
+                                }
                                 StoreStatChip(
                                     icon = Icons.Outlined.Storage,
-                                    label = stringResource(R.string.common_ui_size),
-                                    value = StorageUtils.formatBinarySize(installSize),
-                                    valueColor = if (!isInstallEnabled) StoreDanger else null,
+                                    label = stringResource(R.string.library_games_install_path),
+                                    value = installPathDisplay,
                                 )
-                            }
-                            if (availableBytes > 0L) {
-                                StoreStatChip(
-                                    icon = Icons.Outlined.Folder,
-                                    label = stringResource(R.string.common_ui_available),
-                                    value = StorageUtils.formatBinarySize(availableBytes),
-                                    valueColor = if (!isInstallEnabled) StoreDanger else null,
-                                )
-                            }
-                            if (showCustomPath) {
-                                StoreActionChip(
-                                    icon = Icons.Outlined.Folder,
-                                    label = customPathLabel,
-                                    onClick = onCustomPath,
-                                )
+                                if (isUpdateAvailable && updateDownloadSize > 0L) {
+                                    StoreStatChip(
+                                        icon = Icons.Outlined.SystemUpdate,
+                                        label = stringResource(R.string.store_game_update),
+                                        value = StorageUtils.formatBinarySize(updateDownloadSize),
+                                    )
+                                }
+                            } else {
+                                detailChips.forEach { chip ->
+                                    StoreStatChip(
+                                        icon = chip.icon,
+                                        label = chip.label,
+                                        value = chip.value,
+                                        valueColor = if (chip.highlight) StoreAccentGlow else null,
+                                    )
+                                }
+                                if (downloadSize > 0L) {
+                                    StoreStatChip(
+                                        icon = Icons.Outlined.Download,
+                                        label = stringResource(R.string.common_ui_download),
+                                        value = StorageUtils.formatBinarySize(downloadSize),
+                                    )
+                                }
+                                if (installSize > 0L) {
+                                    StoreStatChip(
+                                        icon = Icons.Outlined.Storage,
+                                        label = stringResource(R.string.common_ui_size),
+                                        value = StorageUtils.formatBinarySize(installSize),
+                                        valueColor = if (!isInstallEnabled) StoreDanger else null,
+                                    )
+                                }
+                                if (availableBytes > 0L) {
+                                    StoreStatChip(
+                                        icon = Icons.Outlined.Folder,
+                                        label = stringResource(R.string.common_ui_available),
+                                        value = StorageUtils.formatBinarySize(availableBytes),
+                                        valueColor = if (!isInstallEnabled) StoreDanger else null,
+                                    )
+                                }
+                                if (showCustomPath) {
+                                    StoreActionChip(
+                                        icon = Icons.Outlined.Folder,
+                                        label = customPathLabel,
+                                        onClick = onCustomPath,
+                                    )
+                                }
                             }
                         }
-                    }
+                }
 
-                    if (showActionColumn) {
-                        Column(
-                            modifier = Modifier.width(actionWidth),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            if (showUpdateCta) {
-                                StoreCtaButton(
-                                    height = ctaHeight,
-                                    icon = Icons.Outlined.SystemUpdate,
-                                    label = stringResource(R.string.store_game_download_update),
-                                    enabled =
-                                        !isLoading &&
-                                            isUpdateActionEnabled &&
-                                            !isCheckingForUpdate,
-                                    loading = false,
-                                    onClick = onDownloadUpdate,
-                                    isEntry = true,
-                                    navRow = 1,
-                                    navCol = 3,
-                                )
-                            }
+                val actionColumn: @Composable (Modifier) -> Unit = { actionModifier ->
+                        if (showActionColumn) {
+                            Column(
+                                modifier = actionModifier,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                if (showUpdateCta) {
+                                    StoreCtaButton(
+                                        height = ctaHeight,
+                                        icon = Icons.Outlined.SystemUpdate,
+                                        label = stringResource(R.string.store_game_download_update),
+                                        enabled =
+                                            !isLoading &&
+                                                isUpdateActionEnabled &&
+                                                !isCheckingForUpdate,
+                                        loading = false,
+                                        onClick = onDownloadUpdate,
+                                        isEntry = true,
+                                        navRow = 1,
+                                        navCol = 3,
+                                    )
+                                }
 
-                            if (updateCheckAvailable && !updateStatusText.isNullOrBlank()) {
-                                Text(
-                                    updateStatusText,
-                                    color =
-                                        if (updateStatusText == stringResource(R.string.store_game_update_check_failed)) {
-                                            StoreDanger
-                                        } else {
-                                            StoreTextSecondary
-                                        },
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-
-                            if (showDownloadCta && !isLoading && !isInstallEnabled && installSize > 0L) {
-                                val deficit = (installSize - availableBytes).coerceAtLeast(0L)
-                                if (deficit > 0L) {
+                                if (updateCheckAvailable && !updateStatusText.isNullOrBlank()) {
                                     Text(
-                                        stringResource(
-                                            R.string.library_games_not_enough_space,
-                                            StorageUtils.formatBinarySize(deficit),
-                                        ),
-                                        color = StoreDanger,
+                                        updateStatusText,
+                                        color =
+                                            if (updateStatusText == stringResource(R.string.store_game_update_check_failed)) {
+                                                StoreDanger
+                                            } else {
+                                                StoreTextSecondary
+                                            },
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                 }
-                            }
 
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(actionIconSpacing),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                if (showCloudSync && isInstalled) {
-                                    StoreIconActionButton(
-                                        icon = Icons.Outlined.CloudSync,
-                                        contentDescription = stringResource(R.string.cloud_saves_title),
-                                        size = actionIconSize,
-                                        onClick = onCloudSync,
-                                        navRow = 1,
-                                        navCol = 1,
+                                if (showDownloadCta && !isLoading && !isInstallEnabled && installSize > 0L) {
+                                    val deficit = (installSize - availableBytes).coerceAtLeast(0L)
+                                    if (deficit > 0L) {
+                                        Text(
+                                            stringResource(
+                                                R.string.library_games_not_enough_space,
+                                                StorageUtils.formatBinarySize(deficit),
+                                            ),
+                                            color = StoreDanger,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(actionIconSpacing),
+                                    verticalAlignment = Alignment.Top,
+                                ) {
+                                    if (showCloudSync && isInstalled) {
+                                        StoreIconActionButton(
+                                            icon = Icons.Outlined.CloudSync,
+                                            contentDescription = stringResource(R.string.cloud_saves_title),
+                                            size = actionIconSize,
+                                            onClick = onCloudSync,
+                                            navRow = 1,
+                                            navCol = 1,
+                                        )
+                                    }
+                                    if (showUninstall && isInstalled && !showUninstallCta) {
+                                        StoreIconActionButton(
+                                            icon = Icons.Outlined.Delete,
+                                            contentDescription = stringResource(R.string.common_ui_uninstall),
+                                            size = actionIconSize,
+                                            onClick = onUninstall,
+                                            tint = StoreDanger,
+                                            navRow = 1,
+                                            navCol = 2,
+                                        )
+                                    }
+                                }
+
+                                if (showBranchPicker && showDownloadCta) {
+                                    StoreBranchPicker(
+                                        branches = branches,
+                                        selectedBranchId = selectedBranchId,
+                                        enabled = !isLoading && isBranchSelectionEnabled,
+                                        expanded = branchMenuOpen,
+                                        onExpandedChange = { branchMenuOpen = it },
+                                        menuRegistry = branchRegistry,
+                                        onSelectBranch = onSelectBranch,
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
-                                if (showUninstall && isInstalled) {
-                                    StoreIconActionButton(
+
+                                if (showDownloadCta) {
+                                    StoreCtaButton(
+                                        height = ctaHeight,
+                                        icon = Icons.Outlined.Download,
+                                        label = stringResource(R.string.common_ui_download),
+                                        enabled = !isLoading && isDownloadActionEnabled,
+                                        loading = isLoading,
+                                        onClick = onInstall,
+                                        isEntry = true,
+                                        navRow = 1,
+                                        navCol = 4,
+                                    )
+                                }
+
+                                if (showUninstallCta) {
+                                    StoreCtaButton(
+                                        height = ctaHeight,
                                         icon = Icons.Outlined.Delete,
-                                        contentDescription = stringResource(R.string.common_ui_uninstall),
-                                        size = actionIconSize,
+                                        label = stringResource(R.string.common_ui_uninstall),
+                                        enabled = !isLoading,
+                                        loading = false,
                                         onClick = onUninstall,
-                                        tint = StoreDanger,
+                                        danger = true,
+                                        isEntry = !showDownloadCta,
                                         navRow = 1,
-                                        navCol = 2,
+                                        navCol = 5,
                                     )
                                 }
                             }
+                        }
+                }
 
-                            if (showBranchPicker && showDownloadCta) {
-                                StoreBranchPicker(
-                                    branches = branches,
-                                    selectedBranchId = selectedBranchId,
-                                    enabled = !isLoading && isBranchSelectionEnabled,
-                                    expanded = branchMenuOpen,
-                                    onExpandedChange = { branchMenuOpen = it },
-                                    menuRegistry = branchRegistry,
-                                    onSelectBranch = onSelectBranch,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-
-                            if (showDownloadCta) {
-                                StoreCtaButton(
-                                    height = ctaHeight,
-                                    icon = Icons.Outlined.Download,
-                                    label = stringResource(R.string.common_ui_download),
-                                    enabled = !isLoading && isDownloadActionEnabled,
-                                    loading = isLoading,
-                                    onClick = onInstall,
-                                    isEntry = true,
-                                    navRow = 1,
-                                    navCol = 4,
-                                )
-                            }
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    if (maxWidth < CompactDetailWidth) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            statChips(Modifier.fillMaxWidth())
+                            actionColumn(Modifier.fillMaxWidth())
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(contentGap),
+                            verticalAlignment = Alignment.Bottom,
+                        ) {
+                            statChips(Modifier.weight(1f))
+                            actionColumn(Modifier.width(actionWidth))
                         }
                     }
                 }
@@ -1475,6 +1533,7 @@ private fun StoreCtaButton(
     loading: Boolean,
     onClick: () -> Unit,
     isEntry: Boolean = false,
+    danger: Boolean = false,
     navRow: Int? = null,
     navCol: Int? = null,
 ) {
@@ -1494,11 +1553,19 @@ private fun StoreCtaButton(
     val activeBrush =
         Brush.horizontalGradient(
             colors =
-                listOf(
-                    Color(0xFF00B4D8).copy(alpha = 0.38f),
-                    StoreAccent.copy(alpha = 0.38f),
-                    Color(0xFF7B2FF7).copy(alpha = 0.38f),
-                ),
+                if (danger) {
+                    listOf(
+                        StoreDanger.copy(alpha = 0.30f),
+                        StoreDanger.copy(alpha = 0.44f),
+                        StoreDanger.copy(alpha = 0.30f),
+                    )
+                } else {
+                    listOf(
+                        Color(0xFF00B4D8).copy(alpha = 0.38f),
+                        StoreAccent.copy(alpha = 0.38f),
+                        Color(0xFF7B2FF7).copy(alpha = 0.38f),
+                    )
+                },
         )
     val disabledBrush =
         Brush.horizontalGradient(

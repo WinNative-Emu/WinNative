@@ -9,7 +9,7 @@ import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
 import org.apache.commons.compress.archivers.sevenz.SevenZFile
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream
+import org.apache.commons.compress.archivers.zip.ZipFile
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream
@@ -127,20 +127,25 @@ object ArchiveExtractor {
         onProgress: (Float) -> Unit,
         isActive: () -> Boolean,
     ) {
-        val total = source.length().coerceAtLeast(1L)
-        val counting = CountingInputStream(FileInputStream(source))
-        ZipArchiveInputStream(BufferedInputStream(counting, BUFFER_SIZE)).use { zip ->
+        ZipFile.builder().setFile(source).get().use { zip ->
+            val entries = zip.entries.toList()
+            val total = entries.sumOf { it.size.coerceAtLeast(0L) }.coerceAtLeast(1L)
+            var done = 0L
             val reporter = ProgressReporter(onProgress)
-            while (true) {
+            entries.forEach { entry ->
                 if (!isActive()) throw CancellationException()
-                val entry = zip.nextEntry ?: break
-                if (!zip.canReadEntryData(entry)) continue
-                val target = safeChild(destDir, entry.name) ?: continue
+                val target = safeChild(destDir, entry.name) ?: return@forEach
                 if (entry.isDirectory) {
                     target.mkdirs()
-                    continue
+                    return@forEach
                 }
-                writeEntry(zip, target, isActive) { reporter.report(counting.count.toFloat() / total) }
+                if (!zip.canReadEntryData(entry)) throw IOException("Cannot read ${entry.name}")
+                zip.getInputStream(entry).use { stream ->
+                    writeEntry(stream, target, isActive) { written ->
+                        done += written
+                        reporter.report(done.toFloat() / total)
+                    }
+                }
             }
         }
         onProgress(1f)
@@ -198,7 +203,7 @@ object ArchiveExtractor {
                 extractTar(stream, destDir, isActive, progress)
             } else {
                 val target = File(destDir, baseName(source))
-                writeEntry(stream, target, isActive, progress)
+                writeEntry(stream, target, isActive) { progress() }
             }
         }
         onProgress(1f)
@@ -248,7 +253,7 @@ object ArchiveExtractor {
                     continue
                 }
                 if (!entry.isFile) continue
-                writeEntry(tar, target, isActive, onProgress)
+                writeEntry(tar, target, isActive) { onProgress() }
             }
         }
     }
@@ -257,7 +262,7 @@ object ArchiveExtractor {
         stream: InputStream,
         target: File,
         isActive: () -> Boolean,
-        onProgress: () -> Unit,
+        onProgress: (Int) -> Unit,
     ) {
         target.parentFile?.mkdirs()
         val buffer = ByteArray(BUFFER_SIZE)
@@ -267,7 +272,7 @@ object ArchiveExtractor {
                 val read = stream.read(buffer)
                 if (read < 0) break
                 out.write(buffer, 0, read)
-                onProgress()
+                onProgress(read)
             }
         }
     }
