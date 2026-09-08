@@ -18,7 +18,6 @@ import com.winlator.cmod.shared.util.OnExtractFileListener;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -453,8 +452,7 @@ public class ContainerManager {
     ArrayList<Shortcut> shortcuts = new ArrayList<>();
     for (Container container : containers) {
       File desktopDir = container.getDesktopDir();
-      ArrayList<File> files = new ArrayList<>();
-      if (desktopDir.exists()) files.addAll(Arrays.asList(desktopDir.listFiles()));
+      File[] files = desktopDir.listFiles();
       if (files != null) {
         for (File file : files) {
           String fileName = file.getName();

@@ -11,6 +11,7 @@ import com.winlator.cmod.runtime.container.Shortcut;
 import com.winlator.cmod.shared.io.FileUtils;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Locale;
 
 /** Writes shortcuts as standalone .desktop files (plus icon) into the configured export folder. */
 public final class FrontendExporter {
@@ -172,7 +173,7 @@ public final class FrontendExporter {
   }
 
   private static boolean isImageFile(File file) {
-    String name = file.getName().toLowerCase();
+    String name = file.getName().toLowerCase(Locale.ROOT);
     return name.endsWith(".jpg")
         || name.endsWith(".jpeg")
         || name.endsWith(".png")

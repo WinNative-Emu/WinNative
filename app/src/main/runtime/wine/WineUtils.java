@@ -637,8 +637,8 @@ public abstract class WineUtils {
     if (isSymlink(steamworksCommonRedist)) {
       FileUtils.delete(steamworksCommonRedist);
     }
-    if (gameCommonRedist.exists() && gameCommonRedist.isDirectory()) {
-      FileUtils.copy(gameCommonRedist, steamworksCommonRedist);
+    if (gameCommonRedist.isDirectory()) {
+      syncDirectoryIfChanged(gameCommonRedist, steamworksCommonRedist);
     } else if (!steamworksCommonRedist.exists()) {
       steamworksCommonRedist.mkdirs();
     }
@@ -648,6 +648,27 @@ public abstract class WineUtils {
         new File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamapps");
     if (!steamappsDir.exists()) {
       steamappsDir.mkdirs();
+    }
+  }
+
+  private static void syncDirectoryIfChanged(File source, File destination) {
+    if (isSymlink(source)) return;
+    if (source.isDirectory()) {
+      if (!destination.isDirectory() && !destination.mkdirs()) return;
+      String[] names = source.list();
+      if (names == null) return;
+      for (String name : names) {
+        syncDirectoryIfChanged(new File(source, name), new File(destination, name));
+      }
+      return;
+    }
+    if (destination.isFile()
+        && destination.length() == source.length()
+        && destination.lastModified() == source.lastModified()) {
+      return;
+    }
+    if (FileUtils.copy(source, destination)) {
+      destination.setLastModified(source.lastModified());
     }
   }
 
