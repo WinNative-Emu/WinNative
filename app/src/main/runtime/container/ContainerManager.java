@@ -397,6 +397,7 @@ public class ContainerManager {
     try {
       JSONObject data = new JSONObject(configStr);
       data.put("id", id);
+      Container.applyNewContainerDefaults(data);
       dstContainer.loadData(data);
     } catch (JSONException e) {
       Log.e(
