@@ -697,18 +697,6 @@ public class Container {
         catch (JSONException e) {}
     }
 
-    public static void applyNewContainerDefaults(JSONObject data) {
-        try {
-            data.put("audioDriver", DEFAULT_AUDIO_DRIVER);
-            String envVarsStr = data.optString("envVars", DEFAULT_ENV_VARS);
-            if (!new EnvVars(envVarsStr).has(FAST_YIELD_ENV_VAR)) {
-                String entry = FAST_YIELD_ENV_VAR + "=" + FAST_YIELD_ENV_VALUE;
-                data.put("envVars", envVarsStr.trim().isEmpty() ? entry : envVarsStr.trim() + " " + entry);
-            }
-        }
-        catch (JSONException e) {}
-    }
-
     public static String getFallbackCPUList() {
         String cpuList = "";
         int numProcessors = Runtime.getRuntime().availableProcessors();
