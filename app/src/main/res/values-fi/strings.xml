@@ -2542,6 +2542,8 @@ Asennuspolku:
     <string name="settings_frame_generation_updated">Päivitetty kohteesta %1$s.</string>
     <string name="settings_frame_generation_not_owned">Ruudun generointi käyttää Lossless Scalingin varjostimia. Osta se Steamista kirjautuneella tilillä ottaaksesi tämän käyttöön.</string>
     <string name="settings_frame_generation_locate">Valitse Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpoloi tälle konsolille lisäruutuja Lossless Scalingilla.</string>
+    <string name="retro_gs_frame_generation_unsupported">Tämä näytönohjain ei tarjoa Vulkan-ominaisuuksia, joita Lossless Scaling -varjostimet vaativat.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io-lataukset</string>
     <string name="itch_store_sign_in">Kirjaudu itch.io-palveluun</string>

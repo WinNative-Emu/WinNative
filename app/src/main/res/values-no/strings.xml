@@ -2542,6 +2542,8 @@ Installert bane:
     <string name="settings_frame_generation_updated">Oppdatert fra %1$s.</string>
     <string name="settings_frame_generation_not_owned">Bildegenerering bruker shadere fra Lossless Scaling. Kjøp det på Steam med den påloggede kontoen for å aktivere dette.</string>
     <string name="settings_frame_generation_locate">Velg Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpolerer ekstra bilder for denne konsollen med Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Denne GPU-en tilbyr ikke Vulkan-funksjonene som Lossless Scaling-shaderne trenger.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io-nedlastinger</string>
     <string name="itch_store_sign_in">Logg inn på itch.io</string>

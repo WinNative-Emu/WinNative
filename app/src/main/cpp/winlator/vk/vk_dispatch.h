@@ -160,6 +160,8 @@ bool vkd_load_instance(VkInstance instance);
 // Must be called before dlclose so stale-pointer crashes fault on NULL.
 void vkd_unload(void);
 
+bool vkd_bind(void* libvulkan_handle, VkInstance instance);
+
 #ifdef __cplusplus
 }
 #endif

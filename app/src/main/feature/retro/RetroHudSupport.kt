@@ -274,8 +274,44 @@ object RetroHudSupport {
         rating.setRenderer(rendererLabel)
         rating.setHudElevation(HUD_ELEVATION)
         rating.visibility = View.GONE
+        bindFrameGeneration(rating)
         return rating
     }
+
+    private var boundRating: java.lang.ref.WeakReference<FrameRating>? = null
+    private var frameGenWatched = false
+
+    fun bindFrameGeneration(rating: FrameRating) {
+        boundRating = java.lang.ref.WeakReference(rating)
+        if (!frameGenWatched) {
+            frameGenWatched = true
+            com.winlator.cmod.shared.framegen.FrameGen.setStateListener {
+                Handler(Looper.getMainLooper()).post { rebindFrameGeneration() }
+            }
+        }
+        applyFrameGeneration(rating)
+    }
+
+    private fun rebindFrameGeneration() {
+        val rating = boundRating?.get() ?: return
+        applyFrameGeneration(rating)
+    }
+
+    private fun applyFrameGeneration(rating: FrameRating) {
+        val requested = com.winlator.cmod.shared.framegen.FrameGen.requested
+        rating.setOutputFrameSource(if (requested) frameGenOutputSource else null)
+        rating.setFrameGenerationActive(requested)
+    }
+
+    private val frameGenOutputSource =
+        object : FrameRating.OutputFrameSource {
+            override fun getPresentedFrameCount(): Long =
+                com.winlator.cmod.shared.framegen.FrameGen.realFrames() +
+                    com.winlator.cmod.shared.framegen.FrameGen.generatedFrames()
+
+            override fun getGeneratedFrameCount(): Long =
+                com.winlator.cmod.shared.framegen.FrameGen.generatedFrames()
+        }
 
     fun attachFrameRating(
         parent: ViewGroup,
@@ -424,14 +460,15 @@ object RetroHudSupport {
             object : Runnable {
                 override fun run() {
                     if (!running) return
-                    val rating = ratingProvider()
-                    if (enabledProvider() && rating != null &&
-                        com.armsx2.runtime.MainActivityRuntime.isNativeReady()
-                    ) {
+                    if (com.armsx2.runtime.MainActivityRuntime.isNativeReady()) {
                         val count = runCatching { kr.co.iefriends.pcsx2.NativeApp.getPresentedFrameCount() }.getOrDefault(0)
                         if (lastCount >= 0 && count >= lastCount) {
                             val delta = (count - lastCount).coerceAtMost(8)
-                            repeat(delta) { rating.recordGameFrame() }
+                            com.winlator.cmod.shared.framegen.FrameGen.noteSourceFrames(delta)
+                            val rating = ratingProvider()
+                            if (enabledProvider() && rating != null) {
+                                repeat(delta) { rating.recordGameFrame() }
+                            }
                         }
                         lastCount = count
                     }

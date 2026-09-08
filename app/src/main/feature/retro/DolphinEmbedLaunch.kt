@@ -174,6 +174,7 @@ object DolphinEmbedLaunch {
                 putExtra(DolphinEmulationActivity.EXTRA_RA_TOKEN, RetroAchievementsManager.apiToken(context) ?: "")
                 putExtra(DolphinEmulationActivity.EXTRA_RA_HARDCORE, RetroAchievementsManager.isHardcorePreferred(context))
             }
+            RetroFrameGen.writeInto(context, this, shortcut, sysId)
         }
     }
 

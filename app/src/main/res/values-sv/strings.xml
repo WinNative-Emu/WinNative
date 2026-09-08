@@ -2542,6 +2542,8 @@ Installerad sökväg:
     <string name="settings_frame_generation_updated">Uppdaterad från %1$s.</string>
     <string name="settings_frame_generation_not_owned">Bildgenerering använder shaders från Lossless Scaling. Köp det på Steam med det inloggade kontot för att aktivera detta.</string>
     <string name="settings_frame_generation_locate">Välj Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpolerar extra bildrutor för den här konsolen med Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Den här GPU:n saknar de Vulkan-funktioner som Lossless Scaling-shaderna kräver.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io-nedladdningar</string>
     <string name="itch_store_sign_in">Logga in på itch.io</string>

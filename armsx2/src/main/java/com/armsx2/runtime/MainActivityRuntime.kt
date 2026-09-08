@@ -1142,6 +1142,8 @@ open class MainActivityRuntime : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this) {
         }
         prefs = applicationContext.getSharedPreferences("ARMSX2", MODE_PRIVATE)
+        com.winlator.cmod.shared.framegen.FrameGen.installFromIntent(this, intent)
+        com.winlator.cmod.shared.framegen.FrameGen.applyDisplayMode(this)
         applyEmulationOrientation()
         NativeApp.sRumbleEnabled = ControllerMappings.rumbleEnabled()
         com.armsx2.input.PadRouter.multitapEnabled = ControllerMappings.multitapEnabled()
@@ -2109,6 +2111,7 @@ open class MainActivityRuntime : ComponentActivity() {
             return
         }
         NativeApp.shutdown()
+        com.winlator.cmod.shared.framegen.FrameGen.release()
         super.onDestroy()
 
         val appPid = Process.myPid()

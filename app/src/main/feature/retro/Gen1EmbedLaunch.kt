@@ -155,6 +155,12 @@ object Gen1EmbedLaunch {
                 Gen1EngineActivity.EXTRA_ENGINE_VARS,
                 Gen1EngineSettings.resolve(context, shortcut),
             )
+            RetroFrameGen.writeInto(
+                context,
+                this,
+                shortcut,
+                RetroShortcuts.systemForShortcut(shortcut)?.id,
+            )
         }
     }
 }

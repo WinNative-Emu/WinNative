@@ -301,6 +301,11 @@ public final class RefreshRateUtils {
   public static void applyPreferredRefreshRate(Activity activity, int requestedHz, int fpsLimit) {
     if (activity.isFinishing() || activity.isDestroyed()) return;
 
+    if (com.winlator.cmod.shared.framegen.FrameGen.INSTANCE.getRequested()) {
+      com.winlator.cmod.shared.framegen.FrameGen.applyDisplayMode(activity);
+      return;
+    }
+
     // The window has no display until it is attached; applying here resolves to a
     // bogus fallback (mode 0 / default rate) that briefly overrides the real choice.
     // Skip and let the next apply (resume / focus / display-change) set it once ready.

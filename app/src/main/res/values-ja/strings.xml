@@ -2542,6 +2542,8 @@
     <string name="settings_frame_generation_updated">%1$s から更新しました。</string>
     <string name="settings_frame_generation_not_owned">フレーム生成は Lossless Scaling のシェーダーを使用します。有効にするには、サインイン中のアカウントで Steam から購入してください。</string>
     <string name="settings_frame_generation_locate">Lossless.dll を選択…</string>
+    <string name="retro_gs_frame_generation_subtitle">Lossless Scaling でこのコンソール用の追加フレームを生成します。</string>
+    <string name="retro_gs_frame_generation_unsupported">この GPU は Lossless Scaling シェーダーに必要な Vulkan 機能に対応していません。</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io のダウンロード</string>
     <string name="itch_store_sign_in">itch.io にログイン</string>

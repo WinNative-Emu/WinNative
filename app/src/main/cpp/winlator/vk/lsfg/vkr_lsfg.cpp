@@ -144,13 +144,14 @@ void vkr_lsfg_destroy(VkrLsfg* lsfg) {
 }
 
 void vkr_lsfg_configure(VkrLsfg* lsfg, uint32_t multiplier, uint32_t target_rate,
-                        float flow_scale, float refresh_rate) {
+                        float flow_scale, float refresh_rate, float source_rate) {
     if (!lsfg) return;
 
     lsfg::LsfgPacerConfig config = lsfg->pacer.Config();
     config.multiplier = multiplier;
     config.target_rate = target_rate;
     config.refresh_rate = refresh_rate;
+    config.source_rate = source_rate > 0.0f ? source_rate : 0.0f;
     lsfg->pacer.SetConfig(config);
     lsfg->flow_scale = std::clamp(flow_scale, LSFG_FLOW_SCALE_MIN, LSFG_FLOW_SCALE_MAX);
 }
@@ -230,9 +231,9 @@ uint32_t vkr_lsfg_plan(VkrLsfg* lsfg, uint32_t capacity, uint64_t source_frames)
         const lsfg::LsfgPacerStats stats = lsfg->pacer.Stats();
         const float wanted =
             stats.source_rate * static_cast<float>(lsfg->plan.generations + 1);
-        LSFG_LOGI("pace gen=%zu max=%zu cap=%u guest=%.1f loop=%.1f refresh=%.1f target=%.0f "
-                  "slots=%.2f drawn=%llu needs=%.1fHz%s%s",
-                  lsfg->plan.generations, lsfg->pacer.MaxGenerations(), capacity,
+        LSFG_LOGI("pace gen=%zu max=%zu cost=%zu cap=%u guest=%.1f loop=%.1f refresh=%.1f "
+                  "target=%.0f slots=%.2f drawn=%llu needs=%.1fHz%s%s",
+                  lsfg->plan.generations, lsfg->pacer.MaxGenerations(), stats.cost_limit, capacity,
                   (double)stats.source_rate, (double)stats.loop_rate,
                   (double)stats.refresh_rate, (double)stats.target_rate, (double)stats.slots,
                   (unsigned long long)stats.last_drawn, (double)wanted,

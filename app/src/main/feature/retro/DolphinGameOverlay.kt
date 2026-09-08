@@ -252,6 +252,7 @@ object DolphinGameOverlay {
             }
             rating.visibility = android.view.View.VISIBLE
             rating.reset()
+            RetroHudSupport.bindFrameGeneration(rating)
         }
 
         fun setHudVisible(value: Boolean) {
@@ -345,6 +346,19 @@ object DolphinGameOverlay {
         )
 
         menu.tabs = RetroDrawerTabs.build(activity, includeNetplay = DolphinNetplay.active)
+        menu.paneContentProvider = { pane ->
+            if (pane == RetroPane.FRAMEGEN) {
+                {
+                    RetroFrameGenPane.Content(
+                        activity,
+                        shortcut ?: loadShortcut(activity),
+                        system.id,
+                    )
+                }
+            } else {
+                null
+            }
+        }
         menu.entriesProvider = { pane ->
             when (pane) {
                 null ->
@@ -365,6 +379,7 @@ object DolphinGameOverlay {
                 RetroPane.SAVES -> buildMemoryCards(activity, menu, savesLoadMode) { stageCloudBackup() }
                 RetroPane.NETWORK -> buildDolphinNetplay(activity)
                 RetroPane.DISPLAY -> buildDisplay(activity, menu, system, ::applyVar)
+                RetroPane.FRAMEGEN -> emptyList()
                 RetroPane.HUD ->
                     RetroHudSupport.buildHudEntries(
                         context = activity,
