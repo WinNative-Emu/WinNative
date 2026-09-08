@@ -348,6 +348,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Розмір екрана</string>
+    <string name="container_config_show_device_resolutions">Показувати роздільності пристрою</string>
+    <string name="container_config_show_device_resolutions_help">Підлаштовує кожну стандартну роздільність під цей екран, щоб зображення не розтягувалося та не з’являлися чорні смуги (%1$s).</string>
     <string name="container_config_new_env_var">Нова змінна середовища</string>
     <string name="container_config_env_vars">Змінні середовища</string>
     <string name="container_config_processor_affinity">Прив\'язка до процесора</string>

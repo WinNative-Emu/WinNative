@@ -408,6 +408,10 @@ class GameSettingsStateHolder {
     val containerEntries = mutableStateOf<List<String>>(emptyList())
     val selectedContainer = mutableIntStateOf(0)
     val screenSizeEntries = mutableStateOf<List<String>>(emptyList())
+    val standardScreenSizeEntries = mutableStateOf<List<String>>(emptyList())
+    val deviceScreenSizeEntries = mutableStateOf<List<String>>(emptyList())
+    val devicePanelSummary = mutableStateOf("")
+    val showDeviceResolutions = mutableStateOf(false)
     val selectedScreenSize = mutableIntStateOf(0)
     val customWidth = mutableStateOf("")
     val customHeight = mutableStateOf("")
@@ -609,6 +613,51 @@ class GameSettingsStateHolder {
     val drives = mutableStateOf("")
 
     val isLoaded = mutableStateOf(false)
+
+    fun applyScreenSizeEntries(useDeviceResolutions: Boolean) {
+        val device = deviceScreenSizeEntries.value
+        val standard = standardScreenSizeEntries.value
+        val useDevice = useDeviceResolutions && device.size > 1
+        showDeviceResolutions.value = useDevice
+        val next = if (useDevice) device else standard
+        if (next.isEmpty()) return
+
+        val current = selectedScreenSizeValue()
+        screenSizeEntries.value = next
+        val index = next.indexOfFirst { StringUtils.parseIdentifier(it) == current }
+        if (index >= 0) {
+            selectedScreenSize.intValue = index
+            return
+        }
+        val currentHeight = heightOf(current)
+        if (currentHeight > 0) {
+            val tierIndex = next.indexOfFirst { heightOf(StringUtils.parseIdentifier(it)) == currentHeight }
+            if (tierIndex >= 0) {
+                selectedScreenSize.intValue = tierIndex
+                return
+            }
+        }
+        selectedScreenSize.intValue = 0
+        val parts = current.split("x")
+        if (parts.size == 2) {
+            customWidth.value = parts[0]
+            customHeight.value = parts[1]
+        }
+    }
+
+    private fun heightOf(screenSize: String): Int {
+        val parts = screenSize.split("x")
+        return if (parts.size == 2) parts[1].toIntOrNull() ?: 0 else 0
+    }
+
+    private fun selectedScreenSizeValue(): String {
+        val entries = screenSizeEntries.value
+        val index = selectedScreenSize.intValue
+        if (index > 0 && index in entries.indices) return StringUtils.parseIdentifier(entries[index])
+        val width = customWidth.value.trim()
+        val height = customHeight.value.trim()
+        return if (width.isEmpty() || height.isEmpty()) "" else "${width}x$height"
+    }
 }
 
 interface GameSettingsCallbacks {
@@ -1587,6 +1636,26 @@ private fun GeneralSection(
                     entries = state.refreshRateEntries.value,
                     selectedIndex = state.selectedRefreshRate.intValue,
                     onSelected = { state.selectedRefreshRate.intValue = it }
+                )
+            }
+        }
+
+        if (state.deviceScreenSizeEntries.value.size > 1) {
+            Spacer(Modifier.height(SettingItemGap))
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SettingSwitch(
+                    label = stringResource(R.string.container_config_show_device_resolutions),
+                    checked = state.showDeviceResolutions.value,
+                    onCheckedChange = { on -> state.applyScreenSizeEntries(on) }
+                )
+                Text(
+                    stringResource(
+                        R.string.container_config_show_device_resolutions_help,
+                        state.devicePanelSummary.value
+                    ),
+                    color = TextDim,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
                 )
             }
         }

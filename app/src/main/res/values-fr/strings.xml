@@ -344,6 +344,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Taille de l\'écran</string>
+    <string name="container_config_show_device_resolutions">Afficher les résolutions de l\'appareil</string>
+    <string name="container_config_show_device_resolutions_help">Adapte chaque résolution standard à cet écran afin que rien ne soit étiré ni bordé de bandes noires (%1$s).</string>
     <string name="container_config_new_env_var">Nouvelle variable d\'environnement</string>
     <string name="container_config_env_vars">Variables d\'environnement</string>
     <string name="container_config_processor_affinity">Affinité processeur</string>

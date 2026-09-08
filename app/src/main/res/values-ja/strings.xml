@@ -404,6 +404,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">画面サイズ</string>
+    <string name="container_config_show_device_resolutions">デバイスの解像度を表示</string>
+    <string name="container_config_show_device_resolutions_help">各標準解像度をこの画面に合わせて調整し、引き伸ばしや黒帯が出ないようにします (%1$s)。</string>
     <string name="container_config_new_env_var">新しい環境変数</string>
     <string name="container_config_env_vars">環境変数</string>
     <string name="container_config_processor_affinity">プロセッサアフィニティ</string>
