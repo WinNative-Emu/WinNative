@@ -1,11 +1,12 @@
 package com.winlator.cmod.runtime.system;
 
 import android.content.Context;
+import java.util.Locale;
 
 public abstract class GPUInformation {
 
   public static boolean isAdrenoGPU(Context context) {
-    return getRenderer(null, context).toLowerCase().contains("adreno");
+    return getRenderer(null, context).toLowerCase(Locale.ROOT).contains("adreno");
   }
 
   public static boolean isDriverSupported(String driverName, Context context) {
@@ -13,7 +14,7 @@ public abstract class GPUInformation {
 
     String renderer = getRenderer(driverName, context);
 
-    return !renderer.toLowerCase().contains("unknown");
+    return !renderer.toLowerCase(Locale.ROOT).contains("unknown");
   }
 
   public static native String getVulkanVersion(String driverName, Context context);

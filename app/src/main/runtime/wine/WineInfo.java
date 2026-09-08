@@ -9,6 +9,7 @@ import com.winlator.cmod.R;
 import com.winlator.cmod.runtime.content.ContentProfile;
 import com.winlator.cmod.runtime.content.ContentsManager;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -137,7 +138,7 @@ public class WineInfo implements Parcelable {
     // Try regex on original identifier first (preserves arch like arm64ec), then fallback to
     // lowercase/stripped
     String originalIdentifier = identifier;
-    Matcher matcher = pattern.matcher(originalIdentifier.toLowerCase());
+    Matcher matcher = pattern.matcher(originalIdentifier.toLowerCase(Locale.ROOT));
     boolean matched = matcher.find();
 
     if (!matched) {
@@ -151,7 +152,7 @@ public class WineInfo implements Parcelable {
         } else if (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
           normalized = "wine-" + wineProfile.verName + "-x86_64";
         } else {
-          normalized = originalIdentifier.toLowerCase();
+          normalized = originalIdentifier.toLowerCase(Locale.ROOT);
         }
         Log.d("WineInfo", "Trying normalized identifier: " + normalized);
         matcher = pattern.matcher(normalized);
@@ -190,9 +191,9 @@ public class WineInfo implements Parcelable {
       String arch = "x86_64"; // Default for custom protons
 
       if ((wineProfile.wineLibPath != null
-              && wineProfile.wineLibPath.toLowerCase().contains("arm64ec"))
+              && wineProfile.wineLibPath.toLowerCase(Locale.ROOT).contains("arm64ec"))
           || (wineProfile.verName != null
-              && wineProfile.verName.toLowerCase().contains("arm64ec"))) {
+              && wineProfile.verName.toLowerCase(Locale.ROOT).contains("arm64ec"))) {
         arch = "arm64ec";
       }
 

@@ -28,6 +28,7 @@ import com.winlator.cmod.shared.math.XForm;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -1028,7 +1029,7 @@ public class VulkanRenderer
 
     public static int parsePresentMode(String name) {
         if (name == null) return PRESENT_MODE_FIFO;
-        switch (name.trim().toLowerCase()) {
+        switch (name.trim().toLowerCase(Locale.ROOT)) {
             case "mailbox":   return PRESENT_MODE_MAILBOX;
             case "immediate": return PRESENT_MODE_IMMEDIATE;
             default:          return PRESENT_MODE_FIFO;

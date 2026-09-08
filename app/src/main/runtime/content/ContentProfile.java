@@ -4,6 +4,7 @@ package com.winlator.cmod.runtime.content;
 
 import androidx.annotation.NonNull;
 import java.util.List;
+import java.util.Locale;
 
 public class ContentProfile {
   public static final String MARK_TYPE = "type";
@@ -42,7 +43,7 @@ public class ContentProfile {
 
     public static ContentType getTypeByName(String name) {
       for (ContentType type : ContentType.values())
-        if (type.typeName.toLowerCase().equals(name.toLowerCase())) return type;
+        if (type.typeName.toLowerCase(Locale.ROOT).equals(name.toLowerCase(Locale.ROOT))) return type;
       return null;
     }
   }

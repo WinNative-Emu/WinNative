@@ -344,6 +344,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">螢幕大小</string>
+    <string name="container_config_show_device_resolutions">顯示裝置解析度</string>
+    <string name="container_config_show_device_resolutions_help">將每個標準解析度縮放至此螢幕，避免畫面被拉伸或出現黑邊 (%1$s)。</string>
     <string name="container_config_new_env_var">新增環境變數</string>
     <string name="container_config_env_vars">環境變數</string>
     <string name="container_config_processor_affinity">處理器親和性</string>

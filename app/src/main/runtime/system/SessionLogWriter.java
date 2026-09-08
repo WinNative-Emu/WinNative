@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 public final class SessionLogWriter {
@@ -134,7 +135,7 @@ public final class SessionLogWriter {
     if (name == null || name.isEmpty()) return "session";
     int dot = name.lastIndexOf('.');
     String base = dot > 0 ? name.substring(0, dot) : name;
-    base = base.replaceAll("[^a-zA-Z0-9\\-_]", "_").toLowerCase();
+    base = base.replaceAll("[^a-zA-Z0-9\\-_]", "_").toLowerCase(Locale.ROOT);
     return base.isEmpty() ? "session" : base;
   }
 

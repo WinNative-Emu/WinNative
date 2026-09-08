@@ -344,6 +344,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Bildschirmgröße</string>
+    <string name="container_config_show_device_resolutions">Geräteauflösungen anzeigen</string>
+    <string name="container_config_show_device_resolutions_help">Skaliert jede Standardauflösung auf diesen Bildschirm, sodass nichts verzerrt oder mit schwarzen Balken dargestellt wird (%1$s).</string>
     <string name="container_config_new_env_var">Neue Umgebungsvariable</string>
     <string name="container_config_env_vars">Umgebungsvariablen</string>
     <string name="container_config_processor_affinity">Prozessoraffinität</string>

@@ -3,6 +3,7 @@ import com.winlator.cmod.runtime.content.ContentProfile;
 import com.winlator.cmod.runtime.content.ContentsManager;
 import com.winlator.cmod.runtime.system.ProcessHelper;
 import java.io.File;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,7 +39,7 @@ final class XServerDisplayUtils {
 
     static boolean isSteamExeRunning() {
         for (String detail : ProcessHelper.listRunningWineProcessDetails()) {
-            if (detail.toLowerCase().contains("steam.exe")) return true;
+            if (detail.toLowerCase(Locale.ROOT).contains("steam.exe")) return true;
         }
         return false;
     }

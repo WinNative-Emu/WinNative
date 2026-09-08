@@ -4,6 +4,7 @@ import android.content.Context;
 import android.text.format.DateFormat;
 import java.io.File;
 import java.util.Date;
+import java.util.Locale;
 
 public final class LogFileUtils {
   private static String fileName;
@@ -17,7 +18,7 @@ public final class LogFileUtils {
   public static File getLogFile(Context context) {
     File logsDir = LogManager.getLogsDir(context);
     String logFile =
-        fileName.replaceAll("[^a-zA-Z0-9\\-_]", "_").toLowerCase()
+        fileName.replaceAll("[^a-zA-Z0-9\\-_]", "_").toLowerCase(Locale.ROOT)
             + "_"
             + DateFormat.format("yyyy-MM-dd_HH-mm-ss", new Date())
             + ".txt";
