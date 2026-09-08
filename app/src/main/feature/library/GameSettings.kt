@@ -156,7 +156,6 @@ import com.winlator.cmod.shared.theme.GameSettingsStyle
 import com.winlator.cmod.runtime.wine.WineThemeManager
 import com.winlator.cmod.runtime.display.environment.ImageFs
 import com.winlator.cmod.runtime.display.lsfg.LosslessScaling
-import com.winlator.cmod.shared.android.DeviceResolutions
 import com.winlator.cmod.shared.android.DirectoryPickerDialog
 import com.winlator.cmod.shared.ui.dialog.findActivity
 import kotlinx.coroutines.Dispatchers
@@ -1643,15 +1642,11 @@ private fun GeneralSection(
 
         if (state.deviceScreenSizeEntries.value.size > 1) {
             Spacer(Modifier.height(SettingItemGap))
-            val screenSizeContext = LocalContext.current
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 SettingSwitch(
                     label = stringResource(R.string.container_config_show_device_resolutions),
                     checked = state.showDeviceResolutions.value,
-                    onCheckedChange = { on ->
-                        DeviceResolutions.setEnabled(screenSizeContext, on)
-                        state.applyScreenSizeEntries(on)
-                    }
+                    onCheckedChange = { on -> state.applyScreenSizeEntries(on) }
                 )
                 Text(
                     stringResource(

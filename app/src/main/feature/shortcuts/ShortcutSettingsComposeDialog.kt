@@ -486,7 +486,14 @@ class ShortcutSettingsComposeDialog private constructor(
             DeviceResolutions.screenSizeEntries(activity, screenSizeArr.firstOrNull() ?: "Custom")
         state.devicePanelSummary.value = DeviceResolutions.panelSummary(activity)
         state.screenSizeEntries.value = screenSizeArr
-        state.applyScreenSizeEntries(DeviceResolutions.isEnabled(context))
+        state.applyScreenSizeEntries(
+            DeviceResolutions.isEnabled(
+                getShortcutSetting(
+                    DeviceResolutions.EXTRA_ENABLED,
+                    container.getExtra(DeviceResolutions.EXTRA_ENABLED)
+                )
+            )
+        )
         val screenSize = getShortcutSetting("screenSize", container.getScreenSize())
         selectScreenSize(screenSize)
 
@@ -1099,6 +1106,13 @@ class ShortcutSettingsComposeDialog private constructor(
             val screenSize = getScreenSizeFromState()
             hasContainerOverride =
                 hasContainerOverride or saveOverride("screenSize", screenSize, container.getScreenSize())
+            hasContainerOverride = hasContainerOverride or saveOverride(
+                DeviceResolutions.EXTRA_ENABLED,
+                DeviceResolutions.extraValue(state.showDeviceResolutions.value),
+                DeviceResolutions.extraValue(
+                    DeviceResolutions.isEnabled(container.getExtra(DeviceResolutions.EXTRA_ENABLED))
+                )
+            )
 
             // Graphics driver
             val graphicsDriver = getIdentifierFromEntries(

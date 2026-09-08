@@ -528,7 +528,9 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             DeviceResolutions.screenSizeEntries(activity, screenSizeArr.firstOrNull() ?: "Custom")
         state.devicePanelSummary.value = DeviceResolutions.panelSummary(activity)
         state.screenSizeEntries.value = screenSizeArr
-        state.applyScreenSizeEntries(DeviceResolutions.isEnabled(context))
+        state.applyScreenSizeEntries(
+            DeviceResolutions.isEnabled(c?.getExtra(DeviceResolutions.EXTRA_ENABLED))
+        )
         selectScreenSize(c?.getScreenSize() ?: Container.DEFAULT_SCREEN_SIZE)
 
         try {
@@ -869,6 +871,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             c.setDXWrapper(dxwrapper)
             c.setDXWrapperConfig(dxwrapperConfig)
             c.putExtra("swapRB", if (state.selectedSurfaceEffect.intValue == 1) "1" else "0")
+            c.putExtra(
+                DeviceResolutions.EXTRA_ENABLED,
+                DeviceResolutions.extraValue(state.showDeviceResolutions.value)
+            )
             c.putExtra("refreshRate", getRefreshRateFromState())
             writeFrameGenExtras(c)
             writeNetworkingExtras(c)
@@ -961,6 +967,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
                         newContainer.putExtra(
                             "swapRB",
                             if (state.selectedSurfaceEffect.intValue == 1) "1" else "0"
+                        )
+                        newContainer.putExtra(
+                            DeviceResolutions.EXTRA_ENABLED,
+                            DeviceResolutions.extraValue(state.showDeviceResolutions.value)
                         )
                         getRefreshRateFromState()?.let { newContainer.putExtra("refreshRate", it) }
                         newContainer.putExtra(

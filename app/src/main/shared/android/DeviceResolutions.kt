@@ -1,30 +1,22 @@
 package com.winlator.cmod.shared.android
 
 import android.app.Activity
-import android.content.Context
 import android.os.Build
 import android.util.DisplayMetrics
 import android.view.Display
-import androidx.preference.PreferenceManager
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 object DeviceResolutions {
-    private const val PREF_KEY = "show_device_resolutions"
+    const val EXTRA_ENABLED = "showDeviceResolutions"
     private const val MAX_RATIO_TERM = 64
     private val TIER_HEIGHTS = intArrayOf(360, 480, 540, 600, 720, 900, 1080, 1200, 1440, 2160)
 
     @JvmStatic
-    fun isEnabled(context: Context): Boolean =
-        PreferenceManager.getDefaultSharedPreferences(context).getBoolean(PREF_KEY, false)
+    fun isEnabled(value: String?): Boolean = value == "1"
 
     @JvmStatic
-    fun setEnabled(context: Context, enabled: Boolean) {
-        PreferenceManager.getDefaultSharedPreferences(context)
-            .edit()
-            .putBoolean(PREF_KEY, enabled)
-            .apply()
-    }
+    fun extraValue(enabled: Boolean): String = if (enabled) "1" else "0"
 
     @JvmStatic
     fun panelSize(activity: Activity): Pair<Int, Int>? {
