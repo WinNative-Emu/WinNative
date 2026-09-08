@@ -385,6 +385,8 @@
     <string name="container_config_processor_affinity">प्रोसेसर अफ़िनिटी</string>
     <string name="container_config_processor_affinity_32bit">प्रोसेसर अफ़िनिटी (32-बिट ऐप्स)</string>
     <string name="container_config_audio_driver">ऑडियो ड्राइवर</string>
+    <string name="container_config_direct_audio_mic">माइक्रोफ़ोन (DirectAudio)</string>
+    <string name="container_config_direct_audio_mic_help">किसी गेम को आपके डिवाइस के माइक्रोफ़ोन से रिकॉर्ड करने देता है, इन-गेम वॉइस चैट के लिए। कुछ गेम जो लोड होते समय माइक्रोफ़ोन की जाँच करते हैं, इसे चालू रखने पर शुरू नहीं होंगे — इसे केवल उसी गेम के लिए चालू करें जिसे इसकी ज़रूरत हो।</string>
     <string name="container_config_win_components">Win घटक</string>
     <string name="container_config_drives">ड्राइव</string>
     <string name="container_config_arch">आर्किटेक्चर</string>
@@ -2435,10 +2437,18 @@
     <string name="retro_scr_consoles_download">कंसोल कोर डाउनलोड करें</string>
     <string name="retro_scr_consoles_downloading">डाउनलोड हो रहा है… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">कंसोल कोर</string>
+    <string name="retro_scr_consoles_install_selected">चयनित रिलीज़ इंस्टॉल करें</string>
     <string name="retro_scr_consoles_installed">इंस्टॉल है — बिल्ड %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">इंस्टॉल है — बिल्ड %1$s (अपडेट जांच विफल)</string>
+    <string name="retro_scr_consoles_installed_pinned">इंस्टॉल है — बिल्ड %1$s (पिन की गई रिलीज़)</string>
     <string name="retro_scr_consoles_installing">इंस्टॉल हो रहा है…</string>
     <string name="retro_scr_consoles_missing">इंस्टॉल नहीं है — रेट्रो गेम खेलने के लिए डाउनलोड करें</string>
+    <string name="retro_scr_consoles_reinstall">चयनित रिलीज़ फिर से इंस्टॉल करें</string>
+    <string name="retro_scr_consoles_release">रिलीज़</string>
+    <string name="retro_scr_consoles_release_latest">नवीनतम</string>
+    <string name="retro_scr_consoles_releases_failed">रिलीज़ (सूची उपलब्ध नहीं)</string>
+    <string name="retro_scr_consoles_releases_loading">रिलीज़ (लोड हो रहा है…)</string>
+    <string name="retro_scr_consoles_selected_available">चयनित — बिल्ड %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">स्थिति</string>
     <string name="retro_scr_consoles_update">कंसोल कोर अपडेट करें</string>
     <string name="retro_scr_consoles_update_available">अपडेट उपलब्ध — बिल्ड %1$s (%2$d MB)</string>
@@ -2477,6 +2487,8 @@
     <string name="settings_frame_generation_updated">%1$s से अपडेट किया गया।</string>
     <string name="settings_frame_generation_not_owned">फ़्रेम जनरेशन Lossless Scaling के शेडर उपयोग करता है। इसे सक्षम करने के लिए साइन-इन खाते से Steam पर इसे खरीदें।</string>
     <string name="settings_frame_generation_locate">Lossless.dll चुनें…</string>
+    <string name="retro_gs_frame_generation_subtitle">Lossless Scaling से इस कंसोल के लिए अतिरिक्त फ़्रेम बनाता है।</string>
+    <string name="retro_gs_frame_generation_unsupported">यह GPU वे Vulkan सुविधाएँ नहीं देता जो Lossless Scaling शेडर के लिए ज़रूरी हैं।</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io डाउनलोड</string>
     <string name="itch_store_sign_in">itch.io में साइन इन करें</string>

@@ -477,6 +477,8 @@
     <string name="container_config_processor_affinity">Processor Affinity</string>
     <string name="container_config_processor_affinity_32bit">Processor Affinity (32-bit apps)</string>
     <string name="container_config_audio_driver">Audio Driver</string>
+    <string name="container_config_direct_audio_mic">Microphone (DirectAudio)</string>
+    <string name="container_config_direct_audio_mic_help">Lets a game record from your device microphone, for in-game voice chat. Some titles that check for a microphone while loading will fail to start with this on — turn it on only for a game that needs it.</string>
     <string name="container_config_win_components">Win Components</string>
     <string name="container_config_drives">Drives</string>
     <string name="container_config_arch">Arch</string>
@@ -864,6 +866,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_frame_generation_updated">Updated from %1$s.</string>
     <string name="settings_frame_generation_not_owned">Frame generation uses shaders from Lossless Scaling. Buy it on Steam with the signed-in account to enable this.</string>
     <string name="settings_frame_generation_locate">Select Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpolates extra frames for this console with Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">This GPU does not expose the Vulkan features the Lossless Scaling shaders need.</string>
     <string name="session_drawer_vivid">Vivid</string>
     <string name="session_drawer_vivid_strength">Vivid Strength</string>
     <string name="session_drawer_color_profile">Color Effect</string>
@@ -2334,6 +2338,14 @@ Installed path:
     <string name="retro_scr_consoles_download">Download console cores</string>
     <string name="retro_scr_consoles_update">Update console cores</string>
     <string name="retro_scr_consoles_check">Check for updates</string>
+    <string name="retro_scr_consoles_install_selected">Install selected release</string>
+    <string name="retro_scr_consoles_installed_pinned">Installed — build %1$s (pinned release)</string>
+    <string name="retro_scr_consoles_reinstall">Reinstall selected release</string>
+    <string name="retro_scr_consoles_release">Release</string>
+    <string name="retro_scr_consoles_release_latest">Latest</string>
+    <string name="retro_scr_consoles_releases_failed">Release (list unavailable)</string>
+    <string name="retro_scr_consoles_releases_loading">Release (loading…)</string>
+    <string name="retro_scr_consoles_selected_available">Selected — build %1$s (%2$d MB)</string>
     <string name="retro_scr_retroachievements">RETROACHIEVEMENTS</string>
     <string name="retro_scr_account">Account</string>
     <string name="retro_scr_signed_in">Signed in</string>
@@ -2449,6 +2461,10 @@ Installed path:
     <string name="retro_scr_tab_defaults">Defaults</string>
     <string name="retro_scr_tab_credits">Credits</string>
     <string name="settings_support_title">Support</string>
+    <string name="support_donate_heading">DONATE</string>
+    <string name="support_donate_desc">Contribute to the development of WinNative. Opens in your browser.</string>
+    <string name="support_paypal">paypal.me/MaxJividen</string>
+    <string name="support_paypal_desc">PayPal • one-time or recurring</string>
     <string name="support_heading">GET HELP</string>
     <string name="support_desc">Ask questions, report problems, or see what is being worked on. Each opens in your browser.</string>
     <string name="support_winnative_discord">#WinNative</string>

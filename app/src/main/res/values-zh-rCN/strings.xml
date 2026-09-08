@@ -349,6 +349,8 @@
     <string name="container_config_processor_affinity">处理器亲和性</string>
     <string name="container_config_processor_affinity_32bit">处理器亲和性（32 位应用）</string>
     <string name="container_config_audio_driver">音频驱动</string>
+    <string name="container_config_direct_audio_mic">麦克风 (DirectAudio)</string>
+    <string name="container_config_direct_audio_mic_help">允许游戏使用设备麦克风录音，用于游戏内语音聊天。某些在加载时检查麦克风的游戏在启用后将无法启动——请仅为需要的游戏启用。</string>
     <string name="container_config_win_components">Windows 组件</string>
     <string name="container_config_drives">驱动器</string>
     <string name="container_config_arch">架构</string>
@@ -2499,10 +2501,18 @@
     <string name="retro_scr_consoles_download">下载主机核心</string>
     <string name="retro_scr_consoles_downloading">正在下载… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">主机核心</string>
+    <string name="retro_scr_consoles_install_selected">安装所选发行版</string>
     <string name="retro_scr_consoles_installed">已安装 — 版本 %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">已安装 — 版本 %1$s（检查更新失败）</string>
+    <string name="retro_scr_consoles_installed_pinned">已安装 — 版本 %1$s（已固定发行版）</string>
     <string name="retro_scr_consoles_installing">正在安装…</string>
     <string name="retro_scr_consoles_missing">未安装 — 下载后即可畅玩复古游戏</string>
+    <string name="retro_scr_consoles_reinstall">重新安装所选发行版</string>
+    <string name="retro_scr_consoles_release">发行版</string>
+    <string name="retro_scr_consoles_release_latest">最新</string>
+    <string name="retro_scr_consoles_releases_failed">发行版（无法获取列表）</string>
+    <string name="retro_scr_consoles_releases_loading">发行版（加载中…）</string>
+    <string name="retro_scr_consoles_selected_available">已选择 — 版本 %1$s（%2$d MB）</string>
     <string name="retro_scr_consoles_state">状态</string>
     <string name="retro_scr_consoles_update">更新主机核心</string>
     <string name="retro_scr_consoles_update_available">有可用更新 — 版本 %1$s（%2$d MB）</string>
@@ -2541,6 +2551,8 @@
     <string name="settings_frame_generation_updated">已从 %1$s 更新。</string>
     <string name="settings_frame_generation_not_owned">帧生成使用 Lossless Scaling 的着色器。请使用当前登录的账号在 Steam 上购买以启用此功能。</string>
     <string name="settings_frame_generation_locate">选择 Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">使用 Lossless Scaling 为该主机插入额外帧。</string>
+    <string name="retro_gs_frame_generation_unsupported">此 GPU 不提供 Lossless Scaling 着色器所需的 Vulkan 功能。</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io 下载</string>
     <string name="itch_store_sign_in">登录 itch.io</string>

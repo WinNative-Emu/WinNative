@@ -53,6 +53,7 @@ import com.winlator.cmod.feature.settings.GraphicsDriverConfigUtils
 import com.winlator.cmod.feature.settings.WineD3DConfigUtils
 import com.winlator.cmod.feature.setup.SetupWizardActivity
 import com.winlator.cmod.feature.stores.steam.events.AndroidEvent
+import com.winlator.cmod.runtime.audio.directaudio.DirectAudioDriver
 import com.winlator.cmod.runtime.compat.box64.Box64Preset
 import com.winlator.cmod.runtime.compat.box64.Box64PresetManager
 import com.winlator.cmod.runtime.container.Container
@@ -609,11 +610,21 @@ class ShortcutSettingsComposeDialog private constructor(
         // Audio driver
         val audioDriverArr =
             context.resources.getStringArray(R.array.audio_driver_entries).toList()
+                .filter {
+                    DirectAudioDriver.isSupportedFor(container.wineVersion) ||
+                        !it.equals("DirectAudio", true)
+                }
         state.audioDriverEntries.value = audioDriverArr
         selectByIdentifier(
             audioDriverArr,
             getShortcutSetting("audioDriver", container.getAudioDriver()),
             state.selectedAudioDriver
+        )
+        state.directAudioMic.value = DirectAudioDriver.isMicEnabled(
+            getShortcutSetting(
+                DirectAudioDriver.EXTRA_MIC,
+                container.getExtra(DirectAudioDriver.EXTRA_MIC, "0")
+            )
         )
 
         // MIDI sound fonts
@@ -1124,6 +1135,12 @@ class ShortcutSettingsComposeDialog private constructor(
             )
             hasContainerOverride =
                 hasContainerOverride or saveOverride("audioDriver", audioDriver, container.getAudioDriver())
+            val directAudioMicStr = if (state.directAudioMic.value) "1" else "0"
+            hasContainerOverride = hasContainerOverride or saveOverride(
+                DirectAudioDriver.EXTRA_MIC,
+                directAudioMicStr,
+                container.getExtra(DirectAudioDriver.EXTRA_MIC, "0")
+            )
 
             // Emulators
             val emulator = getIdentifierFromEntries(

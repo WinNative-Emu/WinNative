@@ -1913,7 +1913,7 @@ static void create_lsfg(VkRenderer* r) {
     vkr_lsfg_configure(r->lsfg, r->framegen_multiplier ? r->framegen_multiplier : 2u,
                        r->framegen_target_rate,
                        r->framegen_flow_scale > 0.0f ? r->framegen_flow_scale : 0.7f,
-                       r->framegen_refresh_rate);
+                       r->framegen_refresh_rate, 0.0f);
 }
 
 static uint32_t framegen_extra_images(const VkRenderer* r) {
@@ -2408,6 +2408,7 @@ static uint64_t vkr_monotonic_ns(void) {
 
 static bool record_and_submit_frame(VkRenderer* r) {
     if (!r->surface_ready || !r->swapchain) return false;
+    if (!vkd_bind(r->vulkan_handle, r->instance)) return false;
 
     const uint64_t draw_begin_ns = vkr_monotonic_ns();
 
@@ -3721,7 +3722,7 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetFrameGenerationMode)(JNIEnv* env, jclass 
     r->framegen_flow_scale = flowScalePct <= 0 ? 0.7f : (float)flowScalePct / 100.0f;
     if (r->lsfg) {
         vkr_lsfg_configure(r->lsfg, r->framegen_multiplier, r->framegen_target_rate,
-                           r->framegen_flow_scale, r->framegen_refresh_rate);
+                           r->framegen_flow_scale, r->framegen_refresh_rate, 0.0f);
     }
     if (framegen_extra_images(r) != previous_images) {
         wait_inflight_frames(r);

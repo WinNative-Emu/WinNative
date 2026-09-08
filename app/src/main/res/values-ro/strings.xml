@@ -349,6 +349,8 @@
     <string name="container_config_processor_affinity">Afinitate procesor</string>
     <string name="container_config_processor_affinity_32bit">Afinitate procesor (aplicatii 32-bit)</string>
     <string name="container_config_audio_driver">Driver audio</string>
+    <string name="container_config_direct_audio_mic">Microfon (DirectAudio)</string>
+    <string name="container_config_direct_audio_mic_help">Permite unui joc să înregistreze de la microfonul dispozitivului, pentru chatul vocal din joc. Unele titluri care caută un microfon în timpul încărcării nu vor porni cu această opțiune activată — activeaz-o doar pentru un joc care are nevoie de ea.</string>
     <string name="container_config_win_components">Componente Windows</string>
     <string name="container_config_drives">Unitati</string>
     <string name="container_config_arch">Arhitectura</string>
@@ -2498,10 +2500,18 @@ Cale instalata:
     <string name="retro_scr_consoles_download">Descarcă nucleele consolelor</string>
     <string name="retro_scr_consoles_downloading">Se descarcă… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">Nucleele consolelor</string>
+    <string name="retro_scr_consoles_install_selected">Instalează lansarea selectată</string>
     <string name="retro_scr_consoles_installed">Instalat — versiunea %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">Instalat — versiunea %1$s (verificarea actualizărilor a eșuat)</string>
+    <string name="retro_scr_consoles_installed_pinned">Instalat — versiunea %1$s (lansare fixată)</string>
     <string name="retro_scr_consoles_installing">Se instalează…</string>
     <string name="retro_scr_consoles_missing">Neinstalat — descarcă pentru a juca jocuri retro</string>
+    <string name="retro_scr_consoles_reinstall">Reinstalează lansarea selectată</string>
+    <string name="retro_scr_consoles_release">Lansare</string>
+    <string name="retro_scr_consoles_release_latest">Cea mai recentă</string>
+    <string name="retro_scr_consoles_releases_failed">Lansare (lista indisponibilă)</string>
+    <string name="retro_scr_consoles_releases_loading">Lansare (se încarcă…)</string>
+    <string name="retro_scr_consoles_selected_available">Selectată — versiunea %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">Stare</string>
     <string name="retro_scr_consoles_update">Actualizează nucleele consolelor</string>
     <string name="retro_scr_consoles_update_available">Actualizare disponibilă — versiunea %1$s (%2$d MB)</string>
@@ -2540,6 +2550,8 @@ Cale instalata:
     <string name="settings_frame_generation_updated">Actualizat din %1$s.</string>
     <string name="settings_frame_generation_not_owned">Generarea de cadre folosește shadere din Lossless Scaling. Cumpără-l pe Steam cu contul conectat pentru a activa acest lucru.</string>
     <string name="settings_frame_generation_locate">Selectează Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpolează cadre suplimentare pentru această consolă cu Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Acest GPU nu expune funcțiile Vulkan de care au nevoie shaderele Lossless Scaling.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Descărcări itch.io</string>
     <string name="itch_store_sign_in">Conectează-te la itch.io</string>

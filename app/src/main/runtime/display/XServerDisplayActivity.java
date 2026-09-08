@@ -153,6 +153,7 @@ import com.winlator.cmod.runtime.display.connector.UnixSocketConfig;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
 import com.winlator.cmod.runtime.display.environment.XEnvironment;
 import com.winlator.cmod.feature.stores.steam.SteamClientManager;
+import com.winlator.cmod.runtime.audio.directaudio.DirectAudioDriver;
 import com.winlator.cmod.runtime.display.environment.components.ALSAServerComponent;
 import com.winlator.cmod.runtime.display.environment.components.GuestProgramLauncherComponent;
 import com.winlator.cmod.runtime.display.environment.components.NetworkInfoUpdateComponent;
@@ -3753,6 +3754,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return shortcut == null || !"1".equals(shortcut.getExtra("cloud_sync_disabled", "0"));
     }
 
+    private boolean isOfflineModeForShortcut() {
+        return shortcut != null && "1".equals(shortcut.getExtra("offline_mode", "0"));
+    }
+
     private static final boolean STEAM_AGENT_CLOUD_ENABLED = true;
 
     private boolean steamCloudHandledByAgent() {
@@ -4327,6 +4332,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (planWActive) {
             scrubPlanWBridgeFilesForNextSession();
         }
+
+        try {
+            uploadSavesIfAgentExitSyncLeftThemLocal(trigger);
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity",
+                    "Steam cloud: app-side exit upload fallback failed during " + trigger, t);
+        }
     }
 
     // ---- Plan-W launcher clean-shutdown handshake ---------------------------
@@ -4337,6 +4349,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private static final String WN_LAUNCHER_GRACEFUL_CLOSE_MARKER = "graceful close \"";
     private static final String WN_LAUNCHER_CLOUD_EXIT_START_MARKER = "cloud: RunAutoCloudOnAppExit";
     private static final String WN_LAUNCHER_CLOUD_EXIT_DONE_MARKER = "cloud: exit sync COMPLETE";
+    private static final String WN_LAUNCHER_CLOUD_EXIT_LOCAL_AHEAD_MARKER =
+            "cloud: exit sync left local saves ahead of Steam Cloud";
     // Ceiling; returns early once the "clean logoff complete" marker appears. Must cover the agent's RunAutoCloudOnAppExit budget (60s) plus the logoff flush, or the container is torn down mid-upload and the cloud save is lost.
     private static final long WN_LAUNCHER_SHUTDOWN_TIMEOUT_MS = 90000L;
     private static final long WN_LAUNCHER_SHUTDOWN_POLL_MS = 150L;
@@ -4411,6 +4425,66 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         try {
             if (sentinel.exists()) sentinel.delete();
         } catch (Exception ignored) {}
+    }
+
+    private static final int WN_CLOUD_FALLBACK_RECONNECT_TIMEOUT_MS = 20000;
+    private static final int WN_CLOUD_FALLBACK_RECONNECT_POLL_MS = 250;
+
+    private void uploadSavesIfAgentExitSyncLeftThemLocal(String trigger) {
+        if (container == null) return;
+        if (shortcut == null || !"STEAM".equals(shortcut.getExtra("game_source"))) return;
+        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()) return;
+
+        File log = new File(container.getRootDir(), ".wine/drive_c/wn-launcher.log");
+        if (!wnLauncherLogContains(log, WN_LAUNCHER_CLOUD_EXIT_LOCAL_AHEAD_MARKER)) return;
+
+        Log.i("XServerDisplayActivity",
+                "Steam cloud: the agent's exit sync left local saves ahead of the cloud during "
+                        + trigger + " — waiting for the app-side Steam client so the session is "
+                        + "not lost");
+        if (preloaderDialog != null) {
+            preloaderDialog.showOnUiThread(getString(R.string.preloader_uploading_cloud));
+        }
+
+        long deadline = System.currentTimeMillis() + WN_CLOUD_FALLBACK_RECONNECT_TIMEOUT_MS;
+        boolean ready = false;
+        while (System.currentTimeMillis() < deadline) {
+            try {
+                if (!com.winlator.cmod.feature.stores.steam.service.SteamService
+                        .Companion.isBionicHandoffActive()
+                        && com.winlator.cmod.feature.stores.steam.service.SteamService
+                                .Companion.isLoggedIn()) {
+                    ready = true;
+                    break;
+                }
+            } catch (Throwable ignored) {}
+            try {
+                Thread.sleep(WN_CLOUD_FALLBACK_RECONNECT_POLL_MS);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        if (!ready) {
+            Log.w("XServerDisplayActivity",
+                    "Steam cloud: the app-side Steam client did not reconnect within "
+                            + WN_CLOUD_FALLBACK_RECONNECT_TIMEOUT_MS + "ms — leaving the local "
+                            + "saves in place for the next launch to upload");
+            return;
+        }
+
+        boolean uploaded = false;
+        try {
+            uploaded = com.winlator.cmod.feature.steamcloudsync.SteamCloudSyncHelper
+                    .uploadLocalSavesBlocking(this, shortcut);
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "Steam cloud: app-side exit upload failed", t);
+        }
+        Log.i("XServerDisplayActivity",
+                "Steam cloud: app-side exit upload " + (uploaded ? "succeeded" : "did NOT succeed"));
+        if (uploaded && preloaderDialog != null) {
+            preloaderDialog.showOnUiThread(getString(R.string.preloader_cloud_upload_done));
+        }
     }
 
     @Override
@@ -7454,6 +7528,25 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             pulseOptions
                     )
             );
+        } else if (DirectAudioDriver.INSTANCE.isSelected(audioDriver)) {
+            // No daemon to start; the driver talks AAudio from Wine's unixlib.
+            // wineInfo matches imageFs.winePath, so the ABI follows the layer being written.
+            String daWineVersion =
+                    wineInfo != null ? wineInfo.fullVersion() : container.getWineVersion();
+            if (!DirectAudioDriver.INSTANCE.install(this, imageFs, daWineVersion)) {
+                Log.w("XServerDisplayActivity", "DirectAudio install failed for wine '"
+                        + daWineVersion + "'; audio may be silent");
+            }
+
+            boolean micRequested = DirectAudioDriver.INSTANCE.isMicEnabled(
+                    getShortcutSetting(
+                            DirectAudioDriver.EXTRA_MIC,
+                            container.getExtra(DirectAudioDriver.EXTRA_MIC)));
+            if (DirectAudioDriver.INSTANCE.shouldExposeMic(this, micRequested)) {
+                envVars.put(DirectAudioDriver.ENV_MIC, "1");
+            }
+            Log.d("XServerDisplayActivity", "DirectAudio: micRequested=" + micRequested +
+                    " micExposed=" + envVars.has(DirectAudioDriver.ENV_MIC));
         }
 
         // Wine cannot enumerate Android network interfaces; Steam treats that as offline.
@@ -7746,6 +7839,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         } catch (Exception depotIgnored) {
                             Log.w("XServerDisplayActivity",
                                     "Steam Launcher: Could not query depot data", depotIgnored);
+                        }
+                        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()) {
+                            envVars.put("WN_STEAM_AGENT_CLOUD", "0");
+                            Log.i("XServerDisplayActivity",
+                                    "Steam Launcher: WN_STEAM_AGENT_CLOUD=0 — cloud saves are "
+                                    + "turned off for this shortcut, so the agent skips "
+                                    + "RunAutoCloudOnAppLaunch and RunAutoCloudOnAppExit");
                         }
                         if (wnSteamLaunchOption >= 0) {
                             envVars.put("WN_STEAM_LAUNCH_OPTION", String.valueOf(wnSteamLaunchOption));
@@ -12255,6 +12355,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 }
                 else if (audioDriver.equals("pulseaudio")) {
                     registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse");
+                }
+                else if (DirectAudioDriver.INSTANCE.isSelected(audioDriver)) {
+                    registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio",
+                            DirectAudioDriver.IDENTIFIER);
                 }
             }
             container.putExtra("audioDriver", audioDriver);

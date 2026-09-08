@@ -41,6 +41,8 @@ import com.winlator.cmod.runtime.container.Shortcut
 import com.winlator.cmod.runtime.display.ui.FrameRating
 import com.winlator.cmod.runtime.input.controls.ExternalController
 import com.winlator.cmod.shared.android.FixedFontScaleAppCompatActivity
+import com.winlator.cmod.shared.framegen.FrameGen
+import com.winlator.cmod.shared.framegen.FrameGenGlSurface
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
@@ -123,6 +125,7 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
     private var rootLayout: FrameLayout? = null
     private var menuComposeView: ComposeView? = null
     private var surfaceReady = false
+    private var coreRefreshRate = 0f
     private var customColors = RetroCustomColors()
     private var savesLoadMode = false
     private var achievementsSessionStarted = false
@@ -457,6 +460,19 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
         root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateOverlayArea() }
 
         menu.entriesProvider = { pane -> buildEntriesFor(pane) }
+        menu.paneContentProvider = { pane ->
+            if (pane == RetroPane.FRAMEGEN) {
+                {
+                    RetroFrameGenPane.Content(
+                        this,
+                        loadShortcut(),
+                        intent.getStringExtra(EXTRA_SYSTEM_ID),
+                    )
+                }
+            } else {
+                null
+            }
+        }
         menu.bottomProvider = { buildBottomEntries() }
         val coreOpts = RetroCoreOptions.forSystem(system)
         menu.tabs =
@@ -545,7 +561,10 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
         loadHudSettings()
         recordLaunchStats()
 
-        val sixtyRequested = requestSixtyHzDisplayMode()
+        FrameGen.installFromIntent(this, intent)
+        val frameGenOn = FrameGen.requested
+        val frameGenRate = if (frameGenOn) FrameGen.applyDisplayMode(this) else 0f
+        val sixtyRequested = if (frameGenOn) false else requestSixtyHzDisplayMode()
         var waitAttempts = 0
         lateinit var startWhenReady: Runnable
         startWhenReady =
@@ -554,6 +573,11 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
                 val rate =
                     runCatching { windowManager.defaultDisplay.refreshRate }.getOrDefault(60f)
                 if (sixtyRequested && abs(rate - 60f) > 2f && waitAttempts < 12) {
+                    waitAttempts++
+                    root.postDelayed(startWhenReady, 100)
+                    return@Runnable
+                }
+                if (frameGenRate > 1f && abs(rate - frameGenRate) > 2f && waitAttempts < 12) {
                     waitAttempts++
                     root.postDelayed(startWhenReady, 100)
                     return@Runnable
@@ -578,7 +602,17 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
                         if (sramFile.isFile) saveRAMState = runCatching { sramFile.readBytes() }.getOrNull()
                     }
                 val view = GLRetroView(this, data)
-                if (android.os.Build.VERSION.SDK_INT >= 30) {
+                coreRefreshRate = rate
+                if (frameGenOn) FrameGenGlSurface.attach(view, rate)
+                FrameGen.setSurfaceRebinder {
+                    runOnUiThread {
+                        if (!isFinishing && !isDestroyed && FrameGenGlSurface.attach(view, coreRefreshRate)) {
+                            view.onPause()
+                            view.onResume()
+                        }
+                    }
+                }
+                if (!frameGenOn && android.os.Build.VERSION.SDK_INT >= 30) {
                     view.holder.addCallback(
                         object : android.view.SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: android.view.SurfaceHolder) {
@@ -782,6 +816,9 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
             RetroAchievementsManager.hardcoreNoticeListener = null
             RetroAchievementsManager.endSession()
         }
+        FrameGen.setSurfaceRebinder(null)
+        FrameGenGlSurface.detach()
+        FrameGen.release()
         super.onDestroy()
     }
 
@@ -816,6 +853,7 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
             }
             applyRetroHudSettings(rating)
         }
+        RetroHudSupport.bindFrameGeneration(rating)
         rating.visibility = View.VISIBLE
         rating.reset()
         rating.post { applyDisplayGeometry() }
@@ -881,6 +919,7 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
                 when (event) {
                     is GLRetroView.GLRetroEvents.FrameRendered -> {
                         if (hudVisible) frameRating?.recordGameFrame()
+                        FrameGen.noteSourceFrames(1)
                         RetroNetplayLobby.onFrameRendered()
                     }
                     is GLRetroView.GLRetroEvents.SurfaceCreated -> {
@@ -1139,6 +1178,7 @@ class RetroActivity : FixedFontScaleAppCompatActivity(), RetroInputView.Listener
                     )
                     addAll(coreOptionEntries(RetroOptionCategory.DISPLAY))
                 }
+            RetroPane.FRAMEGEN -> emptyList()
             RetroPane.SOUND ->
                 buildList {
                     add(

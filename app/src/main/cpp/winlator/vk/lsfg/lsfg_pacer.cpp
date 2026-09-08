@@ -20,6 +20,16 @@ constexpr float HEADROOM_EPSILON = 0.02f;
 constexpr float CREDIT_EPSILON = 1.0e-4f;
 constexpr float SOURCE_ACCUM_FLOOR = 0.01f;
 constexpr uint32_t MIN_RATE_SAMPLES = 12;
+constexpr float COST_RAISE_SECONDS = 0.25f;
+constexpr float COST_PROBE_SECONDS = 0.5f;
+constexpr float COST_BLAME_SECONDS = 1.25f;
+constexpr float BASELINE_SMOOTHING = 0.25f;
+constexpr float RATE_JUMP_HIGH = 1.4f;
+constexpr float RATE_JUMP_LOW = 0.7f;
+constexpr uint32_t RATE_JUMP_SAMPLES = 3;
+constexpr float COST_RECOVER_RATIO = 0.97f;
+constexpr float COST_HOLD_SECONDS = 5.0f;
+constexpr float COST_DROP_RATIO = 0.9f;
 
 }
 
@@ -56,6 +66,22 @@ void LsfgPacer::TrackSourceRate(Clock::time_point now, uint64_t source_frames) {
 
     last_drawn = drawn;
     last_elapsed = elapsed;
+
+    const float instant = drawn > 0 ? elapsed / static_cast<float>(drawn) : 0.0f;
+    if (instant > 0.0f && source_interval > 0.0f &&
+        (instant > source_interval * RATE_JUMP_HIGH || instant < source_interval * RATE_JUMP_LOW)) {
+        if (++rate_jumps >= RATE_JUMP_SAMPLES) {
+            source_frame_accum = static_cast<float>(drawn);
+            source_time_accum = elapsed;
+            source_interval = instant;
+            source_samples = MIN_RATE_SAMPLES;
+            rate_jumps = 0;
+            return;
+        }
+    } else {
+        rate_jumps = 0;
+    }
+
     source_frame_accum += (static_cast<float>(drawn) - source_frame_accum) * SOURCE_SMOOTHING;
     source_time_accum += (elapsed - source_time_accum) * SOURCE_SMOOTHING;
     source_interval =
@@ -74,14 +100,86 @@ bool LsfgPacer::RatesSettled() const {
     return source_samples >= MIN_RATE_SAMPLES && loop_samples >= MIN_RATE_SAMPLES;
 }
 
+float LsfgPacer::SourceInterval() const {
+    if (source_samples >= MIN_RATE_SAMPLES && source_interval > 0.0f) return source_interval;
+    return config.source_rate > 0.0f ? 1.0f / config.source_rate : 0.0f;
+}
+
 size_t LsfgPacer::HeadroomLimit() const {
-    if (config.refresh_rate <= 0.0f || source_interval <= 0.0f ||
-        source_samples < MIN_RATE_SAMPLES) {
+    const float interval = SourceInterval();
+    if (config.refresh_rate <= 0.0f || interval <= 0.0f) {
         return LSFG_MAX_MULTIPLIER - 1;
     }
 
-    const float budget = std::ceil(config.refresh_rate * source_interval - HEADROOM_EPSILON);
+    const float budget = std::ceil(config.refresh_rate * interval - HEADROOM_EPSILON);
     return budget < 2.0f ? 0 : static_cast<size_t>(budget) - 1;
+}
+
+size_t LsfgPacer::SlotLimit() const {
+    const float interval = SourceInterval();
+    if (config.refresh_rate <= 0.0f || interval <= 0.0f) {
+        return LSFG_MAX_MULTIPLIER - 1;
+    }
+
+    const float slots = std::floor(config.refresh_rate * interval + HEADROOM_EPSILON);
+    return slots < 2.0f ? 0 : static_cast<size_t>(slots) - 1;
+}
+
+void LsfgPacer::TrackCost(Clock::time_point now, size_t ceiling) {
+    const float interval = SourceInterval();
+    if (interval <= 0.0f || !RatesSettled()) return;
+    const float rate = 1.0f / interval;
+
+    if (!last_cost_change) {
+        last_cost_change = now;
+        rate_at_raise = rate;
+        return;
+    }
+
+    const float since = std::chrono::duration<float>(now - *last_cost_change).count();
+
+    if (probing) {
+        if (since < COST_PROBE_SECONDS) return;
+        if (rate >= rate_before_probe * COST_RECOVER_RATIO) {
+            raise_delay = COST_HOLD_SECONDS;
+        } else {
+            cost_limit = probe_from;
+        }
+        probing = false;
+        rate_at_raise = rate;
+        last_cost_change = now;
+        return;
+    }
+
+    if (rate_at_raise > 0.0f && rate < rate_at_raise * COST_DROP_RATIO) {
+        if (cost_limit > 0 && since <= COST_BLAME_SECONDS) {
+            probe_from = cost_limit;
+            rate_before_probe = rate_at_raise;
+            cost_limit--;
+            probing = true;
+        } else {
+            raise_delay = COST_RAISE_SECONDS;
+        }
+        rate_at_raise = rate;
+        last_cost_change = now;
+        return;
+    }
+
+    rate_at_raise += (rate - rate_at_raise) * BASELINE_SMOOTHING;
+    if (since < raise_delay || cost_limit >= ceiling || limit < cost_limit) return;
+
+    float target = static_cast<float>(config.target_rate);
+    if (target > 0.0f && config.refresh_rate > 0.0f) {
+        target = std::min(target, config.refresh_rate);
+    }
+    const float wanted = target > 0.0f ? target * interval
+                                       : static_cast<float>(MaxGenerations()) + 1.0f;
+    if (wanted <= static_cast<float>(cost_limit) + 1.0f + HEADROOM_EPSILON) return;
+
+    cost_limit++;
+    raise_delay = COST_RAISE_SECONDS;
+    rate_at_raise = rate;
+    last_cost_change = now;
 }
 
 LsfgPlan LsfgPacer::Plan(size_t capacity, uint64_t source_frames) {
@@ -115,12 +213,15 @@ LsfgPlan LsfgPacer::Plan(size_t capacity, uint64_t source_frames) {
 
     if (target_rate == 0.0f) {
         output_credit = 0.0f;
-        limit = ceiling;
+        TrackCost(now, ceiling);
+        limit = std::min(std::min(ceiling, SlotLimit()), cost_limit);
         return LsfgPlan{limit, true};
     }
 
-    const size_t allowed = std::min(ceiling, HeadroomLimit());
-    const float desired_outputs = loop_interval * target_rate;
+    TrackCost(now, ceiling);
+    const size_t allowed = std::min(std::min(ceiling, HeadroomLimit()), cost_limit);
+    const float pace_interval = SourceInterval() > 0.0f ? SourceInterval() : loop_interval;
+    const float desired_outputs = pace_interval * target_rate;
     if (allowed == 0 || desired_outputs <= 1.0f) {
         output_credit = 0.0f;
         limit = 0;
@@ -151,6 +252,7 @@ LsfgPacerStats LsfgPacer::Stats() const {
     stats.target_rate = static_cast<float>(config.target_rate);
     stats.slots = config.refresh_rate * source_interval;
     stats.limit = limit;
+    stats.cost_limit = cost_limit;
     stats.rates_settled = RatesSettled();
     stats.last_drawn = last_drawn;
     stats.last_elapsed = last_elapsed;
@@ -170,8 +272,16 @@ void LsfgPacer::Reset() {
     loop_samples = 0;
     last_drawn = 0;
     last_elapsed = 0.0f;
+    rate_jumps = 0;
     output_credit = 0.0f;
     limit = 0;
+    cost_limit = 0;
+    probe_from = 0;
+    probing = false;
+    raise_delay = COST_RAISE_SECONDS;
+    rate_at_raise = 0.0f;
+    rate_before_probe = 0.0f;
+    last_cost_change.reset();
 }
 
 }

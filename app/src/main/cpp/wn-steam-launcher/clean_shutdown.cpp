@@ -87,6 +87,7 @@ constexpr int kCloudConflictAnswerWaitMs = 600000;
 constexpr int kCloudAttemptCapMs = 90000;
 constexpr int kCloudMinSettleMs = 500;
 constexpr int kCloudMaxPendingAttempts = 2;
+constexpr int kCloudStableSettleMs = 1500;
 
 bool cs_is_exec_ptr(void* p) {
     if (!p) return false;
@@ -629,6 +630,13 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
     using RunFn    = bool (WN_THISCALL *)(void*, unsigned int);
     using InProgFn = bool (WN_THISCALL *)(void*, unsigned int);
     using StateFn  = int  (WN_THISCALL *)(void*, unsigned int);
+    using CurFn    = int  (WN_THISCALL *)(void*, unsigned int);
+    using EvalFn   = void (WN_THISCALL *)(void*, unsigned int, bool);
+
+    void* curP = rs_vt[kVtRS_GetRemoteStorageSyncState];
+    if (!cs_is_exec_ptr(curP)) curP = nullptr;
+    void* evalP = rs_vt[kVtRS_EvaluateRemoteStorageSyncState];
+    if (!cs_is_exec_ptr(evalP)) evalP = nullptr;
 
     const char* phase = onExit ? "exit" : "launch";
     char buf[192];
@@ -646,25 +654,16 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
             wn_log(buf);
             break;
         }
-        if (attempt == 1) {
-            void* evalP = rs_vt[kVtRS_EvaluateRemoteStorageSyncState];
-            void* cur0P = rs_vt[kVtRS_GetRemoteStorageSyncState];
-            if (cs_is_exec_ptr(evalP)) {
-                using EvalFn = void (WN_THISCALL *)(void*, unsigned int, bool);
-                reinterpret_cast<EvalFn>(evalP)(rs, appId, true);
-                int lastSt = reinterpret_cast<StateFn>(stateP)(rs, appId);
-                int curSt = -1;
-                if (cs_is_exec_ptr(cur0P)) {
-                    using CurFn = int (WN_THISCALL *)(void*, unsigned int);
-                    curSt = reinterpret_cast<CurFn>(cur0P)(rs, appId);
-                }
-                std::snprintf(buf, sizeof(buf),
-                    "cloud: EvaluateRemoteStorageSyncState(%u,true) done; "
-                    "lastKnown=%d (%s) current=%d (%s)",
-                    appId, lastSt, cs_sync_state_name(lastSt),
-                    curSt, curSt >= 0 ? cs_sync_state_name(curSt) : "n/a");
-                wn_log(buf);
-            }
+        if (evalP) {
+            reinterpret_cast<EvalFn>(evalP)(rs, appId, true);
+            int lastSt = reinterpret_cast<StateFn>(stateP)(rs, appId);
+            int curSt = curP ? reinterpret_cast<CurFn>(curP)(rs, appId) : -1;
+            std::snprintf(buf, sizeof(buf),
+                "cloud: EvaluateRemoteStorageSyncState(%u,true) before attempt %d; "
+                "lastKnown=%d (%s) current=%d (%s)",
+                appId, attempt, lastSt, cs_sync_state_name(lastSt),
+                curSt, curSt >= 0 ? cs_sync_state_name(curSt) : "n/a");
+            wn_log(buf);
         }
         bool started = reinterpret_cast<RunFn>(runP)(rs, appId);
         std::snprintf(buf, sizeof(buf),
@@ -675,6 +674,8 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
         int attemptCap = remaining < kCloudAttemptCapMs ? remaining : kCloudAttemptCapMs;
         int waited = 0;
         int nextHeartbeat = 5000;
+        int stableState = -1;
+        int stableMs = 0;
         const DWORD attemptStart = ::GetTickCount();
         while (reinterpret_cast<InProgFn>(inProgP)(rs, appId) && waited < attemptCap) {
             if (g_bgetcallback && g_freelastcallback) {
@@ -692,6 +693,7 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
                 }
             }
             ::Sleep(10);
+            const int prevWaited = waited;
             waited = (int) (::GetTickCount() - attemptStart);
             if (waited >= nextHeartbeat) {
                 std::snprintf(buf, sizeof(buf),
@@ -702,6 +704,21 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
             if (waited >= kCloudMinSettleMs) {
                 int st = reinterpret_cast<StateFn>(stateP)(rs, appId);
                 if (st == kSyncSynchronized || st == kSyncDisabled) break;
+                const int cur = curP ? reinterpret_cast<CurFn>(curP)(rs, appId) : kSyncInProgress;
+                if (cur == stableState && cur != kSyncInProgress) {
+                    stableMs += waited - prevWaited;
+                    if (stableMs >= kCloudStableSettleMs) {
+                        std::snprintf(buf, sizeof(buf),
+                            "cloud: %s sync has reported \"%s\" with no transfer left for %dms while "
+                            "IsAppSyncInProgress stayed set — treating the sync as finished",
+                            phase, cs_sync_state_name(cur), stableMs);
+                        wn_log(buf);
+                        break;
+                    }
+                } else {
+                    stableState = cur;
+                    stableMs = 0;
+                }
             }
         }
         finalState = reinterpret_cast<StateFn>(stateP)(rs, appId);
@@ -725,11 +742,17 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
         if (finalState == kSyncChangesInCloud || finalState == kSyncChangesLocally ||
             finalState == kSyncChangesBoth || finalState == kSyncUnknown ||
             finalState == kSyncNotInitialized) {
-            if (!onExit && attempt >= kCloudMaxPendingAttempts) {
+            if (!onExit && finalState == kSyncChangesLocally) {
+                wn_log("cloud: launch sync finished with local saves ahead of the cloud — there "
+                       "is nothing to download, so the game starts now and the exit sync "
+                       "uploads them");
+                break;
+            }
+            if (attempt >= kCloudMaxPendingAttempts) {
                 std::snprintf(buf, sizeof(buf),
-                    "cloud: launch sync still reports \"%s\" after %d attempt(s) — proceeding "
-                    "so the sync never blocks the game (exit sync uses the full budget)",
-                    cs_sync_state_name(finalState), attempt);
+                    "cloud: %s sync still reports \"%s\" after %d attempt(s) — proceeding rather "
+                    "than re-running a sync that has already settled",
+                    phase, cs_sync_state_name(finalState), attempt);
                 wn_log(buf);
                 break;
             }
@@ -753,6 +776,9 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
             phase, appId, finalState, cs_sync_state_name(finalState));
     }
     wn_log(buf);
+    if (onExit && finalState == kSyncChangesLocally) {
+        wn_log("cloud: exit sync left local saves ahead of Steam Cloud — the app must upload them");
+    }
     return finalState;
 }
 

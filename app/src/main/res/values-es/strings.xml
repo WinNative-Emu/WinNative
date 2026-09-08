@@ -349,6 +349,8 @@
     <string name="container_config_processor_affinity">Afinidad de procesador</string>
     <string name="container_config_processor_affinity_32bit">Afinidad de procesador (apps de 32 bits)</string>
     <string name="container_config_audio_driver">Controlador de audio</string>
+    <string name="container_config_direct_audio_mic">Micrófono (DirectAudio)</string>
+    <string name="container_config_direct_audio_mic_help">Permite que un juego grabe desde el micrófono del dispositivo, para el chat de voz. Algunos títulos que buscan un micrófono al cargar no arrancarán con esto activado: actívalo solo para un juego que lo necesite.</string>
     <string name="container_config_win_components">Componentes de Windows</string>
     <string name="container_config_drives">Unidades</string>
     <string name="container_config_arch">Arquitectura</string>
@@ -2499,10 +2501,18 @@ Ruta instalada:
     <string name="retro_scr_consoles_download">Descargar núcleos de consola</string>
     <string name="retro_scr_consoles_downloading">Descargando… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">Núcleos de consola</string>
+    <string name="retro_scr_consoles_install_selected">Instalar la versión seleccionada</string>
     <string name="retro_scr_consoles_installed">Instalado — compilación %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">Instalado — compilación %1$s (fallo al buscar actualizaciones)</string>
+    <string name="retro_scr_consoles_installed_pinned">Instalado — compilación %1$s (versión fijada)</string>
     <string name="retro_scr_consoles_installing">Instalando…</string>
     <string name="retro_scr_consoles_missing">No instalado: descárgalo para jugar a juegos retro</string>
+    <string name="retro_scr_consoles_reinstall">Reinstalar la versión seleccionada</string>
+    <string name="retro_scr_consoles_release">Versión</string>
+    <string name="retro_scr_consoles_release_latest">Más reciente</string>
+    <string name="retro_scr_consoles_releases_failed">Versión (lista no disponible)</string>
+    <string name="retro_scr_consoles_releases_loading">Versión (cargando…)</string>
+    <string name="retro_scr_consoles_selected_available">Seleccionada — compilación %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">Estado</string>
     <string name="retro_scr_consoles_update">Actualizar núcleos de consola</string>
     <string name="retro_scr_consoles_update_available">Actualización disponible — compilación %1$s (%2$d MB)</string>
@@ -2541,6 +2551,8 @@ Ruta instalada:
     <string name="settings_frame_generation_updated">Actualizado desde %1$s.</string>
     <string name="settings_frame_generation_not_owned">La generación de fotogramas usa sombreadores de Lossless Scaling. Cómpralo en Steam con la cuenta con la que has iniciado sesión para activarlo.</string>
     <string name="settings_frame_generation_locate">Seleccionar Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpola fotogramas adicionales para esta consola con Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Esta GPU no expone las funciones de Vulkan que necesitan los sombreadores de Lossless Scaling.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Descargas de itch.io</string>
     <string name="itch_store_sign_in">Iniciar sesión en itch.io</string>

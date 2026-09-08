@@ -409,6 +409,8 @@
     <string name="container_config_processor_affinity">Prosessortilknytning</string>
     <string name="container_config_processor_affinity_32bit">Prosessortilknytning (32-biters apper)</string>
     <string name="container_config_audio_driver">Lyddriver</string>
+    <string name="container_config_direct_audio_mic">Mikrofon (DirectAudio)</string>
+    <string name="container_config_direct_audio_mic_help">Lar et spill ta opp fra enhetens mikrofon, for talechat i spillet. Enkelte titler som ser etter en mikrofon under innlasting, starter ikke med dette påslått – slå det bare på for et spill som trenger det.</string>
     <string name="container_config_win_components">Win-komponenter</string>
     <string name="container_config_drives">Stasjoner</string>
     <string name="container_config_arch">Arkitektur</string>
@@ -2498,10 +2500,18 @@ Installert bane:
     <string name="retro_scr_consoles_download">Last ned konsollkjerner</string>
     <string name="retro_scr_consoles_downloading">Laster ned… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">Konsollkjerner</string>
+    <string name="retro_scr_consoles_install_selected">Installer valgt utgivelse</string>
     <string name="retro_scr_consoles_installed">Installert — build %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">Installert — build %1$s (kunne ikke se etter oppdateringer)</string>
+    <string name="retro_scr_consoles_installed_pinned">Installert — build %1$s (låst utgivelse)</string>
     <string name="retro_scr_consoles_installing">Installerer…</string>
     <string name="retro_scr_consoles_missing">Ikke installert — last ned for å spille retrospill</string>
+    <string name="retro_scr_consoles_reinstall">Installer valgt utgivelse på nytt</string>
+    <string name="retro_scr_consoles_release">Utgivelse</string>
+    <string name="retro_scr_consoles_release_latest">Nyeste</string>
+    <string name="retro_scr_consoles_releases_failed">Utgivelse (listen er utilgjengelig)</string>
+    <string name="retro_scr_consoles_releases_loading">Utgivelse (laster…)</string>
+    <string name="retro_scr_consoles_selected_available">Valgt — build %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">Status</string>
     <string name="retro_scr_consoles_update">Oppdater konsollkjerner</string>
     <string name="retro_scr_consoles_update_available">Oppdatering tilgjengelig — build %1$s (%2$d MB)</string>
@@ -2540,6 +2550,8 @@ Installert bane:
     <string name="settings_frame_generation_updated">Oppdatert fra %1$s.</string>
     <string name="settings_frame_generation_not_owned">Bildegenerering bruker shadere fra Lossless Scaling. Kjøp det på Steam med den påloggede kontoen for å aktivere dette.</string>
     <string name="settings_frame_generation_locate">Velg Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpolerer ekstra bilder for denne konsollen med Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Denne GPU-en tilbyr ikke Vulkan-funksjonene som Lossless Scaling-shaderne trenger.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io-nedlastinger</string>
     <string name="itch_store_sign_in">Logg inn på itch.io</string>
