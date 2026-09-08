@@ -865,6 +865,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_frame_generation_updated">Updated from %1$s.</string>
     <string name="settings_frame_generation_not_owned">Frame generation uses shaders from Lossless Scaling. Buy it on Steam with the signed-in account to enable this.</string>
     <string name="settings_frame_generation_locate">Select Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpolates extra frames for this console with Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">This GPU does not expose the Vulkan features the Lossless Scaling shaders need.</string>
     <string name="session_drawer_vivid">Vivid</string>
     <string name="session_drawer_vivid_strength">Vivid Strength</string>
     <string name="session_drawer_color_profile">Color Effect</string>
@@ -2458,6 +2460,10 @@ Installed path:
     <string name="retro_scr_tab_defaults">Defaults</string>
     <string name="retro_scr_tab_credits">Credits</string>
     <string name="settings_support_title">Support</string>
+    <string name="support_donate_heading">DONATE</string>
+    <string name="support_donate_desc">Contribute to the development of WinNative. Opens in your browser.</string>
+    <string name="support_paypal">paypal.me/MaxJividen</string>
+    <string name="support_paypal_desc">PayPal • one-time or recurring</string>
     <string name="support_heading">GET HELP</string>
     <string name="support_desc">Ask questions, report problems, or see what is being worked on. Each opens in your browser.</string>
     <string name="support_winnative_discord">#WinNative</string>

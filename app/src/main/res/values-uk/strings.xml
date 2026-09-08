@@ -2557,6 +2557,8 @@
     <string name="settings_frame_generation_updated">Оновлено з %1$s.</string>
     <string name="settings_frame_generation_not_owned">Генерація кадрів використовує шейдери Lossless Scaling. Придбайте його у Steam під поточним обліковим записом, щоб увімкнути це.</string>
     <string name="settings_frame_generation_locate">Вибрати Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Добудовує додаткові кадри для цієї консолі за допомогою Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Цей графічний процесор не надає можливостей Vulkan, потрібних шейдерам Lossless Scaling.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Завантаження itch.io</string>
     <string name="itch_store_sign_in">Увійти в itch.io</string>

@@ -2552,6 +2552,8 @@ Installierter Pfad:
     <string name="settings_frame_generation_updated">Aus %1$s aktualisiert.</string>
     <string name="settings_frame_generation_not_owned">Frame-Generierung nutzt Shader von Lossless Scaling. Kaufe es auf Steam mit dem angemeldeten Konto, um dies zu aktivieren.</string>
     <string name="settings_frame_generation_locate">Lossless.dll auswählen…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpoliert mit Lossless Scaling zusätzliche Frames für diese Konsole.</string>
+    <string name="retro_gs_frame_generation_unsupported">Diese GPU bietet nicht die Vulkan-Funktionen, die die Lossless-Scaling-Shader benötigen.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io-Downloads</string>
     <string name="itch_store_sign_in">Bei itch.io anmelden</string>

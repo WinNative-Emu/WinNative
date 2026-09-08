@@ -106,22 +106,51 @@ private fun FrameGenerationSection(
     listener: XServerDrawerActionListener,
     paneScale: Float,
 ) {
+    FrameGenerationSection(
+        available = state.frameGenAvailable,
+        enabled = state.frameGenEnabled,
+        targetRate = state.frameGenTargetRate,
+        multiplier = state.frameGenMultiplier,
+        flowScale = state.frameGenFlowScale,
+        maxRefreshRate = state.maxRefreshRate,
+        paneScale = paneScale,
+        onEnabledChanged = listener::onFrameGenEnabledChanged,
+        onTargetRateSelected = listener::onFrameGenTargetRateSelected,
+        onMultiplierSelected = listener::onFrameGenMultiplierSelected,
+        onFlowScaleChanged = listener::onFrameGenFlowScaleChanged,
+    )
+}
+
+@Composable
+internal fun FrameGenerationSection(
+    available: Boolean,
+    enabled: Boolean,
+    targetRate: Int,
+    multiplier: Int,
+    flowScale: Int,
+    maxRefreshRate: Int,
+    paneScale: Float,
+    onEnabledChanged: (Boolean) -> Unit,
+    onTargetRateSelected: (Int) -> Unit,
+    onMultiplierSelected: (Int) -> Unit,
+    onFlowScaleChanged: (Int) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
         PaneSectionLabel(stringResource(R.string.session_drawer_frame_generation))
 
-        if (!state.frameGenAvailable) {
+        if (!available) {
             FrameGenNote(stringResource(R.string.session_drawer_frame_generation_missing), paneScale)
         } else {
             NavBooleanRow(
                 title = stringResource(R.string.session_drawer_frame_generation_enable),
-                checked = state.frameGenEnabled,
-                onCheckedChange = listener::onFrameGenEnabledChanged,
+                checked = enabled,
+                onCheckedChange = onEnabledChanged,
             )
 
             FrameGenNote(stringResource(R.string.session_drawer_frame_generation_note), paneScale)
 
             AnimatedVisibility(
-                visible = state.frameGenEnabled,
+                visible = enabled,
                 enter =
                     expandVertically(
                         animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
@@ -140,10 +169,10 @@ private fun FrameGenerationSection(
                     )
 
                     val rates =
-                        remember(state.maxRefreshRate, state.frameGenTargetRate) {
+                        remember(maxRefreshRate, targetRate) {
                             (
-                                FrameGenTargetRates.filter { it <= state.maxRefreshRate } +
-                                    listOfNotNull(state.frameGenTargetRate.takeIf { it > 0 })
+                                FrameGenTargetRates.filter { it <= maxRefreshRate } +
+                                    listOfNotNull(targetRate.takeIf { it > 0 })
                             )
                                 .distinct()
                                 .sorted()
@@ -152,11 +181,11 @@ private fun FrameGenerationSection(
                     ChipFlow {
                         HUDToggleChip(
                             label = stringResource(R.string.session_drawer_frame_generation_target_off),
-                            checked = state.frameGenTargetRate == 0,
-                            onClick = { listener.onFrameGenTargetRateSelected(0) },
+                            checked = targetRate == 0,
+                            onClick = { onTargetRateSelected(0) },
                             modifier = Modifier.paneNavItem(
                                 cornerRadius = (16f * paneScale).dp,
-                                onActivate = { listener.onFrameGenTargetRateSelected(0) },
+                                onActivate = { onTargetRateSelected(0) },
                             ),
                         )
                         rates.forEach { rate ->
@@ -165,33 +194,33 @@ private fun FrameGenerationSection(
                                     R.string.session_drawer_frame_generation_target_value,
                                     rate,
                                 ),
-                                checked = state.frameGenTargetRate == rate,
-                                onClick = { listener.onFrameGenTargetRateSelected(rate) },
+                                checked = targetRate == rate,
+                                onClick = { onTargetRateSelected(rate) },
                                 modifier = Modifier.paneNavItem(
                                     cornerRadius = (16f * paneScale).dp,
-                                    onActivate = { listener.onFrameGenTargetRateSelected(rate) },
+                                    onActivate = { onTargetRateSelected(rate) },
                                 ),
                             )
                         }
                     }
 
-                    if (state.frameGenTargetRate == 0) {
+                    if (targetRate == 0) {
                         FrameGenFieldLabel(
                             stringResource(R.string.session_drawer_frame_generation_multiplier),
                             paneScale,
                         )
                         ChipFlow {
-                            FrameGenMultipliers.forEach { multiplier ->
+                            FrameGenMultipliers.forEach { option ->
                                 HUDToggleChip(
                                     label = stringResource(
                                         R.string.session_drawer_frame_generation_multiplier_value,
-                                        multiplier,
+                                        option,
                                     ),
-                                    checked = state.frameGenMultiplier == multiplier,
-                                    onClick = { listener.onFrameGenMultiplierSelected(multiplier) },
+                                    checked = multiplier == option,
+                                    onClick = { onMultiplierSelected(option) },
                                     modifier = Modifier.paneNavItem(
                                         cornerRadius = (16f * paneScale).dp,
-                                        onActivate = { listener.onFrameGenMultiplierSelected(multiplier) },
+                                        onActivate = { onMultiplierSelected(option) },
                                     ),
                                 )
                             }
@@ -204,8 +233,8 @@ private fun FrameGenerationSection(
                     }
 
                     FrameGenPresetRow(
-                        selected = FrameGenPreset.fromFlowScale(state.frameGenFlowScale),
-                        onSelected = { listener.onFrameGenFlowScaleChanged(it.flowScale) },
+                        selected = FrameGenPreset.fromFlowScale(flowScale),
+                        onSelected = { onFlowScaleChanged(it.flowScale) },
                         paneScale = paneScale,
                     )
                 }

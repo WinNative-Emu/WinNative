@@ -2550,6 +2550,8 @@ Yüklü konum:
     <string name="settings_frame_generation_updated">%1$s kaynağından güncellendi.</string>
     <string name="settings_frame_generation_not_owned">Kare üretimi Lossless Scaling gölgelendiricilerini kullanır. Bunu etkinleştirmek için oturum açmış hesapla Steam\'den satın alın.</string>
     <string name="settings_frame_generation_locate">Lossless.dll seç…</string>
+    <string name="retro_gs_frame_generation_subtitle">Bu konsol için Lossless Scaling ile ek kareler üretir.</string>
+    <string name="retro_gs_frame_generation_unsupported">Bu GPU, Lossless Scaling gölgelendiricilerinin gerektirdiği Vulkan özelliklerini sunmuyor.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io İndirmeleri</string>
     <string name="itch_store_sign_in">itch.io hesabına giriş yap</string>

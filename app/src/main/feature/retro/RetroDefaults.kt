@@ -64,6 +64,30 @@ object RetroDefaults {
     fun setHud(context: Context, systemId: String, value: Boolean) =
         prefs(context).edit().putBoolean("retro_def_hud_global", value).apply()
 
+    fun frameGen(context: Context, systemId: String): Boolean =
+        prefs(context).getBoolean(key("framegen", systemId), false)
+
+    fun setFrameGen(context: Context, systemId: String, value: Boolean) =
+        prefs(context).edit().putBoolean(key("framegen", systemId), value).apply()
+
+    fun frameGenMultiplier(context: Context, systemId: String): Int =
+        prefs(context).getInt(key("framegen_multiplier", systemId), 2)
+
+    fun setFrameGenMultiplier(context: Context, systemId: String, value: Int) =
+        prefs(context).edit().putInt(key("framegen_multiplier", systemId), value).apply()
+
+    fun frameGenTargetRate(context: Context, systemId: String): Int =
+        prefs(context).getInt(key("framegen_target", systemId), 0)
+
+    fun setFrameGenTargetRate(context: Context, systemId: String, value: Int) =
+        prefs(context).edit().putInt(key("framegen_target", systemId), value).apply()
+
+    fun frameGenFlowScale(context: Context, systemId: String): Int =
+        prefs(context).getInt(key("framegen_flow", systemId), 70)
+
+    fun setFrameGenFlowScale(context: Context, systemId: String, value: Int) =
+        prefs(context).edit().putInt(key("framegen_flow", systemId), value).apply()
+
     fun netplayEnabled(context: Context, systemId: String): Boolean =
         prefs(context).getBoolean(key("netplay", systemId), false)
 

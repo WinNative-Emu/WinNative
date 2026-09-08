@@ -2550,6 +2550,8 @@ Cale instalata:
     <string name="settings_frame_generation_updated">Actualizat din %1$s.</string>
     <string name="settings_frame_generation_not_owned">Generarea de cadre folosește shadere din Lossless Scaling. Cumpără-l pe Steam cu contul conectat pentru a activa acest lucru.</string>
     <string name="settings_frame_generation_locate">Selectează Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpolează cadre suplimentare pentru această consolă cu Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Acest GPU nu expune funcțiile Vulkan de care au nevoie shaderele Lossless Scaling.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Descărcări itch.io</string>
     <string name="itch_store_sign_in">Conectează-te la itch.io</string>

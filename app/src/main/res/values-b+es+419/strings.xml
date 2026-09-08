@@ -2550,6 +2550,8 @@ Ruta instalada:
     <string name="settings_frame_generation_updated">Actualizado desde %1$s.</string>
     <string name="settings_frame_generation_not_owned">La generación de fotogramas usa sombreadores de Lossless Scaling. Cómpralo en Steam con la cuenta con la que has iniciado sesión para activarlo.</string>
     <string name="settings_frame_generation_locate">Seleccionar Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpola cuadros adicionales para esta consola con Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Esta GPU no expone las funciones de Vulkan que necesitan los sombreadores de Lossless Scaling.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Descargas de itch.io</string>
     <string name="itch_store_sign_in">Iniciar sesión en itch.io</string>

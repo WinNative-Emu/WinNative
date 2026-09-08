@@ -2487,6 +2487,8 @@
     <string name="settings_frame_generation_updated">%1$s से अपडेट किया गया।</string>
     <string name="settings_frame_generation_not_owned">फ़्रेम जनरेशन Lossless Scaling के शेडर उपयोग करता है। इसे सक्षम करने के लिए साइन-इन खाते से Steam पर इसे खरीदें।</string>
     <string name="settings_frame_generation_locate">Lossless.dll चुनें…</string>
+    <string name="retro_gs_frame_generation_subtitle">Lossless Scaling से इस कंसोल के लिए अतिरिक्त फ़्रेम बनाता है।</string>
+    <string name="retro_gs_frame_generation_unsupported">यह GPU वे Vulkan सुविधाएँ नहीं देता जो Lossless Scaling शेडर के लिए ज़रूरी हैं।</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io डाउनलोड</string>
     <string name="itch_store_sign_in">itch.io में साइन इन करें</string>

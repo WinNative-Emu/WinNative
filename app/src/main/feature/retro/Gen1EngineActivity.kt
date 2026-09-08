@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.AutoAwesomeMotion
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Monitor
 import androidx.compose.material.icons.outlined.SportsEsports
@@ -102,6 +103,8 @@ class Gen1EngineActivity :
         handler.removeCallbacksAndMessages(null)
         bridge.shutdown()
         store.clear()
+        com.winlator.cmod.shared.framegen.FrameGen.setSurfaceRebinder(null)
+        com.winlator.cmod.shared.framegen.FrameGen.release()
         super.onDestroy()
     }
 
@@ -217,6 +220,11 @@ class Gen1EngineActivity :
                 RetroPane.DISPLAY,
                 Icons.Outlined.Monitor,
                 getString(R.string.retro_tab_display),
+            ),
+            RetroTabSpec(
+                RetroPane.FRAMEGEN,
+                Icons.Outlined.AutoAwesomeMotion,
+                getString(R.string.session_drawer_frame_generation),
             ),
             RetroTabSpec(
                 RetroPane.SOUND,
@@ -419,6 +427,7 @@ class Gen1EngineActivity :
         when (pane) {
             null -> buildMainEntries()
             RetroPane.SAVES -> buildSaveEntries()
+            RetroPane.FRAMEGEN -> emptyList()
             RetroPane.CONTROLS -> buildControlEntries() + engineRows(RetroPane.CONTROLS)
             RetroPane.HUD -> buildHudEntries()
             else -> engineRows(pane)
@@ -653,6 +662,7 @@ class Gen1EngineActivity :
         }
         rating.visibility = android.view.View.VISIBLE
         rating.reset()
+        RetroHudSupport.bindFrameGeneration(rating)
         handler.removeCallbacks(hudTick)
         handler.post(hudTick)
     }
@@ -798,6 +808,19 @@ class Gen1EngineActivity :
         bridge = Gen1EngineBridge(this)
         bridge.clearStale()
 
+        com.winlator.cmod.shared.framegen.FrameGen.installFromIntent(this, intent)
+        com.winlator.cmod.shared.framegen.FrameGen.applyDisplayMode(this)
+        com.winlator.cmod.shared.framegen.FrameGen.setSurfaceRebinder {
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed && mSurface != null) {
+                    runCatching {
+                        SDLActivity.onNativeSurfaceDestroyed()
+                        SDLActivity.onNativeSurfaceCreated()
+                    }
+                }
+            }
+        }
+
         runCatching {
             if (!rom.isNullOrEmpty()) Os.setenv("POKEPORT_IMPORT_ROM", rom, true)
             if (!version.isNullOrEmpty()) Os.setenv("POKEPORT_VERSION", version, true)
@@ -807,6 +830,19 @@ class Gen1EngineActivity :
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
 
         menu.entriesProvider = { pane -> buildEntriesFor(pane) }
+        menu.paneContentProvider = { pane ->
+            if (pane == RetroPane.FRAMEGEN) {
+                {
+                    RetroFrameGenPane.Content(
+                        this,
+                        persistShortcut,
+                        persistShortcut?.let { RetroShortcuts.systemForShortcut(it) }?.id,
+                    )
+                }
+            } else {
+                null
+            }
+        }
         menu.bottomProvider = { buildBottomEntries() }
         menu.tabs = buildTabs()
 

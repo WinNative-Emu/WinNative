@@ -2552,6 +2552,8 @@
     <string name="settings_frame_generation_updated">%1$s에서 업데이트했습니다.</string>
     <string name="settings_frame_generation_not_owned">프레임 생성은 Lossless Scaling의 셰이더를 사용합니다. 사용하려면 로그인한 계정으로 Steam에서 구매하세요.</string>
     <string name="settings_frame_generation_locate">Lossless.dll 선택…</string>
+    <string name="retro_gs_frame_generation_subtitle">Lossless Scaling으로 이 콘솔의 추가 프레임을 생성합니다.</string>
+    <string name="retro_gs_frame_generation_unsupported">이 GPU는 Lossless Scaling 셰이더에 필요한 Vulkan 기능을 제공하지 않습니다.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io 다운로드</string>
     <string name="itch_store_sign_in">itch.io에 로그인</string>

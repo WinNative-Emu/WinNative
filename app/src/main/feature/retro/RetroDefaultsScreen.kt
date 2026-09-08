@@ -478,6 +478,13 @@ fun RetroDefaultsScreen(bridge: SettingsNavBridge? = null) {
                         color = PageSub,
                     )
                 }
+                if (expanded) {
+                    RetroSettingSwitch(
+                        stringResource(R.string.settings_frame_generation_title),
+                        RetroDefaults.frameGen(context, sys),
+                        subtitle = stringResource(R.string.retro_gs_frame_generation_subtitle),
+                    ) { RetroDefaults.setFrameGen(context, sys, it); refresh++ }
+                }
                 if (expanded && console.isExternal) {
                     val ps2Prefs = context.getSharedPreferences("ARMSX2", android.content.Context.MODE_PRIVATE)
                     val rendererKeys = listOf("vulkan", "opengl", "software")

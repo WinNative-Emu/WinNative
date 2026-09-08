@@ -2551,6 +2551,8 @@ Chemin installé :
     <string name="settings_frame_generation_updated">Mis à jour depuis %1$s.</string>
     <string name="settings_frame_generation_not_owned">La génération d\'images utilise les shaders de Lossless Scaling. Achetez-le sur Steam avec le compte connecté pour l\'activer.</string>
     <string name="settings_frame_generation_locate">Sélectionner Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpole des images supplémentaires pour cette console avec Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Ce GPU n\'expose pas les fonctions Vulkan dont les shaders Lossless Scaling ont besoin.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Téléchargements itch.io</string>
     <string name="itch_store_sign_in">Se connecter à itch.io</string>

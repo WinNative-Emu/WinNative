@@ -2550,6 +2550,8 @@
     <string name="settings_frame_generation_updated">อัปเดตจาก %1$s แล้ว</string>
     <string name="settings_frame_generation_not_owned">การสร้างเฟรมใช้เชเดอร์จาก Lossless Scaling ซื้อบน Steam ด้วยบัญชีที่ลงชื่อเข้าใช้อยู่เพื่อเปิดใช้งาน</string>
     <string name="settings_frame_generation_locate">เลือก Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">สร้างเฟรมเพิ่มเติมสำหรับเครื่องเล่นนี้ด้วย Lossless Scaling</string>
+    <string name="retro_gs_frame_generation_unsupported">GPU นี้ไม่รองรับความสามารถ Vulkan ที่เชดเดอร์ของ Lossless Scaling ต้องใช้</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">การดาวน์โหลด itch.io</string>
     <string name="itch_store_sign_in">ลงชื่อเข้าใช้ itch.io</string>

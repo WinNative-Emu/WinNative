@@ -2551,6 +2551,8 @@
     <string name="settings_frame_generation_updated">已从 %1$s 更新。</string>
     <string name="settings_frame_generation_not_owned">帧生成使用 Lossless Scaling 的着色器。请使用当前登录的账号在 Steam 上购买以启用此功能。</string>
     <string name="settings_frame_generation_locate">选择 Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">使用 Lossless Scaling 为该主机插入额外帧。</string>
+    <string name="retro_gs_frame_generation_unsupported">此 GPU 不提供 Lossless Scaling 着色器所需的 Vulkan 功能。</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io 下载</string>
     <string name="itch_store_sign_in">登录 itch.io</string>
