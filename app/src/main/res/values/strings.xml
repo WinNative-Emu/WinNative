@@ -2337,6 +2337,14 @@ Installed path:
     <string name="retro_scr_consoles_download">Download console cores</string>
     <string name="retro_scr_consoles_update">Update console cores</string>
     <string name="retro_scr_consoles_check">Check for updates</string>
+    <string name="retro_scr_consoles_install_selected">Install selected release</string>
+    <string name="retro_scr_consoles_installed_pinned">Installed — build %1$s (pinned release)</string>
+    <string name="retro_scr_consoles_reinstall">Reinstall selected release</string>
+    <string name="retro_scr_consoles_release">Release</string>
+    <string name="retro_scr_consoles_release_latest">Latest</string>
+    <string name="retro_scr_consoles_releases_failed">Release (list unavailable)</string>
+    <string name="retro_scr_consoles_releases_loading">Release (loading…)</string>
+    <string name="retro_scr_consoles_selected_available">Selected — build %1$s (%2$d MB)</string>
     <string name="retro_scr_retroachievements">RETROACHIEVEMENTS</string>
     <string name="retro_scr_account">Account</string>
     <string name="retro_scr_signed_in">Signed in</string>
