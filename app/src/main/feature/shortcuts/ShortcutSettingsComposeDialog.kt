@@ -54,6 +54,7 @@ import com.winlator.cmod.feature.settings.WineD3DConfigUtils
 import com.winlator.cmod.feature.setup.SetupWizardActivity
 import com.winlator.cmod.feature.stores.steam.events.AndroidEvent
 import com.winlator.cmod.runtime.audio.directaudio.DirectAudioDriver
+import com.winlator.cmod.shared.android.DeviceResolutions
 import com.winlator.cmod.runtime.compat.box64.Box64Preset
 import com.winlator.cmod.runtime.compat.box64.Box64PresetManager
 import com.winlator.cmod.runtime.container.Container
@@ -480,7 +481,12 @@ class ShortcutSettingsComposeDialog private constructor(
         // Screen sizes
         val screenSizeArr =
             context.resources.getStringArray(R.array.screen_size_entries).toList()
+        state.standardScreenSizeEntries.value = screenSizeArr
+        state.deviceScreenSizeEntries.value =
+            DeviceResolutions.screenSizeEntries(activity, screenSizeArr.firstOrNull() ?: "Custom")
+        state.devicePanelSummary.value = DeviceResolutions.panelSummary(activity)
         state.screenSizeEntries.value = screenSizeArr
+        state.applyScreenSizeEntries(DeviceResolutions.isEnabled(context))
         val screenSize = getShortcutSetting("screenSize", container.getScreenSize())
         selectScreenSize(screenSize)
 
