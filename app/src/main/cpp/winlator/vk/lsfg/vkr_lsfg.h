@@ -32,6 +32,8 @@ bool vkr_lsfg_prepare(VkrLsfg* lsfg, uint32_t width, uint32_t height, VkFormat f
 
 uint32_t vkr_lsfg_plan(VkrLsfg* lsfg, uint32_t capacity, uint64_t source_frames);
 
+void vkr_lsfg_note_frame(VkrLsfg* lsfg, uint64_t draw_ns, uint32_t delivered);
+
 void vkr_lsfg_process(VkrLsfg* lsfg, VkCommandBuffer cmd, VkImage source,
                       uint32_t width, uint32_t height, uint32_t generations);
 

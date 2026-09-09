@@ -2998,6 +2998,10 @@ static bool record_and_submit_frame(VkRenderer* r) {
     if (draw_end_ns > draw_begin_ns) r->framegen_draw_ns += draw_end_ns - draw_begin_ns;
     r->framegen_last_end_ns = draw_end_ns;
     r->framegen_timed_frames++;
+    if (r->lsfg) {
+        vkr_lsfg_note_frame(r->lsfg, draw_end_ns > draw_begin_ns ? draw_end_ns - draw_begin_ns : 0,
+                            gen_count);
+    }
 
     return true;
 }
