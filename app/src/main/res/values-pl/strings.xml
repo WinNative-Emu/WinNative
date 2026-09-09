@@ -1521,6 +1521,9 @@ Zainstalowana ścieżka:
     <string name="session_drawer_rts_gestures">Gesty RTS</string>
     <string name="session_drawer_rts_gestures_edit">Edytuj</string>
     <string name="session_drawer_touch">Dotyk</string>
+    <string name="session_drawer_layout">Układ szuflady</string>
+    <string name="session_drawer_layout_items">Elementy menu</string>
+    <string name="session_drawer_layout_tabs">Karty</string>
     <string name="session_drawer_touch_map_right_stick">Mapuj na prawą gałkę</string>
     <string name="session_drawer_touch_touchscreen">Tryb ekranu dotykowego</string>
     <string name="session_drawer_touch_trackpad">Gładzik</string>

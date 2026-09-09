@@ -575,6 +575,8 @@ internal val FrameGenTargetRates = listOf(60, 90, 120, 144, 165)
 internal const val FrameGenFlowScaleMin = 25
 internal const val FrameGenFlowScaleMax = 100
 
+enum class DrawerSide { LEFT, RIGHT, BOTH }
+
 data class XServerDrawerItem(
     val itemId: Int,
     val title: String,
@@ -582,6 +584,7 @@ data class XServerDrawerItem(
     val icon: ImageVector,
     val active: Boolean = false,
     val enabled: Boolean = true,
+    val side: DrawerSide = DrawerSide.LEFT,
 )
 
 /** Device-filtered options + persisted selections for the Record popup. Quality: 0=Perf,1=Balance,2=Quality. */
@@ -596,6 +599,7 @@ data class RecordUiConfig(
 
 data class XServerDrawerState(
     val items: List<XServerDrawerItem>,
+    val paneSides: Map<Int, DrawerSide> = emptyMap(),
     val hudTransparency: Float = 1.0f,
     val hudBackgroundAlphaEnabled: Boolean = false,
     val hudBackgroundTransparency: Float = 1.0f,
@@ -726,6 +730,7 @@ class XServerDrawerStateHolder(
         flushLogsBufferToState()
     }
     private var drawerOpen by mutableStateOf(false)
+    internal var openSide by mutableStateOf<DrawerSide?>(null)
     internal var openPane by mutableStateOf<DrawerPane?>(null)
     var menuNavRegion by mutableStateOf(0)
         private set
@@ -756,8 +761,11 @@ class XServerDrawerStateHolder(
     val isDrawerOpen: Boolean
         get() = drawerOpen
 
-    fun openDrawer() {
+    fun openDrawer() = openDrawer(DrawerSide.LEFT)
+
+    fun openDrawer(side: DrawerSide) {
         drawerOpen = true
+        openSide = side
     }
 
     private fun regionSize(r: Int) = when (r) {
@@ -886,6 +894,7 @@ class XServerDrawerStateHolder(
 
     fun closeDrawer() {
         drawerOpen = false
+        openSide = null
         openPane = null
     }
 
@@ -1384,9 +1393,22 @@ fun buildXServerDrawerState(
             icon = Icons.AutoMirrored.Outlined.ExitToApp,
         )
 
+    items +=
+        XServerDrawerItem(
+            itemId = R.id.main_menu_drawer_layout,
+            title = context.getString(R.string.session_drawer_layout),
+            subtitle = "",
+            icon = Icons.Outlined.Tune,
+        )
+
+    val itemSideMap = loadDrawerItemSides(context)
+    val finalItems = items.map { it.copy(side = itemSideMap[it.itemId] ?: DrawerSide.LEFT) }
+    val paneSides = loadDrawerPaneSides(context)
+
     return XServerDrawerState(
         recordConfig = recordConfig,
-        items = items,
+        items = finalItems,
+        paneSides = paneSides,
         hudTransparency = hudTransparency,
         hudBackgroundAlphaEnabled = hudBackgroundAlphaEnabled,
         hudBackgroundTransparency = hudBackgroundTransparency,
@@ -1619,6 +1641,8 @@ internal fun XServerDrawerContent(
     onOpenPaneChange: (DrawerPane?) -> Unit,
     listener: XServerDrawerActionListener,
     onDismiss: () -> Unit,
+    openSide: DrawerSide? = null,
+    onDrawerLayoutChanged: (List<XServerDrawerItem>, Map<Int, DrawerSide>) -> Unit = { _, _ -> },
     revealCards: Boolean = true,
     menuNavRegion: Int = 0,
     menuNavIndex: Int = 0,
@@ -1675,6 +1699,8 @@ internal fun XServerDrawerContent(
                             TopRail(
                                 state = state,
                                 openPane = openPane,
+                                openSide = openSide,
+                                paneSides = state.paneSides,
                                 onTabClick = { spec ->
                                     onOpenPaneChange(if (openPane == spec.pane) null else spec.pane)
                                 },
@@ -1747,6 +1773,8 @@ internal fun XServerDrawerContent(
                                         state = state,
                                         listener = listener,
                                         cardsRevealed = cardsRevealed.value,
+                                        openSide = openSide,
+                                        onDrawerLayoutChanged = onDrawerLayoutChanged,
                                         onOpenTaskManager = { onOpenPaneChange(DrawerPane.TASK_MANAGER) },
                                         onOpenLogs = { onOpenPaneChange(DrawerPane.LOGS) },
                                         onOpenTouch = { onOpenPaneChange(DrawerPane.TOUCH) },
@@ -1794,6 +1822,8 @@ private data class RailTileBounds(val offsetX: Float, val width: Float, val heig
 private fun TopRail(
     state: XServerDrawerState,
     openPane: DrawerPane?,
+    openSide: DrawerSide? = null,
+    paneSides: Map<Int, DrawerSide> = emptyMap(),
     onTabClick: (RailPaneSpec) -> Unit,
     onMenuClick: () -> Unit,
     region: Int = 0,
@@ -1805,7 +1835,13 @@ private fun TopRail(
 ) {
     val paneScale = LocalPaneScale.current
     val density = LocalDensity.current
-    val activeSpecs = RAIL_PANES.filter { spec -> state.items.any { it.itemId == spec.itemId } }
+    val activeSpecs =
+        RAIL_PANES.filter { spec ->
+            state.items.any { it.itemId == spec.itemId } &&
+                (openSide == null ||
+                    (paneSides[spec.itemId] ?: DrawerSide.LEFT) == openSide ||
+                    (paneSides[spec.itemId] ?: DrawerSide.LEFT) == DrawerSide.BOTH)
+        }
 
     val tabCount = activeSpecs.size + 1
     LaunchedEffect(tabCount) { onSetNavCount(tabCount) }
@@ -2046,6 +2082,8 @@ private fun ActionCardGrid(
     state: XServerDrawerState,
     listener: XServerDrawerActionListener,
     cardsRevealed: Boolean,
+    openSide: DrawerSide? = null,
+    onDrawerLayoutChanged: (List<XServerDrawerItem>, Map<Int, DrawerSide>) -> Unit = { _, _ -> },
     onOpenTaskManager: () -> Unit,
     onOpenLogs: () -> Unit,
     onOpenTouch: () -> Unit,
@@ -2059,14 +2097,19 @@ private fun ActionCardGrid(
     val paneScale = LocalPaneScale.current
     val cards =
         state.items.filter {
-            it.itemId !in RAIL_PANE_ITEM_IDS && it.itemId !in PINNED_BOTTOM_ITEM_IDS
+            it.itemId !in RAIL_PANE_ITEM_IDS &&
+                it.itemId !in PINNED_BOTTOM_ITEM_IDS &&
+                (openSide == null || it.side == openSide || it.side == DrawerSide.BOTH)
         }
     var showRecordSettings by remember { mutableStateOf(false) }
+    var showDrawerLayout by remember { mutableStateOf(false) }
+    val gridContext = androidx.compose.ui.platform.LocalContext.current
 
     fun cardClick(item: XServerDrawerItem) {
         when (item.itemId) {
             R.id.main_menu_task_manager -> onOpenTaskManager()
             R.id.main_menu_logs -> onOpenLogs()
+            R.id.main_menu_drawer_layout -> showDrawerLayout = true
             // Recording: stop if active, otherwise open the settings popup.
             R.id.main_menu_record ->
                 if (item.active) listener.onActionSelected(item.itemId)
@@ -2137,7 +2180,181 @@ private fun ActionCardGrid(
             },
         )
     }
+
+    if (showDrawerLayout) {
+        DrawerLayoutDialog(
+            items =
+                state.items.filter {
+                    it.itemId !in RAIL_PANE_ITEM_IDS &&
+                        it.itemId !in PINNED_BOTTOM_ITEM_IDS &&
+                        it.itemId != R.id.main_menu_drawer_layout
+                },
+            paneSides = state.paneSides,
+            onDismiss = { showDrawerLayout = false },
+            onApply = { menuSides, paneSides ->
+                androidx.preference.PreferenceManager.getDefaultSharedPreferences(gridContext)
+                    .edit()
+                    .putString(
+                        "drawer_item_sides",
+                        menuSides.entries.joinToString(",") { "${it.key}:${it.value.name}" },
+                    )
+                    .putString(
+                        "drawer_pane_sides",
+                        paneSides.entries.joinToString(",") { "${it.key}:${it.value.name}" },
+                    )
+                    .apply()
+                onDrawerLayoutChanged(
+                    state.items.map { item ->
+                        menuSides[item.itemId]?.let { item.copy(side = it) } ?: item
+                    },
+                    paneSides,
+                )
+                showDrawerLayout = false
+            },
+        )
+    }
 }
+
+private fun loadDrawerItemSides(context: android.content.Context): Map<Int, DrawerSide> {
+    val raw =
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+            .getString("drawer_item_sides", "")
+            .orEmpty()
+    if (raw.isBlank()) return emptyMap()
+    return parseDrawerSides(raw)
+}
+
+private fun loadDrawerPaneSides(context: android.content.Context): Map<Int, DrawerSide> {
+    val raw =
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+            .getString("drawer_pane_sides", "")
+            .orEmpty()
+    if (raw.isBlank()) return emptyMap()
+    return parseDrawerSides(raw)
+}
+
+private fun parseDrawerSides(raw: String): Map<Int, DrawerSide> =
+    raw.split(",").mapNotNull { seg ->
+        val parts = seg.split(":")
+        val id = parts.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
+        val side =
+            when (parts.getOrNull(1)) {
+                "RIGHT" -> DrawerSide.RIGHT
+                "BOTH" -> DrawerSide.BOTH
+                else -> DrawerSide.LEFT
+            }
+        id to side
+    }.toMap()
+
+
+@Composable
+private fun DrawerLayoutDialog(
+    items: List<XServerDrawerItem>,
+    paneSides: Map<Int, DrawerSide> = emptyMap(),
+    onDismiss: () -> Unit,
+    onApply: (Map<Int, DrawerSide>, Map<Int, DrawerSide>) -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var menuSides by remember { mutableStateOf(items.associate { it.itemId to it.side }) }
+    var paneMap by remember { mutableStateOf(paneSides) }
+    var activeTab by remember { mutableStateOf(0) }
+
+    @Composable
+    fun sideRow(title: String, current: DrawerSide, onPick: (DrawerSide) -> Unit) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = title, fontSize = 13.sp, modifier = Modifier.weight(1f))
+            DrawerSide.entries.forEach { option ->
+                androidx.compose.material3.RadioButton(
+                    selected = current == option,
+                    onClick = { onPick(option) },
+                )
+                Text(
+                    when (option) {
+                        DrawerSide.LEFT -> "\u2190"
+                        DrawerSide.RIGHT -> "\u2192"
+                        DrawerSide.BOTH -> "\u2194"
+                    },
+                    fontSize = 14.sp,
+                )
+                Spacer(Modifier.width(4.dp))
+            }
+        }
+    }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        androidx.compose.material3.Surface(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            color = androidx.compose.material3.MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.session_drawer_layout),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    listOf(
+                        stringResource(R.string.session_drawer_layout_items),
+                        stringResource(R.string.session_drawer_layout_tabs),
+                    ).forEachIndexed { index, label ->
+                        androidx.compose.material3.FilterChip(
+                            selected = activeTab == index,
+                            onClick = { activeTab = index },
+                            label = { Text(label) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+
+                if (activeTab == 0) {
+                    items.forEach { item ->
+                        sideRow(item.title, menuSides[item.itemId] ?: DrawerSide.LEFT) {
+                            menuSides = menuSides + (item.itemId to it)
+                        }
+                    }
+                } else {
+                    RAIL_PANES.forEach { spec ->
+                        val label =
+                            runCatching { context.getString(spec.labelRes) }.getOrNull()
+                                ?: spec.pane?.name ?: ""
+                        sideRow(label, paneMap[spec.itemId] ?: DrawerSide.LEFT) {
+                            // Rebuild the map instead of mutating in place: Compose only
+                            // recomposes on a new reference, and in-place mutation of a plain
+                            // MutableMap never re-renders the radio selection.
+                            paneMap = paneMap + (spec.itemId to it)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    androidx.compose.material3.TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.common_ui_cancel))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    androidx.compose.material3.Button(onClick = { onApply(menuSides, paneMap) }) {
+                        Text(stringResource(R.string.common_ui_ok))
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun ActionCard(

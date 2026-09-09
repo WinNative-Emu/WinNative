@@ -1515,6 +1515,9 @@ Ruta instalada:
     <string name="session_drawer_rts_gestures">Gestos RTS</string>
     <string name="session_drawer_rts_gestures_edit">Editar</string>
     <string name="session_drawer_touch">Táctil</string>
+    <string name="session_drawer_layout">Diseño del cajón</string>
+    <string name="session_drawer_layout_items">Elementos de menú</string>
+    <string name="session_drawer_layout_tabs">Pestañas</string>
     <string name="session_drawer_touch_map_right_stick">Asignar al stick derecho</string>
     <string name="session_drawer_touch_touchscreen">Modo pantalla táctil</string>
     <string name="session_drawer_touch_trackpad">Trackpad</string>

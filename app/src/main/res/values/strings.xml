@@ -786,6 +786,9 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_relative_mouse_movement">Relative Mouse Movement</string>
     <string name="session_drawer_mouse_input">Mouse Input</string>
     <string name="session_drawer_touch">Touch</string>
+    <string name="session_drawer_layout">Drawer Layout</string>
+    <string name="session_drawer_layout_items">Menu Items</string>
+    <string name="session_drawer_layout_tabs">Tabs</string>
     <string name="session_drawer_touch_trackpad">Trackpad</string>
     <string name="session_drawer_touch_touchscreen">Touchscreen Mode</string>
     <string name="session_drawer_touch_map_right_stick">Map to Right Stick</string>

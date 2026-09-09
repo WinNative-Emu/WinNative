@@ -681,6 +681,9 @@ E.g. <b>META</b> for <i>META-näppäin</i>, \n
     <string name="session_drawer_relative_mouse_movement">Suhteellinen hiiren liike</string>
     <string name="session_drawer_mouse_input">Hiiren syöte</string>
     <string name="session_drawer_touch">Kosketus</string>
+    <string name="session_drawer_layout">Laatikon asettelu</string>
+    <string name="session_drawer_layout_items">Valikkokohteet</string>
+    <string name="session_drawer_layout_tabs">Välilehdet</string>
     <string name="session_drawer_touch_trackpad">Kosketuslevy</string>
     <string name="session_drawer_touch_touchscreen">Kosketusnäyttötila</string>
     <string name="session_drawer_touch_map_right_stick">Yhdistä oikeaan sauvaan</string>

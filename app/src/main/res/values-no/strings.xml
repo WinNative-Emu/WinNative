@@ -681,6 +681,9 @@ F.eks. <b>META</b> for <i>META-tast</i>, \n
     <string name="session_drawer_relative_mouse_movement">Relativ musebevegelse</string>
     <string name="session_drawer_mouse_input">Museinndata</string>
     <string name="session_drawer_touch">Berøring</string>
+    <string name="session_drawer_layout">Skuffelayout</string>
+    <string name="session_drawer_layout_items">Menyelementer</string>
+    <string name="session_drawer_layout_tabs">Faner</string>
     <string name="session_drawer_touch_trackpad">Styreplate</string>
     <string name="session_drawer_touch_touchscreen">Berøringsskjermmodus</string>
     <string name="session_drawer_touch_map_right_stick">Tilordne til høyre spak</string>

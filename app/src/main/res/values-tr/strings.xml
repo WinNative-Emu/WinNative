@@ -681,6 +681,9 @@ E.g. <b>META</b> için <i>META tuşu</i>, \n
     <string name="session_drawer_relative_mouse_movement">Göreli Fare Hareketi</string>
     <string name="session_drawer_mouse_input">Fare Girişi</string>
     <string name="session_drawer_touch">Dokunma</string>
+    <string name="session_drawer_layout">Çekmece düzeni</string>
+    <string name="session_drawer_layout_items">Menü öğeleri</string>
+    <string name="session_drawer_layout_tabs">Sekmeler</string>
     <string name="session_drawer_touch_trackpad">Dokunmatik Yüzey</string>
     <string name="session_drawer_touch_touchscreen">Dokunmatik Ekran Modu</string>
     <string name="session_drawer_touch_map_right_stick">Sağ Çubuğa Eşle</string>

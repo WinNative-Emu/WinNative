@@ -545,6 +545,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private float drawerEdgeGestureStartX = 0f;
     private float drawerEdgeGestureStartY = 0f;
     private int drawerEdgeGesturePointerId = -1;
+    private com.winlator.cmod.runtime.display.DrawerSide drawerEdgeGestureSide = null;
 
     private SensorManager sensorManager;
     private Sensor gyroSensor;
@@ -1558,7 +1559,19 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                handleNavigationBackPressed();
+                // Back only closes overlay → pane → drawer. With nothing open it is
+                // swallowed entirely: never opens the drawer and never exits the
+                // container while a game is running.
+                if (drawerStateHolder != null && drawerStateHolder.consumeOverlayBack()) {
+                    return;
+                }
+                if (drawerStateHolder != null && drawerStateHolder.isPaneOpen()) {
+                    drawerStateHolder.closeOpenPane();
+                    return;
+                }
+                if (drawerStateHolder != null && drawerStateHolder.isDrawerOpen()) {
+                    closeDrawerMenu();
+                }
             }
         });
 
@@ -1568,9 +1581,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             final int edgePx = (int) (XServerDisplayHostKt.XSERVER_DRAWER_EDGE_SWIPE_DP * getResources().getDisplayMetrics().density);
             final Runnable applyExclusion = () -> {
                 if (gestureExclusionView.getHeight() <= 0) return;
-                gestureExclusionView.setSystemGestureExclusionRects(
-                        java.util.Collections.singletonList(
-                                new android.graphics.Rect(0, 0, edgePx, gestureExclusionView.getHeight())));
+                int height = gestureExclusionView.getHeight();
+                int width = gestureExclusionView.getWidth();
+                java.util.ArrayList<android.graphics.Rect> rects = new java.util.ArrayList<>();
+                rects.add(new android.graphics.Rect(0, 0, edgePx, height));
+                if (width > 0) {
+                    rects.add(new android.graphics.Rect(width - edgePx, 0, width, height));
+                }
+                gestureExclusionView.setSystemGestureExclusionRects(rects);
             };
             gestureExclusionView.post(applyExclusion);
             gestureExclusionView.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or_, ob) -> applyExclusion.run());
@@ -4656,26 +4674,29 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void handleNavigationBackPressed() {
-        if (environment != null) {
-            if (drawerStateHolder != null && drawerStateHolder.consumeOverlayBack()) {
-                return;
-            }
-            if (drawerStateHolder != null && drawerStateHolder.isPaneOpen()) {
-                drawerStateHolder.closeOpenPane();
-                return;
-            }
-            if (drawerStateHolder == null || !drawerStateHolder.isDrawerOpen()) {
-                openDrawerMenu();
-            }
-            else closeDrawerMenu();
+        // Back closes overlay → pane → drawer, and NEVER opens the drawer.
+        if (environment == null) return;
+        if (drawerStateHolder != null && drawerStateHolder.consumeOverlayBack()) {
+            return;
+        }
+        if (drawerStateHolder != null && drawerStateHolder.isPaneOpen()) {
+            drawerStateHolder.closeOpenPane();
+            return;
+        }
+        if (drawerStateHolder != null && drawerStateHolder.isDrawerOpen()) {
+            closeDrawerMenu();
         }
     }
 
     private void openDrawerMenu() {
+        openDrawerMenu(com.winlator.cmod.runtime.display.DrawerSide.LEFT);
+    }
+
+    private void openDrawerMenu(com.winlator.cmod.runtime.display.DrawerSide side) {
         releasePointerCapture();
         renderDrawerMenu();
         if (drawerStateHolder != null) {
-            drawerStateHolder.openDrawer();
+            drawerStateHolder.openDrawer(side);
         }
         if (touchpadView != null) {
             touchpadView.setOnCapturedPointerListener(null);
@@ -9203,9 +9224,19 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 drawerEdgeGestureStartX = event.getX();
                 drawerEdgeGestureStartY = event.getY();
                 drawerEdgeGesturePointerId = event.getPointerId(0);
+                float edgePx = getDrawerEdgeSwipePx();
+                int screenWidth = getResources().getDisplayMetrics().widthPixels;
+                boolean onLeft = drawerEdgeGestureStartX <= edgePx;
+                boolean onRight = screenWidth > 0 && drawerEdgeGestureStartX >= screenWidth - edgePx;
                 drawerEdgeGesturePossible =
-                        drawerEdgeGestureStartX <= getDrawerEdgeSwipePx()
+                        (onLeft || onRight)
                                 && !isTouchInsideMagnifier(drawerEdgeGestureStartX, drawerEdgeGestureStartY);
+                drawerEdgeGestureSide =
+                        drawerEdgeGesturePossible
+                                ? (onLeft
+                                        ? com.winlator.cmod.runtime.display.DrawerSide.LEFT
+                                        : com.winlator.cmod.runtime.display.DrawerSide.RIGHT)
+                                : null;
                 break;
             }
             case MotionEvent.ACTION_MOVE: {
@@ -9219,18 +9250,34 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 float dx = event.getX(pointerIndex) - drawerEdgeGestureStartX;
                 float dy = event.getY(pointerIndex) - drawerEdgeGestureStartY;
                 int slop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
+                int trigger = getDrawerOpenTriggerPx();
+                boolean horizontal =
+                        Math.abs(dx) > trigger
+                                && Math.abs(dx)
+                                        > Math.abs(dy)
+                                                * XServerDisplayHostKt.XSERVER_DRAWER_OPEN_HORIZONTAL_RATIO;
+                boolean openLeft =
+                        drawerEdgeGestureSide == com.winlator.cmod.runtime.display.DrawerSide.LEFT
+                                && dx > 0
+                                && horizontal;
+                boolean openRight =
+                        drawerEdgeGestureSide == com.winlator.cmod.runtime.display.DrawerSide.RIGHT
+                                && dx < 0
+                                && horizontal;
 
-                if (dx > getDrawerOpenTriggerPx()
-                        && dx > Math.abs(dy) * XServerDisplayHostKt.XSERVER_DRAWER_OPEN_HORIZONTAL_RATIO) {
+                if (openLeft || openRight) {
                     if (touchpadView != null) {
                         touchpadView.resetInputState();
                     }
                     if (inputControlsView != null) {
                         inputControlsView.cancelActiveTouches();
                     }
-                    openDrawerMenu();
+                    openDrawerMenu(
+                            openLeft
+                                    ? com.winlator.cmod.runtime.display.DrawerSide.LEFT
+                                    : com.winlator.cmod.runtime.display.DrawerSide.RIGHT);
                     resetDrawerEdgeGesture();
-                } else if (Math.abs(dy) > slop && Math.abs(dy) > dx) {
+                } else if (Math.abs(dy) > slop && Math.abs(dy) > Math.abs(dx)) {
                     resetDrawerEdgeGesture();
                 }
                 break;
@@ -9262,6 +9309,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private void resetDrawerEdgeGesture() {
         drawerEdgeGesturePossible = false;
         drawerEdgeGesturePointerId = -1;
+        drawerEdgeGestureSide = null;
     }
 
     @Override

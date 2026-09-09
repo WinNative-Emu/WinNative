@@ -1515,6 +1515,9 @@ Installierter Pfad:
     <string name="session_drawer_rts_gestures">RTS-Gesten</string>
     <string name="session_drawer_rts_gestures_edit">Bearbeiten</string>
     <string name="session_drawer_touch">Touch</string>
+    <string name="session_drawer_layout">Drawer-Layout</string>
+    <string name="session_drawer_layout_items">Menüpunkte</string>
+    <string name="session_drawer_layout_tabs">Registerkarten</string>
     <string name="session_drawer_touch_map_right_stick">Auf rechten Stick mappen</string>
     <string name="session_drawer_touch_touchscreen">Touchscreen-Modus</string>
     <string name="session_drawer_touch_trackpad">Trackpad</string>

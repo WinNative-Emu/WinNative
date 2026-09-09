@@ -1421,6 +1421,9 @@
     <string name="session_drawer_rts_gestures">Жесты RTS</string>
     <string name="session_drawer_rts_gestures_edit">Изменить</string>
     <string name="session_drawer_touch">Касание</string>
+    <string name="session_drawer_layout">Раскладка панели</string>
+    <string name="session_drawer_layout_items">Элементы меню</string>
+    <string name="session_drawer_layout_tabs">Вкладки</string>
     <string name="session_drawer_touch_map_right_stick">Назначить на правый стик</string>
     <string name="session_drawer_touch_touchscreen">Режим сенсорного экрана</string>
     <string name="session_drawer_touch_trackpad">Трекпад</string>

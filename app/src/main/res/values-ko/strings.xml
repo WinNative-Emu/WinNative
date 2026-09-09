@@ -1516,6 +1516,9 @@
     <string name="session_drawer_rts_gestures">RTS 제스처</string>
     <string name="session_drawer_rts_gestures_edit">편집</string>
     <string name="session_drawer_touch">터치</string>
+    <string name="session_drawer_layout">서랍 레이아웃</string>
+    <string name="session_drawer_layout_items">메뉴 항목</string>
+    <string name="session_drawer_layout_tabs">탭</string>
     <string name="session_drawer_touch_map_right_stick">오른쪽 스틱에 매핑</string>
     <string name="session_drawer_touch_touchscreen">터치스크린 모드</string>
     <string name="session_drawer_touch_trackpad">트랙패드</string>

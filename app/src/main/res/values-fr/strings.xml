@@ -1515,6 +1515,9 @@ Chemin installé :
     <string name="session_drawer_rts_gestures">Gestes RTS</string>
     <string name="session_drawer_rts_gestures_edit">Modifier</string>
     <string name="session_drawer_touch">Tactile</string>
+    <string name="session_drawer_layout">Disposition du tiroir</string>
+    <string name="session_drawer_layout_items">Éléments de menu</string>
+    <string name="session_drawer_layout_tabs">Onglets</string>
     <string name="session_drawer_touch_map_right_stick">Mapper sur le stick droit</string>
     <string name="session_drawer_touch_touchscreen">Mode écran tactile</string>
     <string name="session_drawer_touch_trackpad">Trackpad</string>

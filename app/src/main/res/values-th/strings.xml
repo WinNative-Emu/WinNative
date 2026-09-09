@@ -681,6 +681,9 @@
     <string name="session_drawer_relative_mouse_movement">การเคลื่อนเมาส์แบบสัมพัทธ์</string>
     <string name="session_drawer_mouse_input">อินพุตเมาส์</string>
     <string name="session_drawer_touch">สัมผัส</string>
+    <string name="session_drawer_layout">เค้าโครงแผง</string>
+    <string name="session_drawer_layout_items">รายการเมนู</string>
+    <string name="session_drawer_layout_tabs">แท็บ</string>
     <string name="session_drawer_touch_trackpad">แทร็คแพด</string>
     <string name="session_drawer_touch_touchscreen">โหมดหน้าจอสัมผัส</string>
     <string name="session_drawer_touch_map_right_stick">แมปกับสติ๊กขวา</string>

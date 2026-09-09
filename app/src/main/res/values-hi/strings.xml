@@ -1451,6 +1451,9 @@
     <string name="session_drawer_rts_gestures">RTS जेस्चर</string>
     <string name="session_drawer_rts_gestures_edit">संपादित करें</string>
     <string name="session_drawer_touch">टच</string>
+    <string name="session_drawer_layout">ड्रॉअर लेआउट</string>
+    <string name="session_drawer_layout_items">मेनू आइटम</string>
+    <string name="session_drawer_layout_tabs">टैब</string>
     <string name="session_drawer_touch_map_right_stick">दाएँ स्टिक से मैप करें</string>
     <string name="session_drawer_touch_touchscreen">टचस्क्रीन मोड</string>
     <string name="session_drawer_touch_trackpad">ट्रैकपैड</string>

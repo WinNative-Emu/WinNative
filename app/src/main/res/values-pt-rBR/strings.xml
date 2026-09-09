@@ -1515,6 +1515,9 @@ Caminho instalado:
     <string name="session_drawer_rts_gestures">Gestos RTS</string>
     <string name="session_drawer_rts_gestures_edit">Editar</string>
     <string name="session_drawer_touch">Toque</string>
+    <string name="session_drawer_layout">Layout da gaveta</string>
+    <string name="session_drawer_layout_items">Itens do menu</string>
+    <string name="session_drawer_layout_tabs">Abas</string>
     <string name="session_drawer_touch_map_right_stick">Mapear para o analógico direito</string>
     <string name="session_drawer_touch_touchscreen">Modo Tela Sensível ao Toque</string>
     <string name="session_drawer_touch_trackpad">Trackpad</string>

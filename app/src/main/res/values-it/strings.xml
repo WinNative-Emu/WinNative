@@ -1515,6 +1515,9 @@ Percorso installato:
     <string name="session_drawer_rts_gestures">Gesti RTS</string>
     <string name="session_drawer_rts_gestures_edit">Modifica</string>
     <string name="session_drawer_touch">Tocco</string>
+    <string name="session_drawer_layout">Layout del cassetto</string>
+    <string name="session_drawer_layout_items">Voci di menu</string>
+    <string name="session_drawer_layout_tabs">Schede</string>
     <string name="session_drawer_touch_map_right_stick">Mappa su stick destro</string>
     <string name="session_drawer_touch_touchscreen">Modalità touchscreen</string>
     <string name="session_drawer_touch_trackpad">Trackpad</string>

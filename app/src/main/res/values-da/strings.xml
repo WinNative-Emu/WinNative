@@ -1515,6 +1515,9 @@ Installeret sti:
     <string name="session_drawer_rts_gestures">RTS-gestusser</string>
     <string name="session_drawer_rts_gestures_edit">Rediger</string>
     <string name="session_drawer_touch">Berøring</string>
+    <string name="session_drawer_layout">Skuffelayout</string>
+    <string name="session_drawer_layout_items">Menupunkter</string>
+    <string name="session_drawer_layout_tabs">Faner</string>
     <string name="session_drawer_touch_map_right_stick">Tilknyt højre stik</string>
     <string name="session_drawer_touch_touchscreen">Touchskærm-tilstand</string>
     <string name="session_drawer_touch_trackpad">Pegeplade</string>

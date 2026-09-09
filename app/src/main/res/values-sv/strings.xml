@@ -681,6 +681,9 @@ T.ex. <b>META</b> för <i>META-tangent</i>, \n
     <string name="session_drawer_relative_mouse_movement">Relativ musrörelse</string>
     <string name="session_drawer_mouse_input">Musinmatning</string>
     <string name="session_drawer_touch">Touch</string>
+    <string name="session_drawer_layout">Lådans layout</string>
+    <string name="session_drawer_layout_items">Menyalternativ</string>
+    <string name="session_drawer_layout_tabs">Flikar</string>
     <string name="session_drawer_touch_trackpad">Styrplatta</string>
     <string name="session_drawer_touch_touchscreen">Pekskärmsläge</string>
     <string name="session_drawer_touch_map_right_stick">Mappa till höger spak</string>

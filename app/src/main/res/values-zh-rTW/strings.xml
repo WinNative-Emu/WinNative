@@ -1514,6 +1514,9 @@
     <string name="session_drawer_rts_gestures">RTS 手勢</string>
     <string name="session_drawer_rts_gestures_edit">編輯</string>
     <string name="session_drawer_touch">觸控</string>
+    <string name="session_drawer_layout">抽屜版面</string>
+    <string name="session_drawer_layout_items">選單項目</string>
+    <string name="session_drawer_layout_tabs">索引標籤</string>
     <string name="session_drawer_touch_map_right_stick">對應至右搖桿</string>
     <string name="session_drawer_touch_touchscreen">觸控螢幕模式</string>
     <string name="session_drawer_touch_trackpad">觸控板</string>

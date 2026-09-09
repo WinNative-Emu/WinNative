@@ -681,6 +681,9 @@
     <string name="session_drawer_relative_mouse_movement">相対マウス移動</string>
     <string name="session_drawer_mouse_input">マウス入力</string>
     <string name="session_drawer_touch">タッチ</string>
+    <string name="session_drawer_layout">ドロワーレイアウト</string>
+    <string name="session_drawer_layout_items">メニュー項目</string>
+    <string name="session_drawer_layout_tabs">タブ</string>
     <string name="session_drawer_touch_trackpad">トラックパッド</string>
     <string name="session_drawer_touch_touchscreen">タッチスクリーンモード</string>
     <string name="session_drawer_touch_map_right_stick">右スティックに割り当て</string>

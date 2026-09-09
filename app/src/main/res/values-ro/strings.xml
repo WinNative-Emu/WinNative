@@ -1514,6 +1514,9 @@ Cale instalata:
     <string name="session_drawer_rts_gestures">Gesturi RTS</string>
     <string name="session_drawer_rts_gestures_edit">Editează</string>
     <string name="session_drawer_touch">Tactil</string>
+    <string name="session_drawer_layout">Aspectul sertarului</string>
+    <string name="session_drawer_layout_items">Elemente de meniu</string>
+    <string name="session_drawer_layout_tabs">File</string>
     <string name="session_drawer_touch_map_right_stick">Mapează pe stick dreapta</string>
     <string name="session_drawer_touch_touchscreen">Mod ecran tactil</string>
     <string name="session_drawer_touch_trackpad">Trackpad</string>

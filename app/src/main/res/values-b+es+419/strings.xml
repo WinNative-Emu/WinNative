@@ -681,6 +681,9 @@ Por ejemplo, <b>META</b> para la <i>tecla META</i>, \n
     <string name="session_drawer_relative_mouse_movement">Movimiento relativo del mouse</string>
     <string name="session_drawer_mouse_input">Entrada del mouse</string>
     <string name="session_drawer_touch">Toque</string>
+    <string name="session_drawer_layout">Diseño del cajón</string>
+    <string name="session_drawer_layout_items">Elementos de menú</string>
+    <string name="session_drawer_layout_tabs">Pestañas</string>
     <string name="session_drawer_touch_trackpad">Trackpad</string>
     <string name="session_drawer_touch_touchscreen">Modo de pantalla táctil</string>
     <string name="session_drawer_touch_map_right_stick">Asignar a la palanca derecha</string>
