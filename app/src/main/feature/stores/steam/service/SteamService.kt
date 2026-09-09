@@ -3867,7 +3867,32 @@ class SteamService : Service() {
                     }
 
                 if (updateDepots.isEmpty()) {
-                    SteamUpdateInfo(hasUpdate = false).logged()
+                    val installedBuildId = getInstalledBuildId(appId)
+                    val unresolvedDepots = selectedDepots.keys - depotManifests.keys
+                    val stale =
+                        SteamBranchSelection.isInstallStale(
+                            installedBuildId = installedBuildId,
+                            branches = remoteSteamApp.branches,
+                            branch = branch,
+                        )
+                    if (stale) {
+                        Timber.i(
+                            "Steam update check: appId=$appId branch=$branch found no changed depot " +
+                                "manifests, but the recorded install build $installedBuildId is behind " +
+                                "${SteamBranchSelection.buildIdForBranch(remoteSteamApp.branches, branch)} " +
+                                "(unresolved depots=$unresolvedDepots) — reporting an update",
+                        )
+                        SteamUpdateInfo(
+                            hasUpdate = true,
+                            downloadSize =
+                                depotManifests.values
+                                    .sumOf { (_, manifest) -> manifestDownloadBytes(manifest) }
+                                    .coerceAtLeast(0L),
+                            depotIds = selectedDepots.keys.sorted(),
+                        ).logged()
+                    } else {
+                        SteamUpdateInfo(hasUpdate = false).logged()
+                    }
                 } else {
                     SteamUpdateInfo(
                         hasUpdate = true,

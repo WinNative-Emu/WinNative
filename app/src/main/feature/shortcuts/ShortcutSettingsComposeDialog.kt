@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
+import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings
 import com.winlator.cmod.BuildConfig
 import com.winlator.cmod.R
 import com.winlator.cmod.app.PluviaApp
@@ -52,6 +53,8 @@ import com.winlator.cmod.feature.settings.GraphicsDriverConfigUtils
 import com.winlator.cmod.feature.settings.WineD3DConfigUtils
 import com.winlator.cmod.feature.setup.SetupWizardActivity
 import com.winlator.cmod.feature.stores.steam.events.AndroidEvent
+import com.winlator.cmod.runtime.audio.directaudio.DirectAudioDriver
+import com.winlator.cmod.shared.android.DeviceResolutions
 import com.winlator.cmod.runtime.compat.box64.Box64Preset
 import com.winlator.cmod.runtime.compat.box64.Box64PresetManager
 import com.winlator.cmod.runtime.container.Container
@@ -482,7 +485,19 @@ class ShortcutSettingsComposeDialog private constructor(
         // Screen sizes
         val screenSizeArr =
             context.resources.getStringArray(R.array.screen_size_entries).toList()
+        state.standardScreenSizeEntries.value = screenSizeArr
+        state.deviceScreenSizeEntries.value =
+            DeviceResolutions.screenSizeEntries(activity, screenSizeArr.firstOrNull() ?: "Custom")
+        state.devicePanelSummary.value = DeviceResolutions.panelSummary(activity)
         state.screenSizeEntries.value = screenSizeArr
+        state.applyScreenSizeEntries(
+            DeviceResolutions.isEnabled(
+                getShortcutSetting(
+                    DeviceResolutions.EXTRA_ENABLED,
+                    container.getExtra(DeviceResolutions.EXTRA_ENABLED)
+                )
+            )
+        )
         val screenSize = getShortcutSetting("screenSize", container.getScreenSize())
         selectScreenSize(screenSize)
 
@@ -521,6 +536,21 @@ class ShortcutSettingsComposeDialog private constructor(
                 .toIntOrNull()
                 ?.coerceIn(0, 100)
                 ?: 100
+
+        state.netDriverEntries.value = listOf(
+            context.getString(R.string.networking_driver_winnative),
+            context.getString(R.string.networking_driver_none)
+        )
+        state.selectedNetDriver.intValue =
+            if (NetworkingSettings.driverOrDefault(
+                    getShortcutSetting(
+                        NetworkingSettings.EXTRA_DRIVER,
+                        container.getExtra(NetworkingSettings.EXTRA_DRIVER, NetworkingSettings.DEFAULT_DRIVER)
+                    )
+                ) == NetworkingSettings.DRIVER_NONE) 1 else 0
+        state.netMac.value =
+            getShortcutSetting(NetworkingSettings.EXTRA_MAC, container.getExtra(NetworkingSettings.EXTRA_MAC, ""))
+        state.netMacAuto.value = NetworkingSettings.automaticMac(context)
 
         state.frameGenEnabled.value =
             getShortcutSetting("frameGen", container.getExtra("frameGen", "0")) == "1"
@@ -595,11 +625,21 @@ class ShortcutSettingsComposeDialog private constructor(
         // Audio driver
         val audioDriverArr =
             context.resources.getStringArray(R.array.audio_driver_entries).toList()
+                .filter {
+                    DirectAudioDriver.isSupportedFor(container.wineVersion) ||
+                        !it.equals("DirectAudio", true)
+                }
         state.audioDriverEntries.value = audioDriverArr
         selectByIdentifier(
             audioDriverArr,
             getShortcutSetting("audioDriver", container.getAudioDriver()),
             state.selectedAudioDriver
+        )
+        state.directAudioMic.value = DirectAudioDriver.isMicEnabled(
+            getShortcutSetting(
+                DirectAudioDriver.EXTRA_MIC,
+                container.getExtra(DirectAudioDriver.EXTRA_MIC, "0")
+            )
         )
 
         // MIDI sound fonts
@@ -1070,6 +1110,13 @@ class ShortcutSettingsComposeDialog private constructor(
             val screenSize = getScreenSizeFromState()
             hasContainerOverride =
                 hasContainerOverride or saveOverride("screenSize", screenSize, container.getScreenSize())
+            hasContainerOverride = hasContainerOverride or saveOverride(
+                DeviceResolutions.EXTRA_ENABLED,
+                DeviceResolutions.extraValue(state.showDeviceResolutions.value),
+                DeviceResolutions.extraValue(
+                    DeviceResolutions.isEnabled(container.getExtra(DeviceResolutions.EXTRA_ENABLED))
+                )
+            )
 
             // Graphics driver
             val graphicsDriver = getIdentifierFromEntries(
@@ -1110,6 +1157,12 @@ class ShortcutSettingsComposeDialog private constructor(
             )
             hasContainerOverride =
                 hasContainerOverride or saveOverride("audioDriver", audioDriver, container.getAudioDriver())
+            val directAudioMicStr = if (state.directAudioMic.value) "1" else "0"
+            hasContainerOverride = hasContainerOverride or saveOverride(
+                DirectAudioDriver.EXTRA_MIC,
+                directAudioMicStr,
+                container.getExtra(DirectAudioDriver.EXTRA_MIC, "0")
+            )
 
             // Emulators
             val emulator = getIdentifierFromEntries(
@@ -1319,6 +1372,16 @@ class ShortcutSettingsComposeDialog private constructor(
                 shortcut.putExtra("sgsrSharpness", null)
             }
 
+            hasContainerOverride = hasContainerOverride or saveOverride(
+                NetworkingSettings.EXTRA_DRIVER,
+                if (state.selectedNetDriver.intValue == 1) NetworkingSettings.DRIVER_NONE else NetworkingSettings.DRIVER_WINNATIVE,
+                NetworkingSettings.driverOrDefault(container.getExtra(NetworkingSettings.EXTRA_DRIVER, NetworkingSettings.DEFAULT_DRIVER)),
+            )
+            hasContainerOverride = hasContainerOverride or saveOverride(
+                NetworkingSettings.EXTRA_MAC,
+                NetworkingSettings.normalizeMac(state.netMac.value),
+                NetworkingSettings.normalizeMac(container.getExtra(NetworkingSettings.EXTRA_MAC, "")),
+            )
             hasContainerOverride = hasContainerOverride or saveOverride(
                 "frameGen",
                 if (state.frameGenEnabled.value) "1" else "0",

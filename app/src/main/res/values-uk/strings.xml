@@ -348,11 +348,15 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Розмір екрана</string>
+    <string name="container_config_show_device_resolutions">Показувати роздільності пристрою</string>
+    <string name="container_config_show_device_resolutions_help">Підлаштовує кожну стандартну роздільність під цей екран, щоб зображення не розтягувалося та не з’являлися чорні смуги (%1$s).</string>
     <string name="container_config_new_env_var">Нова змінна середовища</string>
     <string name="container_config_env_vars">Змінні середовища</string>
     <string name="container_config_processor_affinity">Прив\'язка до процесора</string>
     <string name="container_config_processor_affinity_32bit">Прив\'язка до процесора (32-бітні додатки)</string>
     <string name="container_config_audio_driver">Аудіодрайвер</string>
+    <string name="container_config_direct_audio_mic">Мікрофон (DirectAudio)</string>
+    <string name="container_config_direct_audio_mic_help">Дозволяє грі записувати звук з мікрофона пристрою для голосового чату. Деякі ігри, які перевіряють наявність мікрофона під час завантаження, не запустяться з увімкненою опцією — вмикайте її лише для гри, якій вона потрібна.</string>
     <string name="container_config_win_components">Компоненти Windows</string>
     <string name="container_config_drives">Диски</string>
     <string name="container_config_arch">Архітектура</string>
@@ -2505,10 +2509,18 @@
     <string name="retro_scr_consoles_download">Завантажити ядра консолей</string>
     <string name="retro_scr_consoles_downloading">Завантаження… %1$d / %2$d МБ</string>
     <string name="retro_scr_consoles_group">Ядра консолей</string>
+    <string name="retro_scr_consoles_install_selected">Встановити вибраний випуск</string>
     <string name="retro_scr_consoles_installed">Встановлено — збірка %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">Встановлено — збірка %1$s (не вдалося перевірити оновлення)</string>
+    <string name="retro_scr_consoles_installed_pinned">Встановлено — збірка %1$s (закріплений випуск)</string>
     <string name="retro_scr_consoles_installing">Встановлення…</string>
     <string name="retro_scr_consoles_missing">Не встановлено — завантажте, щоб грати в ретроігри</string>
+    <string name="retro_scr_consoles_reinstall">Перевстановити вибраний випуск</string>
+    <string name="retro_scr_consoles_release">Випуск</string>
+    <string name="retro_scr_consoles_release_latest">Найновіший</string>
+    <string name="retro_scr_consoles_releases_failed">Випуск (список недоступний)</string>
+    <string name="retro_scr_consoles_releases_loading">Випуск (завантаження…)</string>
+    <string name="retro_scr_consoles_selected_available">Вибрано — збірка %1$s (%2$d МБ)</string>
     <string name="retro_scr_consoles_state">Стан</string>
     <string name="retro_scr_consoles_update">Оновити ядра консолей</string>
     <string name="retro_scr_consoles_update_available">Доступне оновлення — збірка %1$s (%2$d МБ)</string>
@@ -2547,6 +2559,8 @@
     <string name="settings_frame_generation_updated">Оновлено з %1$s.</string>
     <string name="settings_frame_generation_not_owned">Генерація кадрів використовує шейдери Lossless Scaling. Придбайте його у Steam під поточним обліковим записом, щоб увімкнути це.</string>
     <string name="settings_frame_generation_locate">Вибрати Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Добудовує додаткові кадри для цієї консолі за допомогою Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Цей графічний процесор не надає можливостей Vulkan, потрібних шейдерам Lossless Scaling.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Завантаження itch.io</string>
     <string name="itch_store_sign_in">Увійти в itch.io</string>

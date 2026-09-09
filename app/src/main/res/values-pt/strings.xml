@@ -404,11 +404,15 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Tamanho do ecrã</string>
+    <string name="container_config_show_device_resolutions">Mostrar resoluções do dispositivo</string>
+    <string name="container_config_show_device_resolutions_help">Ajusta cada resolução padrão a este ecrã para que nada fique esticado ou com barras pretas (%1$s).</string>
     <string name="container_config_new_env_var">Nova variável de ambiente</string>
     <string name="container_config_env_vars">Variáveis de ambiente</string>
     <string name="container_config_processor_affinity">Afinidade do processador</string>
     <string name="container_config_processor_affinity_32bit">Afinidade do processador (aplicações de 32 bits)</string>
     <string name="container_config_audio_driver">Controlador de áudio</string>
+    <string name="container_config_direct_audio_mic">Microfone (DirectAudio)</string>
+    <string name="container_config_direct_audio_mic_help">Permite que um jogo grave pelo microfone do dispositivo, para o chat de voz no jogo. Alguns títulos que procuram um microfone durante o carregamento não iniciam com isto ativado — ative apenas para um jogo que precise.</string>
     <string name="container_config_win_components">Componentes Win</string>
     <string name="container_config_drives">Unidades</string>
     <string name="container_config_arch">Arquitetura</string>
@@ -2498,10 +2502,18 @@ Caminho instalado:
     <string name="retro_scr_consoles_download">Transferir núcleos de consola</string>
     <string name="retro_scr_consoles_downloading">A transferir… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">Núcleos de Consola</string>
+    <string name="retro_scr_consoles_install_selected">Instalar a versão selecionada</string>
     <string name="retro_scr_consoles_installed">Instalado — compilação %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">Instalado — compilação %1$s (falha ao procurar atualizações)</string>
+    <string name="retro_scr_consoles_installed_pinned">Instalado — compilação %1$s (versão fixada)</string>
     <string name="retro_scr_consoles_installing">A instalar…</string>
     <string name="retro_scr_consoles_missing">Não instalado — transfira para jogar jogos retro</string>
+    <string name="retro_scr_consoles_reinstall">Reinstalar a versão selecionada</string>
+    <string name="retro_scr_consoles_release">Versão</string>
+    <string name="retro_scr_consoles_release_latest">Mais recente</string>
+    <string name="retro_scr_consoles_releases_failed">Versão (lista indisponível)</string>
+    <string name="retro_scr_consoles_releases_loading">Versão (a carregar…)</string>
+    <string name="retro_scr_consoles_selected_available">Selecionada — compilação %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">Estado</string>
     <string name="retro_scr_consoles_update">Atualizar núcleos de consola</string>
     <string name="retro_scr_consoles_update_available">Atualização disponível — compilação %1$s (%2$d MB)</string>
@@ -2540,6 +2552,8 @@ Caminho instalado:
     <string name="settings_frame_generation_updated">Atualizado de %1$s.</string>
     <string name="settings_frame_generation_not_owned">A geração de fotogramas usa shaders do Lossless Scaling. Compre-o no Steam com a conta com sessão iniciada para ativar isto.</string>
     <string name="settings_frame_generation_locate">Selecionar Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpola fotogramas extra para esta consola com o Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Esta GPU não expõe as funcionalidades Vulkan de que os shaders do Lossless Scaling precisam.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Transferências itch.io</string>
     <string name="itch_store_sign_in">Iniciar sessão no itch.io</string>

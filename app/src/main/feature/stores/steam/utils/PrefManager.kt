@@ -181,6 +181,13 @@ object PrefManager {
             setBoolean("wn_plan_w", value)
         }
 
+
+    var wnSteamAgent32: Boolean
+        get() = getBoolean("wn_steam_agent_32", true)
+        set(value) {
+            setBoolean("wn_steam_agent_32", value)
+        }
+
     var cellId: Int
         get() = getInt("cell_id", 0)
         set(value) {

@@ -5,9 +5,16 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <thread>
 #include <vector>
+
+#ifdef __i386__
+#define WN_THISCALL __thiscall
+#else
+#define WN_THISCALL
+#endif
 
 namespace {
 
@@ -29,16 +36,58 @@ int g_pipe = 0;
 int g_user = 0;
 char g_log_path[MAX_PATH] = {0};
 char g_game_exe[260] = {0};
+char g_game_dir[MAX_PATH] = {0};
 
 void* g_cs_engine = nullptr;
 int g_cs_hUser = 0;
 int g_cs_hPipe = 0;
 unsigned int g_cs_appId = 0;
 
-constexpr int kVtEngine_GetIClientRemoteStorage = 0xC0;
-constexpr int kVtRS_GetSyncState        = 0x240;
-constexpr int kVtRS_BeginAppSync        = 0x270;
-constexpr int kVtRS_IsAppSyncInProgress = 0x278;
+constexpr int kVtEngine_GetIClientRemoteStorage = 24;
+constexpr int kVtRS_EvaluateRemoteStorageSyncState = 71;
+constexpr int kVtRS_GetRemoteStorageSyncState      = 73;
+constexpr int kVtRS_IsCloudEnabledForAccount     = 23;
+constexpr int kVtRS_IsCloudEnabledForApp         = 24;
+constexpr int kVtRS_GetLastKnownSyncState        = 72;
+constexpr int kVtRS_GetConflictingFileTimestamps = 75;
+constexpr int kVtRS_ResolveSyncConflict          = 77;
+constexpr int kVtRS_IsAppSyncInProgress          = 79;
+constexpr int kVtRS_RunAutoCloudOnAppLaunch      = 80;
+constexpr int kCloudDrainCapPerTick              = 64;
+constexpr int kVtRS_RunAutoCloudOnAppExit        = 81;
+
+constexpr int kSyncDisabled       = 0;
+constexpr int kSyncUnknown        = 1;
+constexpr int kSyncSynchronized   = 2;
+constexpr int kSyncInProgress     = 3;
+constexpr int kSyncChangesInCloud = 4;
+constexpr int kSyncChangesLocally = 5;
+constexpr int kSyncChangesBoth    = 6;
+constexpr int kSyncConflicting    = 7;
+constexpr int kSyncNotInitialized = 8;
+
+const char* cs_sync_state_name(int v) {
+    switch (v) {
+        case kSyncDisabled:       return "disabled";
+        case kSyncUnknown:        return "unknown";
+        case kSyncSynchronized:   return "synchronized";
+        case kSyncInProgress:     return "inprogress";
+        case kSyncChangesInCloud: return "changesincloud";
+        case kSyncChangesLocally: return "changeslocally";
+        case kSyncChangesBoth:    return "changesincloudandlocally";
+        case kSyncConflicting:    return "conflictingchanges";
+        case kSyncNotInitialized: return "notinitialized";
+        default:                  return "?";
+    }
+}
+
+const char* const kCloudConflictRequestPath = "C:\\wn-steam-cloud-conflict.txt";
+const char* const kCloudConflictAnswerPath  = "C:\\wn-steam-cloud-conflict-answer.txt";
+constexpr int kCloudConflictAnswerWaitMs = 600000;
+constexpr int kCloudAttemptCapMs = 90000;
+constexpr int kCloudMinSettleMs = 500;
+constexpr int kCloudMaxPendingAttempts = 2;
+constexpr int kCloudStableSettleMs = 1500;
 
 bool cs_is_exec_ptr(void* p) {
     if (!p) return false;
@@ -50,6 +99,54 @@ bool cs_is_exec_ptr(void* p) {
            x == PAGE_EXECUTE_READWRITE || x == PAGE_EXECUTE_WRITECOPY;
 }
 
+#ifndef PROCESS_QUERY_LIMITED_INFORMATION
+#define PROCESS_QUERY_LIMITED_INFORMATION 0x1000
+#endif
+
+using QueryFullProcessImageNameA_fn = BOOL (WINAPI*)(HANDLE, DWORD, LPSTR, PDWORD);
+
+bool process_image_path(DWORD pid, char* out, DWORD outSize) {
+    static QueryFullProcessImageNameA_fn queryImageName = nullptr;
+    static bool resolved = false;
+    if (!resolved) {
+        resolved = true;
+        HMODULE k32 = ::GetModuleHandleA("kernel32.dll");
+        if (k32) {
+            queryImageName = reinterpret_cast<QueryFullProcessImageNameA_fn>(
+                ::GetProcAddress(k32, "QueryFullProcessImageNameA"));
+        }
+    }
+    if (!queryImageName) return false;
+    HANDLE h = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!h) h = ::OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+    if (!h) return false;
+    DWORD size = outSize;
+    BOOL ok = queryImageName(h, 0, out, &size);
+    ::CloseHandle(h);
+    return ok != FALSE && out[0] != '\0';
+}
+
+constexpr size_t kMinGameDirPrefixLength = 8;
+
+bool path_under_game_dir(const char* path) {
+    if (!g_game_dir[0] || !path || !path[0]) return false;
+    size_t n = std::strlen(g_game_dir);
+    if (n < kMinGameDirPrefixLength) return false;
+    if (::_strnicmp(path, g_game_dir, n) != 0) return false;
+    char next = path[n];
+    return next == '\\' || next == '/';
+}
+
+bool process_belongs_to_game(DWORD pid, const char* procName, const char* exeName) {
+    if (pid == 0 || pid == ::GetCurrentProcessId()) return false;
+    if (wn_game_image_matches(procName, exeName)) return true;
+    if (!g_game_dir[0]) return false;
+    char path[MAX_PATH];
+    path[0] = '\0';
+    if (!process_image_path(pid, path, MAX_PATH)) return false;
+    return path_under_game_dir(path);
+}
+
 int kill_processes_by_name(const char* exeName) {
     if (!exeName || !exeName[0]) return 0;
     HANDLE snap = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -59,7 +156,7 @@ int kill_processes_by_name(const char* exeName) {
     int killed = 0;
     if (::Process32First(snap, &pe)) {
         do {
-            if (wn_game_image_matches(pe.szExeFile, exeName)) {
+            if (process_belongs_to_game(pe.th32ProcessID, pe.szExeFile, exeName)) {
                 HANDLE h = ::OpenProcess(PROCESS_TERMINATE, FALSE, pe.th32ProcessID);
                 if (h) {
                     if (::TerminateProcess(h, 0)) killed++;
@@ -81,7 +178,7 @@ int count_processes_by_name(const char* exeName) {
     int n = 0;
     if (::Process32First(snap, &pe)) {
         do {
-            if (wn_game_image_matches(pe.szExeFile, exeName)) n++;
+            if (process_belongs_to_game(pe.th32ProcessID, pe.szExeFile, exeName)) n++;
         } while (::Process32Next(snap, &pe));
     }
     ::CloseHandle(snap);
@@ -110,7 +207,7 @@ int graceful_close_game(const char* exeName) {
         pe.dwSize = sizeof(pe);
         if (::Process32First(snap, &pe)) {
             do {
-                if (wn_game_image_matches(pe.szExeFile, exeName)) {
+                if (process_belongs_to_game(pe.th32ProcessID, pe.szExeFile, exeName)) {
                     g_close_pids.push_back(pe.th32ProcessID);
                 }
             } while (::Process32Next(snap, &pe));
@@ -164,10 +261,11 @@ void teardown(const char* reason) {
         } else {
             std::snprintf(buf, sizeof(buf),
                           "graceful close \"%s\" (WM_CLOSE to %d game process(es)); "
-                          "waiting for clean SteamAPI_Shutdown", g_game_exe, targeted);
+                          "waiting up to 10s for the game to flush its save and call "
+                          "SteamAPI_Shutdown before the cloud upload", g_game_exe, targeted);
             wn_log(buf);
 
-            const int kMaxWaitMs = 3000;
+            const int kMaxWaitMs = 10000;
             int waited = 0;
             while (waited < kMaxWaitMs && count_processes_by_name(g_game_exe) > 0) {
                 if (g_bgetcallback && g_freelastcallback) {
@@ -205,7 +303,17 @@ void teardown(const char* reason) {
     }
 
     if (g_cs_engine && g_cs_appId != 0) {
-        wn_launcher_cloud_sync(g_cs_engine, g_cs_hUser, g_cs_hPipe, g_cs_appId, 2, 4, 15000);
+        if (reason && strcmp(reason, "launch-failed") == 0) {
+            wn_log("cloud: exit sync skipped — the game never ran, so there is nothing new "
+                   "to upload and an exit sync could push stale local files over the cloud");
+        } else {
+            const char* acEnv = getenv("WN_STEAM_AGENT_CLOUD");
+            if (!acEnv || acEnv[0] != '0') {
+                wn_launcher_cloud_run(g_cs_engine, g_cs_hUser, g_cs_hPipe, g_cs_appId, 1, 60000);
+            } else {
+                wn_log("cloud: agent-side exit sync disabled; the app handles Steam Cloud");
+            }
+        }
     }
 
     if (g_logoff && g_user != 0 && g_pipe != 0) {
@@ -285,6 +393,53 @@ extern "C" void wn_launcher_set_game_exe(const char* exeName) {
     }
 }
 
+extern "C" void wn_launcher_set_game_dir(const char* dirPath) {
+    if (!dirPath || !dirPath[0]) {
+        g_game_dir[0] = '\0';
+        return;
+    }
+    std::snprintf(g_game_dir, sizeof(g_game_dir), "%s", dirPath);
+    size_t n = std::strlen(g_game_dir);
+    while (n > 0 && (g_game_dir[n - 1] == '\\' || g_game_dir[n - 1] == '/')) {
+        g_game_dir[--n] = '\0';
+    }
+}
+
+extern "C" int wn_launcher_count_game_processes(void) {
+    if (!g_game_exe[0] && !g_game_dir[0]) return 0;
+    HANDLE snap = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap == INVALID_HANDLE_VALUE) return -1;
+    PROCESSENTRY32 pe;
+    pe.dwSize = sizeof(pe);
+    int n = 0;
+    if (::Process32First(snap, &pe)) {
+        do {
+            if (process_belongs_to_game(pe.th32ProcessID, pe.szExeFile, g_game_exe)) n++;
+        } while (::Process32Next(snap, &pe));
+    }
+    ::CloseHandle(snap);
+    return n;
+}
+
+extern "C" unsigned long wn_launcher_first_game_pid(void) {
+    if (!g_game_exe[0] && !g_game_dir[0]) return 0;
+    HANDLE snap = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap == INVALID_HANDLE_VALUE) return 0;
+    PROCESSENTRY32 pe;
+    pe.dwSize = sizeof(pe);
+    DWORD found = 0;
+    if (::Process32First(snap, &pe)) {
+        do {
+            if (process_belongs_to_game(pe.th32ProcessID, pe.szExeFile, g_game_exe)) {
+                found = pe.th32ProcessID;
+                break;
+            }
+        } while (::Process32Next(snap, &pe));
+    }
+    ::CloseHandle(snap);
+    return (unsigned long) found;
+}
+
 extern "C" void wn_launcher_arm_clean_shutdown(void* hSteamClient, int pipe,
                                                int user, const char* logPath) {
     bool expected = false;
@@ -338,58 +493,291 @@ extern "C" void wn_launcher_set_cloud_context(void* engine, int hUser, int hPipe
     g_cs_appId = appId;
 }
 
-extern "C" int wn_launcher_cloud_sync(void* engine, int hUser, int hPipe,
-                                      unsigned int appId, int cmd, int flags, int timeoutMs) {
+static bool cs_wait_conflict_answer(int timeoutMs, bool* keepLocalOut, int* waitedOut) {
+    const int stepMs = 200;
+    for (int waited = 0; waited < timeoutMs; waited += stepMs) {
+        if (g_bgetcallback && g_freelastcallback) {
+            char cb[64];
+            while (g_bgetcallback(g_pipe, cb)) g_freelastcallback(g_pipe);
+        }
+        FILE* f = fopen(kCloudConflictAnswerPath, "rb");
+        if (f) {
+            char buf[32] = {0};
+            size_t got = fread(buf, 1, sizeof(buf) - 1, f);
+            fclose(f);
+            buf[got] = '\0';
+            for (char* p = buf; *p; ++p) {
+                if (*p == '\r' || *p == '\n') { *p = '\0'; break; }
+            }
+            DeleteFileA(kCloudConflictAnswerPath);
+            DeleteFileA(kCloudConflictRequestPath);
+            if (waitedOut) *waitedOut = waited;
+            *keepLocalOut = (strcmp(buf, "local") == 0);
+            char line[128];
+            std::snprintf(line, sizeof(line),
+                          "cloud: conflict answer=\"%s\" -> keepLocal=%d",
+                          buf, *keepLocalOut ? 1 : 0);
+            wn_log(line);
+            return true;
+        }
+        ::Sleep(stepMs);
+    }
+    DeleteFileA(kCloudConflictRequestPath);
+    if (waitedOut) *waitedOut = timeoutMs;
+    wn_log("cloud: no conflict answer in time — leaving both copies intact");
+    return false;
+}
+
+static bool cs_resolve_conflict(void* rs, void** rs_vt, unsigned int appId,
+                                int* userWaitMsOut) {
+    void* tsP  = rs_vt[kVtRS_GetConflictingFileTimestamps];
+    void* resP = rs_vt[kVtRS_ResolveSyncConflict];
+    if (!cs_is_exec_ptr(tsP) || !cs_is_exec_ptr(resP)) {
+        wn_log("cloud: conflict slots not executable — cannot prompt");
+        return false;
+    }
+    using TsFn  = bool (WN_THISCALL *)(void*, unsigned int, unsigned int*, unsigned int*);
+    using ResFn = bool (WN_THISCALL *)(void*, unsigned int, bool);
+
+    unsigned int localTime = 0, remoteTime = 0;
+    bool haveTs = reinterpret_cast<TsFn>(tsP)(rs, appId, &localTime, &remoteTime);
+
+    char line[192];
+    std::snprintf(line, sizeof(line),
+                  "CLOUD-CONFLICT: appid=%u local=%u remote=%u ok=%d",
+                  appId, localTime, remoteTime, haveTs ? 1 : 0);
+    wn_log(line);
+
+    DeleteFileA(kCloudConflictAnswerPath);
+    FILE* f = fopen(kCloudConflictRequestPath, "wb");
+    if (f) {
+        fprintf(f, "appid=%u\nlocal=%u\nremote=%u\n", appId, localTime, remoteTime);
+        fclose(f);
+    }
+
+    bool keepLocal = false;
+    int userWaited = 0;
+    bool answered = cs_wait_conflict_answer(kCloudConflictAnswerWaitMs, &keepLocal, &userWaited);
+    if (userWaitMsOut) *userWaitMsOut += userWaited;
+    if (!answered) return false;
+
+    bool ok = reinterpret_cast<ResFn>(resP)(rs, appId, keepLocal);
+    std::snprintf(line, sizeof(line),
+                  "cloud: ResolveSyncConflict(app=%u keepLocal=%d) -> %d",
+                  appId, keepLocal ? 1 : 0, ok ? 1 : 0);
+    wn_log(line);
+    return ok;
+}
+
+extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
+                                     unsigned int appId, int onExit, int timeoutMs) {
     if (!engine || appId == 0) return -1;
     void** engine_vt = *reinterpret_cast<void***>(engine);
-    void* getRsP = engine_vt[kVtEngine_GetIClientRemoteStorage / 8];
+    void* getRsP = engine_vt[kVtEngine_GetIClientRemoteStorage];
     if (!cs_is_exec_ptr(getRsP)) {
-        wn_log("[wn-launcher] cloud: GetIClientRemoteStorage slot not executable — skipping sync");
+        wn_log("cloud: GetIClientRemoteStorage slot not executable — skipping sync");
         return -1;
     }
-    using GetRsFn = void* (*)(void*, int, int);
+    using GetRsFn = void* (WN_THISCALL *)(void*, int, int);
     void* rs = reinterpret_cast<GetRsFn>(getRsP)(engine, hUser, hPipe);
+    {
+        char rsbuf[256];
+        std::snprintf(rsbuf, sizeof(rsbuf), "cloud: IClientRemoteStorage -> %p", rs);
+        wn_log(rsbuf);
+        if (rs) {
+            void** rsvt = *reinterpret_cast<void***>(rs);
+            HMODULE m = NULL;
+            char mod[MAX_PATH] = {0};
+            if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+                                   | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                   (LPCSTR) rsvt, &m) && m) {
+                GetModuleFileNameA(m, mod, sizeof(mod));
+                std::snprintf(rsbuf, sizeof(rsbuf),
+                    "cloud: rs vtable=%p base=%p vt_rva=0x%lx expected_rva=0x1006690 match=%d mod=%s",
+                    (void*) rsvt, (void*) m,
+                    (unsigned long) ((char*) rsvt - (char*) m),
+                    (int) (((char*) rsvt - (char*) m) == 0x1006690), mod);
+            } else {
+                std::snprintf(rsbuf, sizeof(rsbuf), "cloud: rs vtable=%p (module unknown)", (void*) rsvt);
+            }
+            wn_log(rsbuf);
+
+            using EnabledAccFn = bool (WN_THISCALL *)(void*);
+            using EnabledAppFn = bool (WN_THISCALL *)(void*, unsigned int);
+            void* accP = rsvt[kVtRS_IsCloudEnabledForAccount];
+            void* appP = rsvt[kVtRS_IsCloudEnabledForApp];
+            int accOn = -1, appOn = -1;
+            if (cs_is_exec_ptr(accP)) accOn = reinterpret_cast<EnabledAccFn>(accP)(rs) ? 1 : 0;
+            if (cs_is_exec_ptr(appP)) appOn = reinterpret_cast<EnabledAppFn>(appP)(rs, appId) ? 1 : 0;
+            std::snprintf(rsbuf, sizeof(rsbuf),
+                "cloud: IsCloudEnabledForAccount=%d IsCloudEnabledForApp(%u)=%d "
+                "(-1 = slot not callable)", accOn, appId, appOn);
+            wn_log(rsbuf);
+        }
+    }
     if (!rs) {
-        wn_log("[wn-launcher] cloud: IClientRemoteStorage null — skipping sync");
+        wn_log("cloud: IClientRemoteStorage null — skipping sync");
         return -1;
     }
     void** rs_vt = *reinterpret_cast<void***>(rs);
-    void* beginP  = rs_vt[kVtRS_BeginAppSync / 8];
-    void* inProgP = rs_vt[kVtRS_IsAppSyncInProgress / 8];
-    void* stateP  = rs_vt[kVtRS_GetSyncState / 8];
-    if (!cs_is_exec_ptr(beginP) || !cs_is_exec_ptr(inProgP) || !cs_is_exec_ptr(stateP)) {
-        wn_log("[wn-launcher] cloud: RemoteStorage slot(s) not executable — skipping sync");
+    void* runP    = rs_vt[onExit ? kVtRS_RunAutoCloudOnAppExit : kVtRS_RunAutoCloudOnAppLaunch];
+    void* inProgP = rs_vt[kVtRS_IsAppSyncInProgress];
+    void* stateP  = rs_vt[kVtRS_GetLastKnownSyncState];
+    if (!cs_is_exec_ptr(runP) || !cs_is_exec_ptr(inProgP) || !cs_is_exec_ptr(stateP)) {
+        wn_log("cloud: RemoteStorage slot(s) not executable — skipping sync");
         return -1;
     }
-    using BeginFn  = bool (*)(void*, unsigned int, int, int);
-    using InProgFn = bool (*)(void*, unsigned int);
-    using StateFn  = int  (*)(void*, unsigned int);
+    using RunFn    = bool (WN_THISCALL *)(void*, unsigned int);
+    using InProgFn = bool (WN_THISCALL *)(void*, unsigned int);
+    using StateFn  = int  (WN_THISCALL *)(void*, unsigned int);
+    using CurFn    = int  (WN_THISCALL *)(void*, unsigned int);
+    using EvalFn   = void (WN_THISCALL *)(void*, unsigned int, bool);
 
-    char buf[176];
+    void* curP = rs_vt[kVtRS_GetRemoteStorageSyncState];
+    if (!cs_is_exec_ptr(curP)) curP = nullptr;
+    void* evalP = rs_vt[kVtRS_EvaluateRemoteStorageSyncState];
+    if (!cs_is_exec_ptr(evalP)) evalP = nullptr;
+
+    const char* phase = onExit ? "exit" : "launch";
+    char buf[192];
     int finalState = -1;
-    for (int attempt = 1; attempt <= 3; ++attempt) {
-        bool started = reinterpret_cast<BeginFn>(beginP)(rs, appId, cmd, flags);
+    const DWORD startTick = ::GetTickCount();
+    int userWaitMs = 0;
+
+    for (int attempt = 1; attempt <= 4; ++attempt) {
+        int elapsed = (int) (::GetTickCount() - startTick) - userWaitMs;
+        int remaining = timeoutMs - elapsed;
+        if (remaining <= 0) {
+            std::snprintf(buf, sizeof(buf),
+                "cloud: %s sync budget of %dms exhausted after %d attempt(s)",
+                phase, timeoutMs, attempt - 1);
+            wn_log(buf);
+            break;
+        }
+        if (evalP) {
+            reinterpret_cast<EvalFn>(evalP)(rs, appId, true);
+            int lastSt = reinterpret_cast<StateFn>(stateP)(rs, appId);
+            int curSt = curP ? reinterpret_cast<CurFn>(curP)(rs, appId) : -1;
+            std::snprintf(buf, sizeof(buf),
+                "cloud: EvaluateRemoteStorageSyncState(%u,true) before attempt %d; "
+                "lastKnown=%d (%s) current=%d (%s)",
+                appId, attempt, lastSt, cs_sync_state_name(lastSt),
+                curSt, curSt >= 0 ? cs_sync_state_name(curSt) : "n/a");
+            wn_log(buf);
+        }
+        bool started = reinterpret_cast<RunFn>(runP)(rs, appId);
         std::snprintf(buf, sizeof(buf),
-            "[wn-launcher] cloud: BeginAppSync(app=%u cmd=%d flags=%d) attempt %d -> %d",
-            appId, cmd, flags, attempt, started ? 1 : 0);
+            "cloud: RunAutoCloudOnApp%s(app=%u) attempt %d -> %d",
+            onExit ? "Exit" : "Launch", appId, attempt, started ? 1 : 0);
         wn_log(buf);
+
+        int attemptCap = remaining < kCloudAttemptCapMs ? remaining : kCloudAttemptCapMs;
         int waited = 0;
-        while (reinterpret_cast<InProgFn>(inProgP)(rs, appId) && waited < timeoutMs) {
+        int nextHeartbeat = 5000;
+        int stableState = -1;
+        int stableMs = 0;
+        const DWORD attemptStart = ::GetTickCount();
+        while (reinterpret_cast<InProgFn>(inProgP)(rs, appId) && waited < attemptCap) {
             if (g_bgetcallback && g_freelastcallback) {
                 char cb[64];
-                while (g_bgetcallback(g_pipe, cb)) g_freelastcallback(g_pipe);
+                int drained = 0;
+                while (drained < kCloudDrainCapPerTick && g_bgetcallback(g_pipe, cb)) {
+                    g_freelastcallback(g_pipe);
+                    ++drained;
+                }
+                if (drained >= kCloudDrainCapPerTick) {
+                    std::snprintf(buf, sizeof(buf),
+                        "cloud: callback queue still non-empty after draining %d entries — "
+                        "continuing without a full drain", drained);
+                    wn_log(buf);
+                }
             }
             ::Sleep(10);
-            waited += 10;
+            const int prevWaited = waited;
+            waited = (int) (::GetTickCount() - attemptStart);
+            if (waited >= nextHeartbeat) {
+                std::snprintf(buf, sizeof(buf),
+                    "cloud: %s sync still in progress after %dms (cap %dms)", phase, waited, attemptCap);
+                wn_log(buf);
+                nextHeartbeat += 5000;
+            }
+            if (waited >= kCloudMinSettleMs) {
+                int st = reinterpret_cast<StateFn>(stateP)(rs, appId);
+                if (st == kSyncSynchronized || st == kSyncDisabled) break;
+                const int cur = curP ? reinterpret_cast<CurFn>(curP)(rs, appId) : kSyncInProgress;
+                if (cur == stableState && cur != kSyncInProgress) {
+                    stableMs += waited - prevWaited;
+                    if (stableMs >= kCloudStableSettleMs) {
+                        std::snprintf(buf, sizeof(buf),
+                            "cloud: %s sync has reported \"%s\" with no transfer left for %dms while "
+                            "IsAppSyncInProgress stayed set — treating the sync as finished",
+                            phase, cs_sync_state_name(cur), stableMs);
+                        wn_log(buf);
+                        break;
+                    }
+                } else {
+                    stableState = cur;
+                    stableMs = 0;
+                }
+            }
         }
         finalState = reinterpret_cast<StateFn>(stateP)(rs, appId);
         std::snprintf(buf, sizeof(buf),
-            "[wn-launcher] cloud: sync settled (state=%d after %dms)", finalState, waited);
+            "cloud: %s sync settled state=%d (%s) after %dms",
+            phase, finalState, cs_sync_state_name(finalState), waited);
         wn_log(buf);
-        if (finalState == 1 || finalState == 0 || finalState == 6) break;
+
+        if (finalState == kSyncSynchronized || finalState == kSyncDisabled) break;
+
+        if (finalState == kSyncConflicting) {
+            if (onExit) {
+                wn_log("cloud: conflict on exit — leaving both copies intact and deferring the "
+                       "prompt to the next launch, where the UI is alive to answer it");
+                break;
+            }
+            if (!cs_resolve_conflict(rs, rs_vt, appId, &userWaitMs)) break;
+            continue;
+        }
+
+        if (finalState == kSyncChangesInCloud || finalState == kSyncChangesLocally ||
+            finalState == kSyncChangesBoth || finalState == kSyncUnknown ||
+            finalState == kSyncNotInitialized) {
+            if (!onExit && finalState == kSyncChangesLocally) {
+                wn_log("cloud: launch sync finished with local saves ahead of the cloud — there "
+                       "is nothing to download, so the game starts now and the exit sync "
+                       "uploads them");
+                break;
+            }
+            if (attempt >= kCloudMaxPendingAttempts) {
+                std::snprintf(buf, sizeof(buf),
+                    "cloud: %s sync still reports \"%s\" after %d attempt(s) — proceeding rather "
+                    "than re-running a sync that has already settled",
+                    phase, cs_sync_state_name(finalState), attempt);
+                wn_log(buf);
+                break;
+            }
+            continue;
+        }
+        break;
     }
-    if (finalState == 6) {
-        wn_log("[wn-launcher] cloud: CONFLICT (state 6) — not auto-resolving; leaving saves intact");
+
+    if (finalState == kSyncSynchronized) {
+        std::snprintf(buf, sizeof(buf),
+            "cloud: %s sync COMPLETE for app=%u — saves are synchronized",
+            phase, appId);
+    } else if (finalState == kSyncDisabled) {
+        std::snprintf(buf, sizeof(buf),
+            "cloud: %s sync skipped for app=%u — Steam Cloud disabled",
+            phase, appId);
+    } else {
+        std::snprintf(buf, sizeof(buf),
+            "cloud: %s sync did NOT reach synchronized for app=%u "
+            "(final state=%d %s) — local saves kept",
+            phase, appId, finalState, cs_sync_state_name(finalState));
+    }
+    wn_log(buf);
+    if (onExit && finalState == kSyncChangesLocally) {
+        wn_log("cloud: exit sync left local saves ahead of Steam Cloud — the app must upload them");
     }
     return finalState;
 }

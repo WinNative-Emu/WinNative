@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.AutoAwesomeMotion
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Memory
@@ -66,6 +67,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.winlator.cmod.shared.ui.layout.isPortraitLayout
 import com.winlator.cmod.R
+import com.winlator.cmod.shared.framegen.FrameGenOptions
+import com.winlator.cmod.shared.framegen.FrameGenPreset
 import com.winlator.cmod.shared.theme.GameSettingsStyle
 import com.winlator.cmod.shared.ui.settings.SharedGroupTitle
 import com.winlator.cmod.shared.ui.settings.SharedInfoRow
@@ -75,6 +78,7 @@ import com.winlator.cmod.feature.library.GameSettingsNav
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutArtwork
 import com.winlator.cmod.runtime.container.Shortcut
 import java.io.File
+import com.winlator.cmod.shared.ui.dialog.findActivity
 import com.winlator.cmod.shared.ui.nav.LocalPaneNav
 import com.winlator.cmod.shared.ui.nav.PaneNavRegistry
 import com.winlator.cmod.shared.ui.nav.paneHighlight
@@ -162,6 +166,30 @@ class RetroSettingsState(
         shortcut.getExtra(RetroShortcuts.KEY_AUDIO)
             .ifEmpty { if (context != null && sysId != null) (if (RetroDefaults.audio(context, sysId)) "1" else "0") else "1" } != "0",
     )
+    var frameGen by mutableStateOf(
+        if (context != null) {
+            RetroFrameGen.enabled(context, shortcut, sysId)
+        } else {
+            shortcut.getExtra(FrameGenOptions.KEY_ENABLED) == "1"
+        },
+    )
+    var frameGenMultiplier by mutableIntStateOf(
+        if (context != null) {
+            RetroFrameGen.multiplier(context, shortcut, sysId)
+        } else {
+            FrameGenOptions.DEFAULT_MULTIPLIER
+        },
+    )
+    var frameGenTargetRate by mutableIntStateOf(
+        if (context != null) RetroFrameGen.targetRate(context, shortcut, sysId) else 0,
+    )
+    var frameGenFlowScale by mutableIntStateOf(
+        if (context != null) {
+            RetroFrameGen.flowScale(context, shortcut, sysId)
+        } else {
+            FrameGenOptions.DEFAULT_FLOW_SCALE
+        },
+    )
     var hud by mutableStateOf(
         shortcut.getExtra(RetroShortcuts.KEY_HUD)
             .ifEmpty {
@@ -230,6 +258,10 @@ class RetroSettingsState(
         shortcut.putExtra(RetroShortcuts.KEY_HDD_ENABLE, if (hddEnable) "1" else "0")
         shortcut.putExtra(RetroShortcuts.KEY_AUDIO, if (audio) "1" else "0")
         shortcut.putExtra(RetroShortcuts.KEY_HUD, if (hud) "1" else "0")
+        shortcut.putExtra(FrameGenOptions.KEY_ENABLED, if (frameGen) "1" else "0")
+        shortcut.putExtra(FrameGenOptions.KEY_MULTIPLIER, frameGenMultiplier.toString())
+        shortcut.putExtra(FrameGenOptions.KEY_TARGET_RATE, frameGenTargetRate.toString())
+        shortcut.putExtra(FrameGenOptions.KEY_FLOW_SCALE, frameGenFlowScale.toString())
         coreOptions.forEach { option ->
             val consoleDefault =
                 if (context != null && sysId != null) {
@@ -250,6 +282,7 @@ class RetroSettingsState(
 private enum class RetroSectionId {
     GENERAL,
     GRAPHICS,
+    FRAMEGEN,
     PERFORMANCE,
     HUD,
     INPUT,
@@ -269,6 +302,11 @@ private fun buildRetroSections(state: RetroSettingsState): List<RetroSection> {
     val systemId = state.system?.id
     sections += RetroSection(RetroSectionId.GENERAL, Icons.Outlined.Tune, R.string.retro_gs_section_general)
     sections += RetroSection(RetroSectionId.GRAPHICS, Icons.Outlined.Monitor, R.string.retro_gs_section_graphics)
+    sections += RetroSection(
+        RetroSectionId.FRAMEGEN,
+        Icons.Outlined.AutoAwesomeMotion,
+        R.string.session_drawer_frame_generation,
+    )
     if (state.system?.isExternal == true) {
         sections += RetroSection(RetroSectionId.PERFORMANCE, Icons.Outlined.Bolt, R.string.retro_gs_section_performance)
     }
@@ -553,6 +591,7 @@ private fun RetroSectionContent(
                 when (sections.getOrNull(idx)?.id) {
                     RetroSectionId.GENERAL -> RetroGeneralSection(state, onPickArtwork, onRemoveArtwork, onImportBios)
                     RetroSectionId.GRAPHICS -> RetroGraphicsSection(state)
+                    RetroSectionId.FRAMEGEN -> RetroFrameGenerationGroup(state)
                     RetroSectionId.PERFORMANCE -> RetroPs2PerformanceSection()
                     RetroSectionId.HUD ->
                         if (state.system?.isExternal == true) {
@@ -1348,6 +1387,186 @@ private fun RetroGraphicsSection(state: RetroSettingsState) {
         }
     }
 }
+
+@Composable
+private fun RetroFrameGenerationGroup(state: RetroSettingsState) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var shaderState by remember { mutableIntStateOf(FRAMEGEN_SHADERS_CHECKING) }
+    var sourceName by remember { mutableStateOf("") }
+    var gpuSupported by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        val outcome =
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                gpuSupported = RetroFrameGen.supported(context)
+                com.winlator.cmod.feature.library.LosslessAutoImport.sync(context)
+            }
+        sourceName = outcome.sourceName
+        shaderState = retroFrameGenStateFor(outcome.result)
+    }
+
+    val ready =
+        gpuSupported &&
+            (shaderState == FRAMEGEN_SHADERS_READY || shaderState == FRAMEGEN_SHADERS_UPDATED)
+    val enabled = ready && state.frameGen
+
+    RetroSettingGroup {
+        RetroGroupTitle(stringResource(R.string.settings_frame_generation_title).uppercase())
+        RetroSettingSwitch(
+            label = stringResource(R.string.session_drawer_frame_generation_enable),
+            checked = enabled,
+            subtitle = stringResource(R.string.retro_gs_frame_generation_subtitle),
+            onCheckedChange = { if (ready) state.frameGen = it },
+        )
+        RetroSettingNote(
+            when {
+                !gpuSupported -> stringResource(R.string.retro_gs_frame_generation_unsupported)
+                shaderState == FRAMEGEN_SHADERS_IMPORTING || shaderState == FRAMEGEN_SHADERS_CHECKING ->
+                    stringResource(R.string.settings_frame_generation_importing)
+                shaderState == FRAMEGEN_SHADERS_READY ->
+                    if (sourceName.isEmpty()) {
+                        stringResource(R.string.settings_frame_generation_ready)
+                    } else {
+                        stringResource(R.string.settings_frame_generation_imported, sourceName)
+                    }
+                shaderState == FRAMEGEN_SHADERS_UPDATED ->
+                    stringResource(R.string.settings_frame_generation_updated, sourceName)
+                shaderState == FRAMEGEN_SHADERS_NOT_OWNED ->
+                    stringResource(R.string.settings_frame_generation_not_owned)
+                shaderState == FRAMEGEN_SHADERS_FAILED ->
+                    stringResource(R.string.settings_frame_generation_failed)
+                else -> stringResource(R.string.settings_frame_generation_not_found)
+            },
+        )
+        if (gpuSupported && shaderState != FRAMEGEN_SHADERS_NOT_OWNED) {
+            RetroFrameGenLocateButton(context) { result, name ->
+                sourceName = name
+                shaderState = retroFrameGenStateFor(result)
+            }
+        }
+        if (enabled) {
+            RetroSettingDropdown(
+                label = stringResource(R.string.session_drawer_frame_generation_target),
+                entries =
+                    FrameGenOptions.TARGET_OPTIONS.map { rate ->
+                        if (rate == 0) {
+                            stringResource(R.string.session_drawer_frame_generation_target_off)
+                        } else {
+                            stringResource(R.string.session_drawer_frame_generation_target_value, rate)
+                        }
+                    },
+                selectedIndex =
+                    FrameGenOptions.TARGET_OPTIONS.indexOf(state.frameGenTargetRate).coerceAtLeast(0),
+                onSelected = { state.frameGenTargetRate = FrameGenOptions.TARGET_OPTIONS[it] },
+            )
+            if (state.frameGenTargetRate == 0) {
+                RetroSettingDropdown(
+                    label = stringResource(R.string.session_drawer_frame_generation_multiplier),
+                    entries =
+                        FrameGenOptions.MULTIPLIER_OPTIONS.map {
+                            stringResource(R.string.session_drawer_frame_generation_multiplier_value, it)
+                        },
+                    selectedIndex =
+                        FrameGenOptions.MULTIPLIER_OPTIONS
+                            .indexOf(state.frameGenMultiplier)
+                            .coerceAtLeast(0),
+                    onSelected = { state.frameGenMultiplier = FrameGenOptions.MULTIPLIER_OPTIONS[it] },
+                )
+            }
+            RetroSettingDropdown(
+                label = stringResource(R.string.frame_generation_preset),
+                entries = FrameGenPreset.values().map { stringResource(it.labelRes) },
+                selectedIndex = FrameGenPreset.fromFlowScale(state.frameGenFlowScale).ordinal,
+                onSelected = { state.frameGenFlowScale = FrameGenPreset.atIndex(it).flowScale },
+            )
+            RetroSettingNote(
+                stringResource(FrameGenPreset.fromFlowScale(state.frameGenFlowScale).descriptionRes),
+            )
+            RetroSettingNote(stringResource(R.string.session_drawer_frame_generation_note))
+        }
+    }
+}
+
+@Composable
+private fun RetroFrameGenLocateButton(
+    context: android.content.Context,
+    onImported: (Int, String) -> Unit,
+) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    OutlinedButton(
+        onClick = {
+            val activity = context.findActivity() ?: return@OutlinedButton
+            val imagefsRoot = com.winlator.cmod.runtime.display.environment.ImageFs.find(context).rootDir
+            com.winlator.cmod.shared.android.DirectoryPickerDialog.showFile(
+                activity = activity,
+                title = context.getString(R.string.settings_frame_generation_locate),
+                allowedExtensions = setOf("dll"),
+                extraRoots =
+                    listOf(
+                        com.winlator.cmod.shared.android.DirectoryPickerDialog.ManagedRoot(
+                            "C:",
+                            java.io.File(imagefsRoot, "home").absolutePath,
+                        ),
+                        com.winlator.cmod.shared.android.DirectoryPickerDialog.ManagedRoot(
+                            "D:",
+                            android.os.Environment
+                                .getExternalStoragePublicDirectory(
+                                    android.os.Environment.DIRECTORY_DOWNLOADS,
+                                ).absolutePath,
+                        ),
+                        com.winlator.cmod.shared.android.DirectoryPickerDialog.ManagedRoot(
+                            "Internal",
+                            android.os.Environment.getExternalStorageDirectory().absolutePath,
+                        ),
+                    ),
+            ) { pickedPath ->
+                scope.launch {
+                    val outcome =
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            com.winlator.cmod.feature.library.LosslessAutoImport.importFrom(
+                                context,
+                                java.io.File(pickedPath),
+                            )
+                        }
+                    onImported(outcome.result, outcome.sourceName)
+                }
+            }
+        },
+        modifier = Modifier.fillMaxWidth().height(40.dp),
+        shape = RoundedCornerShape(FieldCorner),
+        border = BorderStroke(1.dp, InputBorder),
+        colors =
+            ButtonDefaults.outlinedButtonColors(
+                containerColor = InputSurface,
+                contentColor = TextPrimary,
+            ),
+    ) {
+        Text(
+            stringResource(R.string.settings_frame_generation_locate),
+            fontSize = ValueSize,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private const val FRAMEGEN_SHADERS_CHECKING = 0
+private const val FRAMEGEN_SHADERS_IMPORTING = 1
+private const val FRAMEGEN_SHADERS_READY = 2
+private const val FRAMEGEN_SHADERS_UPDATED = 3
+private const val FRAMEGEN_SHADERS_NOT_FOUND = 4
+private const val FRAMEGEN_SHADERS_NOT_OWNED = 5
+private const val FRAMEGEN_SHADERS_FAILED = 6
+
+private fun retroFrameGenStateFor(result: Int): Int =
+    when (result) {
+        com.winlator.cmod.feature.library.LosslessAutoImport.RESULT_READY -> FRAMEGEN_SHADERS_READY
+        com.winlator.cmod.feature.library.LosslessAutoImport.RESULT_IMPORTED -> FRAMEGEN_SHADERS_READY
+        com.winlator.cmod.feature.library.LosslessAutoImport.RESULT_UPDATED -> FRAMEGEN_SHADERS_UPDATED
+        com.winlator.cmod.feature.library.LosslessAutoImport.RESULT_NOT_OWNED -> FRAMEGEN_SHADERS_NOT_OWNED
+        com.winlator.cmod.feature.library.LosslessAutoImport.RESULT_FAILED -> FRAMEGEN_SHADERS_FAILED
+        else -> FRAMEGEN_SHADERS_NOT_FOUND
+    }
 
 @Composable
 private fun RetroEngineRowSettings(state: RetroSettingsState) {

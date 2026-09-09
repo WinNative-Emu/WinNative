@@ -348,11 +348,15 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Rozmiar ekranu</string>
+    <string name="container_config_show_device_resolutions">Pokaż rozdzielczości urządzenia</string>
+    <string name="container_config_show_device_resolutions_help">Dopasowuje każdą standardową rozdzielczość do tego ekranu, aby nic nie było rozciągnięte ani otoczone czarnymi pasami (%1$s).</string>
     <string name="container_config_new_env_var">Nowa zmienna środowiskowa</string>
     <string name="container_config_env_vars">Zmienne środowiskowe</string>
     <string name="container_config_processor_affinity">Powinowactwo procesora</string>
     <string name="container_config_processor_affinity_32bit">Powinowactwo procesora (aplikacje 32-bitowe)</string>
     <string name="container_config_audio_driver">Sterownik dźwięku</string>
+    <string name="container_config_direct_audio_mic">Mikrofon (DirectAudio)</string>
+    <string name="container_config_direct_audio_mic_help">Pozwala grze nagrywać z mikrofonu urządzenia na potrzeby czatu głosowego w grze. Niektóre tytuły sprawdzające mikrofon podczas wczytywania nie uruchomią się z tą opcją – włącz ją tylko dla gry, która jej potrzebuje.</string>
     <string name="container_config_win_components">Komponenty Windows</string>
     <string name="container_config_drives">Dyski</string>
     <string name="container_config_arch">Architektura</string>
@@ -2505,10 +2509,18 @@ Zainstalowana ścieżka:
     <string name="retro_scr_consoles_download">Pobierz rdzenie konsol</string>
     <string name="retro_scr_consoles_downloading">Pobieranie… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">Rdzenie konsol</string>
+    <string name="retro_scr_consoles_install_selected">Zainstaluj wybrane wydanie</string>
     <string name="retro_scr_consoles_installed">Zainstalowano — kompilacja %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">Zainstalowano — kompilacja %1$s (nie udało się sprawdzić aktualizacji)</string>
+    <string name="retro_scr_consoles_installed_pinned">Zainstalowano — kompilacja %1$s (przypięte wydanie)</string>
     <string name="retro_scr_consoles_installing">Instalowanie…</string>
     <string name="retro_scr_consoles_missing">Nie zainstalowano — pobierz, aby grać w gry retro</string>
+    <string name="retro_scr_consoles_reinstall">Zainstaluj ponownie wybrane wydanie</string>
+    <string name="retro_scr_consoles_release">Wydanie</string>
+    <string name="retro_scr_consoles_release_latest">Najnowsze</string>
+    <string name="retro_scr_consoles_releases_failed">Wydanie (lista niedostępna)</string>
+    <string name="retro_scr_consoles_releases_loading">Wydanie (wczytywanie…)</string>
+    <string name="retro_scr_consoles_selected_available">Wybrano — kompilacja %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">Stan</string>
     <string name="retro_scr_consoles_update">Zaktualizuj rdzenie konsol</string>
     <string name="retro_scr_consoles_update_available">Dostępna aktualizacja — kompilacja %1$s (%2$d MB)</string>
@@ -2547,6 +2559,8 @@ Zainstalowana ścieżka:
     <string name="settings_frame_generation_updated">Zaktualizowano z %1$s.</string>
     <string name="settings_frame_generation_not_owned">Generowanie klatek korzysta z shaderów Lossless Scaling. Kup je na Steam na zalogowanym koncie, aby to włączyć.</string>
     <string name="settings_frame_generation_locate">Wybierz Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpoluje dodatkowe klatki dla tej konsoli za pomocą Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Ten układ graficzny nie udostępnia funkcji Vulkan wymaganych przez shadery Lossless Scaling.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Pobierania itch.io</string>
     <string name="itch_store_sign_in">Zaloguj się w itch.io</string>

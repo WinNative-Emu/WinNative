@@ -1,0 +1,18 @@
+DirectAudio — native Wine → Android AAudio mmdevapi driver
+==========================================================
+
+Original author / maintainer:
+    The412Banner  <205237651+The412Banner@users.noreply.github.com>
+
+Provenance:
+    winedirectaudio.drv is an original driver. Wine has no AAudio backend
+    upstream; this is a new native Wine mmdevapi driver written from scratch.
+    Its structure and mmdevapi ring-buffer bookkeeping are modelled on Wine's
+    own winecoreaudio.drv (the macOS CoreAudio backend), with the CoreAudio
+    device layer replaced by Android AAudio — no PulseAudio daemon and no ALSA
+    server in the path. Because it derives from and links Wine's LGPL-licensed
+    mmdevapi internals, it is licensed LGPL-2.1 (see COPYING).
+
+Contributions:
+    Contributors retain copyright to their changes and agree to license them
+    under LGPL-2.1-or-later. Add yourself below when you land a change.

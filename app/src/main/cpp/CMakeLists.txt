@@ -163,6 +163,8 @@ add_library(winlator SHARED
         winlator/vk/lsfg/vkr_lsfg.cpp
         winlator/vk/lsfg/lsfg_probe.c
         winlator/vk/lsfg/lsfg_jni.c
+        winlator/vk/framegen/fg_present.c
+        winlator/vk/framegen/fg_jni.c
 )
 
 add_dependencies(winlator winlator_shaders)
@@ -182,6 +184,7 @@ target_compile_features(winlator PRIVATE cxx_std_17)
 target_link_libraries(winlator
         log
         android
+        mediandk
         jnigraphics
         vulkan
         adrenotools
@@ -192,8 +195,20 @@ target_link_libraries(winlator
 )
 
 # Fake evdev input shim used by the pb_controller_fix controller path.
+add_library(netshim SHARED
+        winlator/netshim.c
+)
+target_compile_options(netshim PRIVATE -Wall -Wextra)
+target_link_libraries(netshim log)
+
 add_library(fakeinput SHARED
         winlator/fakeinput.cpp
 )
 target_compile_options(fakeinput PRIVATE -Wall -Wextra -fvisibility=hidden)
 target_link_libraries(fakeinput log dl)
+
+add_library(waudio SHARED
+        wnaudiohook/wn_aaudio_shim.c
+)
+target_compile_options(waudio PRIVATE -Wall -Wextra -fvisibility=hidden)
+target_link_libraries(waudio log dl)

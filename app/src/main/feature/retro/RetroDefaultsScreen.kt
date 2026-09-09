@@ -478,6 +478,13 @@ fun RetroDefaultsScreen(bridge: SettingsNavBridge? = null) {
                         color = PageSub,
                     )
                 }
+                if (expanded) {
+                    RetroSettingSwitch(
+                        stringResource(R.string.settings_frame_generation_title),
+                        RetroDefaults.frameGen(context, sys),
+                        subtitle = stringResource(R.string.retro_gs_frame_generation_subtitle),
+                    ) { RetroDefaults.setFrameGen(context, sys, it); refresh++ }
+                }
                 if (expanded && console.isExternal) {
                     val ps2Prefs = context.getSharedPreferences("ARMSX2", android.content.Context.MODE_PRIVATE)
                     val rendererKeys = listOf("vulkan", "opengl", "software")
@@ -912,17 +919,33 @@ private fun RetroConsoleBundleGroup(
     var installError by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableStateOf(0f) }
     var published by remember { mutableStateOf<RetroBundle.Version?>(null) }
+    var releases by remember { mutableStateOf<List<RetroBundle.Release>>(emptyList()) }
+    var releasesFailed by remember { mutableStateOf(false) }
+    var selectedTag by remember { mutableStateOf(RetroBundle.selectedTag(context)) }
     val installed = remember(refreshKey, busy) { RetroBundle.installed(context) }
-    val updatable = published != null && published!!.sha256 != installed?.sha256
+    val pinned = selectedTag != RetroBundle.LATEST
+    val differs = published != null && published!!.sha256 != installed?.sha256
 
+    val latestLabel = stringResource(R.string.retro_scr_consoles_release_latest)
     val verifyingText = stringResource(R.string.retro_scr_consoles_verifying)
     val installingText = stringResource(R.string.retro_scr_consoles_installing)
 
-    suspend fun check(): RetroBundle.Version? {
+    val entries = remember(releases, latestLabel) { listOf(latestLabel) + releases.map { it.label } }
+    val selectedIndex =
+        remember(selectedTag, releases) {
+            if (selectedTag == RetroBundle.LATEST) {
+                0
+            } else {
+                releases.indexOfFirst { it.tag == selectedTag }.let { if (it < 0) 0 else it + 1 }
+            }
+        }
+
+    suspend fun check(tag: String): RetroBundle.Version? {
         checking = true
-        val result = withContext(Dispatchers.IO) { RetroBundle.published() }
+        installError = null
+        val result = withContext(Dispatchers.IO) { RetroBundle.published(tag) }
         checking = false
-        published = result.getOrNull() ?: published
+        published = result.getOrNull()
         checkFailed = result.isFailure
         return result.getOrNull()
     }
@@ -935,7 +958,7 @@ private fun RetroConsoleBundleGroup(
         installError = null
         val result =
             withContext(Dispatchers.IO) {
-                RetroBundle.install(context, version) { p ->
+                RetroBundle.install(context, version, selectedTag) { p ->
                     when (p) {
                         is RetroBundle.Progress.Downloading -> {
                             downloaded = p.bytes to p.total
@@ -952,7 +975,12 @@ private fun RetroConsoleBundleGroup(
         onChanged()
     }
 
-    androidx.compose.runtime.LaunchedEffect(Unit) { check() }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        check(selectedTag)
+        val list = withContext(Dispatchers.IO) { RetroBundle.releases() }
+        releases = list.getOrDefault(emptyList())
+        releasesFailed = list.isFailure
+    }
 
     RetroSettingGroup {
         RetroGroupTitle(stringResource(R.string.retro_scr_consoles_group))
@@ -970,14 +998,42 @@ private fun RetroConsoleBundleGroup(
                 installError != null -> installError!!
                 checking -> stringResource(R.string.retro_scr_consoles_checking)
                 installed == null -> stringResource(R.string.retro_scr_consoles_missing)
-                updatable ->
+                differs && pinned ->
+                    stringResource(
+                        R.string.retro_scr_consoles_selected_available,
+                        published!!.day,
+                        published!!.size / (1024 * 1024),
+                    )
+                differs ->
                     stringResource(
                         R.string.retro_scr_consoles_update_available,
                         published!!.day,
                         published!!.size / (1024 * 1024),
                     )
                 checkFailed -> stringResource(R.string.retro_scr_consoles_installed_no_check, installed.day)
+                pinned -> stringResource(R.string.retro_scr_consoles_installed_pinned, installed.day)
                 else -> stringResource(R.string.retro_scr_consoles_installed, installed.day)
+            },
+        )
+        RetroSettingDropdown(
+            label =
+                stringResource(
+                    when {
+                        releases.isEmpty() && releasesFailed -> R.string.retro_scr_consoles_releases_failed
+                        releases.isEmpty() -> R.string.retro_scr_consoles_releases_loading
+                        else -> R.string.retro_scr_consoles_release
+                    },
+                ),
+            entries = entries,
+            selectedIndex = selectedIndex,
+            onSelected = { index ->
+                val tag = if (index == 0) RetroBundle.LATEST else releases[index - 1].tag
+                if (tag != selectedTag) {
+                    selectedTag = tag
+                    RetroBundle.selectTag(context, tag)
+                    published = null
+                    scope.launch { check(tag) }
+                }
             },
         )
         if (busy && progress > 0f) {
@@ -990,10 +1046,10 @@ private fun RetroConsoleBundleGroup(
             enabled = !busy && !checking,
             onClick = {
                 scope.launch {
-                    if (installed == null || updatable) {
-                        (published ?: check())?.let { install(it) }
+                    if (installed == null || differs || pinned) {
+                        (published ?: check(selectedTag))?.let { install(it) }
                     } else {
-                        check()
+                        check(selectedTag)
                     }
                 }
             },
@@ -1003,7 +1059,9 @@ private fun RetroConsoleBundleGroup(
                 stringResource(
                     when {
                         installed == null -> R.string.retro_scr_consoles_download
-                        updatable -> R.string.retro_scr_consoles_update
+                        differs && pinned -> R.string.retro_scr_consoles_install_selected
+                        differs -> R.string.retro_scr_consoles_update
+                        pinned -> R.string.retro_scr_consoles_reinstall
                         else -> R.string.retro_scr_consoles_check
                     },
                 ),

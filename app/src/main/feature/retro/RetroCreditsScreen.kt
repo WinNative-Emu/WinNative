@@ -127,6 +127,7 @@ internal val RETRO_CREDITS =
         RetroCredit("rcheevos", "RetroAchievements", "MIT", "https://github.com/RetroAchievements/rcheevos"),
         RetroCredit("Snapdragon GSR", "Upscaling", "BSD-3", "https://github.com/quic/snapdragon-gsr"),
         RetroCredit("Snes9x", "SNES", "Snes9x", "https://github.com/libretro/snes9x"),
+        RetroCredit("SteamLite", "VAC secure-launch recipe for the Steam Launcher", "GPL-3.0", "https://github.com/The412Banner/winlator-contents"),
         RetroCredit("SwanStation", "PlayStation", "GPL-3.0", "https://github.com/libretro/swanstation"),
         RetroCredit("Winlator", "Windows-on-Android base", "GPL-3.0", "https://github.com/brunodev85/winlator"),
     )
