@@ -253,6 +253,9 @@ fun SettingsHost(
                     composable(SettingsRoutes.fromNavItem(SettingsNavItem.SUPPORT)) {
                         com.winlator.cmod.feature.settings.support.SupportScreen(bridge = bridge)
                     }
+                    composable(SettingsRoutes.fromNavItem(SettingsNavItem.ABOUT)) {
+                        com.winlator.cmod.feature.settings.about.AboutScreen(bridge = bridge)
+                    }
                 }
             }
             }

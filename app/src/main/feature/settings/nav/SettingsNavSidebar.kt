@@ -120,6 +120,7 @@ enum class SettingsNavItem(
     DEBUG(R.id.main_menu_advanced, Icons.Outlined.BugReport, R.string.settings_debug_title, NavSection.TOOLS),
     CREDITS(R.id.main_menu_credits, Icons.Outlined.Info, R.string.retro_scr_tab_credits, NavSection.CREDITS),
     SUPPORT(R.id.main_menu_support, Icons.Outlined.HelpOutline, R.string.settings_support_title, NavSection.HELP),
+    ABOUT(R.id.main_menu_about, Icons.Outlined.Info, R.string.common_ui_about, NavSection.HELP),
     ;
 
     companion object {
