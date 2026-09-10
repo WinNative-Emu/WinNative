@@ -36,6 +36,7 @@ public class PresentExtension
         XResourceManager.OnResourceLifecycleListener,
         WindowManager.OnWindowModificationListener {
   public static final byte MAJOR_OPCODE = -103;
+  public static volatile long lastPresentNanos = 0;
   private static final int FAKE_INTERVAL = 1000000 / 60;
   private byte firstEventId = 0;
   private byte firstErrorId = 0;
@@ -479,6 +480,7 @@ public class PresentExtension
         // necessary, import the sync_file as a Vulkan semaphore and chain it into the
         // submit instead of blocking here.
         PresentPixmapParams p = parsePresentPixmap(client, inputStream);
+        lastPresentNanos = System.nanoTime();
 
         try (XLock lock =
             client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.PIXMAP_MANAGER)) {

@@ -1135,6 +1135,8 @@
     <string name="settings_debug_input_logs_description">ゲームパッド、タッチ、キーボードの入力イベントを記録します</string>
     <string name="settings_debug_download_logs">ダウンロードログ</string>
     <string name="settings_debug_download_logs_description">ダウンロードリゾルバーと WinNative フォールバックのイベントを記録します</string>
+    <string name="settings_debug_freeze_log">フリーズログ</string>
+    <string name="settings_debug_freeze_log_description">ゲームの描画が停止したとき、各ゲストスレッドの状態を記録します</string>
     <string name="settings_debug_vulkan_validation_layers_title">Vulkan 検証レイヤー</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">適用するにはディスプレイを再起動してください。</string>
     <string name="settings_debug_share_logs">ログを共有</string>

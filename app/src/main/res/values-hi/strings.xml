@@ -954,6 +954,8 @@
     <string name="settings_debug_input_logs_description">गेमपैड, टच और कीबोर्ड इनपुट इवेंट लॉग करें</string>
     <string name="settings_debug_download_logs">डाउनलोड लॉग</string>
     <string name="settings_debug_download_logs_description">डाउनलोड रिज़ॉल्वर और WinNative फ़ॉलबैक ईवेंट लॉग करें</string>
+    <string name="settings_debug_freeze_log">फ़्रीज़ लॉग</string>
+    <string name="settings_debug_freeze_log_description">जब गेम ड्रॉ करना बंद कर दे, तो रिकॉर्ड करें कि हर गेस्ट थ्रेड क्या कर रहा है</string>
     <string name="settings_debug_vulkan_validation_layers_title">Vulkan सत्यापन परतें</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">लागू करने के लिए प्रदर्शन पुनः प्रारंभ करें.</string>
     <string name="settings_debug_share_logs">लॉग शेयर करें</string>

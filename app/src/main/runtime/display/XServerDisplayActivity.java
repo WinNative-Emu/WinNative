@@ -343,6 +343,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private int taskAffinityMaskWoW64 = 0;
     private final HashSet<Integer> guestAffinityCheckedPids = new HashSet<>();
     private volatile boolean serviceAffinityStarted = false;
+    private volatile boolean freezeWatchdogStarted = false;
     private static final String[] SERVICE_AFFINITY_PROCESSES = {
         "services.exe", "rpcss.exe", "svchost.exe", "winedevice.exe",
         "plugplay.exe", "conhost.exe", "start.exe", "steamservice.exe"
@@ -2117,6 +2118,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             public void onMapWindow(Window window) {
                 assignTaskAffinity(window);
                 pinServiceAffinity();
+                startFreezeWatchdog();
                 if ((effectiveShowFPS || controllerHudMode) && frameRating != null) {
                     syncFrameRatingWithExistingWindows();
                 }
@@ -9037,6 +9039,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             gamenativeMarker.delete();
         }
 
+        logWrapperIdentity(rootDir);
+
         // libgallium_wgl.dll is present only while Windows Zink is installed — use as marker.
         if (wineInfo != null && wineInfo.isArm64EC()
                 && !GPUInformation.getRenderer(null, null).contains("Mali")) {
@@ -12410,6 +12414,96 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     // policy without ever re-sending — manual task manager changes stick.
     // Services go to the efficiency cores (lower half), shell/UI to the 64-bit
     // list, winhandler to all cores.
+    // Says which libvulkan_wrapper.so the container will actually load, so a stale
+    // or hand-copied .so can't be mistaken for the shipped one.
+    private void logWrapperIdentity(File rootDir) {
+        try {
+            File so = new File(rootDir, "usr/lib/libvulkan_wrapper.so");
+            if (!so.isFile()) {
+                Log.w("WrapperIdentity", "MISSING " + so.getAbsolutePath());
+                return;
+            }
+            int traces = 0;
+            byte[] needle = "WNTRACE".getBytes("UTF-8");
+            try (java.io.FileInputStream in = new java.io.FileInputStream(so)) {
+                byte[] buf = new byte[1 << 20];
+                int n, carry = 0;
+                byte[] prev = new byte[needle.length];
+                while ((n = in.read(buf)) > 0) {
+                    for (int i = 0; i <= n - needle.length; i++) {
+                        boolean hit = true;
+                        for (int j = 0; j < needle.length; j++)
+                            if (buf[i + j] != needle[j]) { hit = false; break; }
+                        if (hit) traces++;
+                    }
+                }
+            }
+            Log.w("WrapperIdentity", "path=" + so.getAbsolutePath()
+                    + " size=" + so.length()
+                    + " mtime=" + so.lastModified()
+                    + " WNTRACE=" + traces
+                    + (traces >= 16 ? " (round3 instrumented)"
+                       : traces >= 10 ? " (round2 instrumented)"
+                       : traces > 0 ? " (older instrumented)" : " (STOCK - no tracing)"));
+        } catch (Exception e) {
+            Log.w("WrapperIdentity", "check failed: " + e);
+        }
+    }
+
+    // Presents stop when the guest stalls; dump the kernel's view of every guest
+    // thread so we can see what it is actually blocked on.
+    private void startFreezeWatchdog() {
+        if (freezeWatchdogStarted) return;
+        if (!PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean("enable_freeze_log", false)) return;
+        freezeWatchdogStarted = true;
+        final String freezeLogName = "freeze_"
+                + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
+                        .format(new java.util.Date()) + ".log";
+        new Thread(() -> {
+            try { if (imageFs != null) logWrapperIdentity(imageFs.getRootDir()); } catch (Exception ignored) {}
+            final long stallNs = 5_000_000_000L;
+            final long repeatNs = 15_000_000_000L;
+            long lastDumpNs = 0;
+            int dumps = 0;
+            String kgslBase = ProcessHelper.readKgslCounters();
+            Log.w("FreezeWatchdog", "kgsl baseline: " + kgslBase);
+            while (dumps < 6) {
+                try { Thread.sleep(1000); } catch (InterruptedException e) { return; }
+                long last = com.winlator.cmod.runtime.display.xserver.extensions.PresentExtension.lastPresentNanos;
+                if (last == 0) continue;
+                long now = System.nanoTime();
+                long idleNs = now - last;
+                if (idleNs < stallNs) continue;
+                if (lastDumpNs != 0 && now - lastDumpNs < repeatNs) continue;
+                lastDumpNs = now;
+                dumps++;
+                String hdr = "No present for " + (idleNs / 1000000) + " ms (dump " + dumps + "/6)";
+                Log.w("FreezeWatchdog", hdr + " — full dump in logs/" + freezeLogName);
+                StringBuilder rep = new StringBuilder();
+                rep.append("\n========== ").append(hdr).append(" ==========\n")
+                   .append("kgsl baseline: ").append(kgslBase).append('\n')
+                   .append("kgsl now     : ").append(ProcessHelper.readKgslCounters()).append('\n')
+                   .append(ProcessHelper.dumpGuestThreadStates())
+                   .append(ProcessHelper.dumpGuestMaps());
+                // logcat rate-limits and silently drops the game's several-hundred map
+                // lines, so the full dump goes to a file the log export already collects
+                try {
+                    File ld = new File(getExternalFilesDir(null), "logs");
+                    if (ld.isDirectory() || ld.mkdirs()) {
+                        try (java.io.FileWriter fw = new java.io.FileWriter(new File(ld, freezeLogName), true)) {
+                            fw.write(rep.toString());
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.w("FreezeWatchdog", "file dump failed: " + e);
+                }
+                for (String line : ProcessHelper.dumpGuestThreadStates().split("\n"))
+                    Log.w("FreezeWatchdog", line);
+            }
+        }, "FreezeWatchdog").start();
+    }
+
     private void pinServiceAffinity() {
         if (serviceAffinityStarted || winHandler == null) return;
         serviceAffinityStarted = true;

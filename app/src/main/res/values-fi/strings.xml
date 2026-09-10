@@ -1135,6 +1135,8 @@ E.g. <b>META</b> for <i>META-näppäin</i>, \n
     <string name="settings_debug_input_logs_description">Kirjaa peliohjaimen, kosketuksen ja näppäimistön syötetapahtumat</string>
     <string name="settings_debug_download_logs">Latauslokit</string>
     <string name="settings_debug_download_logs_description">Kirjaa latausten selvitys- ja WinNative-varajärjestelmätapahtumat</string>
+    <string name="settings_debug_freeze_log">Jumiutumisloki</string>
+    <string name="settings_debug_freeze_log_description">Kun peli lakkaa piirtämästä, tallenna mitä kukin vierassäie tekee</string>
     <string name="settings_debug_vulkan_validation_layers_title">Vulkan-validointikerrokset</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">Käynnistä näyttö uudelleen ottaaksesi käyttöön.</string>
     <string name="settings_debug_share_logs">Jaa lokit</string>

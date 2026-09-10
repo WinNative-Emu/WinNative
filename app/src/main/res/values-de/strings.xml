@@ -843,6 +843,8 @@ Z. B. <b>META</b> für <i>Meta-Taste</i>, \n
     <string name="settings_debug_input_logs_description">Gamepad-, Touch- und Tastatur-Eingabeereignisse protokollieren</string>
     <string name="settings_debug_download_logs">Download-Protokolle</string>
     <string name="settings_debug_download_logs_description">Download-Resolver- und WinNative-Fallback-Ereignisse protokollieren</string>
+    <string name="settings_debug_freeze_log">Freeze-Protokoll</string>
+    <string name="settings_debug_freeze_log_description">Wenn das Spiel nicht mehr zeichnet, aufzeichnen, was jeder Gast-Thread tut</string>
     <string name="settings_debug_vulkan_validation_layers_title">Vulkan-Validierungsebenen</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">Display neu starten, um die Änderung anzuwenden.</string>
     <string name="settings_debug_share_logs">Protokolle teilen</string>

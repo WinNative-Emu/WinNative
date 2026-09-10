@@ -915,6 +915,8 @@
     <string name="settings_debug_input_logs_description">Записывать события ввода с геймпада, сенсорного экрана и клавиатуры.</string>
     <string name="settings_debug_download_logs">Журналы загрузок</string>
     <string name="settings_debug_download_logs_description">Записывать события загрузок и резервного копирования WinNative</string>
+    <string name="settings_debug_freeze_log">Журнал зависаний</string>
+    <string name="settings_debug_freeze_log_description">Когда игра перестаёт отрисовывать, записывать, чем занят каждый гостевой поток</string>
     <string name="settings_debug_vulkan_validation_layers_title">Слои валидации Vulkan</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">Перезапустите дисплей, чтобы применить.</string>
     <string name="settings_debug_share_logs">Поделиться журналами</string>

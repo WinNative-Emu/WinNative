@@ -849,6 +849,8 @@
     <string name="settings_debug_input_logs_description">Журналювати події геймпада, дотиків та клавіатури</string>
     <string name="settings_debug_download_logs">Журнали завантажень</string>
     <string name="settings_debug_download_logs_description">Журналювати події засобу розв\'язування завантажень та резервного механізму WinNative</string>
+    <string name="settings_debug_freeze_log">Журнал зависань</string>
+    <string name="settings_debug_freeze_log_description">Коли гра припиняє малювати, записувати, що робить кожен гостьовий потік</string>
     <string name="settings_debug_vulkan_validation_layers_title">Рівні перевірки Vulkan</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">Перезапустіть дисплей, щоб застосувати.</string>
     <string name="settings_debug_share_logs">Поділитися журналами</string>

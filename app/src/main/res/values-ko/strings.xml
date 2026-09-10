@@ -843,6 +843,8 @@
     <string name="settings_debug_input_logs_description">게임패드, 터치 및 키보드 입력 이벤트를 기록</string>
     <string name="settings_debug_download_logs">다운로드 로그</string>
     <string name="settings_debug_download_logs_description">다운로드 리졸버 및 WinNative 폴백 이벤트를 기록</string>
+    <string name="settings_debug_freeze_log">멈춤 로그</string>
+    <string name="settings_debug_freeze_log_description">게임이 그리기를 멈추면 각 게스트 스레드의 상태를 기록합니다</string>
     <string name="settings_debug_vulkan_validation_layers_title">Vulkan 검증 레이어</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">적용하려면 디스플레이를 다시 시작하세요.</string>
     <string name="settings_debug_share_logs">로그 공유</string>

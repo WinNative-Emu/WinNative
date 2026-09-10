@@ -147,6 +147,10 @@ class DebugFragment : Fragment() {
                                 preferences.edit { putBoolean("hud_record_to_file", checked) }
                                 refresh()
                             },
+                            onFreezeLogChanged = { checked ->
+                                preferences.edit { putBoolean("enable_freeze_log", checked) }
+                                refresh()
+                            },
                             onVulkanValidationLayersChanged = { checked ->
                                 preferences.edit { putBoolean("enable_vulkan_validation_layers", checked) }
                                 refresh()
@@ -214,6 +218,7 @@ class DebugFragment : Fragment() {
                 inputLogs = preferences.getBoolean("enable_input_logs", false),
                 downloadLogs = preferences.getBoolean("enable_download_logs", false),
                 recordPerformanceToFile = preferences.getBoolean("hud_record_to_file", false),
+                freezeLog = preferences.getBoolean("enable_freeze_log", false),
                 vulkanValidationLayers = preferences.getBoolean("enable_vulkan_validation_layers", false),
                 wnHybridMode = com.winlator.cmod.feature.stores.steam.utils.PrefManager.wnHybridMode,
                 logsSize =

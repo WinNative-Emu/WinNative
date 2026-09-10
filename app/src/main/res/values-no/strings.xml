@@ -1135,6 +1135,8 @@ F.eks. <b>META</b> for <i>META-tast</i>, \n
     <string name="settings_debug_input_logs_description">Logg inndatahendelser fra spillkontroller, berøring og tastatur</string>
     <string name="settings_debug_download_logs">Nedlastingslogger</string>
     <string name="settings_debug_download_logs_description">Logg nedlastingsresolver- og WinNative-reservehendelser</string>
+    <string name="settings_debug_freeze_log">Frysingslogg</string>
+    <string name="settings_debug_freeze_log_description">Når spillet slutter å tegne, registrer hva hver gjestetråd gjør</string>
     <string name="settings_debug_vulkan_validation_layers_title">Vulkan-valideringslag</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">Start skjermen på nytt for å ta i bruk.</string>
     <string name="settings_debug_share_logs">Del logger</string>

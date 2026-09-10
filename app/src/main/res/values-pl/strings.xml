@@ -849,6 +849,8 @@ Np. <b>META</b> dla <i>klawisza META</i>, \n
     <string name="settings_debug_input_logs_description">Loguj zdarzenia gamepada, dotyku i klawiatury</string>
     <string name="settings_debug_download_logs">Logi pobierania</string>
     <string name="settings_debug_download_logs_description">Loguj zdarzenia resolvera pobierania i fallbacku WinNative</string>
+    <string name="settings_debug_freeze_log">Dziennik zawieszeń</string>
+    <string name="settings_debug_freeze_log_description">Gdy gra przestaje rysować, zapisz co robi każdy wątek gościa</string>
     <string name="settings_debug_vulkan_validation_layers_title">Warstwy walidacji Vulkan</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">Uruchom ponownie wyświetlanie, aby zastosować.</string>
     <string name="settings_debug_share_logs">Udostępnij logi</string>

@@ -1288,6 +1288,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_debug_input_logs_description">Log gamepad, touch, and keyboard input events</string>
     <string name="settings_debug_download_logs">Download Logs</string>
     <string name="settings_debug_download_logs_description">Log download resolver and WinNative fallback events</string>
+    <string name="settings_debug_freeze_log">Freeze Log</string>
+    <string name="settings_debug_freeze_log_description">When the game stops drawing, record what every guest thread is doing</string>
     <string name="settings_debug_vulkan_validation_layers_title">Vulkan Validation Layers</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">Restart display to apply.</string>
     <string name="settings_debug_share_logs">Share Logs</string>

@@ -59,6 +59,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloudDownload
@@ -156,6 +157,7 @@ data class DebugState(
     val inputLogs: Boolean = false,
     val downloadLogs: Boolean = false,
     val recordPerformanceToFile: Boolean = false,
+    val freezeLog: Boolean = false,
     val vulkanValidationLayers: Boolean = false,
     val wnHybridMode: Boolean = false,
     val logsSize: String = "0 B",
@@ -186,6 +188,7 @@ fun DebugScreen(
     onInputLogsChanged: (Boolean) -> Unit,
     onDownloadLogsChanged: (Boolean) -> Unit,
     onRecordPerformanceToFileChanged: (Boolean) -> Unit,
+    onFreezeLogChanged: (Boolean) -> Unit,
     onVulkanValidationLayersChanged: (Boolean) -> Unit,
     onWnHybridModeChanged: (Boolean) -> Unit,
     onShareLogs: () -> Unit,
@@ -338,6 +341,15 @@ fun DebugScreen(
                 icon = Icons.Outlined.CloudDownload,
                 checked = state.downloadLogs,
                 onCheckedChange = onDownloadLogsChanged,
+            )
+
+            SettingsToggleCard(
+                title = stringResource(R.string.settings_debug_freeze_log),
+                subtitle = stringResource(R.string.settings_debug_freeze_log_description),
+                icon = Icons.Outlined.AcUnit,
+                checked = state.freezeLog,
+                onCheckedChange = onFreezeLogChanged,
+                accentColor = Color(0xFF7FC7FF),
             )
 
             SettingsToggleCard(

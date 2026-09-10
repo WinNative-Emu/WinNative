@@ -606,6 +606,100 @@ public abstract class ProcessHelper {
     return filteredPids;
   }
 
+  private static String readProcFile(String path) {
+    try (FileInputStream in = new FileInputStream(path)) {
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      byte[] buf = new byte[4096];
+      int n;
+      while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+      return out.toString("UTF-8").trim();
+    } catch (Exception e) {
+      return "";
+    }
+  }
+
+  // GPU fault/reset bookkeeping from the kgsl driver. A reset counter that moves
+  // across a freeze means the GPU hung and the kernel recovered it.
+  // Probe fixed filenames: the kgsl dir is usually not listable by an app even though
+  // individual attributes inside it open fine.
+  private static final String[] KGSL_ATTRS = {
+    "reset_count", "gpu_reset_stat", "gpu_reset_count", "fault_count", "gpu_fault",
+    "hang_count", "recovery_count", "snapshot_crashdumper", "gpubusy", "temp",
+    "gpuclk", "gpu_busy_percentage", "gpu_model", "deviceid",
+  };
+
+  public static String readKgslCounters() {
+    StringBuilder sb = new StringBuilder();
+    StringBuilder missing = new StringBuilder();
+    for (String base : new String[] {"/sys/class/kgsl/kgsl-3d0", "/sys/devices/platform/soc/3d00000.qcom,kgsl-3d0/kgsl/kgsl-3d0"}) {
+      for (String n : KGSL_ATTRS) {
+        File f = new File(base, n);
+        if (!f.isFile()) continue;
+        String v = readProcFile(f.getAbsolutePath());
+        if (v.isEmpty()) { if (missing.length() < 200) missing.append(n).append("? "); continue; }
+        if (v.length() > 120) v = v.substring(0, 120);
+        if (sb.length() > 0) sb.append("  ");
+        sb.append(n).append('=').append(v.replace('\n', '/'));
+      }
+      if (sb.length() > 0) break;
+    }
+    if (sb.length() == 0)
+      return "kgsl: no attributes readable (unreadable: " + missing + ")";
+    return sb.toString();
+  }
+
+  // File-backed mappings for the biggest guest process, so faulting addresses seen
+  // in the wine log can be resolved to a library.
+  public static String dumpGuestMaps() {
+    StringBuilder sb = new StringBuilder("=== guest library maps ===\n");
+    for (String pid : listRunningWineProcesses()) {
+      String maps = readProcFile("/proc/" + pid + "/maps");
+      if (maps.isEmpty()) continue;
+      StringBuilder one = new StringBuilder();
+      for (String line : maps.split("\n")) {
+        // every executable mapping, file-backed or anonymous (anon exec = JIT code)
+        String[] f = line.trim().split("\\s+", 6);
+        if (f.length < 2 || f[1].length() < 3 || f[1].charAt(2) != 'x') continue;
+        String path = f.length >= 6 ? f[5].trim() : "";
+        one.append("   ").append(f[0]).append(' ').append(f[1]).append("  ")
+           .append(path.isEmpty() ? "[anon-exec]" : path).append('\n');
+      }
+      if (one.length() > 0) sb.append("pid ").append(pid).append('\n').append(one);
+    }
+    return sb.toString();
+  }
+
+  // Kernel's own record of where each guest thread is parked. Readable because the
+  // guest runs under our uid. R=running S=sleeping D=uninterruptible.
+  public static String dumpGuestThreadStates() {
+    StringBuilder sb = new StringBuilder("=== guest thread states ===\n");
+    for (String pid : listRunningWineProcesses()) {
+      String cmdline = readProcFile("/proc/" + pid + "/cmdline").replace('\0', ' ').trim();
+      sb.append("pid ").append(pid).append("  ").append(cmdline).append('\n');
+      File taskDir = new File("/proc/" + pid + "/task");
+      String[] tids = taskDir.list();
+      if (tids == null) continue;
+      Arrays.sort(tids);
+      for (String tid : tids) {
+        String base = "/proc/" + pid + "/task/" + tid + "/";
+        String comm = readProcFile(base + "comm");
+        String syscall = readProcFile(base + "syscall");
+        String wchan = readProcFile(base + "wchan");
+        String stat = readProcFile(base + "stat");
+        String state = "?";
+        int close = stat.lastIndexOf(')');
+        if (close > 0 && close + 2 < stat.length()) state = stat.substring(close + 2, close + 3);
+        sb.append("   tid ").append(tid)
+          .append(" [").append(state).append("] ")
+          .append(comm.isEmpty() ? "-" : comm)
+          .append("  wchan=").append(wchan.isEmpty() ? "-" : wchan)
+          .append("  syscall=").append(syscall.isEmpty() ? "-" : syscall)
+          .append('\n');
+      }
+    }
+    return sb.toString();
+  }
+
   public static ArrayList<String> listRunningWineProcessDetails() {
     File proc = new File("/proc");
     String[] allPids =

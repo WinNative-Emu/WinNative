@@ -1135,6 +1135,8 @@
     <string name="settings_debug_input_logs_description">บันทึกเหตุการณ์อินพุตของเกมแพด สัมผัส และคีย์บอร์ด</string>
     <string name="settings_debug_download_logs">บันทึกการดาวน์โหลด</string>
     <string name="settings_debug_download_logs_description">บันทึกเหตุการณ์ตัวแก้ไขการดาวน์โหลดและ WinNative fallback</string>
+    <string name="settings_debug_freeze_log">บันทึกการค้าง</string>
+    <string name="settings_debug_freeze_log_description">เมื่อเกมหยุดวาดภาพ ให้บันทึกว่าแต่ละเธรดของเกสต์กำลังทำอะไร</string>
     <string name="settings_debug_vulkan_validation_layers_title">Vulkan Validation Layers</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">รีสตาร์ทการแสดงผลเพื่อนำไปใช้</string>
     <string name="settings_debug_share_logs">แชร์บันทึก</string>

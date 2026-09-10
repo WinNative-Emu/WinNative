@@ -1135,6 +1135,8 @@ E.g. <b>META</b> için <i>META tuşu</i>, \n
     <string name="settings_debug_input_logs_description">Oyun kumandası, dokunma ve klavye giriş olaylarını kaydet</string>
     <string name="settings_debug_download_logs">İndirme Günlükleri</string>
     <string name="settings_debug_download_logs_description">İndirme çözümleyici ve WinNative geri dönüş olaylarını kaydet</string>
+    <string name="settings_debug_freeze_log">Donma Günlüğü</string>
+    <string name="settings_debug_freeze_log_description">Oyun çizmeyi bıraktığında her konuk iş parçacığının ne yaptığını kaydet</string>
     <string name="settings_debug_vulkan_validation_layers_title">Vulkan Doğrulama Katmanları</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">Uygulamak için ekranı yeniden başlatın.</string>
     <string name="settings_debug_share_logs">Günlükleri Paylaş</string>

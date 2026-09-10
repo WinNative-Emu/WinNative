@@ -843,6 +843,8 @@ De ex. <b>META</b> pentru <i>tasta META</i>, \n
     <string name="settings_debug_input_logs_description">Inregistreaza evenimentele de intrare gamepad, tactile si tastatura</string>
     <string name="settings_debug_download_logs">Jurnale descarcari</string>
     <string name="settings_debug_download_logs_description">Inregistreaza evenimentele de rezolvare descarcari si alternativa WinNative</string>
+    <string name="settings_debug_freeze_log">Jurnal de blocare</string>
+    <string name="settings_debug_freeze_log_description">Când jocul nu mai desenează, înregistrează ce face fiecare fir invitat</string>
     <string name="settings_debug_vulkan_validation_layers_title">Straturi de validare Vulkan</string>
     <string name="settings_debug_vulkan_validation_layers_subtitle">Repornește afișajul pentru aplicare.</string>
     <string name="settings_debug_share_logs">Partajeaza jurnalele</string>
