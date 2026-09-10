@@ -2533,6 +2533,8 @@ Yüklü konum:
     <string name="session_drawer_dis_frame_generation">Kare Üretimi (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Kare Oluştur (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search ile işlenmiş kareler arasında ara kare oluşturur. Uygulamaya gömülü; harici shader gerekmez.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Bunu kullanmak için DIS kare üretimini kapatın.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Bunu kullanmak için Lossless Scaling kare üretimini kapatın.</string>
     <string name="session_drawer_dis_resolution_scale">Çözünürlük Ölçeği</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Hızlı</string>

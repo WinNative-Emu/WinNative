@@ -2533,6 +2533,8 @@ Ruta instalada:
     <string name="session_drawer_dis_frame_generation">Generación de fotogramas (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generar fotogramas (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpola entre fotogramas renderizados con Dense Inverse Search. Integrado; no requiere shaders externos.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Desactiva la generación de fotogramas DIS para usar esta opción.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Desactiva la generación de fotogramas de Lossless Scaling para usar esta opción.</string>
     <string name="session_drawer_dis_resolution_scale">Escala de resolución</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Rápido</string>

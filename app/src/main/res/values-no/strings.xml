@@ -2533,6 +2533,8 @@ Installert bane:
     <string name="session_drawer_dis_frame_generation">Bildegenerering (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generer bilder (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolerer mellom gjengitte bilder med Dense Inverse Search. Innebygd; ingen eksterne shadere kreves.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Slå av DIS-bildegenerering for å bruke denne innstillingen.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Slå av Lossless Scaling-bildegenerering for å bruke denne innstillingen.</string>
     <string name="session_drawer_dis_resolution_scale">Oppløsningsskala</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Rask</string>

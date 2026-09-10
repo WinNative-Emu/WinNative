@@ -5380,6 +5380,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     @Override
                     public void onFrameGenEnabledChanged(boolean enabled) {
                         if (enabled && frameGenCachePath == null) return;
+                        // One interpolator per frame: the other engine has to be
+                        // switched off deliberately, not silently under the user.
+                        if (enabled && disFrameGenEnabled) return;
                         frameGenEnabled = enabled;
                         applyFrameGenerationLive();
                     }
@@ -5407,8 +5410,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         // The renderer drives one interpolator at a time, so the two
                         // engines are mutually exclusive rather than fighting over
                         // the composite chain.
+                        if (enabled && frameGenEnabled) return;
                         disFrameGenEnabled = enabled;
-                        if (enabled) frameGenEnabled = false;
                         applyFrameGenerationLive();
                     }
 

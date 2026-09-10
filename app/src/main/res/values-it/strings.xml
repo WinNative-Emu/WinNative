@@ -2534,6 +2534,8 @@ Percorso installato:
     <string name="session_drawer_dis_frame_generation">Generazione fotogrammi (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Genera fotogrammi (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpola tra i fotogrammi renderizzati con Dense Inverse Search. Integrato; nessuno shader esterno richiesto.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Disattiva la generazione fotogrammi DIS per usare questa opzione.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Disattiva la generazione fotogrammi Lossless Scaling per usare questa opzione.</string>
     <string name="session_drawer_dis_resolution_scale">Scala risoluzione</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Veloce</string>

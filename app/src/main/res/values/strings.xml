@@ -861,6 +861,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_dis_frame_generation">Frame Generation (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generate Frames (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolates between rendered frames with Dense Inverse Search. Built into the app; no external shaders required.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Turn off DIS frame generation to use this.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Turn off Lossless Scaling frame generation to use this.</string>
     <string name="session_drawer_dis_resolution_scale">Resolution Scale</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Fast</string>

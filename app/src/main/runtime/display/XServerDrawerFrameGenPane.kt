@@ -123,6 +123,7 @@ private fun FrameGenerationSection(
         onTargetRateSelected = listener::onFrameGenTargetRateSelected,
         onMultiplierSelected = listener::onFrameGenMultiplierSelected,
         onFlowScaleChanged = listener::onFrameGenFlowScaleChanged,
+        blockedByDis = state.disFrameGenEnabled,
     )
 }
 
@@ -139,6 +140,11 @@ internal fun FrameGenerationSection(
     onTargetRateSelected: (Int) -> Unit,
     onMultiplierSelected: (Int) -> Unit,
     onFlowScaleChanged: (Int) -> Unit,
+    // The compositor drives one interpolator per frame, so the two engines are
+    // exclusive. Rather than silently switching the other one off under the
+    // user, the toggle of the engine that is not running refuses to move and
+    // says which one to turn off first.
+    blockedByDis: Boolean = false,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
         PaneSectionLabel(stringResource(R.string.session_drawer_frame_generation))
@@ -149,7 +155,13 @@ internal fun FrameGenerationSection(
             NavBooleanRow(
                 title = stringResource(R.string.session_drawer_frame_generation_enable),
                 checked = enabled,
-                onCheckedChange = onEnabledChanged,
+                onCheckedChange = { if (!blockedByDis) onEnabledChanged(it) },
+                subtitle =
+                    if (blockedByDis) {
+                        stringResource(R.string.session_drawer_frame_generation_blocked_by_dis)
+                    } else {
+                        null
+                    },
             )
 
             FrameGenNote(stringResource(R.string.session_drawer_frame_generation_note), paneScale)
@@ -318,10 +330,17 @@ private fun DisFrameGenerationSection(
     Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
         PaneSectionLabel(stringResource(R.string.session_drawer_dis_frame_generation))
 
+        val blockedByLsfg = state.frameGenEnabled
         NavBooleanRow(
             title = stringResource(R.string.session_drawer_dis_frame_generation_enable),
             checked = state.disFrameGenEnabled,
-            onCheckedChange = listener::onDisFrameGenEnabledChanged,
+            onCheckedChange = { if (!blockedByLsfg) listener.onDisFrameGenEnabledChanged(it) },
+            subtitle =
+                if (blockedByLsfg) {
+                    stringResource(R.string.session_drawer_dis_frame_generation_blocked_by_lsfg)
+                } else {
+                    null
+                },
         )
 
         FrameGenNote(stringResource(R.string.session_drawer_dis_frame_generation_note), paneScale)

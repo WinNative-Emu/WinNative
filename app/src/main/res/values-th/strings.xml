@@ -2533,6 +2533,8 @@
     <string name="session_drawer_dis_frame_generation">การสร้างเฟรม (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">สร้างเฟรม (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">แทรกเฟรมระหว่างเฟรมที่เรนเดอร์ด้วย Dense Inverse Search มีในตัว ไม่ต้องใช้เชเดอร์ภายนอก</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">ปิดการสร้างเฟรม DIS เพื่อใช้ตัวเลือกนี้</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">ปิดการสร้างเฟรม Lossless Scaling เพื่อใช้ตัวเลือกนี้</string>
     <string name="session_drawer_dis_resolution_scale">สเกลความละเอียด</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">เร็ว</string>

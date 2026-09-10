@@ -2540,6 +2540,8 @@
     <string name="session_drawer_dis_frame_generation">Генерація кадрів (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Генерувати кадри (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Інтерполює між відрендереними кадрами методом Dense Inverse Search. Вбудовано; зовнішні шейдери не потрібні.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Щоб увімкнути, спершу вимкніть генерацію кадрів DIS.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Щоб увімкнути, спершу вимкніть генерацію кадрів Lossless Scaling.</string>
     <string name="session_drawer_dis_resolution_scale">Масштаб роздільної здатності</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Швидко</string>

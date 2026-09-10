@@ -2535,6 +2535,8 @@ Installeret sti:
     <string name="session_drawer_dis_frame_generation">Billedgenerering (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generér billeder (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolerer mellem gengivne billeder med Dense Inverse Search. Indbygget; ingen eksterne shaders kræves.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Slå DIS-billedgenerering fra for at bruge denne indstilling.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Slå Lossless Scaling-billedgenerering fra for at bruge denne indstilling.</string>
     <string name="session_drawer_dis_resolution_scale">Opløsningsskala</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Hurtig</string>

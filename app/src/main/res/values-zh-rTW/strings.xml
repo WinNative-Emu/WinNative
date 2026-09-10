@@ -2533,6 +2533,8 @@
     <string name="session_drawer_dis_frame_generation">影格生成 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">生成影格 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">使用 Dense Inverse Search 在已算繪的影格之間插補。內建功能，無需外部著色器。</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">關閉 DIS 影格生成後才能使用此項。</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">關閉 Lossless Scaling 影格生成後才能使用此項。</string>
     <string name="session_drawer_dis_resolution_scale">解析度縮放</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">快速</string>

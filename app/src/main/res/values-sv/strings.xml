@@ -2533,6 +2533,8 @@ Installerad sökväg:
     <string name="session_drawer_dis_frame_generation">Bildgenerering (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generera bilder (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolerar mellan renderade bildrutor med Dense Inverse Search. Inbyggd; inga externa shaders krävs.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Stäng av DIS-bildgenerering för att använda den här inställningen.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Stäng av Lossless Scaling-bildgenerering för att använda den här inställningen.</string>
     <string name="session_drawer_dis_resolution_scale">Upplösningsskala</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Snabb</string>

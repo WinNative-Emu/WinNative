@@ -2534,6 +2534,8 @@
     <string name="session_drawer_dis_frame_generation">帧生成 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">生成帧 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">使用 Dense Inverse Search 在渲染帧之间插帧。内置功能，无需外部着色器。</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">关闭 DIS 帧生成后才能使用此项。</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">关闭 Lossless Scaling 帧生成后才能使用此项。</string>
     <string name="session_drawer_dis_resolution_scale">分辨率缩放</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">快速</string>

@@ -2535,6 +2535,8 @@
     <string name="session_drawer_dis_frame_generation">프레임 생성 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">프레임 생성 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search로 렌더링된 프레임 사이를 보간합니다. 내장 기능이며 외부 셰이더가 필요 없습니다.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">이 기능을 사용하려면 DIS 프레임 생성을 끄세요.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">이 기능을 사용하려면 Lossless Scaling 프레임 생성을 끄세요.</string>
     <string name="session_drawer_dis_resolution_scale">해상도 배율</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">빠름</string>

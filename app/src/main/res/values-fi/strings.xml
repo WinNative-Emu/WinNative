@@ -2533,6 +2533,8 @@ Asennuspolku:
     <string name="session_drawer_dis_frame_generation">Ruudun generointi (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generoi ruutuja (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpoloi renderöityjen ruutujen välillä Dense Inverse Searchilla. Sisäänrakennettu; ulkoisia varjostimia ei tarvita.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Poista DIS-ruudun generointi käytöstä, jotta voit käyttää tätä.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Poista Lossless Scaling -ruudun generointi käytöstä, jotta voit käyttää tätä.</string>
     <string name="session_drawer_dis_resolution_scale">Resoluutioskaala</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Nopea</string>

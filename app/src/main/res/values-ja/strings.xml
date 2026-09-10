@@ -2533,6 +2533,8 @@
     <string name="session_drawer_dis_frame_generation">フレーム生成 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">フレームを生成 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search で描画フレーム間を補間します。アプリ内蔵で外部シェーダーは不要です。</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">これを使うには DIS のフレーム生成をオフにしてください。</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">これを使うには Lossless Scaling のフレーム生成をオフにしてください。</string>
     <string name="session_drawer_dis_resolution_scale">解像度スケール</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">高速</string>

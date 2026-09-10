@@ -2534,6 +2534,8 @@ Chemin installé :
     <string name="session_drawer_dis_frame_generation">Génération d\'images (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Générer des images (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpole entre les images rendues avec Dense Inverse Search. Intégré ; aucun shader externe requis.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Désactivez la génération d\'images DIS pour utiliser cette option.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Désactivez la génération d\'images Lossless Scaling pour utiliser cette option.</string>
     <string name="session_drawer_dis_resolution_scale">Échelle de résolution</string>
     <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Rapide</string>
