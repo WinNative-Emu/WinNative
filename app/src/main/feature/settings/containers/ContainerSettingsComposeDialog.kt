@@ -60,6 +60,7 @@ import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.util.KeyValueSet
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import com.winlator.cmod.shared.util.StringUtils
+import com.winlator.cmod.runtime.input.ui.InputControlsView
 import com.winlator.cmod.runtime.wine.WineInfo
 import com.winlator.cmod.runtime.wine.WineRegistryEditor
 import com.winlator.cmod.runtime.wine.WineThemeManager
@@ -438,6 +439,8 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             state.enableXInput.value = true
             state.enableDInput.value = true
         }
+        state.adaptiveJoysticks.value =
+            c?.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") == "1"
 
         state.fullscreenStretched.value = c?.isFullscreenStretched() ?: false
         state.useUnixLibs.value = c?.isUseUnixLibs() ?: true
@@ -599,13 +602,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             c?.getExtra(com.winlator.cmod.runtime.reshade.ReshadeConfigWriter.EXTRA_EFFECT, null),
         )
 
-        val audioDriverArr = audioDriverEntriesFor(c?.getWineVersion())
+        val containerAudioDriver = c?.getAudioDriver() ?: Container.DEFAULT_AUDIO_DRIVER
+        val audioDriverArr = audioDriverEntriesFor(c?.getWineVersion(), containerAudioDriver)
         state.audioDriverEntries.value = audioDriverArr
-        selectByIdentifier(
-            audioDriverArr,
-            c?.getAudioDriver() ?: Container.DEFAULT_AUDIO_DRIVER,
-            state.selectedAudioDriver
-        )
+        selectByIdentifier(audioDriverArr, containerAudioDriver, state.selectedAudioDriver)
         state.directAudioMic.value = DirectAudioDriver.isMicEnabled(
             c?.getExtra(DirectAudioDriver.EXTRA_MIC)
         )
@@ -894,6 +894,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             }
             c.setAudioDriver(audioDriver)
             c.putExtra(DirectAudioDriver.EXTRA_MIC, if (state.directAudioMic.value) "1" else "0")
+            c.putExtra(
+                InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                if (state.adaptiveJoysticks.value) "1" else "0"
+            )
             c.setEmulator(emulator)
             c.setEmulator64(emulator64)
             c.setWinComponents(wincomponents)
@@ -976,6 +980,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
                         newContainer.putExtra(
                             DirectAudioDriver.EXTRA_MIC,
                             if (state.directAudioMic.value) "1" else "0"
+                        )
+                        newContainer.putExtra(
+                            InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                            if (state.adaptiveJoysticks.value) "1" else "0"
                         )
                         writeFrameGenExtras(newContainer)
                         writeNetworkingExtras(newContainer)
@@ -1173,17 +1181,19 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         }
     }
 
-    private fun audioDriverEntriesFor(wineVersion: String?): List<String> {
+    private fun audioDriverEntriesFor(wineVersion: String?, selected: String): List<String> {
         val all = context.resources.getStringArray(R.array.audio_driver_entries).toList()
         if (wineVersion == null || DirectAudioDriver.isSupportedFor(wineVersion)) return all
+        if (DirectAudioDriver.isSelected(selected)) return all
         return all.filter { !it.equals("DirectAudio", true) }
     }
 
     private fun rebuildAudioDriverList(wineVersion: String?) {
         val current = state.audioDriverEntries.value.getOrNull(state.selectedAudioDriver.intValue)
-        val entries = audioDriverEntriesFor(wineVersion)
+            ?.let { StringUtils.parseIdentifier(it) } ?: Container.DEFAULT_AUDIO_DRIVER
+        val entries = audioDriverEntriesFor(wineVersion, current)
         state.audioDriverEntries.value = entries
-        selectByIdentifier(entries, current ?: Container.DEFAULT_AUDIO_DRIVER, state.selectedAudioDriver)
+        selectByIdentifier(entries, current, state.selectedAudioDriver)
     }
 
     private fun rebuildEmulatorLists() {

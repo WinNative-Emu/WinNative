@@ -55,6 +55,7 @@ import com.winlator.cmod.runtime.display.renderer.VulkanRenderer;
 
 public class InputControlsView extends View {
   public static final float DEFAULT_OVERLAY_OPACITY = 0.4f;
+  public static final String EXTRA_ADAPTIVE_JOYSTICKS = "adaptiveJoysticks";
   private static final byte MOUSE_WHEEL_DELTA = 120;
   private boolean editMode = false;
   private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -77,6 +78,7 @@ public class InputControlsView extends View {
   private volatile float mouseMoveOffsetX = 0f;
   private volatile float mouseMoveOffsetY = 0f;
   private boolean showTouchscreenControls = false;
+  private boolean adaptiveJoysticks = false;
   private VisualStyle visualStyle = VisualStyle.SLATE;
   private AccentTheme accentTheme = AccentTheme.CYAN;
   private InputControlsManager inputControlsManager;
@@ -415,6 +417,24 @@ public class InputControlsView extends View {
     } else this.profile = null;
     activeTouchElements.clear();
     invalidate();
+  }
+
+  public boolean isAdaptiveJoysticks() {
+    return adaptiveJoysticks;
+  }
+
+  public void setAdaptiveJoysticks(boolean adaptiveJoysticks) {
+    if (this.adaptiveJoysticks == adaptiveJoysticks) return;
+    this.adaptiveJoysticks = adaptiveJoysticks;
+    invalidate();
+  }
+
+  public boolean isPointOverOtherElement(ControlElement self, float x, float y) {
+    if (profile == null) return false;
+    for (ControlElement element : profile.getElements()) {
+      if (element != self && element.containsPoint(x, y)) return true;
+    }
+    return false;
   }
 
   public boolean isShowTouchscreenControls() {

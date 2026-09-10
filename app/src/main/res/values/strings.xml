@@ -777,6 +777,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_toggle_fullscreen">Toggle Fullscreen</string>
     <string name="session_drawer_refactor_size">Refactor Size</string>
     <string name="session_drawer_show_touchscreen_controls">Show Touchscreen Controls</string>
+    <string name="input_controls_adaptive_joysticks">Adaptive Joysticks</string>
+    <string name="input_controls_adaptive_joysticks_summary">Sticks stay hidden until you touch near where they sit</string>
     <string name="session_drawer_magnifier">Magnifier</string>
     <string name="session_drawer_logs">Logs</string>
     <string name="session_drawer_pip_mode">PiP Mode</string>

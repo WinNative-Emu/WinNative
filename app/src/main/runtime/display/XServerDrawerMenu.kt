@@ -656,6 +656,7 @@ data class XServerDrawerState(
     val inputControlsAccentThemeNames: List<String> = emptyList(),
     val inputControlsSelectedAccentThemeIndex: Int = 0,
     val inputControlsShowOverlay: Boolean = false,
+    val inputControlsAdaptiveJoysticks: Boolean = false,
     val inputControlsTapToClick: Boolean = true,
     val inputControlsOverlayOpacity: Float = 0.4f,
     val inputControlsTouchscreenHaptics: Boolean = false,
@@ -1124,6 +1125,8 @@ interface XServerDrawerActionListener {
 
     fun onInputControlsShowOverlayChanged(enabled: Boolean)
 
+    fun onInputControlsAdaptiveJoysticksChanged(enabled: Boolean)
+
     fun onInputControlsTapToClickChanged(enabled: Boolean)
 
     fun onInputControlsOverlayOpacityChanged(opacity: Float)
@@ -1233,6 +1236,7 @@ fun buildXServerDrawerState(
     inputControlsAccentThemeNames: List<String> = emptyList(),
     inputControlsSelectedAccentThemeIndex: Int = 0,
     inputControlsShowOverlay: Boolean = false,
+    inputControlsAdaptiveJoysticks: Boolean = false,
     inputControlsTapToClick: Boolean = true,
     inputControlsOverlayOpacity: Float = 0.4f,
     inputControlsTouchscreenHaptics: Boolean = false,
@@ -1438,6 +1442,7 @@ fun buildXServerDrawerState(
         inputControlsAccentThemeNames = inputControlsAccentThemeNames,
         inputControlsSelectedAccentThemeIndex = inputControlsSelectedAccentThemeIndex,
         inputControlsShowOverlay = inputControlsShowOverlay,
+        inputControlsAdaptiveJoysticks = inputControlsAdaptiveJoysticks,
         inputControlsTapToClick = inputControlsTapToClick,
         inputControlsOverlayOpacity = inputControlsOverlayOpacity,
         inputControlsTouchscreenHaptics = inputControlsTouchscreenHaptics,
