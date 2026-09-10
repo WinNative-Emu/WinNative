@@ -467,6 +467,17 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private int frameGenFlowScale = 70;
     private String frameGenCachePath = null;
     private float frameGenRefreshRate = 0f;
+    private boolean disFrameGenEnabled = false;
+    // Optical-flow processing resolution for DIS, as the length of the frame's
+    // SHORTER side in pixels. On a 720-tall frame the three presets are the old
+    // 25% / 35% / 50%, but stated this way the pyramid costs the same on any
+    // container resolution instead of ballooning on tall ones.
+    private static final int[] DIS_FLOW_MIN_SIDES = {180, 252, 360};
+    private static final int DIS_FRAME_GEN_SCALE_DEFAULT = 180;
+
+    private int disFrameGenScale = DIS_FRAME_GEN_SCALE_DEFAULT;
+    private int disFrameGenTargetFps = 0;
+    private boolean disFrameGenDebugFlow = false;
     private boolean sgsrEnabled = false;
     private boolean sgsrRuntimeEnabled = false;
     private int sgsrUpscaleMode = 1;
@@ -829,8 +840,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void syncFrameGenerationHud() {
-        boolean active = frameGenEnabled && frameGenCachePath != null;
-        FrameRating.OutputFrameSource source = frameGenEnabled ? frameGenOutputSource : null;
+        boolean active = (frameGenEnabled && frameGenCachePath != null) || disFrameGenEnabled;
+        FrameRating.OutputFrameSource source =
+                (frameGenEnabled || disFrameGenEnabled) ? frameGenOutputSource : null;
         if (frameRating != null) {
             frameRating.setOutputFrameSource(source);
             frameRating.setFrameGenerationActive(active);
@@ -935,9 +947,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void applyFrameGenerationLive() {
-        applyFrameGeneration(xServerView != null ? xServerView.getRenderer() : null);
-        if (!frameGenEnabled || frameGenCachePath == null) applyPreferredRefreshRate();
+        VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
+        applyFrameGeneration(renderer);
+        applyDisFrameGeneration(renderer);
+        if ((!frameGenEnabled || frameGenCachePath == null) && !disFrameGenEnabled) {
+            applyPreferredRefreshRate();
+        }
         saveFrameGenerationSettings();
+        saveDisFrameGenerationSettings();
         renderDrawerMenu();
     }
 
@@ -959,6 +976,136 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             container.putExtra("frameGenFlowScale", String.valueOf(frameGenFlowScale));
             container.saveData();
         }
+    }
+
+    private void applyDisFrameGenerationSettings(VulkanRenderer renderer, Container container) {
+        if (renderer == null) return;
+
+        String containerValue = container != null ? container.getExtra("disFrameGen", "0") : "0";
+        String scaleDefault = String.valueOf(DIS_FRAME_GEN_SCALE_DEFAULT);
+        String containerScale =
+                container != null ? container.getExtra("disFrameGenScale", scaleDefault) : scaleDefault;
+        String containerTarget = container != null ? container.getExtra("disFrameGenTargetFps", "0") : "0";
+
+        disFrameGenEnabled = "1".equals(getFrameGenSetting("disFrameGen", containerValue));
+        disFrameGenScale = clampDisFrameGenScale(
+                parseSettingInt(getFrameGenSetting("disFrameGenScale", containerScale),
+                        DIS_FRAME_GEN_SCALE_DEFAULT));
+        disFrameGenTargetFps = Math.max(0,
+                parseSettingInt(getFrameGenSetting("disFrameGenTargetFps", containerTarget), 0));
+
+        if (disFrameGenEnabled && frameGenEnabled) {
+            frameGenEnabled = false;
+            applyFrameGeneration(renderer);
+        }
+
+        applyDisFrameGeneration(renderer);
+    }
+
+    private void applyDisFrameGeneration(VulkanRenderer renderer) {
+        if (renderer == null) return;
+
+        if (!disFrameGenEnabled) {
+            renderer.setDisFrameGenerationEnabled(false);
+            syncFrameGenerationHud();
+            return;
+        }
+
+        float refreshRate = applyDisFrameGenerationDisplayMode();
+        renderer.setDisFrameGenerationScale(disFrameGenScale);
+        renderer.setDisFrameGenerationTargetFps(disFrameGenTargetFps);
+        renderer.setDisDebugFlow(disFrameGenDebugFlow);
+        renderer.setFrameGenerationRefreshRate(refreshRate);
+        renderer.setDisFrameGenerationEnabled(true);
+        syncFrameGenerationHud();
+        Log.i("XServerDisplayActivity", "DIS frame generation on: scale=" + disFrameGenScale
+                + " targetFps=" + disFrameGenTargetFps + " refreshRate=" + refreshRate);
+    }
+
+    private void saveDisFrameGenerationSettings() {
+        if (shortcut != null) {
+            boolean overridden = saveFrameGenOverride("disFrameGen", disFrameGenEnabled ? "1" : "0", "0");
+            overridden |= saveFrameGenOverride("disFrameGenScale",
+                    String.valueOf(disFrameGenScale), String.valueOf(DIS_FRAME_GEN_SCALE_DEFAULT));
+            overridden |= saveFrameGenOverride("disFrameGenTargetFps", String.valueOf(disFrameGenTargetFps), "0");
+            if (overridden) shortcut.putExtra("use_container_defaults", "0");
+            shortcut.saveData();
+        } else if (container != null) {
+            container.putExtra("disFrameGen", disFrameGenEnabled ? "1" : "0");
+            container.putExtra("disFrameGenScale", String.valueOf(disFrameGenScale));
+            container.putExtra("disFrameGenTargetFps", String.valueOf(disFrameGenTargetFps));
+            container.saveData();
+        }
+    }
+
+    private float applyDisFrameGenerationDisplayMode() {
+        android.view.Window window = getWindow();
+        if (window == null) return 0f;
+
+        android.view.WindowManager.LayoutParams params = window.getAttributes();
+        if (!disFrameGenEnabled) {
+            if (params.preferredDisplayModeId != 0) {
+                params.preferredDisplayModeId = 0;
+                window.setAttributes(params);
+            }
+            return 0f;
+        }
+
+        android.view.Display display = getDisplayCompat();
+        if (display == null) return 0f;
+
+        android.view.Display.Mode active = display.getMode();
+        int wanted = disFrameGenTargetFps > 0 ? disFrameGenTargetFps : Integer.MAX_VALUE;
+
+        android.view.Display.Mode best = null;
+        for (android.view.Display.Mode mode : display.getSupportedModes()) {
+            if (mode.getPhysicalWidth() != active.getPhysicalWidth()
+                    || mode.getPhysicalHeight() != active.getPhysicalHeight()) {
+                continue;
+            }
+            if (best == null || betterDisFrameGenMode(mode, best, wanted)) best = mode;
+        }
+        if (best == null) return active.getRefreshRate();
+        if (best.getModeId() == params.preferredDisplayModeId && params.preferredRefreshRate == 0f) {
+            return best.getRefreshRate();
+        }
+
+        params.preferredDisplayModeId = best.getModeId();
+        params.preferredRefreshRate = 0f;
+        window.setAttributes(params);
+        Log.i("XServerDisplayActivity", "DIS frame generation display mode: wanted "
+                + (wanted == Integer.MAX_VALUE ? "highest" : wanted + "Hz")
+                + ", selected " + Math.round(best.getRefreshRate()) + "Hz (mode "
+                + best.getModeId() + ")");
+        return best.getRefreshRate();
+    }
+
+    private static boolean betterDisFrameGenMode(android.view.Display.Mode candidate,
+                                                 android.view.Display.Mode current, int wanted) {
+        float a = candidate.getRefreshRate();
+        float b = current.getRefreshRate();
+        boolean aMeets = a + 0.5f >= wanted;
+        boolean bMeets = b + 0.5f >= wanted;
+        if (aMeets != bMeets) return aMeets;
+        if (!aMeets) return a > b;
+        return a < b;
+    }
+
+    private static int clampDisFrameGenScale(int value) {
+        // Anything at or below 100 was written by the old percentage setting; read
+        // it as a fraction of a 720-tall frame so existing containers migrate to
+        // the nearest preset instead of collapsing to a 25-pixel pyramid.
+        int minSide = (value > 0 && value <= 100) ? value * 720 / 100 : value;
+        int best = DIS_FRAME_GEN_SCALE_DEFAULT;
+        int bestDelta = Integer.MAX_VALUE;
+        for (int candidate : DIS_FLOW_MIN_SIDES) {
+            int delta = Math.abs(candidate - minSide);
+            if (delta < bestDelta) {
+                bestDelta = delta;
+                best = candidate;
+            }
+        }
+        return best;
     }
 
     private static int clampFrameGenMultiplier(int value) {
@@ -1238,7 +1385,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void syncFrameGenerationRefreshRate() {
-        if (!frameGenEnabled || frameGenCachePath == null) return;
+        boolean lsfg = frameGenEnabled && frameGenCachePath != null;
+        if (!lsfg && !disFrameGenEnabled) return;
 
         android.view.Display display = getDisplayCompat();
         if (display == null) return;
@@ -4850,6 +4998,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 frameGenFlowScale,
                 getString(R.string.session_drawer_frame_generation));
 
+        state = XServerDrawerMenuKt.withDisFrameGenState(
+                state,
+                disFrameGenEnabled,
+                disFrameGenScale,
+                disFrameGenTargetFps,
+                disFrameGenDebugFlow);
+
         // Always-present "Output" tab (live controls while swapped, otherwise a Cast entry point).
         if (externalDisplayController != null) {
             boolean swapped = externalDisplayController.isSwapActive();
@@ -5245,6 +5400,37 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     public void onFrameGenFlowScaleChanged(int percent) {
                         frameGenFlowScale = clampFrameGenFlowScale(percent);
                         applyFrameGenerationLive();
+                    }
+
+                    @Override
+                    public void onDisFrameGenEnabledChanged(boolean enabled) {
+                        // The renderer drives one interpolator at a time, so the two
+                        // engines are mutually exclusive rather than fighting over
+                        // the composite chain.
+                        disFrameGenEnabled = enabled;
+                        if (enabled) frameGenEnabled = false;
+                        applyFrameGenerationLive();
+                    }
+
+                    @Override
+                    public void onDisFrameGenScaleChanged(int percent) {
+                        disFrameGenScale = clampDisFrameGenScale(percent);
+                        applyFrameGenerationLive();
+                    }
+
+                    @Override
+                    public void onDisFrameGenTargetFpsSelected(int rate) {
+                        disFrameGenTargetFps = Math.max(0, rate);
+                        applyFrameGenerationLive();
+                    }
+
+                    @Override
+                    public void onDisDebugFlowChanged(boolean enabled) {
+                        disFrameGenDebugFlow = enabled;
+                        if (xServerView != null && xServerView.getRenderer() != null) {
+                            xServerView.getRenderer().setDisDebugFlow(enabled);
+                        }
+                        renderDrawerMenu();
                     }
 
 
@@ -8092,6 +8278,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         renderer.setSwapRB("1".equals(getShortcutSetting("swapRB", containerSwapRB)));
 
         applyFrameGenerationSettings(renderer, container);
+        applyDisFrameGenerationSettings(renderer, container);
 
         if (shortcut != null || (bootExePath != null && !bootExePath.isEmpty())) {
             renderer.setUnviewableWMClasses("explorer.exe");

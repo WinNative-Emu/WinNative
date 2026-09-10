@@ -1,0 +1,35 @@
+#version 450
+
+// Variational refinement smoothness weights: alpha/2 / sqrt(|grad(W+dW)|^2 + eps^2).
+// W is read normalized and scaled to pixels; dW is already in pixels.
+
+precision highp float;
+precision highp int;
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D flowDense;   // W (normalized)
+layout(set = 0, binding = 1) uniform sampler2D dW;          // increment (pixels)
+layout(set = 0, binding = 8, r32f) uniform image2D wt;
+
+layout(push_constant) uniform PC {
+    float alpha2;
+    float eps2;
+} pc;
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz = imageSize(wt);
+    if (p.x >= sz.x || p.y >= sz.y) return;
+    ivec2 mx = sz - 1;
+    vec2 uSize = vec2(sz);
+
+    vec2 c  = texelFetch(flowDense, p, 0).xy * uSize + texelFetch(dW, p, 0).xy;
+    vec2 dx = texelFetch(flowDense, ivec2(min(p.x + 1, mx.x), p.y), 0).xy * uSize
+            + texelFetch(dW, ivec2(min(p.x + 1, mx.x), p.y), 0).xy - c;
+    vec2 dy = texelFetch(flowDense, ivec2(p.x, min(p.y + 1, mx.y)), 0).xy * uSize
+            + texelFetch(dW, ivec2(p.x, min(p.y + 1, mx.y)), 0).xy - c;
+
+    float val = pc.alpha2 / sqrt(dot(dx, dx) + dot(dy, dy) + pc.eps2);
+    imageStore(wt, p, vec4(val, 0.0, 0.0, 0.0));
+}

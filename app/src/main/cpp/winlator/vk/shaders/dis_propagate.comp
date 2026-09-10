@@ -1,0 +1,88 @@
+#version 450
+
+// DIS (Dense Inverse Search) spatial propagation pass. For each sparse flow cell
+// it compares its own flow against a neighbour's flow (offset by a push constant)
+// by evaluating the mean-normalized patch SSD and keeps the better one. Repeated
+// with doubling offsets this propagates reliable flow into flat or occluded
+// regions (the parallel replacement for OpenCV's sequential row scan).
+//
+// The 8x8 reference block (last-frame luminance) is hoisted out of the two SSD
+// evaluations, so the reference is read once per cell instead of twice and both
+// candidates are scored in a single loop. The warp UVs are NOT hoisted: a second
+// 64-entry array doubled the private-memory footprint of every invocation for a
+// value that is two multiply-adds to recompute, and the spill cost far exceeded
+// the arithmetic.
+
+precision highp float;
+precision highp int;
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D lastColorMap;   // prev color at this level
+layout(set = 0, binding = 1) uniform sampler2D nextColorMap;   // next color at this level
+layout(set = 0, binding = 2) uniform sampler2D flowIn;         // sparse flow (normalized)
+layout(set = 0, binding = 5, rg32f) uniform image2D flowOut;
+
+layout(push_constant) uniform PC {
+    ivec2 offset;
+} pc;
+
+// Luminance is returned on the 0-255 scale the reference implementation works
+// on, not the 0-1 the samplers hand back. Every tuned constant downstream - the
+// densify confidence epsilon, the variational refinement's delta/gamma/zeta -
+// came from OpenCV, which feeds this chain 8-bit imagery converted to float
+// without dividing by 255. Feeding it 0-1 instead left those constants
+// mismatched by that same factor.
+float uluminance(vec3 c) {
+    return (0.299 * c.x + 0.587 * c.y + 0.114 * c.z) * 255.0;
+}
+
+void main() {
+    ivec2 s = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 mx = textureSize(flowIn, 0) - 1;
+    if (s.x > mx.x || s.y > mx.y) return;
+
+    ivec2 q = clamp(s + pc.offset, ivec2(0), mx);
+    vec2 own = texelFetch(flowIn, s, 0).xy;
+    if (q == s) {
+        imageStore(flowOut, s, vec4(own, 0.0, 1.0));
+        return;
+    }
+
+    vec2 cand = texelFetch(flowIn, q, 0).xy;
+    ivec2 org = s * 3;
+
+    ivec2 denseSize = textureSize(lastColorMap, 0);
+    ivec2 denseMax = denseSize - 1;
+    vec2 invImageSize = 1.0 / vec2(denseSize);
+
+    float refLum[64];
+    for (int dy = 0; dy < 8; dy++) {
+        for (int dx = 0; dx < 8; dx++) {
+            ivec2 p = clamp(org + ivec2(dx, dy), ivec2(0), denseMax);
+            refLum[dy * 8 + dx] = uluminance(texelFetch(lastColorMap, p, 0).xyz);
+        }
+    }
+
+    float sdOwn = 0.0;
+    float sd2Own = 0.0;
+    float sdCand = 0.0;
+    float sd2Cand = 0.0;
+    for (int dy = 0; dy < 8; dy++) {
+        for (int dx = 0; dx < 8; dx++) {
+            int i = dy * 8 + dx;
+            vec2 base = (vec2(org) + vec2(dx, dy) + 0.5) * invImageSize;
+            float dOwn = uluminance(textureLod(nextColorMap, base + own, 0.0).xyz) - refLum[i];
+            sdOwn += dOwn;
+            sd2Own += dOwn * dOwn;
+            float dCand = uluminance(textureLod(nextColorMap, base + cand, 0.0).xyz) - refLum[i];
+            sdCand += dCand;
+            sd2Cand += dCand * dCand;
+        }
+    }
+    float ssdOwn = sd2Own - sdOwn * sdOwn / 64.0;
+    float ssdCand = sd2Cand - sdCand * sdCand / 64.0;
+
+    vec2 best = ssdCand < ssdOwn ? cand : own;
+    imageStore(flowOut, s, vec4(best, 0.0, 1.0));
+}

@@ -8,6 +8,28 @@
 
 #define FG_FN(name) Java_com_winlator_cmod_shared_framegen_FrameGenNative_##name
 
+// The Java side carries one integer for "frame generation quality", and the two
+// engines want that number in different units - LSFG a percentage of the frame,
+// DIS the flow buffer's shorter side in pixels. Rather than widen the JNI
+// signature and every caller with it, the two live in disjoint ranges of the
+// same field: 1..999 is an LSFG percentage, FG_DIS_QUALITY_TAG + n is DIS with a
+// shorter side of n pixels. Neither engine can ever read the other's value, so
+// switching between them leaves each one's setting exactly as the user left it.
+#define FG_DIS_QUALITY_TAG 1000
+
+static void fg_split_quality(jint quality, uint32_t* engine, float* flow, uint32_t* dis_min_side) {
+    if (quality >= FG_DIS_QUALITY_TAG) {
+        *engine = FG_ENGINE_DIS;
+        *flow = 0.7f;
+        const jint side = quality - FG_DIS_QUALITY_TAG;
+        *dis_min_side = side > 0 ? (uint32_t)side : FG_DIS_MIN_SIDE_DEFAULT;
+        return;
+    }
+    *engine = FG_ENGINE_LSFG;
+    *flow = quality > 0 ? (float)quality / 100.0f : 0.7f;
+    *dis_min_side = FG_DIS_MIN_SIDE_DEFAULT;
+}
+
 static char* fg_copy_utf(JNIEnv* env, jstring value) {
     if (!value) return NULL;
     const char* chars = (*env)->GetStringUTFChars(env, value, NULL);
@@ -31,10 +53,14 @@ JNIEXPORT jlong JNICALL FG_FN(nativeCreate)(JNIEnv* env, jclass clazz, jobject c
     char* cache = fg_copy_utf(env, cachePath);
     char* driver = fg_copy_utf(env, driverName);
 
-    float flow = flowScale > 0 ? (float)flowScale / 100.0f : 0.7f;
+    uint32_t engine = FG_ENGINE_LSFG;
+    float flow = 0.7f;
+    uint32_t dis_min_side = FG_DIS_MIN_SIDE_DEFAULT;
+    fg_split_quality(flowScale, &engine, &flow, &dis_min_side);
+
     FgPresenter* fg = fg_create(env, context, driver, window, (uint32_t)width, (uint32_t)height,
                                 cache, (uint32_t)multiplier, (uint32_t)targetRate, flow,
-                                refreshRate, sourceRate);
+                                refreshRate, sourceRate, engine, dis_min_side);
 
     ANativeWindow_release(window);
     free(cache);
@@ -56,8 +82,12 @@ JNIEXPORT void JNICALL FG_FN(nativeConfigure)(JNIEnv* env, jclass clazz, jlong h
     (void)env;
     (void)clazz;
     FgPresenter* fg = (FgPresenter*)(intptr_t)handle;
-    float flow = flowScale > 0 ? (float)flowScale / 100.0f : 0.7f;
-    fg_configure(fg, (uint32_t)multiplier, (uint32_t)targetRate, flow, refreshRate, sourceRate);
+    uint32_t engine = FG_ENGINE_LSFG;
+    float flow = 0.7f;
+    uint32_t dis_min_side = FG_DIS_MIN_SIDE_DEFAULT;
+    fg_split_quality(flowScale, &engine, &flow, &dis_min_side);
+    fg_configure(fg, (uint32_t)multiplier, (uint32_t)targetRate, flow, refreshRate, sourceRate,
+                 engine, dis_min_side);
 }
 
 JNIEXPORT jlong JNICALL FG_FN(nativeRealFrames)(JNIEnv* env, jclass clazz, jlong handle) {
