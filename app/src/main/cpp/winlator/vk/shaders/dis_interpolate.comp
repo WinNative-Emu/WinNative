@@ -18,6 +18,32 @@ layout(push_constant) uniform PC {
     int debugMode;
 } pc;
 
+// Linear filtering of 32-bit float formats is an optional Vulkan feature, and
+// the dense flow this pass samples is R32G32_SFLOAT. Most parts have it; some
+// mobile GPUs filter only 16-bit floats. Rather than assume, the host asks the
+// driver and sets this constant, so the branch is resolved when the pipeline is
+// built and costs nothing per pixel.
+layout(constant_id = 0) const int manualFlowFilter = 0;
+
+// Bilinear by hand, for the devices that cannot do it in the sampler. Same
+// footprint and same weights the sampler would have used, with the edge clamp
+// spelled out.
+vec2 sampleFlow(vec2 uv) {
+    if (manualFlowFilter == 0) return textureLod(flowTex, uv, 0.0).xy;
+
+    vec2 sz = vec2(textureSize(flowTex, 0));
+    vec2 p = uv * sz - 0.5;
+    vec2 frac = fract(p);
+    ivec2 i0 = ivec2(floor(p));
+    ivec2 mx = ivec2(sz) - 1;
+
+    vec2 a = texelFetch(flowTex, clamp(i0,                ivec2(0), mx), 0).xy;
+    vec2 b = texelFetch(flowTex, clamp(i0 + ivec2(1, 0), ivec2(0), mx), 0).xy;
+    vec2 c = texelFetch(flowTex, clamp(i0 + ivec2(0, 1), ivec2(0), mx), 0).xy;
+    vec2 e = texelFetch(flowTex, clamp(i0 + ivec2(1, 1), ivec2(0), mx), 0).xy;
+    return mix(mix(a, b, frac.x), mix(c, e, frac.x), frac.y);
+}
+
 vec3 hsv2rgb(vec3 c) {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
     vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
@@ -63,13 +89,13 @@ void main() {
     vec2 eased = ramp * ramp * (3.0 - 2.0 * ramp);
     float edgeMix = min(eased.x, eased.y);
 
-    vec2 f = textureLod(flowTex, uv, 0.0).xy;
+    vec2 f = sampleFlow(uv);
     if (edgeMix < 1.0) {
         // Only the guard strip needs the borrowed value. The branch is coherent
         // across a workgroup - whole tiles are interior - so the interior pays
         // nothing for it, and this pass runs once per generated frame at full
         // content resolution, where one saved tap per pixel is worth having.
-        vec2 fInner = textureLod(flowTex, clamp(uv, guard, 1.0 - guard), 0.0).xy;
+        vec2 fInner = sampleFlow(clamp(uv, guard, 1.0 - guard));
         f = mix(fInner, f, edgeMix);
     }
 

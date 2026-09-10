@@ -2572,6 +2572,46 @@ static bool record_and_submit_frame(VkRenderer* r) {
         ? compute_sgsr1_source_extent(r, &snap)
         : r->swapchain_extent;
 
+    // One-shot diagnostic for the reported horizontal shift under SGSR1. The
+    // scene is rasterised into a source-sized target through a letterboxed
+    // viewport, and SGSR1 then stretches that whole source - bars included - over
+    // the target, so the content's final position is the source-space viewport
+    // rect multiplied by target/source. Any fraction lost when that rect is
+    // rounded to whole source pixels comes back multiplied by the upscale factor.
+    // These numbers say whether that is what is happening here. Logged only when
+    // they change, so it is one line per configuration, not per frame.
+    if (wants_sgsr1) {
+        VkPreRotatedRect dbg_sw = transform_rect_for_pretransform(
+            snap.viewport_set ? snap.viewport_x : 0,
+            snap.viewport_set ? snap.viewport_y : 0,
+            snap.viewport_set ? snap.viewport_w : (int)r->surface_extent.width,
+            snap.viewport_set ? snap.viewport_h : (int)r->surface_extent.height,
+            r->swapchain_extent.width, r->swapchain_extent.height, r->swapchain_transform);
+        VkPreRotatedRect dbg_src = scale_rect_from_swapchain(
+            r, dbg_sw, sgsr1_source_extent.width, sgsr1_source_extent.height);
+        const double sx = r->swapchain_extent.width
+            ? (double)sgsr1_source_extent.width / (double)r->swapchain_extent.width : 1.0;
+        const double exact_x = (double)dbg_sw.x * sx;
+        const uint64_t sig = ((uint64_t)sgsr1_source_extent.width << 48)
+                           ^ ((uint64_t)sgsr1_source_extent.height << 32)
+                           ^ ((uint64_t)(uint32_t)dbg_sw.x << 16)
+                           ^ (uint64_t)(uint32_t)dbg_sw.w;
+        if (sig != r->sgsr1_dbg_sig) {
+            r->sgsr1_dbg_sig = sig;
+            VK_LOGI("SGSR1 geometry: swapchain %ux%u, screen %ux%u, dri3 %ux%u, source %ux%u | "
+                    "viewport swapchain %d,%d %dx%d -> source %d,%d %dx%d (exact x %.3f, "
+                    "err %.3f src px = %.3f target px)",
+                    r->swapchain_extent.width, r->swapchain_extent.height,
+                    snap.screen_width, snap.screen_height,
+                    snap.source_width, snap.source_height,
+                    sgsr1_source_extent.width, sgsr1_source_extent.height,
+                    dbg_sw.x, dbg_sw.y, dbg_sw.w, dbg_sw.h,
+                    dbg_src.x, dbg_src.y, dbg_src.w, dbg_src.h,
+                    exact_x, (double)dbg_src.x - exact_x,
+                    sx > 0.0 ? ((double)dbg_src.x - exact_x) / sx : 0.0);
+        }
+    }
+
     // Full-res ping-pong targets exist only when the chain needs them (SGSR-only writes its
     // low-res source straight to the swapchain). offscreen[1] is grown/freed lazily as the
     // chain crosses the threshold above; effect counts change on user action, not per frame,
@@ -2623,15 +2663,26 @@ static bool record_and_submit_frame(VkRenderer* r) {
             VkExtent2D guest = compute_sgsr1_source_extent(r, &snap);
             vkr_lsfg_set_guest_extent(r->lsfg, guest.width, guest.height);
         } else if (use_dis) {
-            // Size the composite to the container resolution, not the native
-            // surface. The X screen is fixed for a container's lifetime, so the
-            // extent is captured once and never changed: rebuilding the DIS
-            // resources later crashes the Turnip driver on device.
+            // The wanted size is recomputed every frame. It used to be captured
+            // on the first frame and then frozen, because rebuilding the DIS
+            // resources mid-session took Turnip down - which meant toggling SGSR1
+            // during a session had no effect until the session restarted. The
+            // real cause of that crash was DIS creating its images with an
+            // illegal initialLayout and the rebuild not waiting hard enough
+            // before freeing them; both are fixed, so the size can follow the
+            // settings again.
             if (snap.screen_width == 0 || snap.screen_height == 0) {
                 via_composite = false;
-            } else if (r->composite_built) {
-                composite_extent.width = r->composite[0].width;
-                composite_extent.height = r->composite[0].height;
+            } else if (wants_sgsr1) {
+                // SGSR1 is an upscaler: it reconstructs the guest's low-res frame
+                // at the size of whatever it renders into. Sizing the composite to
+                // the container would have it reconstruct at container resolution
+                // and then leave a plain bilinear blit to cover the rest of the way
+                // to the panel - which throws away exactly the detail SGSR1 was
+                // asked to recover, and reads as a softer picture than SGSR1 with
+                // no frame generation at all. So when SGSR1 is in the chain the
+                // composite is the panel's own size and the final blit is 1:1.
+                composite_extent = r->swapchain_extent;
             } else {
                 composite_extent = compute_container_extent(r, &snap);
             }
@@ -2664,7 +2715,17 @@ static bool record_and_submit_frame(VkRenderer* r) {
                                                 composite_extent.height, r->swapchain_format,
                                                 dis_content));
         if (composite_stale || chain_stale) {
-            wait_inflight_frames(r);
+            // A DIS rebuild frees every image its descriptor sets point at and
+            // then rewrites those sets, so nothing referencing them may still be
+            // in flight. The render fences do not cover everything here -
+            // generated frames reach the queue by their own path - and this
+            // rebuild is rare and user-driven (SGSR toggled, screen rotated,
+            // container resized), so a full device idle is the right price.
+            if (r->dis) {
+                vkDeviceWaitIdle(r->device);
+            } else {
+                wait_inflight_frames(r);
+            }
             if (!create_composite_targets(r, composite_extent.width,
                                           composite_extent.height, composite_needed)) {
                 VK_LOGW("Composite targets unavailable; frame generation path disabled");
@@ -2957,7 +3018,22 @@ static bool record_and_submit_frame(VkRenderer* r) {
             }
         }
 
-        blit_composite_to_swapchain(r, f->cmd, composite, r->swapchain_images[image_index]);
+        if (use_dis && r->dis_debug_flow) {
+            // The flow view has to land on the real frame as well. Painting only
+            // the generated ones left the panel alternating between the game and
+            // the visualisation at the generation ratio, which looks like a
+            // flicker rather than a debug overlay.
+            // vkr_dis_debug_into transitions the target out of UNDEFINED itself.
+            vkr_dis_debug_into(r->dis, f->cmd, r->swapchain_images[image_index],
+                               r->swapchain_extent.width, r->swapchain_extent.height);
+            vkr_image_barrier(f->cmd, r->swapchain_images[image_index],
+                              VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                              VK_PIPELINE_STAGE_TRANSFER_BIT,
+                              VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                              VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+        } else {
+            blit_composite_to_swapchain(r, f->cmd, composite, r->swapchain_images[image_index]);
+        }
     }
 
     // Blit the final composited image (in PRESENT_SRC after the render pass) into the encoder image.

@@ -29,12 +29,19 @@ precision highp int;
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform sampler2D lastColorMap;   // prev color at this level
-layout(set = 0, binding = 1) uniform sampler2D nextColorMap;   // next color at this level
+// lastLumaMap/nextLumaMap are the precomputed luminance pyramid, not colour:
+// one channel, already on the 0-255 scale the tuned constants expect. The dot
+// product that used to run on every one of these fetches now runs once per texel
+// in dis_luma.comp.
+layout(set = 0, binding = 0) uniform sampler2D lastLumaMap;   // prev luma at this level
+layout(set = 0, binding = 1) uniform sampler2D nextLumaMap;   // next luma at this level
 layout(set = 0, binding = 2) uniform sampler2D lastGradientMap; // prev gradient at this level
 layout(set = 0, binding = 3) uniform sampler2D flowMap;        // coarser dense flow (level+1)
 layout(set = 0, binding = 4) uniform sampler2D lastFlowMap;    // temporal coarsest flow
-layout(set = 0, binding = 5, rg32f) uniform image2D sparseFlowMap;
+// rgba32f, not rg32f: .z carries the mean-normalized SSD of the vector stored
+// here, so a propagation pass need not re-score the candidate it is already
+// holding. -1 means "not scored yet".
+layout(set = 0, binding = 5, rgba32f) uniform image2D sparseFlowMap;
 
 layout(push_constant) uniform PC {
     int level;
@@ -69,7 +76,7 @@ void main() {
     if (pixSparse.x >= sparseSize.x || pixSparse.y >= sparseSize.y) return;
 
     ivec2 pix = pixSparse * 3;
-    ivec2 denseSize = textureSize(lastColorMap, 0);
+    ivec2 denseSize = textureSize(lastLumaMap, 0);
     ivec2 denseMax = denseSize - 1;
 
     float lastImageData[64];
@@ -88,7 +95,7 @@ void main() {
             H[0][1] += gradData[i * 8 + j].x * gradData[i * 8 + j].y;
 
             lastImageData[i * 8 + j] =
-                uluminance(texelFetch(lastColorMap, q, 0).xyz);
+                texelFetch(lastLumaMap, q, 0).x;
 
             gradSum += gradData[i * 8 + j];
         }
@@ -138,7 +145,7 @@ void main() {
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
                 vec2 tc = (warpOrigin + vec2(i, j) + 0.5) * invImageSize;
-                float warped = uluminance(textureLod(nextColorMap, tc, 0.0).xyz);
+                float warped = textureLod(nextLumaMap, tc, 0.0).x;
                 float diff = warped - lastImageData[i * 8 + j];
                 sd += diff;
                 sd2 += diff * diff;
@@ -188,5 +195,8 @@ void main() {
     }
 
     flow *= invImageSize;
-    imageStore(sparseFlowMap, pixSparse, vec4(flow, 0.0, 1.0));
+    // .z = -1: this vector has not been scored with the mean-normalized SSD the
+    // propagation passes use. Their own metric is not the Gauss-Newton residual
+    // tracked here, so seeding it with that would bias the first comparison.
+    imageStore(sparseFlowMap, pixSparse, vec4(flow, -1.0, 1.0));
 }

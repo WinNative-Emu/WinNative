@@ -141,9 +141,8 @@ internal fun FrameGenerationSection(
     onMultiplierSelected: (Int) -> Unit,
     onFlowScaleChanged: (Int) -> Unit,
     // The compositor drives one interpolator per frame, so the two engines are
-    // exclusive. Rather than silently switching the other one off under the
-    // user, the toggle of the engine that is not running refuses to move and
-    // says which one to turn off first.
+    // exclusive. The engine that is not running shows no switch at all, only a
+    // line naming the one to turn off first.
     blockedByDis: Boolean = false,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
@@ -151,17 +150,20 @@ internal fun FrameGenerationSection(
 
         if (!available) {
             FrameGenNote(stringResource(R.string.session_drawer_frame_generation_missing), paneScale)
+        } else if (blockedByDis) {
+            // Not an inert switch: a Material switch that is tapped but whose
+            // `checked` never changes can be left sitting in the new position,
+            // which is exactly how two engines end up looking enabled at once.
+            // With no switch present there is nothing to light up.
+            FrameGenNote(
+                stringResource(R.string.session_drawer_frame_generation_blocked_by_dis),
+                paneScale,
+            )
         } else {
             NavBooleanRow(
                 title = stringResource(R.string.session_drawer_frame_generation_enable),
                 checked = enabled,
-                onCheckedChange = { if (!blockedByDis) onEnabledChanged(it) },
-                subtitle =
-                    if (blockedByDis) {
-                        stringResource(R.string.session_drawer_frame_generation_blocked_by_dis)
-                    } else {
-                        null
-                    },
+                onCheckedChange = onEnabledChanged,
             )
 
             FrameGenNote(stringResource(R.string.session_drawer_frame_generation_note), paneScale)
@@ -330,20 +332,23 @@ private fun DisFrameGenerationSection(
     Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
         PaneSectionLabel(stringResource(R.string.session_drawer_dis_frame_generation))
 
-        val blockedByLsfg = state.frameGenEnabled
-        NavBooleanRow(
-            title = stringResource(R.string.session_drawer_dis_frame_generation_enable),
-            checked = state.disFrameGenEnabled,
-            onCheckedChange = { if (!blockedByLsfg) listener.onDisFrameGenEnabledChanged(it) },
-            subtitle =
-                if (blockedByLsfg) {
-                    stringResource(R.string.session_drawer_dis_frame_generation_blocked_by_lsfg)
-                } else {
-                    null
-                },
-        )
+        if (state.frameGenEnabled) {
+            FrameGenNote(
+                stringResource(R.string.session_drawer_dis_frame_generation_blocked_by_lsfg),
+                paneScale,
+            )
+        } else {
+            NavBooleanRow(
+                title = stringResource(R.string.session_drawer_dis_frame_generation_enable),
+                checked = state.disFrameGenEnabled,
+                onCheckedChange = listener::onDisFrameGenEnabledChanged,
+            )
 
-        FrameGenNote(stringResource(R.string.session_drawer_dis_frame_generation_note), paneScale)
+            FrameGenNote(
+                stringResource(R.string.session_drawer_dis_frame_generation_note),
+                paneScale,
+            )
+        }
 
         AnimatedVisibility(
             visible = state.disFrameGenEnabled,

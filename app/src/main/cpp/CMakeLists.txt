@@ -102,6 +102,8 @@ set(SHADER_LIST
     "effect_colorblind:frag:effect_colorblind_frag"
     "effect_pixelate:frag:effect_pixelate_frag"
     "sgsr1:frag:sgsr1_frag"
+    "dis_luma_r16:comp:dis_luma_r16_comp"
+    "dis_luma_r32:comp:dis_luma_r32_comp"
     "dis_gradient:comp:dis_gradient_comp"
     "dis_inverse_search:comp:dis_inverse_search_comp"
     "dis_propagate:comp:dis_propagate_comp"

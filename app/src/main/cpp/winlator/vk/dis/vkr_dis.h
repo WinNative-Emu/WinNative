@@ -67,6 +67,12 @@ void vkr_dis_generate_into(VkrDis* dis, VkCommandBuffer cmd, uint32_t generation
                            VkImageView target_view, uint32_t width, uint32_t height,
                            VkImage base_image);
 
+// Paints the estimated flow field into a real, non-generated frame. The debug
+// view replaced only the generated frames, so the panel alternated between the
+// game and the visualisation at the generation ratio and read as a flicker.
+void vkr_dis_debug_into(VkrDis* dis, VkCommandBuffer cmd, VkImage target_image,
+                        uint32_t width, uint32_t height);
+
 void vkr_dis_forget_targets(VkrDis* dis);
 
 void vkr_dis_reset(VkrDis* dis);

@@ -13,8 +13,12 @@ precision highp int;
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform sampler2D sparseFlowMap;
-layout(set = 0, binding = 1) uniform sampler2D lastImage;
-layout(set = 0, binding = 2) uniform sampler2D nextImage;
+// lastLumaMap/nextLumaMap are the precomputed luminance pyramid, not colour:
+// one channel, already on the 0-255 scale the tuned constants expect. The dot
+// product that used to run on every one of these fetches now runs once per texel
+// in dis_luma.comp.
+layout(set = 0, binding = 1) uniform sampler2D lastImage;   // prev luma
+layout(set = 0, binding = 2) uniform sampler2D nextImage;   // next luma
 layout(set = 0, binding = 5, rg32f) uniform image2D denseFlowMap;
 
 // Luminance is returned on the 0-255 scale the reference implementation works
@@ -40,7 +44,7 @@ void main() {
 
     vec2 invDenseSize = 1.0 / vec2(denseSize);
     vec2 uv = (vec2(pix) + 0.5) * invDenseSize;
-    float lastLum = uluminance(textureLod(lastImage, uv, 0.0).xyz);
+    float lastLum = textureLod(lastImage, uv, 0.0).x;
 
     vec2 acc = vec2(0.0);
     float accW = 0.0;
@@ -53,7 +57,7 @@ void main() {
             if (s.x < 0 || s.y < 0 || s.x >= sparseSize.x || s.y >= sparseSize.y) continue;
             vec4 flow = texelFetch(sparseFlowMap, s, 0);
             float diff =
-                uluminance(textureLod(nextImage, uv + flow.xy, 0.0).xyz) - lastLum;
+                textureLod(nextImage, uv + flow.xy, 0.0).x - lastLum;
             // With luminance on the 0-255 scale this spans roughly 150x between a
             // clean match and a hopeless one. On the 0-1 scale abs(diff) never
             // reached 1, so the max() pinned every weight to exactly 1.0 and the

@@ -1542,6 +1542,13 @@ fun withDisFrameGenState(
 ): XServerDrawerState =
     state.copy(
         disFrameGenEnabled = enabled,
+        // Last line of defence for the exclusivity rule. This runs after
+        // withFrameGenState, so it is the one place that sees both flags, and it
+        // resolves a conflict the same way the renderer does: nativeSetDis...
+        // Enabled(true) tears LSFG down, so DIS wins. Without this the drawer can
+        // be handed two enabled engines by stale container extras and show two lit
+        // switches for a state the compositor cannot actually be in.
+        frameGenEnabled = state.frameGenEnabled && !enabled,
         disFrameGenScale = scale.coerceIn(DisFrameGenScaleMin, DisFrameGenScaleMax),
         disFrameGenTargetFps = targetFps.coerceAtLeast(0),
         disFrameGenDebugFlow = debugFlow,

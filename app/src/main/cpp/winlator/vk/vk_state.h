@@ -428,6 +428,9 @@ typedef struct VkRenderer {
     uint32_t          dis_scale;
     uint32_t          dis_target_fps;
     bool              dis_debug_flow;
+    // Signature of the last logged SGSR1 geometry, so the diagnostic prints once
+    // per configuration instead of once per frame.
+    uint64_t          sgsr1_dbg_sig;
     uint32_t          framegen_multiplier;
     uint32_t          framegen_target_rate;
     float             framegen_flow_scale;
