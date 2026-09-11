@@ -338,8 +338,10 @@
     <string name="steam_section_real_client">WinNative 本物の Steam クライアント</string>
     <string name="steam_section_emulator">レガシー Steam エミュレーター</string>
     <string name="shortcuts_properties_use_steam_input">Steam Input を使用</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Wine 内の Steam Launcher でゲームを起動します（推奨）。他の Steam 起動モードは無効になります。</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam オフラインモード</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">エミュレートされた Steam クライアントをオフラインとして報告させ、ゲームがオンライン接続を試みないようにします。Steam のネットワークチェックでハングするゲームに使用してください。</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Steam Cloud を使わずにプレイします。セーブデータはこの端末に残り、接続がなくてもゲームは起動します。オフにすると Steam Cloud が再開し、ローカルとクラウドのセーブデータが異なる場合はどちらを残すか確認されます。</string>
     <string name="shortcuts_properties_reset">プロパティをリセット</string>
     <string name="shortcuts_properties_updated_at">ショートカットを %1$s に更新しました</string>
     <string name="shortcuts_properties_properties_reset">プロパティをリセットしました。</string>

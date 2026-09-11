@@ -304,6 +304,8 @@
     <string name="shortcuts_properties_exclusive_input">Intrare exclusiva</string>
     <string name="shortcuts_properties_custom_game_settings">Setari personalizate joc</string>
     <string name="shortcuts_properties_use_steam_input">Foloseste Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Rulează jocul prin Steam Launcher din Wine (recomandat). Dezactivează celelalte moduri de lansare Steam.</string>
     <string name="shortcuts_properties_steam_offline_mode">Mod offline Steam</string>
     <string name="shortcuts_properties_reset">Reseteaza proprietatile</string>
     <string name="shortcuts_properties_updated_at">Comanda rapida actualizata la %1$s</string>
@@ -1346,7 +1348,7 @@ Cale instalata:
     <string name="shortcuts_properties_use_legacy_launcher_description">Emulare Steam moștenită: rulează jocul prin lansatorul ColdClient și elimină DRM-ul SteamStub din exe. Folosește doar pentru jocuri mai vechi care nu funcționează cu Steam Launcher.</string>
     <string name="steam_section_real_client">Client Steam real WinNative</string>
     <string name="steam_section_emulator">Emulator Steam moștenit</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Face clientul Steam emulat să raporteze că este offline, astfel încât jocul să nu încerce conexiuni online. Folosește pentru jocurile care se blochează la verificarea rețelei Steam.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Rulează fără Steam Cloud, astfel salvările rămân pe acest dispozitiv, iar jocul pornește și fără conexiune. Dezactivează opțiunea pentru a relua Steam Cloud; dacă salvarea locală diferă de cea din cloud, vei alege pe care să o păstrezi.</string>
     <string name="input_controls_select_style">Selectează stilul</string>
     <string name="input_controls_style_original">Original</string>
     <string name="input_controls_style_gamehub">Glass</string>

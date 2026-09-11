@@ -304,6 +304,8 @@
     <string name="shortcuts_properties_exclusive_input">Exklusive Eingabe</string>
     <string name="shortcuts_properties_custom_game_settings">Benutzerdefinierte Spieleinstellungen</string>
     <string name="shortcuts_properties_use_steam_input">Steam Input verwenden</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Startet das Spiel über den Steam Launcher in Wine (empfohlen). Deaktiviert die anderen Steam-Startmodi.</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam-Offlinemodus</string>
     <string name="shortcuts_properties_reset">Eigenschaften zurücksetzen</string>
     <string name="shortcuts_properties_updated_at">Verknüpfung aktualisiert am %1$s</string>
@@ -1346,7 +1348,7 @@ Installierter Pfad:
     <string name="shortcuts_properties_use_legacy_launcher_description">Ältere Steam-Emulation: Startet das Spiel über den ColdClient-Launcher und entfernt SteamStub-DRM aus der EXE-Datei. Nur für ältere Spiele verwenden, die mit dem Steam Launcher nicht funktionieren.</string>
     <string name="steam_section_real_client">Echter WinNative-Steam-Client</string>
     <string name="steam_section_emulator">Älterer Steam-Emulator</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Lässt den emulierten Steam-Client offline melden, damit das Spiel keine Online-Verbindungen versucht. Für Spiele verwenden, die bei Steams Netzwerkprüfung hängen bleiben.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Spielt ohne Steam Cloud, sodass die Spielstände auf diesem Gerät bleiben und das Spiel auch ohne Verbindung startet. Schalte die Option aus, um Steam Cloud fortzusetzen; unterscheiden sich lokaler und Cloud-Spielstand, wirst du gefragt, welchen du behalten möchtest.</string>
     <string name="input_controls_select_style">Stil auswählen</string>
     <string name="input_controls_style_original">Original</string>
     <string name="input_controls_style_gamehub">Glass</string>

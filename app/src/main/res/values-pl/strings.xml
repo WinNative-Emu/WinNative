@@ -308,6 +308,8 @@
     <string name="shortcuts_properties_exclusive_input">Wyłączne wejście</string>
     <string name="shortcuts_properties_custom_game_settings">Własne ustawienia gry</string>
     <string name="shortcuts_properties_use_steam_input">Użyj Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Uruchamia grę przez Steam Launcher w Wine (zalecane). Wyłącza pozostałe tryby uruchamiania Steam.</string>
     <string name="shortcuts_properties_steam_offline_mode">Tryb offline Steam</string>
     <string name="shortcuts_properties_reset">Resetuj właściwości</string>
     <string name="shortcuts_properties_updated_at">Skrót zaktualizowany o %1$s</string>
@@ -1352,7 +1354,7 @@ Zainstalowana ścieżka:
     <string name="shortcuts_properties_use_legacy_launcher_description">Starsza emulacja Steam: uruchamia grę przez launcher ColdClient i usuwa SteamStub DRM z pliku exe. Używaj tylko dla starszych gier, które nie działają ze Steam Launcherem.</string>
     <string name="steam_section_real_client">Prawdziwy klient Steam WinNative</string>
     <string name="steam_section_emulator">Starszy emulator Steam</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Sprawia, że emulowany klient Steam zgłasza tryb offline, dzięki czemu gra nie próbuje połączeń online. Używaj dla gier, które zawieszają się na sprawdzaniu sieci Steam.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Gra bez korzystania ze Steam Cloud, więc zapisy pozostają na tym urządzeniu, a gra uruchamia się nawet bez połączenia. Wyłącz tę opcję, aby wznowić Steam Cloud; jeśli zapis lokalny i ten w chmurze się różnią, zostaniesz zapytany, który zachować.</string>
     <string name="input_controls_select_style">Wybierz styl</string>
     <string name="input_controls_style_original">Oryginalny</string>
     <string name="input_controls_style_gamehub">Glass</string>

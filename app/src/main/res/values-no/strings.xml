@@ -338,8 +338,10 @@
     <string name="steam_section_real_client">WinNative ekte Steam-klient</string>
     <string name="steam_section_emulator">Eldre Steam-emulator</string>
     <string name="shortcuts_properties_use_steam_input">Bruk Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Kjører spillet gjennom Steam Launcher i Wine (anbefalt). Slår av de andre Steam-oppstartsmodusene.</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam frakoblet modus</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Får den emulerte Steam-klienten til å rapportere som frakoblet, slik at spillet ikke forsøker nettforbindelser. Bruk for spill som henger på Steams nettverkssjekk.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Spiller uten Steam Cloud, så lagringsfilene blir liggende på denne enheten og spillet starter også uten tilkobling. Slå av for å gjenoppta Steam Cloud; hvis den lokale og den skylagrede filen er ulike, blir du spurt om hvilken du vil beholde.</string>
     <string name="shortcuts_properties_reset">Tilbakestill egenskaper</string>
     <string name="shortcuts_properties_updated_at">Snarvei oppdatert %1$s</string>
     <string name="shortcuts_properties_properties_reset">Egenskapene ble tilbakestilt.</string>

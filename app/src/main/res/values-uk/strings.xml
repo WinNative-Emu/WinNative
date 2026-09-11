@@ -308,6 +308,8 @@
     <string name="shortcuts_properties_exclusive_input">Ексклюзивне введення</string>
     <string name="shortcuts_properties_custom_game_settings">Користувацькі налаштування гри</string>
     <string name="shortcuts_properties_use_steam_input">Використовувати Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Запускає гру через Steam Launcher усередині Wine (рекомендовано). Вимикає інші режими запуску Steam.</string>
     <string name="shortcuts_properties_steam_offline_mode">Офлайн-режим Steam</string>
     <string name="shortcuts_properties_reset">Скинути властивості</string>
     <string name="shortcuts_properties_updated_at">Ярлик оновлено о %1$s</string>
@@ -1352,7 +1354,7 @@
     <string name="shortcuts_properties_use_legacy_launcher_description">Застаріла емуляція Steam: запускає гру через лаунчер ColdClient і видаляє SteamStub DRM з exe. Використовуйте лише для старих ігор, які не працюють зі Steam Launcher.</string>
     <string name="steam_section_real_client">Справжній клієнт Steam WinNative</string>
     <string name="steam_section_emulator">Застарілий емулятор Steam</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Змушує емульований клієнт Steam повідомляти, що він офлайн, щоб гра не намагалася підключатися до мережі. Використовуйте для ігор, які зависають на мережевій перевірці Steam.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Гра запускається без Steam Cloud: збереження залишаються на цьому пристрої, і гра стартує навіть без з\'єднання. Вимкніть параметр, щоб відновити Steam Cloud; якщо локальне та хмарне збереження відрізняються, ви оберете, яке залишити.</string>
     <string name="input_controls_select_style">Виберіть стиль</string>
     <string name="input_controls_style_original">Оригінальний</string>
     <string name="input_controls_style_gamehub">Glass</string>

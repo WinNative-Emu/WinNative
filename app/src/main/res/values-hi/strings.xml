@@ -319,6 +319,8 @@
     <string name="shortcuts_properties_runtime_patcher_description">लॉन्च के समय DRM पैचर DLL इंजेक्ट करता है। FPS कम करता है - केवल तब उपयोग करें जब Legacy Launcher अकेले विफल हो।</string>
     <string name="steam_section_title">Steam</string>
     <string name="shortcuts_properties_use_steam_input">Steam Input उपयोग करें</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">गेम को Wine के Steam Launcher से चलाता है (अनुशंसित)। अन्य Steam लॉन्च मोड बंद कर देता है।</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam ऑफ़लाइन मोड</string>
     <string name="shortcuts_properties_reset">गुण रीसेट करें</string>
     <string name="shortcuts_properties_updated_at">शॉर्टकट %1$s पर अपडेट किया गया</string>
@@ -1302,7 +1304,7 @@
     <string name="shortcuts_properties_use_legacy_launcher_description">लेगेसी Steam एम्यूलेशन: गेम को ColdClient लॉन्चर के माध्यम से चलाता है और exe से SteamStub DRM हटाता है। केवल पुराने गेम के लिए उपयोग करें जो Steam Launcher के साथ काम नहीं करते।</string>
     <string name="steam_section_real_client">WinNative वास्तविक Steam क्लाइंट</string>
     <string name="steam_section_emulator">लेगेसी Steam एम्यूलेटर</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">एम्यूलेटेड Steam क्लाइंट को ऑफ़लाइन रिपोर्ट कराता है, ताकि गेम ऑनलाइन कनेक्शन का प्रयास न करे। उन गेम के लिए उपयोग करें जो Steam की नेटवर्क जाँच पर अटक जाते हैं।</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Steam Cloud का उपयोग किए बिना चलाता है, इसलिए सेव इसी डिवाइस पर रहते हैं और गेम बिना कनेक्शन के भी शुरू होता है। Steam Cloud फिर से शुरू करने के लिए इसे बंद करें; यदि स्थानीय और क्लाउड सेव अलग हैं, तो आपसे पूछा जाएगा कि कौन-सा रखना है।</string>
     <string name="cloud_sync_disable_title">क्लाउड सेव अक्षम करें</string>
     <string name="cloud_saves_steam_push_label">Steam Cloud पर भेजें</string>
     <string name="cloud_saves_steam_push_helper">स्थानीय सेव को जबरन अपलोड करें</string>

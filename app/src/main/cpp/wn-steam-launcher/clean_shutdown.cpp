@@ -58,13 +58,14 @@ constexpr int kVtRS_RunAutoCloudOnAppExit        = 81;
 constexpr int kVtRS_SynchronizeApp               = 78;
 constexpr unsigned int kSyncToClient = 1;
 constexpr unsigned int kSyncToServer = 2;
-constexpr unsigned long long kSyncFlagAutoCloudLaunch = 2;
+constexpr unsigned long long kSyncFlagNone            = 0;
 constexpr unsigned long long kSyncFlagAutoCloudExit   = 4;
 constexpr int kCbRemoteStorageAppSyncedClient = 1301;
 constexpr int kCbRemoteStorageAppSyncedServer = 1302;
 constexpr int kCbClientRemoteStorageAppSyncedClient = 1250001;
 constexpr int kCbClientRemoteStorageAppSyncedServer = 1250002;
 constexpr int kEResultOK = 1;
+constexpr int kEResultTooManyPending = 108;
 constexpr int kCloudSeenIdSlots = 24;
 constexpr int kCloudCallbackGraceMs = 2500;
 
@@ -320,10 +321,15 @@ void teardown(const char* reason) {
                    "to upload and an exit sync could push stale local files over the cloud");
         } else {
             const char* acEnv = getenv("WN_STEAM_AGENT_CLOUD");
-            if (!acEnv || acEnv[0] != '0') {
+            const char* offEnv = getenv("WN_STEAM_OFFLINE");
+            if (offEnv && offEnv[0] != '0' && offEnv[0] != '\0') {
+                wn_log("cloud: exit upload skipped — Steam Offline Mode keeps this session's "
+                       "saves local until the shortcut goes back online");
+            } else if (!acEnv || acEnv[0] != '0') {
                 wn_launcher_cloud_run(g_cs_engine, g_cs_hUser, g_cs_hPipe, g_cs_appId, 1, 60000);
             } else {
-                wn_log("cloud: agent-side exit sync disabled; the app handles Steam Cloud");
+                wn_log("cloud: exit upload skipped — cloud saves are turned off for this "
+                       "shortcut");
             }
         }
     }
@@ -662,6 +668,9 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
     int finalState = -1;
     const DWORD startTick = ::GetTickCount();
     int userWaitMs = 0;
+    bool sawSyncCallback = false;
+    int lastSyncResult = 0;
+    int lastSyncTransfers = 0;
 
     for (int attempt = 1; attempt <= 4; ++attempt) {
         int elapsed = (int) (::GetTickCount() - startTick) - userWaitMs;
@@ -684,14 +693,16 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
                 curSt, curSt >= 0 ? cs_sync_state_name(curSt) : "n/a");
             wn_log(buf);
         }
-        bool started = reinterpret_cast<RunFn>(runP)(rs, appId);
-        std::snprintf(buf, sizeof(buf),
-            "cloud: RunAutoCloudOnApp%s(app=%u) attempt %d -> %d",
-            onExit ? "Exit" : "Launch", appId, attempt, started ? 1 : 0);
-        wn_log(buf);
+        if (onExit || !syncP) {
+            bool started = reinterpret_cast<RunFn>(runP)(rs, appId);
+            std::snprintf(buf, sizeof(buf),
+                "cloud: RunAutoCloudOnApp%s(app=%u) attempt %d -> %d",
+                onExit ? "Exit" : "Launch", appId, attempt, started ? 1 : 0);
+            wn_log(buf);
+        }
         if (syncP) {
             const unsigned int mode = onExit ? kSyncToServer : kSyncToClient;
-            const unsigned long long acFlags = onExit ? kSyncFlagAutoCloudExit : kSyncFlagAutoCloudLaunch;
+            const unsigned long long acFlags = onExit ? kSyncFlagAutoCloudExit : kSyncFlagNone;
             bool queued = reinterpret_cast<SyncFn>(syncP)(rs, appId, mode, acFlags);
             std::snprintf(buf, sizeof(buf),
                 "cloud: SynchronizeApp(app=%u mode=%u flags=%llu %s) attempt %d -> %d",
@@ -826,11 +837,26 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
             phase, finalState, cs_sync_state_name(finalState), waited,
             synced ? " via callback" : " without callback", syncedResult, syncedTransfers);
         wn_log(buf);
+        if (synced) {
+            sawSyncCallback = true;
+            lastSyncResult = syncedResult;
+            lastSyncTransfers = syncedTransfers;
+        }
         if (synced && syncedResult != kEResultOK) {
-            std::snprintf(buf, sizeof(buf),
-                "cloud: %s sync job reported EResult %d — Steam did not complete the transfer",
-                phase, syncedResult);
+            if (syncedResult == kEResultTooManyPending) {
+                std::snprintf(buf, sizeof(buf),
+                    "cloud: %s sync refused with EResult %d (TooManyPending) — Steam still has "
+                    "unfinished cloud operations registered for this app on another machine or "
+                    "an earlier session, so it transferred nothing",
+                    phase, syncedResult);
+            } else {
+                std::snprintf(buf, sizeof(buf),
+                    "cloud: %s sync job reported EResult %d — Steam did not complete the transfer",
+                    phase, syncedResult);
+            }
             wn_log(buf);
+            if (attempt < kCloudMaxPendingAttempts) continue;
+            break;
         }
 
         if (finalState == kSyncSynchronized || finalState == kSyncDisabled) break;
@@ -867,10 +893,24 @@ extern "C" int wn_launcher_cloud_run(void* engine, int hUser, int hPipe,
         break;
     }
 
-    if (finalState == kSyncSynchronized) {
+    if (!onExit && !(sawSyncCallback && lastSyncResult != kEResultOK)) {
+        bool recorded = reinterpret_cast<RunFn>(runP)(rs, appId);
         std::snprintf(buf, sizeof(buf),
-            "cloud: %s sync COMPLETE for app=%u — saves are synchronized",
-            phase, appId);
+            "cloud: RunAutoCloudOnAppLaunch(app=%u) after the download -> %d "
+            "(launch record for the exit diff)", appId, recorded ? 1 : 0);
+        wn_log(buf);
+    }
+
+    if (sawSyncCallback && lastSyncResult != kEResultOK) {
+        std::snprintf(buf, sizeof(buf),
+            "cloud: %s sync FAILED for app=%u — Steam returned EResult %d and moved %d file(s); "
+            "local saves kept",
+            phase, appId, lastSyncResult, lastSyncTransfers);
+        finalState = -1;
+    } else if (finalState == kSyncSynchronized) {
+        std::snprintf(buf, sizeof(buf),
+            "cloud: %s sync COMPLETE for app=%u — saves are synchronized (%d file(s) transferred)",
+            phase, appId, lastSyncTransfers);
     } else if (finalState == kSyncDisabled) {
         std::snprintf(buf, sizeof(buf),
             "cloud: %s sync skipped for app=%u — Steam Cloud disabled",
