@@ -585,7 +585,7 @@
     <string name="container_graphics_driver">ग्राफ़िक्स ड्राइवर</string>
     <string name="container_zink_mode">Zink मोड</string>
     <string name="container_graphics_transcoder">BCn ट्रांसकोडर</string>
-    <string name="container_graphics_quality">BCn गुणवत्ता</string>
+    <string name="container_graphics_astc_transcoding">ASTC ट्रांसकोडिंग</string>
     <string name="container_graphics_configuration">ग्राफ़िक्स ड्राइवर कॉन्फ़िगरेशन</string>
     <string name="container_graphics_version">ग्राफ़िक्स ड्राइवर संस्करण</string>
     <string name="container_graphics_available_extensions">उपलब्ध एक्सटेंशन</string>

@@ -626,7 +626,7 @@
     <string name="container_graphics_bcn_emulation_type">BCn-emuloinnin tyyppi</string>
     <string name="container_graphics_bcn_emulation_cache">BCn-emuloinnin välimuisti</string>
     <string name="container_graphics_transcoder">BCn-transkooderi</string>
-    <string name="container_graphics_quality">BCn-laatu</string>
+    <string name="container_graphics_astc_transcoding">ASTC-muunnos</string>
     <string name="shortcuts_graphics_sgsr_full_title">Snapdragon™ Game Super Resolution 1</string>
     <!-- Container > Presets -->
     <string name="container_presets_confirm_duplicate">Haluatko monistaa tämän esiasetuksen?</string>

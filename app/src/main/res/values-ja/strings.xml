@@ -626,7 +626,7 @@
     <string name="container_graphics_bcn_emulation_type">BCn エミュレーションタイプ</string>
     <string name="container_graphics_bcn_emulation_cache">BCn エミュレーションキャッシュ</string>
     <string name="container_graphics_transcoder">BCn トランスコーダー</string>
-    <string name="container_graphics_quality">BCn 品質</string>
+    <string name="container_graphics_astc_transcoding">ASTC トランスコード</string>
     <string name="shortcuts_graphics_sgsr_full_title">Snapdragon™ Game Super Resolution 1</string>
     <!-- Container > Presets -->
     <string name="container_presets_confirm_duplicate">このプリセットを複製しますか？</string>

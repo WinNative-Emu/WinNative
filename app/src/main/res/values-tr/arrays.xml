@@ -5,4 +5,9 @@
         <item>Orijinal</item>
         <item>Düz Renk</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>Kapalı</item>
+        <item>Kalite</item>
+        <item>Performans</item>
+    </string-array>
 </resources>

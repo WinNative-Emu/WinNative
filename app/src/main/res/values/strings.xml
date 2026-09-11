@@ -744,7 +744,7 @@
     <string name="container_graphics_bcn_emulation_type">BCn Emulation Type</string>
     <string name="container_graphics_bcn_emulation_cache">BCn Emulation Cache</string>
     <string name="container_graphics_transcoder">BCn Transcoder</string>
-    <string name="container_graphics_quality">BCn Quality</string>
+    <string name="container_graphics_astc_transcoding">ASTC Transcoding</string>
     <string name="shortcuts_graphics_sgsr_full_title">Snapdragon™ Game Super Resolution 1</string>
     <!-- Container > Presets -->
     <string name="container_presets_confirm_duplicate">Do you want to duplicate this preset?</string>

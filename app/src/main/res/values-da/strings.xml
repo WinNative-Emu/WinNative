@@ -530,7 +530,7 @@
     <string name="container_graphics_driver">Grafikdriver</string>
     <string name="container_zink_mode">Zink-tilstand</string>
     <string name="container_graphics_transcoder">BCn-transkoder</string>
-    <string name="container_graphics_quality">BCn-kvalitet</string>
+    <string name="container_graphics_astc_transcoding">ASTC-transkodning</string>
     <string name="container_graphics_configuration">Grafikdriver-konfiguration</string>
     <string name="container_graphics_version">Grafikdriver-version</string>
     <string name="container_graphics_available_extensions">Tilgængelige udvidelser</string>

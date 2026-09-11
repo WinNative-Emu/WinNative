@@ -534,7 +534,7 @@
     <string name="container_graphics_driver">Графічний драйвер</string>
     <string name="container_zink_mode">Режим Zink</string>
     <string name="container_graphics_transcoder">Транскодер BCn</string>
-    <string name="container_graphics_quality">Якість BCn</string>
+    <string name="container_graphics_astc_transcoding">Перекодування в ASTC</string>
     <string name="container_graphics_configuration">Конфігурація графічного драйвера</string>
     <string name="container_graphics_version">Версія графічного драйвера</string>
     <string name="container_graphics_available_extensions">Доступні розширення</string>

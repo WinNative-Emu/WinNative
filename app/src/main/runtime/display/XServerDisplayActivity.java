@@ -9418,13 +9418,26 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (wantGamenative) {
             String transcoder = graphicsDriverConfig.get("transcoder");
             envVars.put("WRAPPER_BCN_GPU", "gpu".equalsIgnoreCase(transcoder) ? "1" : "0");
-            String wrapperQuality = graphicsDriverConfig.get("quality");
-            envVars.put("WRAPPER_ASTC_BLOCK", "high".equalsIgnoreCase(wrapperQuality) ? "4x4" : "8x8");
+
+            String astcTranscoding = graphicsDriverConfig.get("astcTranscoding");
+            if (isSupportedAstcBlockSize(astcTranscoding)) {
+                envVars.put("WRAPPER_BCN_ASTC", "1");
+                envVars.put("WRAPPER_ASTC_BLOCK", astcTranscoding);
+                Log.i("XServerDisplayActivity", "ASTC transcoding on: block size " + astcTranscoding);
+            }
+            else {
+                envVars.put("WRAPPER_BCN_ASTC", "0");
+                Log.i("XServerDisplayActivity", "ASTC transcoding off");
+            }
         }
 
         String bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache");
         envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache);
 
+    }
+
+    private static boolean isSupportedAstcBlockSize(String blockSize) {
+        return "4x4".equals(blockSize) || "8x8".equals(blockSize);
     }
 
     @Override
