@@ -1269,6 +1269,8 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             context.resources.getStringArray(R.array.wrapper_transcoder_entries).toList()
         state.gfxAstcTranscodingEntries.value =
             context.resources.getStringArray(R.array.wrapper_astc_transcoding_entries).toList()
+        state.gfxAstcTranscodingValues.value =
+            context.resources.getStringArray(R.array.wrapper_astc_transcoding_values).toList()
 
         val gpuNames = mutableListOf("Device")
         try {
@@ -1296,7 +1298,7 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         selectByValue(state.gfxBcnEmulationTypeEntries.value, config.get("bcnEmulationType") ?: "compute", state.gfxSelectedBcnEmulationType)
         selectByValue(state.gfxBcnEmulationCacheEntries.value, config.get("bcnEmulationCache") ?: "0", state.gfxSelectedBcnEmulationCache)
         selectByValue(state.gfxTranscoderEntries.value, config.get("transcoder") ?: "cpu", state.gfxSelectedTranscoder)
-        selectByValue(state.gfxAstcTranscodingEntries.value, config.get("astcTranscoding") ?: "off", state.gfxSelectedAstcTranscoding)
+        selectByValue(state.gfxAstcTranscodingValues.value, config.get("astcTranscoding") ?: "off", state.gfxSelectedAstcTranscoding)
         state.gfxSyncFrame.value = config.get("syncFrame") == "1"
         state.gfxDisablePresentWait.value = config.get("disablePresentWait") == "1"
         state.graphicsDriverVersion.value = config.get("version") ?: ""
@@ -1459,7 +1461,7 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         val bcnEmulationType = state.gfxBcnEmulationTypeEntries.value.getOrElse(state.gfxSelectedBcnEmulationType.intValue) { "compute" }
         val bcnEmulationCache = state.gfxBcnEmulationCacheEntries.value.getOrElse(state.gfxSelectedBcnEmulationCache.intValue) { "0" }
         val transcoder = state.gfxTranscoderEntries.value.getOrElse(state.gfxSelectedTranscoder.intValue) { "cpu" }
-        val astcTranscoding = state.gfxAstcTranscodingEntries.value.getOrElse(state.gfxSelectedAstcTranscoding.intValue) { "off" }
+        val astcTranscoding = state.gfxAstcTranscodingValues.value.getOrElse(state.gfxSelectedAstcTranscoding.intValue) { "off" }
         return "vulkanVersion=$vulkanVersion;version=$version;blacklistedExtensions=$blacklisted;" +
             "maxDeviceMemory=$maxDeviceMemory;presentMode=$presentMode;syncFrame=$syncFrame;" +
             "disablePresentWait=$disablePresentWait;resourceType=$resourceType;" +

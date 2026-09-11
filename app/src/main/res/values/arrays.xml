@@ -109,7 +109,7 @@
         <item>cpu</item>
         <item>gpu</item>
     </string-array>
-    <string-array name="wrapper_astc_transcoding_entries">
+    <string-array name="wrapper_astc_transcoding_values">
         <item>off</item>
         <item>4x4</item>
         <item>8x8</item>
@@ -240,5 +240,10 @@
         <item>4</item>
     </string-array>
     <string-array name="wine_entries">
+    </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>Off</item>
+        <item>Fidelity</item>
+        <item>Performance</item>
     </string-array>
 </resources>

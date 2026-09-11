@@ -5,4 +5,9 @@
         <item>原始</item>
         <item>純色</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>關閉</item>
+        <item>畫質優先</item>
+        <item>效能優先</item>
+    </string-array>
 </resources>

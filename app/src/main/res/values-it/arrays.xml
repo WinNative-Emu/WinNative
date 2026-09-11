@@ -5,4 +5,9 @@
         <item>Originale</item>
         <item>Tinta unita</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>Disattivato</item>
+        <item>Fedeltà</item>
+        <item>Prestazioni</item>
+    </string-array>
 </resources>

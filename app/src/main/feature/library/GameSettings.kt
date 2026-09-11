@@ -481,6 +481,7 @@ class GameSettingsStateHolder {
     val gfxTranscoderEntries = mutableStateOf<List<String>>(emptyList())
     val gfxSelectedTranscoder = mutableIntStateOf(0)
     val gfxAstcTranscodingEntries = mutableStateOf<List<String>>(emptyList())
+    val gfxAstcTranscodingValues = mutableStateOf<List<String>>(emptyList())
     val gfxSelectedAstcTranscoding = mutableIntStateOf(0)
     val gfxSyncFrame = mutableStateOf(false)
     val gfxDisablePresentWait = mutableStateOf(false)

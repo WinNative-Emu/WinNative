@@ -5,4 +5,9 @@
         <item>मूल</item>
         <item>ठोस रंग</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>बंद</item>
+        <item>गुणवत्ता</item>
+        <item>प्रदर्शन</item>
+    </string-array>
 </resources>
