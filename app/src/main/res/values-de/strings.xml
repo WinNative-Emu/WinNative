@@ -2534,6 +2534,11 @@ Installierter Pfad:
     <string name="session_drawer_frame_generation_note">Interpoliert zwischen gerenderten Frames mit Lossless Scaling. Flüssigere Bewegung, aber ein zusätzlicher Frame Eingabeverzögerung.</string>
     <string name="session_drawer_frame_generation_target_note">Steigt nur dann in Richtung Ziel, wenn es messbar hilft, statt einen festen Multiplikator zu halten.</string>
     <string name="session_drawer_frame_generation_missing">Installiere Lossless Scaling in den Container-Einstellungen, um Frame-Generierung zu nutzen.</string>
+    <string name="session_drawer_system_frame_generation">Frame Generation (System)</string>
+    <string name="session_drawer_system_frame_generation_enable">Systemframes im HUD zählen</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space fügt generierte Frames ein, nachdem das Spiel sie gerendert hat. Das HUD liest die Interpolationsrate vom Treiber und zeigt die resultierende Ausgaberate.</string>
+    <string name="session_drawer_system_frame_generation_detected">Erkannt: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">Nicht erkannt. Schalte es von Hand ein, wenn die Game-Space-Frameinterpolation läuft.</string>
     <string name="session_drawer_dis_frame_generation">Frame-Generierung (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Frames generieren (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpoliert zwischen gerenderten Frames mit Dense Inverse Search. Eingebaut; keine externen Shader nötig.</string>

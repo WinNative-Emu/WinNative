@@ -136,6 +136,9 @@ import com.winlator.cmod.shared.math.Mathf;
 import com.winlator.cmod.shared.math.XForm;
 import com.winlator.cmod.runtime.audio.midi.MidiHandler;
 import com.winlator.cmod.runtime.audio.midi.MidiManager;
+import com.winlator.cmod.runtime.display.framegen.SystemFrameGenDetector;
+import com.winlator.cmod.runtime.display.framegen.SystemFrameGenMonitor;
+import com.winlator.cmod.runtime.display.framegen.SystemFrameGenState;
 import com.winlator.cmod.runtime.display.renderer.VulkanRenderer;
 import com.winlator.cmod.runtime.display.ui.FrameRating;
 import com.winlator.cmod.runtime.display.ui.MagnifierView;
@@ -468,6 +471,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private String frameGenCachePath = null;
     private float frameGenRefreshRate = 0f;
     private boolean disFrameGenEnabled = false;
+    private SystemFrameGenMonitor systemFrameGenMonitor = null;
+    private boolean systemFrameGenSupported = false;
+    private boolean systemFrameGenDetected = false;
+    private boolean systemFrameGenHudEnabled = false;
+    private boolean systemFrameGenHudPinned = false;
+    private boolean systemFrameGenProbeRunning = false;
+    private int systemFrameGenMultiplier = 1;
+    private Runnable systemFrameGenPollRunnable = null;
+    private static final long SYSTEM_FRAME_GEN_POLL_MS = 2000L;
+    private String systemFrameGenSignal = "";
     // Optical-flow processing resolution for DIS, as the length of the frame's
     // SHORTER side in pixels. On a 720-tall frame the three presets are the old
     // 25% / 35% / 50%, but stated this way the pyramid costs the same on any
@@ -864,9 +877,30 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void syncFrameGenerationHud() {
-        boolean active = (frameGenEnabled && frameGenCachePath != null) || disFrameGenEnabled;
-        FrameRating.OutputFrameSource source =
-                (frameGenEnabled || disFrameGenEnabled) ? frameGenOutputSource : null;
+        boolean ourFrameGen = (frameGenEnabled && frameGenCachePath != null) || disFrameGenEnabled;
+        boolean systemFrameGen = !ourFrameGen && systemFrameGenHudEnabled;
+        boolean active = ourFrameGen || systemFrameGen;
+
+        FrameRating.OutputFrameSource source;
+        if (ourFrameGen || frameGenEnabled || disFrameGenEnabled) {
+            source = frameGenOutputSource;
+        } else if (systemFrameGen) {
+            source = ensureSystemFrameGenMonitor();
+        } else {
+            source = null;
+        }
+
+        if (systemFrameGen) {
+            SystemFrameGenMonitor monitor = ensureSystemFrameGenMonitor();
+            if (monitor.isRunning()) {
+                monitor.setMultiplier(systemFrameGenMultiplier);
+            } else {
+                monitor.start(systemFrameGenMultiplier);
+            }
+        } else if (systemFrameGenMonitor != null) {
+            systemFrameGenMonitor.stop();
+        }
+
         if (frameRating != null) {
             frameRating.setOutputFrameSource(source);
             frameRating.setFrameGenerationActive(active);
@@ -875,6 +909,89 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             mangoHud.setOutputFrameSource(source);
             mangoHud.setFrameGenerationActive(active);
         }
+    }
+
+    private SystemFrameGenMonitor ensureSystemFrameGenMonitor() {
+        if (systemFrameGenMonitor == null) {
+            systemFrameGenMonitor = new SystemFrameGenMonitor(
+                    () -> {
+                        VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
+                        return renderer != null ? renderer.getPresentedFrameCount() : 0L;
+                    },
+                    () -> {
+                        android.view.Display display = getDisplayCompat();
+                        return display != null ? display.getRefreshRate() : 0f;
+                    },
+                    System::nanoTime);
+        }
+        return systemFrameGenMonitor;
+    }
+
+    private void refreshSystemFrameGenState() {
+        if (!systemFrameGenSupported || systemFrameGenProbeRunning) return;
+        systemFrameGenProbeRunning = true;
+        new Thread(() -> {
+            SystemFrameGenState state;
+            try {
+                state = SystemFrameGenDetector.detect();
+            } catch (Exception e) {
+                Log.w("XServerDisplayActivity", "System frame generation probe failed", e);
+                state = new SystemFrameGenState();
+            }
+            SystemFrameGenState result = state;
+            runOnUiThread(() -> {
+                systemFrameGenProbeRunning = false;
+                if (activityDestroyed.get()) return;
+                applySystemFrameGenState(result);
+            });
+        }, "SystemFrameGenProbe").start();
+    }
+
+    private void applySystemFrameGenState(SystemFrameGenState state) {
+        if (!state.getSignal().equals(systemFrameGenSignal)) {
+            systemFrameGenSignal = state.getSignal();
+            Log.i("XServerDisplayActivity", "System frame generation signal: "
+                    + (systemFrameGenSignal.isEmpty() ? "none" : systemFrameGenSignal));
+        }
+        boolean detectedChanged = systemFrameGenDetected != state.getActive();
+        boolean multiplierChanged = systemFrameGenMultiplier != state.getMultiplier();
+        systemFrameGenDetected = state.getActive();
+        systemFrameGenMultiplier = state.getMultiplier();
+        if (systemFrameGenHudPinned || systemFrameGenHudEnabled == state.getActive()) {
+            if (multiplierChanged) syncFrameGenerationHud();
+            if (detectedChanged && drawerStateHolder != null) renderDrawerMenu();
+            return;
+        }
+        systemFrameGenHudEnabled = state.getActive();
+        syncFrameGenerationHud();
+        if (drawerStateHolder != null) renderDrawerMenu();
+    }
+
+    private void startSystemFrameGenPolling() {
+        if (!systemFrameGenSupported || systemFrameGenPollRunnable != null) return;
+        systemFrameGenPollRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (activityDestroyed.get()) return;
+                SystemFrameGenDetector.invalidate();
+                refreshSystemFrameGenState();
+                handler.postDelayed(this, SYSTEM_FRAME_GEN_POLL_MS);
+            }
+        };
+        handler.postDelayed(systemFrameGenPollRunnable, SYSTEM_FRAME_GEN_POLL_MS);
+    }
+
+    private void stopSystemFrameGenPolling() {
+        if (systemFrameGenPollRunnable == null) return;
+        handler.removeCallbacks(systemFrameGenPollRunnable);
+        systemFrameGenPollRunnable = null;
+    }
+
+    void setSystemFrameGenHudEnabled(boolean enabled) {
+        systemFrameGenHudPinned = true;
+        if (systemFrameGenHudEnabled == enabled) return;
+        systemFrameGenHudEnabled = enabled;
+        syncFrameGenerationHud();
     }
 
     private final FrameRating.OutputFrameSource frameGenOutputSource =
@@ -1402,6 +1519,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         syncFrameGenerationRefreshRate();
 
+        SystemFrameGenDetector.invalidate();
+        refreshSystemFrameGenState();
+
         // Sync the in-drawer slider ceiling, but only if the drawer was opened (otherwise the next open rebuilds state fresh).
         if (maxChanged && drawerStateHolder != null) {
             renderDrawerMenu();
@@ -1695,6 +1815,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
 
         registerDisplayChangeListener();
+
+        systemFrameGenSupported = SystemFrameGenDetector.isVendorDevice();
+        if (systemFrameGenSupported) {
+            Log.i("XServerDisplayActivity", "Vendor frame generation possible on this device");
+            refreshSystemFrameGenState();
+        }
 
         hideControlsRunnable = () -> {
             if (!isMouseDisabled && xServer != null && xServer.getRenderer() != null
@@ -3103,11 +3229,20 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
 
         if (externalDisplayController != null) externalDisplayController.start();
+
+        if (systemFrameGenSupported) {
+            SystemFrameGenDetector.invalidate();
+            refreshSystemFrameGenState();
+            syncFrameGenerationHud();
+            startSystemFrameGenPolling();
+        }
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        stopSystemFrameGenPolling();
+        if (systemFrameGenMonitor != null) systemFrameGenMonitor.stop();
         isVolumeUpPressed = false;
         isVolumeDownPressed = false;
         guideHoldPending = false;
@@ -4677,6 +4812,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     @Override
     protected void onDestroy() {
         activityDestroyed.set(true);
+        stopSystemFrameGenPolling();
+        if (systemFrameGenMonitor != null) {
+            systemFrameGenMonitor.stop();
+            systemFrameGenMonitor = null;
+        }
         if (reshadeLiveHandler != null) {
             reshadeLiveHandler.removeCallbacks(reshadeLiveWriteTask);
             reshadeLiveHandler.post(reshadeLiveWriteTask);
@@ -5035,6 +5175,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 disFrameGenScale,
                 disFrameGenTargetFps,
                 disFrameGenDebugFlow);
+
+        state = XServerDrawerMenuKt.withSystemFrameGenState(
+                state,
+                systemFrameGenSupported,
+                systemFrameGenDetected,
+                systemFrameGenHudEnabled,
+                systemFrameGenSignal);
 
         // Always-present "Output" tab (live controls while swapped, otherwise a Cast entry point).
         if (externalDisplayController != null) {
@@ -5406,6 +5553,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     @Override
                     public void onOutputCastClick() {
                         launchWirelessDisplayPicker();
+                    }
+
+                    @Override
+                    public void onSystemFrameGenHudChanged(boolean enabled) {
+                        setSystemFrameGenHudEnabled(enabled);
                     }
 
                     @Override
