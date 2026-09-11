@@ -3939,6 +3939,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return shortcut != null && "1".equals(shortcut.getExtra("offline_mode", "0"));
     }
 
+    private boolean isSteamOfflineModeForShortcut() {
+        if (shortcut == null) return false;
+        return parseBoolean(getShortcutSetting("steamOfflineMode",
+                container != null && container.isSteamOfflineMode() ? "1" : "0"));
+    }
+
     private static final boolean STEAM_AGENT_CLOUD_ENABLED = true;
 
     private boolean steamCloudHandledByAgent() {
@@ -8070,12 +8076,20 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             Log.w("XServerDisplayActivity",
                                     "Steam Launcher: Could not query depot data", depotIgnored);
                         }
-                        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()) {
+                        boolean steamOffline = isSteamOfflineModeForShortcut();
+                        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()
+                                || steamOffline) {
                             envVars.put("WN_STEAM_AGENT_CLOUD", "0");
                             Log.i("XServerDisplayActivity",
                                     "Steam Launcher: WN_STEAM_AGENT_CLOUD=0 — cloud saves are "
-                                    + "turned off for this shortcut, so the agent skips "
-                                    + "RunAutoCloudOnAppLaunch and RunAutoCloudOnAppExit");
+                                    + "turned off for this shortcut, so the agent skips both "
+                                    + "the launch download and the exit upload");
+                        }
+                        if (steamOffline) {
+                            envVars.put("WN_STEAM_OFFLINE", "1");
+                            Log.i("XServerDisplayActivity",
+                                    "Steam Launcher: WN_STEAM_OFFLINE=1 — the agent signs in "
+                                    + "offline and never touches Steam Cloud for this session");
                         }
                         if (wnSteamLaunchOption >= 0) {
                             envVars.put("WN_STEAM_LAUNCH_OPTION", String.valueOf(wnSteamLaunchOption));

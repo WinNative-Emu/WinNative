@@ -307,6 +307,8 @@
     <string name="shortcuts_properties_exclusive_input">전용 입력</string>
     <string name="shortcuts_properties_custom_game_settings">사용자 지정 게임 설정</string>
     <string name="shortcuts_properties_use_steam_input">Steam 입력 사용</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Wine의 Steam Launcher로 게임을 실행합니다(권장). 다른 Steam 실행 모드를 끕니다.</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam 오프라인 모드</string>
     <string name="shortcuts_properties_reset">속성 초기화</string>
     <string name="shortcuts_properties_updated_at">바로가기 업데이트 시각: %1$s</string>
@@ -1350,7 +1352,7 @@
     <string name="shortcuts_properties_use_legacy_launcher_description">Legacy Steam 에뮬레이션: ColdClient 런처로 게임을 실행하고 exe에서 SteamStub DRM을 제거합니다. Steam Launcher에서 작동하지 않는 오래된 게임에만 사용하세요.</string>
     <string name="steam_section_real_client">WinNative 실제 Steam 클라이언트</string>
     <string name="steam_section_emulator">레거시 Steam 에뮬레이터</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">에뮬레이트된 Steam 클라이언트가 오프라인으로 표시되게 하여 게임이 온라인 연결을 시도하지 않도록 합니다. Steam 네트워크 확인에서 멈추는 게임에 사용하세요.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Steam 클라우드를 사용하지 않고 실행하여 저장 파일이 이 기기에 남고 연결이 없어도 게임이 시작됩니다. 끄면 Steam 클라우드가 다시 시작되며, 로컬과 클라우드 저장 파일이 다르면 어느 쪽을 유지할지 묻습니다.</string>
     <string name="input_controls_select_style">스타일 선택</string>
     <string name="input_controls_style_original">원본</string>
     <string name="input_controls_style_gamehub">Glass</string>

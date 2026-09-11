@@ -243,26 +243,31 @@ object WnSteamAssetsInstaller {
                 if (!appIdName.all { it.isDigit() }) return@forEach
                 val destAccountDir = File(realUserdata, accountDir.name)
                 val destAppDir = File(destAccountDir, appIdName)
-                val destAlreadyPopulated = destAppDir.isDirectory &&
-                    destAppDir.walkTopDown().filter { it.isFile }.any()
-                if (destAlreadyPopulated) return@forEach
                 try {
-                    appDir.copyRecursively(destAppDir, overwrite = true)
-                    val n = destAppDir.walkTopDown().filter { it.isFile }.count()
-                    rescuedFiles += n
-                    rescuedApps += 1
-                    Timber.tag(TAG).i(
-                        "ensureRealSteamDir: rescued %d file(s) for app %s from shared store",
-                        n, appIdName)
+                    var copied = 0
+                    appDir.walkTopDown().filter { it.isFile }.forEach { src ->
+                        val dst = File(destAppDir, src.relativeTo(appDir).path)
+                        if (dst.isFile && dst.lastModified() >= src.lastModified()) return@forEach
+                        dst.parentFile?.mkdirs()
+                        src.copyTo(dst, overwrite = true)
+                        copied += 1
+                    }
+                    if (copied > 0) {
+                        rescuedFiles += copied
+                        rescuedApps += 1
+                        Timber.tag(TAG).i(
+                            "ensureRealSteamDir: refreshed %d file(s) for app %s from shared store",
+                            copied, appIdName)
+                    }
                 } catch (e: Exception) {
                     Timber.tag(TAG).e(e,
-                        "ensureRealSteamDir: failed to rescue userdata for app %s", appIdName)
+                        "ensureRealSteamDir: failed to refresh userdata for app %s", appIdName)
                 }
             }
         }
         if (rescuedApps > 0) {
             Timber.tag(TAG).i(
-                "ensureRealSteamDir: rescued userdata for %d app(s), %d total file(s)",
+                "ensureRealSteamDir: refreshed userdata for %d app(s), %d total file(s)",
                 rescuedApps, rescuedFiles)
         }
     }

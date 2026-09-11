@@ -307,6 +307,8 @@
     <string name="shortcuts_properties_exclusive_input">獨佔輸入</string>
     <string name="shortcuts_properties_custom_game_settings">自訂遊戲設定</string>
     <string name="shortcuts_properties_use_steam_input">使用 Steam 輸入</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">透過 Wine 中的 Steam Launcher 執行遊戲（建議）。會停用其他 Steam 啟動模式。</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam 離線模式</string>
     <string name="shortcuts_properties_reset">重設屬性</string>
     <string name="shortcuts_properties_updated_at">捷徑已於 %1$s 更新</string>
@@ -1349,7 +1351,7 @@
     <string name="shortcuts_properties_use_legacy_launcher_description">舊版 Steam 模擬：透過 ColdClient 啟動器執行遊戲，並從 exe 中移除 SteamStub DRM。僅用於無法使用 Steam Launcher 的舊遊戲。</string>
     <string name="steam_section_real_client">WinNative 真實 Steam 用戶端</string>
     <string name="steam_section_emulator">舊版 Steam 模擬器</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">讓模擬的 Steam 用戶端回報為離線，讓遊戲不會嘗試線上連線。適用於在 Steam 網路檢查時卡住的遊戲。</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">不使用 Steam 雲端存檔執行，存檔保留在本機，沒有連線也能啟動遊戲。關閉後會恢復 Steam 雲端存檔；若本機與雲端存檔不同，系統會詢問你要保留哪一個。</string>
     <string name="input_controls_select_style">選擇樣式</string>
     <string name="input_controls_style_original">原版</string>
     <string name="input_controls_style_gamehub">Glass</string>

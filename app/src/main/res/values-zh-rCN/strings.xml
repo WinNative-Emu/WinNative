@@ -307,6 +307,8 @@
     <string name="shortcuts_properties_exclusive_input">独占输入</string>
     <string name="shortcuts_properties_custom_game_settings">自定义游戏设置</string>
     <string name="shortcuts_properties_use_steam_input">使用 Steam 输入</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">通过 Wine 中的 Steam Launcher 运行游戏（推荐）。将禁用其他 Steam 启动模式。</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam 离线模式</string>
     <string name="shortcuts_properties_reset">重置属性</string>
     <string name="shortcuts_properties_updated_at">快捷方式已于 %1$s 更新</string>
@@ -1349,7 +1351,7 @@
     <string name="shortcuts_properties_use_legacy_launcher_description">旧版 Steam 模拟：通过 ColdClient 启动器运行游戏，并从 exe 中移除 SteamStub DRM。仅用于无法使用 Steam Launcher 的旧游戏。</string>
     <string name="steam_section_real_client">WinNative 真实 Steam 客户端</string>
     <string name="steam_section_emulator">旧版 Steam 模拟器</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">让模拟的 Steam 客户端报告为离线，这样游戏就不会尝试在线连接。适用于在 Steam 网络检查时卡住的游戏。</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">不使用 Steam 云存档运行，存档保留在本机，没有网络也能启动游戏。关闭后将恢复 Steam 云存档；若本地与云端存档不同，会询问你保留哪一个。</string>
     <string name="input_controls_select_style">选择样式</string>
     <string name="input_controls_style_original">原版</string>
     <string name="input_controls_style_gamehub">Glass</string>

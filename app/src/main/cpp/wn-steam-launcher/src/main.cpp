@@ -68,6 +68,9 @@ static const int kVtUtils_SetAppIDForCurrentPipe   = 18;
 static const int kVtUtils_GetAppID                = 19;
 static const int kVtUser_RequestEncryptedAppTicket = 120;
 static const int kVtUser_GetEncryptedAppTicket     = 121;
+static const int kVtUser_CanLogonOffline          = 214;
+static const int kVtUser_LogOnOffline             = 215;
+static const int kVtUtils_SetOfflineMode          = 16;
 static const int kVtUser_BIsOtherSessionPlaying   = 220;
 static const int kVtUser_BKickOtherPlayingSession = 221;
 
@@ -2674,7 +2677,77 @@ int main(int argc, char** argv) {
         return 5;
     }
 
-    if (user && *user && token && *token && steamId != 0) {
+    const bool offlineMode = env_int("WN_STEAM_OFFLINE", 0) != 0;
+    bool offlineLogonOk = false;
+    void* offlineUtils = NULL;
+    if (offlineMode) {
+        log_line("[wn-launcher] Steam Offline Mode is on for this shortcut — signing in "
+                 "offline and skipping every cloud sync this session");
+        void** engine_vt = *(void***) engine;
+        typedef void* (WN_THISCALL *GetIClientUserFn)(void* self, int hUser, int hPipe);
+        void* getUserP = engine_vt[kVtEngine_GetIClientUser];
+        void* iuser = is_exec_ptr(getUserP)
+            ? ((GetIClientUserFn) getUserP)(engine, hUser, pipe) : NULL;
+        log_line("[wn-launcher] IClientEngine.GetIClientUser -> %p", iuser);
+        if (iuser) {
+            void** iuser_vt = *(void***) iuser;
+            if (user && *user && token && *token
+                && is_exec_ptr(iuser_vt[kVtUser_SetLoginToken])) {
+                typedef int (WN_THISCALL *SetLoginTokenFn)(void* self, const char* token,
+                                                           const char* account);
+                int tokRc = ((SetLoginTokenFn) iuser_vt[kVtUser_SetLoginToken])(
+                    iuser, token, user);
+                log_line("[wn-launcher] SetLoginToken(account=%s) -> %d "
+                         "(identity for the offline sign-in)", user, tokRc);
+            }
+            typedef void* (WN_THISCALL *GetIClientUtilsFn)(void* self, int hPipe);
+            void* getUtilsP = engine_vt[kVtEngine_GetIClientUtils];
+            offlineUtils = is_exec_ptr(getUtilsP)
+                ? ((GetIClientUtilsFn) getUtilsP)(engine, pipe) : NULL;
+            if (offlineUtils) {
+                void** utils_vt = *(void***) offlineUtils;
+                void* setOffP = utils_vt[kVtUtils_SetOfflineMode];
+                if (is_exec_ptr(setOffP)) {
+                    typedef void (WN_THISCALL *SetOfflineModeFn)(void* self, bool offline);
+                    ((SetOfflineModeFn) setOffP)(offlineUtils, true);
+                    log_line("[wn-launcher] IClientUtils.SetOfflineMode(true)");
+                }
+            }
+            void* canP = iuser_vt[kVtUser_CanLogonOffline];
+            if (is_exec_ptr(canP)) {
+                typedef bool (WN_THISCALL *CanLogonOfflineFn)(void* self);
+                log_line("[wn-launcher] CanLogonOffline -> %d",
+                         ((CanLogonOfflineFn) canP)(iuser) ? 1 : 0);
+            }
+            void* logonP = iuser_vt[kVtUser_LogOnOffline];
+            if (is_exec_ptr(logonP)) {
+                typedef int (WN_THISCALL *LogOnOfflineFn)(void* self, bool bInteractive);
+                int rc = ((LogOnOfflineFn) logonP)(iuser, false);
+                offlineLogonOk = (rc == 1);
+                log_line("[wn-launcher] LogOnOffline(false) -> EResult=%d "
+                         "(1=OK 2=Fail 18=AccountNotFound 19=InvalidSteamID)", rc);
+            } else {
+                log_line("[wn-launcher] LogOnOffline slot not executable");
+            }
+        }
+        if (!offlineLogonOk) {
+            log_line("[wn-launcher] offline sign-in unavailable (Steam has no cached offline "
+                     "credentials in this prefix) — signing in normally so the game still "
+                     "starts; cloud saves stay off for this session");
+            if (offlineUtils) {
+                void** utils_vt = *(void***) offlineUtils;
+                void* setOffP = utils_vt[kVtUtils_SetOfflineMode];
+                if (is_exec_ptr(setOffP)) {
+                    typedef void (WN_THISCALL *SetOfflineModeFn)(void* self, bool offline);
+                    ((SetOfflineModeFn) setOffP)(offlineUtils, false);
+                    log_line("[wn-launcher] IClientUtils.SetOfflineMode(false) — undone for the "
+                             "fallback sign-in");
+                }
+            }
+        }
+    }
+
+    if ((!offlineMode || !offlineLogonOk) && user && *user && token && *token && steamId != 0) {
         void** engine_vt = *(void***) engine;
         typedef void* (WN_THISCALL *GetIClientUserFn)(void* self, int hUser, int hPipe);
         GetIClientUserFn getIClientUser = (GetIClientUserFn)
@@ -2728,7 +2801,7 @@ int main(int argc, char** argv) {
                 }
             }
         }
-    } else {
+    } else if (!offlineMode || !offlineLogonOk) {
         log_line("[wn-launcher] no creds — skipping refresh-token logon "
                  "(game may run in offline / no-auth mode)");
     }
@@ -2739,7 +2812,7 @@ int main(int argc, char** argv) {
     int  connFailEResult = 0;
     int  polls = 0;
     if (bLoggedOn) {
-        const int kMaxPolls = 600;  // 600 * 100ms = 60s
+        const int kMaxPolls = (offlineMode && offlineLogonOk) ? 50 : 600;
         char cbBuf[64] = {0};
         for (; polls < kMaxPolls; ++polls) {
             if (bGetCallback && freeLastCallback) {
@@ -2924,10 +2997,17 @@ int main(int argc, char** argv) {
 
     // Pull cloud saves + set the teardown cloud context now, so the exit upload
     // has a baseline to diff.
-    const bool agentCloud = env_int("WN_STEAM_AGENT_CLOUD", 1) != 0;
+    const bool cloudEnvOn = env_int_signed("WN_STEAM_AGENT_CLOUD", 1) != 0;
+    const bool agentCloud = cloudEnvOn && !offlineMode;
     if (loggedOn && engine && appId != 0 && agentCloud) {
         wn_launcher_set_cloud_context(engine, hUser, pipe, appId);
         wn_launcher_cloud_run(engine, hUser, pipe, appId, 0, 120000);
+    } else if (offlineMode && engine && appId != 0) {
+        log_line("[wn-launcher] cloud: launch download skipped — Steam Offline Mode keeps local "
+                 "saves off the cloud until the shortcut goes back online");
+    } else if (!cloudEnvOn && engine && appId != 0) {
+        log_line("[wn-launcher] cloud: launch download skipped — cloud saves are turned off "
+                 "for this shortcut");
     } else if (loggedOn && engine && appId != 0) {
         log_line("[wn-launcher] cloud: agent-side sync disabled "
                  "(RemoteStorage vtable slots unvalidated on this steamclient build); "
