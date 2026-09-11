@@ -47,6 +47,10 @@ import com.winlator.cmod.shared.io.HttpUtils
 import com.winlator.cmod.shared.math.Mathf
 import com.winlator.cmod.shared.ui.dialog.ContentDialog
 import com.winlator.cmod.shared.theme.WinNativeTheme
+import com.winlator.cmod.runtime.input.controls.SteamControllerBackend
+import com.winlator.cmod.runtime.input.controls.SteamControllerPrefs
+import com.winlator.cmod.shared.ui.controllertest.ControllerTestBus
+import com.winlator.cmod.shared.ui.controllertest.ControllerTestDialog
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -78,6 +82,10 @@ class InputControlsFragment : Fragment() {
     private var activeBindingController: ExternalController? = null
     private var activeBindingL2WasPressed = false
     private var activeBindingR2WasPressed = false
+
+    private var showControllerTest by mutableStateOf(false)
+    private val testController = ExternalController()
+    private var testGuideDown = false
 
     private var gyroSensorManager: SensorManager? = null
     private var gyroListener: SensorEventListener? = null
@@ -221,8 +229,29 @@ class InputControlsFragment : Fragment() {
                                 onBindingTypeClick = ::showBindingTypePicker,
                                 onBindingValueClick = ::showBindingValuePicker,
                                 onRemoveBinding = ::removeBinding,
+                                onOpenControllerTest = {
+                                    ControllerTestBus.onIdentify = Runnable { identifyController() }
+                                    showControllerTest = true
+                                },
+                                onSteamControllerEnabledChanged = ::setSteamControllerEnabled,
+                                onSteamTrackpadModeSelected = ::setSteamTrackpadMode,
+                                onSteamPaddleClick = ::pickSteamPaddleBinding,
                             ),
                     )
+                    if (showControllerTest) {
+                        ControllerTestDialog(
+                            onDismiss = { showControllerTest = false },
+                            profile = currentProfile,
+                            allProfiles = manager.profiles.toList(),
+                            onSelectProfile = { selectProfile(it) },
+                            onCreateProfile = { createProfileNamed(it) },
+                            onRenameProfile = ::editProfile,
+                            onBindingsChanged = {
+                                refreshVisibleControllers()
+                                publishUiState()
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -244,10 +273,26 @@ class InputControlsFragment : Fragment() {
     override fun onDestroyView() {
         detachGyroPreview()
         stopControllerInputCapture()
+        ControllerTestBus.setDialogOpen(false)
+        ControllerTestBus.onIdentify = null
         super.onDestroyView()
     }
 
     fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (showControllerTest && ControllerTestBus.isActive()) {
+            val device = event.device
+            if (ExternalController.isGameController(device)) {
+                if (event.repeatCount == 0) {
+                    if (event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE) {
+                        testGuideDown = event.action == KeyEvent.ACTION_DOWN
+                    }
+                    prepareTestController(device)
+                    testController.updateStateFromKeyEvent(event)
+                    ControllerTestBus.publish(testController, device, testGuideDown)
+                }
+                return true
+            }
+        }
         val controller = activeBindingController ?: return false
         if (event.deviceId != controller.deviceId) return false
         if (event.repeatCount != 0) return true
@@ -258,6 +303,16 @@ class InputControlsFragment : Fragment() {
     }
 
     fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (showControllerTest && ControllerTestBus.isActive()) {
+            val device = event.device
+            if (ExternalController.isGameController(device)) {
+                prepareTestController(device)
+                if (testController.updateStateFromMotionEvent(event)) {
+                    ControllerTestBus.publish(testController, device, testGuideDown)
+                }
+                return true
+            }
+        }
         val controller = activeBindingController ?: return false
         if (event.deviceId != controller.deviceId) return false
         if (!controller.updateStateFromMotionEvent(event)) return false
@@ -342,6 +397,12 @@ class InputControlsFragment : Fragment() {
                 triggerTypeIndex = preferences.getInt("trigger_type", ExternalController.TRIGGER_IS_AXIS.toInt()),
                 triggerCardExpanded = triggerTypeExpanded,
                 triggerDescription = triggerDescription,
+                steamControllerEnabled = SteamControllerPrefs.isEnabled(requireContext()),
+                steamTrackpadModeIndex = SteamControllerPrefs.getTrackpadMouseMode(requireContext()),
+                steamPaddleLabels =
+                    (0 until SteamControllerBackend.PADDLE_COUNT).map { index ->
+                        SteamControllerPrefs.getPaddleBinding(requireContext(), index).toString()
+                    },
                 controllerCards =
                     visibleControllers.map { controller ->
                         InputControllerCardState(
@@ -467,6 +528,75 @@ class InputControlsFragment : Fragment() {
             publishUiState()
         }
     }
+
+    private fun selectProfile(profile: ControlsProfile) {
+        currentProfile = profile
+        persistSelectedProfileId()
+        expandedControllerIds.clear()
+        stopControllerInputCapture()
+        refreshVisibleControllers()
+        publishUiState()
+    }
+
+    private fun createProfileNamed(name: String) {
+        currentProfile = manager.createProfile(name)
+        persistSelectedProfileId()
+        refreshVisibleControllers()
+        publishUiState()
+    }
+
+    private fun identifyController() {
+        val deviceId = testController.deviceId
+        val vibrator = android.view.InputDevice.getDevice(deviceId)?.vibrator ?: return
+        if (!vibrator.hasVibrator()) return
+        vibrator.vibrate(
+            android.os.VibrationEffect.createOneShot(320L, android.os.VibrationEffect.DEFAULT_AMPLITUDE),
+        )
+    }
+
+    private fun prepareTestController(device: android.view.InputDevice?) {
+        if (device == null) return
+        if (testController.deviceId != device.id) {
+            testController.setDeviceId(device.id)
+            testController.id = device.descriptor
+            testController.name = device.name
+            testController.triggerType = ExternalController.TRIGGER_IS_BOTH
+            testGuideDown = false
+        }
+    }
+
+    private fun setSteamControllerEnabled(enabled: Boolean) {
+        SteamControllerPrefs.setEnabled(requireContext(), enabled)
+        publishUiState()
+    }
+
+    private fun setSteamTrackpadMode(mode: Int) {
+        SteamControllerPrefs.setTrackpadMouseMode(requireContext(), mode)
+        publishUiState()
+    }
+
+    private fun pickSteamPaddleBinding(index: Int) {
+        val values = steamPaddleBindingValues()
+        val labels = values.map { it.toString() }.toTypedArray()
+        val current = SteamControllerPrefs.getPaddleBinding(requireContext(), index)
+        val checked = values.indexOf(current).let { if (it >= 0) it else 0 }
+        showChoiceDialog(
+            title = getString(R.string.steam_controller_extra_buttons),
+            items = labels,
+            checkedIndex = checked,
+        ) { which ->
+            SteamControllerPrefs.setPaddleBinding(requireContext(), index, values[which])
+            publishUiState()
+        }
+    }
+
+    private fun steamPaddleBindingValues(): List<Binding> =
+        buildList {
+            add(Binding.NONE)
+            addAll(Binding.gamepadBindingValues().filterNot { it.name.contains("_THUMB_") })
+            addAll(Binding.keyboardBindingValues())
+            addAll(Binding.mouseBindingValues())
+        }.distinct()
 
     private fun openControlsEditor() {
         val profile = currentProfile

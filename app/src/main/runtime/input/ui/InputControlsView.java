@@ -58,6 +58,7 @@ public class InputControlsView extends View {
   public static final String EXTRA_ADAPTIVE_JOYSTICKS = "adaptiveJoysticks";
   private static final byte MOUSE_WHEEL_DELTA = 120;
   private boolean editMode = false;
+  private final HashMap<String, Set<Integer>> steamPadHeldKeys = new HashMap<>();
   private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
   private final Path path = new Path();
   private final ColorFilter colorFilter =
@@ -1008,6 +1009,72 @@ public class InputControlsView extends View {
         dirtyRect.top - padding,
         dirtyRect.right + padding,
         dirtyRect.bottom + padding);
+  }
+
+  public boolean onSteamPadState(ExternalController sdlPad, int[] pressedKeyCodes) {
+    if (editMode || profile == null) {
+      onSteamPadDisconnected(sdlPad);
+      return false;
+    }
+    ExternalController controller = profile.getController(sdlPad.getId());
+    if (controller == null || controller.getControllerBindingCount() == 0) {
+      onSteamPadDisconnected(sdlPad);
+      return false;
+    }
+    controller.setDeviceId(sdlPad.getDeviceId());
+    controller.state.copy(sdlPad.state);
+
+    Set<Integer> held = steamPadHeldKeys.get(sdlPad.getId());
+    if (held == null) {
+      held = new HashSet<>();
+      steamPadHeldKeys.put(sdlPad.getId(), held);
+    }
+    Set<Integer> pressed = new HashSet<>();
+    for (int keyCode : pressedKeyCodes) pressed.add(keyCode);
+
+    for (Integer keyCode : new HashSet<>(held)) {
+      if (!pressed.contains(keyCode)) {
+        held.remove(keyCode);
+        ExternalControllerBinding binding = controller.getControllerBinding(keyCode);
+        if (binding != null) handleInputEvent(controller, binding.getBinding(), false);
+      }
+    }
+    for (Integer keyCode : pressed) {
+      if (held.add(keyCode)) {
+        ExternalControllerBinding binding = controller.getControllerBinding(keyCode);
+        if (binding != null) handleInputEvent(controller, binding.getBinding(), true);
+      }
+    }
+
+    ExternalControllerBinding triggerBinding =
+        controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2);
+    if (triggerBinding != null) {
+      handleInputEvent(
+          controller,
+          triggerBinding.getBinding(),
+          controller.state.isPressed(ExternalController.IDX_BUTTON_L2));
+    }
+    triggerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2);
+    if (triggerBinding != null) {
+      handleInputEvent(
+          controller,
+          triggerBinding.getBinding(),
+          controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
+    }
+
+    processJoystickInput(controller);
+    return true;
+  }
+
+  public void onSteamPadDisconnected(ExternalController sdlPad) {
+    Set<Integer> held = steamPadHeldKeys.remove(sdlPad.getId());
+    if (held == null || held.isEmpty() || profile == null) return;
+    ExternalController controller = profile.getController(sdlPad.getId());
+    if (controller == null) return;
+    for (Integer keyCode : held) {
+      ExternalControllerBinding binding = controller.getControllerBinding(keyCode);
+      if (binding != null) handleInputEvent(controller, binding.getBinding(), false);
+    }
   }
 
   public boolean onKeyEvent(KeyEvent event) {

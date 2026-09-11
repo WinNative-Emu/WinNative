@@ -334,6 +334,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     };
     private OnExtractFileListener onExtractFileListener;
     private WinHandler winHandler;
+    private com.winlator.cmod.runtime.input.controls.SteamControllerBackend steamControllerBackend;
+    private ComposeView controllerTestComposeView;
+    private final ExternalController controllerTestController = new ExternalController();
+    private boolean controllerTestGuideDown = false;
     private WineRequestHandler wineRequestHandler;
     private float globalCursorSpeed = 1.0f;
     private MagnifierView magnifierView;
@@ -4671,6 +4675,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     @Override
     protected void onDestroy() {
         activityDestroyed.set(true);
+        stopSteamControllerSupport();
+        hideControllerTestDialog();
         if (reshadeLiveHandler != null) {
             reshadeLiveHandler.removeCallbacks(reshadeLiveWriteTask);
             reshadeLiveHandler.post(reshadeLiveWriteTask);
@@ -5819,6 +5825,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         preferences.edit().putBoolean("reverse_binding_order", enabled).apply();
                         if (inputControlsView != null) inputControlsView.setReverseBindingOrder(enabled);
                         renderDrawerMenu();
+                    }
+
+                    @Override
+                    public void onControllerTestClick() {
+                        if (drawerStateHolder != null) drawerStateHolder.closeDrawer();
+                        showControllerTestDialog();
                     }
 
                     @Override
@@ -8279,6 +8291,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
 
         winHandler.start();
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.setDialogOpen(false);
+        runOnUiThread(this::startSteamControllerSupport);
         if (wineRequestHandler != null) wineRequestHandler.start();
 
         dxwrapperConfig = null;
@@ -9510,6 +9524,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             }
             return true;
         }
+        if (isSteamControllerShadowEvent(event.getDevice())) return true;
+        if (controllerTestComposeView != null
+                && com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.isActive()
+                && consumeControllerTestMotionEvent(event)) {
+            return true;
+        }
         if (isInputSuspended() && (drawerStateHolder == null ||
                 (!drawerStateHolder.isDrawerOpen() && !drawerStateHolder.isPaneOpen()))) {
 
@@ -9602,6 +9622,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             }
             return true;
         }
+        if (isSteamControllerShadowEvent(event.getDevice())) return true;
+        if (controllerTestComposeView != null
+                && com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.isActive()
+                && consumeControllerTestKeyEvent(event)) {
+            return true;
+        }
         if (isInputSuspended()) return super.dispatchKeyEvent(event);
         if (ExternalController.isGameController(event.getDevice())) {
             cancelMousePointerTimeout();
@@ -9661,6 +9687,174 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
 
         return super.dispatchKeyEvent(event);
+    }
+
+    public InputControlsManager getControllerTestProfileManager() {
+        return inputControlsManager;
+    }
+
+    public void applyControllerTestProfile(ControlsProfile profile) {
+        if (profile == null) return;
+        showInputControls(profile);
+        renderDrawerMenu();
+    }
+
+    public void reloadControllerTestBindings() {
+        if (inputControlsView == null) return;
+        ControlsProfile profile = inputControlsView.getProfile();
+        if (profile != null) showInputControls(profile);
+    }
+
+    private void showControllerTestDialog() {
+        if (controllerTestComposeView != null) return;
+        android.view.ViewGroup root = findViewById(android.R.id.content);
+        if (root == null) return;
+        ComposeView view = new ComposeView(this);
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.onIdentify =
+                this::identifyControllerTestPad;
+        ControllerTestHost.attach(view, this, this::hideControllerTestDialog);
+        root.addView(
+                view,
+                new android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+        controllerTestComposeView = view;
+    }
+
+    private void hideControllerTestDialog() {
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.setDialogOpen(false);
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.onIdentify = null;
+        if (controllerTestComposeView == null) return;
+        android.view.ViewParent parent = controllerTestComposeView.getParent();
+        if (parent instanceof android.view.ViewGroup) {
+            ((android.view.ViewGroup) parent).removeView(controllerTestComposeView);
+        }
+        controllerTestComposeView = null;
+    }
+
+    private void publishControllerTestSnapshot(android.view.InputDevice device) {
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.publish(
+                controllerTestController, device, controllerTestGuideDown);
+    }
+
+    private boolean consumeControllerTestKeyEvent(KeyEvent event) {
+        android.view.InputDevice device = event.getDevice();
+        if (!ExternalController.isGameController(device)) return false;
+        if (event.getRepeatCount() == 0) {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE) {
+                controllerTestGuideDown = event.getAction() == KeyEvent.ACTION_DOWN;
+            }
+            prepareControllerTestController(device);
+            controllerTestController.updateStateFromKeyEvent(event);
+            publishControllerTestSnapshot(device);
+        }
+        return true;
+    }
+
+    private boolean consumeControllerTestMotionEvent(MotionEvent event) {
+        android.view.InputDevice device = event.getDevice();
+        if (!ExternalController.isGameController(device)) return false;
+        prepareControllerTestController(device);
+        if (controllerTestController.updateStateFromMotionEvent(event)) {
+            publishControllerTestSnapshot(device);
+        }
+        return true;
+    }
+
+    private void identifyControllerTestPad() {
+        int deviceId = com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.currentDeviceId();
+        if (deviceId == Integer.MIN_VALUE) deviceId = controllerTestController.getDeviceId();
+        if (steamControllerBackend != null
+                && deviceId <= com.winlator.cmod.runtime.input.controls.SteamControllerBackend.DEVICE_ID_BASE) {
+            steamControllerBackend.rumble(deviceId, 0xFFFF, 0xFFFF, 320);
+            return;
+        }
+        android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
+        android.os.Vibrator vibrator = device != null ? device.getVibrator() : null;
+        if (vibrator == null || !vibrator.hasVibrator()) return;
+        vibrator.vibrate(
+                android.os.VibrationEffect.createOneShot(
+                        320L, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+    }
+
+    private void prepareControllerTestController(android.view.InputDevice device) {
+        if (device == null || controllerTestController.getDeviceId() == device.getId()) return;
+        controllerTestController.setDeviceId(device.getId());
+        controllerTestController.setId(device.getDescriptor());
+        controllerTestController.setName(device.getName());
+        controllerTestController.setTriggerType(ExternalController.TRIGGER_IS_BOTH);
+        controllerTestGuideDown = false;
+    }
+
+    private void startSteamControllerSupport() {
+        if (steamControllerBackend != null || winHandler == null || isFinishing()) return;
+        if (!com.winlator.cmod.runtime.input.controls.SteamControllerPrefs.isEnabled(this)) return;
+        int trackpadMode =
+                com.winlator.cmod.runtime.input.controls.SteamControllerPrefs.getTrackpadMouseMode(this);
+        com.winlator.cmod.runtime.input.controls.Binding[] paddles =
+                com.winlator.cmod.runtime.input.controls.SteamControllerPrefs.getPaddleBindings(this);
+        com.winlator.cmod.runtime.input.controls.SteamControllerBackend backend =
+                new com.winlator.cmod.runtime.input.controls.SteamControllerBackend(
+                        this, trackpadMode, paddles,
+                        new com.winlator.cmod.runtime.input.controls.SteamControllerBackend.Listener() {
+            @Override
+            public void onSteamPadConnected(ExternalController pad) {
+                if (winHandler != null) winHandler.onSdlPadConnected(pad);
+            }
+
+            @Override
+            public void onSteamPadDisconnected(ExternalController pad) {
+                if (inputControlsView != null) inputControlsView.onSteamPadDisconnected(pad);
+                if (winHandler != null) winHandler.onSdlPadDisconnected(pad);
+            }
+
+            @Override
+            public void onSteamPadState(ExternalController pad, boolean guideDown,
+                                        boolean quickAccessDown, int[] pressedKeyCodes) {
+                com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.publishSteamPad(
+                        pad, guideDown, quickAccessDown);
+                if (controllerTestComposeView != null) return;
+                if (inputControlsView != null
+                        && inputControlsView.onSteamPadState(pad, pressedKeyCodes)) return;
+                if (winHandler != null) winHandler.sendGamepadState(pad);
+            }
+
+            @Override
+            public void onSteamPadBinding(
+                    com.winlator.cmod.runtime.input.controls.Binding binding, boolean down) {
+                if (down && controllerTestComposeView != null) return;
+                if (inputControlsView != null) inputControlsView.handleInputEvent(binding, down);
+            }
+
+            @Override
+            public void onSteamPadMouseMove(int dx, int dy) {
+                if (controllerTestComposeView != null) return;
+                if (winHandler != null) winHandler.steamPadMouseMove(dx, dy);
+            }
+
+            @Override
+            public void onSteamPadMouseButton(boolean secondary, boolean down) {
+                if (down && controllerTestComposeView != null) return;
+                if (winHandler != null) winHandler.steamPadMouseButton(secondary, down);
+            }
+        });
+        if (!backend.start()) return;
+        steamControllerBackend = backend;
+        winHandler.setSteamControllerBackend(backend);
+    }
+
+    private void stopSteamControllerSupport() {
+        if (steamControllerBackend == null) return;
+        if (winHandler != null) winHandler.setSteamControllerBackend(null);
+        steamControllerBackend.stop();
+        steamControllerBackend = null;
+    }
+
+    private boolean isSteamControllerShadowEvent(android.view.InputDevice device) {
+        return steamControllerBackend != null && winHandler != null && winHandler.hasSdlPads()
+                && device != null
+                && device.getVendorId()
+                        == com.winlator.cmod.runtime.input.controls.SteamControllerBackend.VALVE_VENDOR_ID;
     }
 
     public InputControlsView getInputControlsView() {
