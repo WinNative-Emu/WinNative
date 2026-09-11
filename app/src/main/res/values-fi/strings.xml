@@ -404,6 +404,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Näytön koko</string>
+    <string name="container_config_show_device_resolutions">Näytä laitteen tarkkuudet</string>
+    <string name="container_config_show_device_resolutions_help">Skaalaa jokaisen vakiotarkkuuden tälle näytölle, jotta mikään ei veny tai jää mustien palkkien väliin (%1$s).</string>
     <string name="container_config_new_env_var">Uusi ympäristömuuttuja</string>
     <string name="container_config_env_vars">Ympäristömuuttujat</string>
     <string name="container_config_processor_affinity">Suorittimen affiniteetti</string>
@@ -2500,10 +2502,18 @@ Asennuspolku:
     <string name="retro_scr_consoles_download">Lataa konsoliytimet</string>
     <string name="retro_scr_consoles_downloading">Ladataan… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">Konsoliytimet</string>
+    <string name="retro_scr_consoles_install_selected">Asenna valittu julkaisu</string>
     <string name="retro_scr_consoles_installed">Asennettu — koontiversio %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">Asennettu — koontiversio %1$s (päivitysten tarkistus epäonnistui)</string>
+    <string name="retro_scr_consoles_installed_pinned">Asennettu — koontiversio %1$s (kiinnitetty julkaisu)</string>
     <string name="retro_scr_consoles_installing">Asennetaan…</string>
     <string name="retro_scr_consoles_missing">Ei asennettu — lataa pelataksesi retropelejä</string>
+    <string name="retro_scr_consoles_reinstall">Asenna valittu julkaisu uudelleen</string>
+    <string name="retro_scr_consoles_release">Julkaisu</string>
+    <string name="retro_scr_consoles_release_latest">Uusin</string>
+    <string name="retro_scr_consoles_releases_failed">Julkaisu (luettelo ei saatavilla)</string>
+    <string name="retro_scr_consoles_releases_loading">Julkaisu (ladataan…)</string>
+    <string name="retro_scr_consoles_selected_available">Valittu — koontiversio %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">Tila</string>
     <string name="retro_scr_consoles_update">Päivitä konsoliytimet</string>
     <string name="retro_scr_consoles_update_available">Päivitys saatavilla — koontiversio %1$s (%2$d MB)</string>
@@ -2520,6 +2530,20 @@ Asennuspolku:
     <string name="session_drawer_frame_generation_note">Interpoloi renderöityjen ruutujen välillä Lossless Scalingilla. Sulavampi liike, mutta yhden ruudun lisäviive syötteessä.</string>
     <string name="session_drawer_frame_generation_target_note">Nousee kohti tavoitetta vain, kun siitä on mitattavaa hyötyä, sen sijaan että pitäisi kiinteän kertoimen.</string>
     <string name="session_drawer_frame_generation_missing">Asenna Lossless Scaling säilön asetuksista käyttääksesi ruudun generointia.</string>
+    <string name="session_drawer_dis_frame_generation">Ruudun generointi (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_enable">Generoi ruutuja (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_note">Interpoloi renderöityjen ruutujen välillä Dense Inverse Searchilla. Sisäänrakennettu; ulkoisia varjostimia ei tarvita.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Poista DIS-ruudun generointi käytöstä, jotta voit käyttää tätä.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Poista Lossless Scaling -ruudun generointi käytöstä, jotta voit käyttää tätä.</string>
+    <string name="session_drawer_dis_resolution_scale">Resoluutioskaala</string>
+    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
+    <string name="session_drawer_dis_preset_fast">Nopea</string>
+    <string name="session_drawer_dis_preset_balance">Tasapainoinen</string>
+    <string name="session_drawer_dis_preset_quality">Laatu</string>
+    <string name="session_drawer_dis_resolution_scale_note">Liikettä analysoidaan %1$d pikselin tarkkuudella kuvan lyhyemmällä sivulla. Pienempi on kevyempi, suurempi seuraa pieniä tai nopeita yksityiskohtia paremmin.</string>
+    <string name="session_drawer_dis_target_fps">Tavoite-FPS</string>
+    <string name="session_drawer_dis_target_fps_max">Maks. virkistystaajuus</string>
+    <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="frame_generation_preset">Laatuesiasetus</string>
     <string name="frame_generation_preset_ultra_performance">Ultra-suorituskyky</string>
     <string name="frame_generation_preset_performance">Suorituskyky</string>
@@ -2542,6 +2566,8 @@ Asennuspolku:
     <string name="settings_frame_generation_updated">Päivitetty kohteesta %1$s.</string>
     <string name="settings_frame_generation_not_owned">Ruudun generointi käyttää Lossless Scalingin varjostimia. Osta se Steamista kirjautuneella tilillä ottaaksesi tämän käyttöön.</string>
     <string name="settings_frame_generation_locate">Valitse Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpoloi tälle konsolille lisäruutuja Lossless Scalingilla.</string>
+    <string name="retro_gs_frame_generation_unsupported">Tämä näytönohjain ei tarjoa Vulkan-ominaisuuksia, joita Lossless Scaling -varjostimet vaativat.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io-lataukset</string>
     <string name="itch_store_sign_in">Kirjaudu itch.io-palveluun</string>

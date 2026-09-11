@@ -11,6 +11,7 @@
     <item type="id" name="main_menu_advanced" />
     <item type="id" name="main_menu_credits" />
     <item type="id" name="main_menu_support" />
+    <item type="id" name="main_menu_about" />
     <item type="id" name="main_menu_other" />
     <item type="id" name="main_menu_retro" />
 

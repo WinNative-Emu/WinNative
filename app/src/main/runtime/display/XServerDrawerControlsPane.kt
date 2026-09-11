@@ -247,6 +247,13 @@ internal fun InputControlsPaneContent(
                     onCheckedChange = listener::onInputControlsShowOverlayChanged,
                 )
 
+                NavBooleanRow(
+                    title = stringResource(R.string.input_controls_adaptive_joysticks),
+                    subtitle = stringResource(R.string.input_controls_adaptive_joysticks_summary),
+                    checked = state.inputControlsAdaptiveJoysticks,
+                    onCheckedChange = listener::onInputControlsAdaptiveJoysticksChanged,
+                )
+
                 if (state.inputControlsShowOverlay) {
                     NavSliderRow(
                         label = stringResource(R.string.input_controls_editor_overlay_opacity),

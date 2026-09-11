@@ -344,6 +344,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Bildschirmgröße</string>
+    <string name="container_config_show_device_resolutions">Geräteauflösungen anzeigen</string>
+    <string name="container_config_show_device_resolutions_help">Skaliert jede Standardauflösung auf diesen Bildschirm, sodass nichts verzerrt oder mit schwarzen Balken dargestellt wird (%1$s).</string>
     <string name="container_config_new_env_var">Neue Umgebungsvariable</string>
     <string name="container_config_env_vars">Umgebungsvariablen</string>
     <string name="container_config_processor_affinity">Prozessoraffinität</string>
@@ -2502,10 +2504,18 @@ Installierter Pfad:
     <string name="retro_scr_consoles_download">Konsolen-Cores herunterladen</string>
     <string name="retro_scr_consoles_downloading">Wird heruntergeladen… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">Konsolen-Cores</string>
+    <string name="retro_scr_consoles_install_selected">Ausgewählte Version installieren</string>
     <string name="retro_scr_consoles_installed">Installiert — Build %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">Installiert — Build %1$s (Update-Suche fehlgeschlagen)</string>
+    <string name="retro_scr_consoles_installed_pinned">Installiert — Build %1$s (fixierte Version)</string>
     <string name="retro_scr_consoles_installing">Wird installiert…</string>
     <string name="retro_scr_consoles_missing">Nicht installiert — herunterladen, um Retro-Spiele zu spielen</string>
+    <string name="retro_scr_consoles_reinstall">Ausgewählte Version neu installieren</string>
+    <string name="retro_scr_consoles_release">Version</string>
+    <string name="retro_scr_consoles_release_latest">Neueste</string>
+    <string name="retro_scr_consoles_releases_failed">Version (Liste nicht verfügbar)</string>
+    <string name="retro_scr_consoles_releases_loading">Version (wird geladen…)</string>
+    <string name="retro_scr_consoles_selected_available">Ausgewählt — Build %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">Status</string>
     <string name="retro_scr_consoles_update">Konsolen-Cores aktualisieren</string>
     <string name="retro_scr_consoles_update_available">Update verfügbar — Build %1$s (%2$d MB)</string>
@@ -2522,6 +2532,20 @@ Installierter Pfad:
     <string name="session_drawer_frame_generation_note">Interpoliert zwischen gerenderten Frames mit Lossless Scaling. Flüssigere Bewegung, aber ein zusätzlicher Frame Eingabeverzögerung.</string>
     <string name="session_drawer_frame_generation_target_note">Steigt nur dann in Richtung Ziel, wenn es messbar hilft, statt einen festen Multiplikator zu halten.</string>
     <string name="session_drawer_frame_generation_missing">Installiere Lossless Scaling in den Container-Einstellungen, um Frame-Generierung zu nutzen.</string>
+    <string name="session_drawer_dis_frame_generation">Frame-Generierung (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_enable">Frames generieren (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_note">Interpoliert zwischen gerenderten Frames mit Dense Inverse Search. Eingebaut; keine externen Shader nötig.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Deaktiviere die DIS-Frame-Generierung, um dies zu verwenden.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Deaktiviere die Lossless-Scaling-Frame-Generierung, um dies zu verwenden.</string>
+    <string name="session_drawer_dis_resolution_scale">Auflösungsskalierung</string>
+    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
+    <string name="session_drawer_dis_preset_fast">Schnell</string>
+    <string name="session_drawer_dis_preset_balance">Ausgewogen</string>
+    <string name="session_drawer_dis_preset_quality">Qualität</string>
+    <string name="session_drawer_dis_resolution_scale_note">Bewegung wird mit %1$d Pixeln an der kürzeren Bildseite analysiert. Niedriger ist günstiger, höher erfasst kleine oder schnelle Details besser.</string>
+    <string name="session_drawer_dis_target_fps">Ziel-FPS</string>
+    <string name="session_drawer_dis_target_fps_max">Max. Bildwiederholrate</string>
+    <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="frame_generation_preset">Qualitätsvoreinstellung</string>
     <string name="frame_generation_preset_ultra_performance">Ultra-Leistung</string>
     <string name="frame_generation_preset_performance">Leistung</string>
@@ -2544,6 +2568,8 @@ Installierter Pfad:
     <string name="settings_frame_generation_updated">Aus %1$s aktualisiert.</string>
     <string name="settings_frame_generation_not_owned">Frame-Generierung nutzt Shader von Lossless Scaling. Kaufe es auf Steam mit dem angemeldeten Konto, um dies zu aktivieren.</string>
     <string name="settings_frame_generation_locate">Lossless.dll auswählen…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpoliert mit Lossless Scaling zusätzliche Frames für diese Konsole.</string>
+    <string name="retro_gs_frame_generation_unsupported">Diese GPU bietet nicht die Vulkan-Funktionen, die die Lossless-Scaling-Shader benötigen.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io-Downloads</string>
     <string name="itch_store_sign_in">Bei itch.io anmelden</string>

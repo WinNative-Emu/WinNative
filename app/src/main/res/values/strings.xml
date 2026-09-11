@@ -80,6 +80,19 @@
     <string name="common_ui_shortcut">Shortcut</string>
     <string name="common_ui_custom">Custom</string>
     <string name="common_ui_about">About</string>
+    <string name="about_app_heading">APPLICATION</string>
+    <string name="about_app_desc">Build details for this install</string>
+    <string name="about_version">Version</string>
+    <string name="about_build_id">Build ID</string>
+    <string name="about_version_code">Version code</string>
+    <string name="about_variant">Build variant</string>
+    <string name="about_package">Package name</string>
+    <string name="about_branding_heading">STORE PROTECTION</string>
+    <string name="about_branding_desc">Why this build reports a different version</string>
+    <string name="about_reported_version_code">Reported version code</string>
+    <string name="about_branding_explain">This build installs as %1$s so the device applies that app\'s performance profile. Its reported version code is higher than anything Google Play can publish, so the Play Store never offers an update that would replace WinNative. The version above is the real one.</string>
+    <string name="about_copy">Copy build info</string>
+    <string name="about_copied">Build info copied</string>
     <string name="common_ui_back">Back</string>
     <string name="common_ui_apply">Apply</string>
     <string name="common_ui_save">Save</string>
@@ -471,6 +484,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Screen Size</string>
+    <string name="container_config_show_device_resolutions">Show Device Resolutions</string>
+    <string name="container_config_show_device_resolutions_help">Scales each standard resolution to this screen so nothing is stretched or letterboxed (%1$s).</string>
     <string name="container_config_new_env_var">New Environment Variable</string>
     <string name="container_config_env_vars">Environment Variables</string>
     <string name="container_config_processor_affinity">Processor Affinity</string>
@@ -775,6 +790,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_toggle_fullscreen">Toggle Fullscreen</string>
     <string name="session_drawer_refactor_size">Refactor Size</string>
     <string name="session_drawer_show_touchscreen_controls">Show Touchscreen Controls</string>
+    <string name="input_controls_adaptive_joysticks">Adaptive Joysticks</string>
+    <string name="input_controls_adaptive_joysticks_summary">Sticks stay hidden until you touch near where they sit</string>
     <string name="session_drawer_magnifier">Magnifier</string>
     <string name="session_drawer_logs">Logs</string>
     <string name="session_drawer_pip_mode">PiP Mode</string>
@@ -856,6 +873,21 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_frame_generation_note">Interpolates between rendered frames with Lossless Scaling. Smoother motion, but one extra frame of input latency.</string>
     <string name="session_drawer_frame_generation_target_note">Climbs toward the target only while it measurably helps, instead of holding a fixed multiplier.</string>
     <string name="session_drawer_frame_generation_missing">Install Lossless Scaling in container settings to use frame generation.</string>
+    <string name="session_drawer_dis_frame_generation">Frame Generation (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_enable">Generate Frames (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_note">Interpolates between rendered frames with Dense Inverse Search. Built into the app; no external shaders required.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Turn off DIS frame generation to use this.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Turn off Lossless Scaling frame generation to use this.</string>
+    <string name="session_drawer_dis_resolution_scale">Resolution Scale</string>
+    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
+    <string name="session_drawer_dis_preset_fast">Fast</string>
+    <string name="session_drawer_dis_preset_balance">Balance</string>
+    <string name="session_drawer_dis_preset_quality">Quality</string>
+    <string name="session_drawer_dis_resolution_scale_note">Motion is analysed at %1$d pixels on the shorter side of the frame. Lower is cheaper; higher tracks small or fast detail better.</string>
+    <string name="session_drawer_dis_target_fps">Target FPS</string>
+    <string name="session_drawer_dis_target_fps_max">Max refresh rate</string>
+    <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
+    <string name="session_drawer_dis_debug_flow">Show flow</string>
     <string name="settings_frame_generation_title">Frame Generation</string>
     <string name="settings_frame_generation_importing">Looking for Lossless Scaling…</string>
     <string name="settings_frame_generation_ready">Lossless Scaling shaders ready.</string>
@@ -865,6 +897,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_frame_generation_updated">Updated from %1$s.</string>
     <string name="settings_frame_generation_not_owned">Frame generation uses shaders from Lossless Scaling. Buy it on Steam with the signed-in account to enable this.</string>
     <string name="settings_frame_generation_locate">Select Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpolates extra frames for this console with Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">This GPU does not expose the Vulkan features the Lossless Scaling shaders need.</string>
     <string name="session_drawer_vivid">Vivid</string>
     <string name="session_drawer_vivid_strength">Vivid Strength</string>
     <string name="session_drawer_color_profile">Color Effect</string>
@@ -2344,6 +2378,14 @@ Installed path:
     <string name="retro_scr_consoles_download">Download console cores</string>
     <string name="retro_scr_consoles_update">Update console cores</string>
     <string name="retro_scr_consoles_check">Check for updates</string>
+    <string name="retro_scr_consoles_install_selected">Install selected release</string>
+    <string name="retro_scr_consoles_installed_pinned">Installed — build %1$s (pinned release)</string>
+    <string name="retro_scr_consoles_reinstall">Reinstall selected release</string>
+    <string name="retro_scr_consoles_release">Release</string>
+    <string name="retro_scr_consoles_release_latest">Latest</string>
+    <string name="retro_scr_consoles_releases_failed">Release (list unavailable)</string>
+    <string name="retro_scr_consoles_releases_loading">Release (loading…)</string>
+    <string name="retro_scr_consoles_selected_available">Selected — build %1$s (%2$d MB)</string>
     <string name="retro_scr_retroachievements">RETROACHIEVEMENTS</string>
     <string name="retro_scr_account">Account</string>
     <string name="retro_scr_signed_in">Signed in</string>
@@ -2459,6 +2501,10 @@ Installed path:
     <string name="retro_scr_tab_defaults">Defaults</string>
     <string name="retro_scr_tab_credits">Credits</string>
     <string name="settings_support_title">Support</string>
+    <string name="support_donate_heading">DONATE</string>
+    <string name="support_donate_desc">Contribute to the development of WinNative. Opens in your browser.</string>
+    <string name="support_paypal">paypal.me/MaxJividen</string>
+    <string name="support_paypal_desc">PayPal • one-time or recurring</string>
     <string name="support_heading">GET HELP</string>
     <string name="support_desc">Ask questions, report problems, or see what is being worked on. Each opens in your browser.</string>
     <string name="support_winnative_discord">#WinNative</string>

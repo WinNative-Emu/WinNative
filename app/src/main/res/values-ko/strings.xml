@@ -344,6 +344,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">화면 크기</string>
+    <string name="container_config_show_device_resolutions">기기 해상도 표시</string>
+    <string name="container_config_show_device_resolutions_help">각 표준 해상도를 이 화면에 맞게 조정해 늘어나거나 검은 여백이 생기지 않도록 합니다 (%1$s).</string>
     <string name="container_config_new_env_var">새 환경 변수</string>
     <string name="container_config_env_vars">환경 변수</string>
     <string name="container_config_processor_affinity">프로세서 선호도</string>
@@ -2502,10 +2504,18 @@
     <string name="retro_scr_consoles_download">콘솔 코어 다운로드</string>
     <string name="retro_scr_consoles_downloading">다운로드 중… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">콘솔 코어</string>
+    <string name="retro_scr_consoles_install_selected">선택한 릴리스 설치</string>
     <string name="retro_scr_consoles_installed">설치됨 — 빌드 %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">설치됨 — 빌드 %1$s (업데이트 확인 실패)</string>
+    <string name="retro_scr_consoles_installed_pinned">설치됨 — 빌드 %1$s (고정된 릴리스)</string>
     <string name="retro_scr_consoles_installing">설치 중…</string>
     <string name="retro_scr_consoles_missing">설치되지 않음 — 다운로드하면 레트로 게임을 즐길 수 있습니다</string>
+    <string name="retro_scr_consoles_reinstall">선택한 릴리스 다시 설치</string>
+    <string name="retro_scr_consoles_release">릴리스</string>
+    <string name="retro_scr_consoles_release_latest">최신</string>
+    <string name="retro_scr_consoles_releases_failed">릴리스(목록을 가져올 수 없음)</string>
+    <string name="retro_scr_consoles_releases_loading">릴리스(불러오는 중…)</string>
+    <string name="retro_scr_consoles_selected_available">선택됨 — 빌드 %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">상태</string>
     <string name="retro_scr_consoles_update">콘솔 코어 업데이트</string>
     <string name="retro_scr_consoles_update_available">업데이트 있음 — 빌드 %1$s (%2$d MB)</string>
@@ -2522,6 +2532,20 @@
     <string name="session_drawer_frame_generation_note">Lossless Scaling으로 렌더링된 프레임 사이를 보간합니다. 움직임은 부드러워지지만 입력 지연이 한 프레임 늘어납니다.</string>
     <string name="session_drawer_frame_generation_target_note">고정 배수를 유지하는 대신, 측정 가능한 이득이 있을 때만 목표를 향해 올립니다.</string>
     <string name="session_drawer_frame_generation_missing">프레임 생성을 사용하려면 컨테이너 설정에서 Lossless Scaling을 설치하세요.</string>
+    <string name="session_drawer_dis_frame_generation">프레임 생성 (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_enable">프레임 생성 (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search로 렌더링된 프레임 사이를 보간합니다. 내장 기능이며 외부 셰이더가 필요 없습니다.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">이 기능을 사용하려면 DIS 프레임 생성을 끄세요.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">이 기능을 사용하려면 Lossless Scaling 프레임 생성을 끄세요.</string>
+    <string name="session_drawer_dis_resolution_scale">해상도 배율</string>
+    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
+    <string name="session_drawer_dis_preset_fast">빠름</string>
+    <string name="session_drawer_dis_preset_balance">균형</string>
+    <string name="session_drawer_dis_preset_quality">품질</string>
+    <string name="session_drawer_dis_resolution_scale_note">프레임의 짧은 변 %1$d픽셀에서 움직임을 분석합니다. 낮을수록 가볍고, 높을수록 작거나 빠른 디테일을 더 잘 추적합니다.</string>
+    <string name="session_drawer_dis_target_fps">목표 FPS</string>
+    <string name="session_drawer_dis_target_fps_max">최대 새로고침 빈도</string>
+    <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="frame_generation_preset">품질 프리셋</string>
     <string name="frame_generation_preset_ultra_performance">울트라 성능</string>
     <string name="frame_generation_preset_performance">성능</string>
@@ -2544,6 +2568,8 @@
     <string name="settings_frame_generation_updated">%1$s에서 업데이트했습니다.</string>
     <string name="settings_frame_generation_not_owned">프레임 생성은 Lossless Scaling의 셰이더를 사용합니다. 사용하려면 로그인한 계정으로 Steam에서 구매하세요.</string>
     <string name="settings_frame_generation_locate">Lossless.dll 선택…</string>
+    <string name="retro_gs_frame_generation_subtitle">Lossless Scaling으로 이 콘솔의 추가 프레임을 생성합니다.</string>
+    <string name="retro_gs_frame_generation_unsupported">이 GPU는 Lossless Scaling 셰이더에 필요한 Vulkan 기능을 제공하지 않습니다.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io 다운로드</string>
     <string name="itch_store_sign_in">itch.io에 로그인</string>

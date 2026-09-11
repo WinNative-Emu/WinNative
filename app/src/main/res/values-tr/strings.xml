@@ -404,6 +404,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Ekran Boyutu</string>
+    <string name="container_config_show_device_resolutions">Cihaz Çözünürlüklerini Göster</string>
+    <string name="container_config_show_device_resolutions_help">Her standart çözünürlüğü bu ekrana göre ölçekler, böylece hiçbir şey esnemez veya siyah bantlarla gösterilmez (%1$s).</string>
     <string name="container_config_new_env_var">Yeni Ortam Değişkeni</string>
     <string name="container_config_env_vars">Ortam Değişkenleri</string>
     <string name="container_config_processor_affinity">İşlemci Benzeşimi</string>
@@ -2500,10 +2502,18 @@ Yüklü konum:
     <string name="retro_scr_consoles_download">Konsol çekirdeklerini indir</string>
     <string name="retro_scr_consoles_downloading">İndiriliyor… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">Konsol Çekirdekleri</string>
+    <string name="retro_scr_consoles_install_selected">Seçili sürümü yükle</string>
     <string name="retro_scr_consoles_installed">Yüklü — sürüm %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">Yüklü — sürüm %1$s (güncelleme denetimi başarısız)</string>
+    <string name="retro_scr_consoles_installed_pinned">Yüklü — sürüm %1$s (sabitlenmiş sürüm)</string>
     <string name="retro_scr_consoles_installing">Yükleniyor…</string>
     <string name="retro_scr_consoles_missing">Yüklü değil — retro oyunları oynamak için indirin</string>
+    <string name="retro_scr_consoles_reinstall">Seçili sürümü yeniden yükle</string>
+    <string name="retro_scr_consoles_release">Sürüm</string>
+    <string name="retro_scr_consoles_release_latest">En son</string>
+    <string name="retro_scr_consoles_releases_failed">Sürüm (liste kullanılamıyor)</string>
+    <string name="retro_scr_consoles_releases_loading">Sürüm (yükleniyor…)</string>
+    <string name="retro_scr_consoles_selected_available">Seçildi — sürüm %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">Durum</string>
     <string name="retro_scr_consoles_update">Konsol çekirdeklerini güncelle</string>
     <string name="retro_scr_consoles_update_available">Güncelleme mevcut — sürüm %1$s (%2$d MB)</string>
@@ -2520,6 +2530,20 @@ Yüklü konum:
     <string name="session_drawer_frame_generation_note">Lossless Scaling ile işlenmiş kareler arasında ara kare üretir. Daha akıcı hareket, ancak bir kare fazladan giriş gecikmesi.</string>
     <string name="session_drawer_frame_generation_target_note">Sabit bir çarpanı korumak yerine, yalnızca ölçülebilir fayda sağladığı sürece hedefe doğru yükselir.</string>
     <string name="session_drawer_frame_generation_missing">Kare üretimini kullanmak için kapsayıcı ayarlarından Lossless Scaling\'i yükleyin.</string>
+    <string name="session_drawer_dis_frame_generation">Kare Üretimi (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_enable">Kare Oluştur (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search ile işlenmiş kareler arasında ara kare oluşturur. Uygulamaya gömülü; harici shader gerekmez.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Bunu kullanmak için DIS kare üretimini kapatın.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Bunu kullanmak için Lossless Scaling kare üretimini kapatın.</string>
+    <string name="session_drawer_dis_resolution_scale">Çözünürlük Ölçeği</string>
+    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
+    <string name="session_drawer_dis_preset_fast">Hızlı</string>
+    <string name="session_drawer_dis_preset_balance">Dengeli</string>
+    <string name="session_drawer_dis_preset_quality">Kalite</string>
+    <string name="session_drawer_dis_resolution_scale_note">Hareket, karenin kısa kenarında %1$d piksel çözünürlükte analiz edilir. Düşük değer daha ucuzdur; yüksek değer küçük veya hızlı ayrıntıları daha iyi izler.</string>
+    <string name="session_drawer_dis_target_fps">Hedef FPS</string>
+    <string name="session_drawer_dis_target_fps_max">Maks. yenileme hızı</string>
+    <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="frame_generation_preset">Kalite ön ayarı</string>
     <string name="frame_generation_preset_ultra_performance">Ultra performans</string>
     <string name="frame_generation_preset_performance">Performans</string>
@@ -2542,6 +2566,8 @@ Yüklü konum:
     <string name="settings_frame_generation_updated">%1$s kaynağından güncellendi.</string>
     <string name="settings_frame_generation_not_owned">Kare üretimi Lossless Scaling gölgelendiricilerini kullanır. Bunu etkinleştirmek için oturum açmış hesapla Steam\'den satın alın.</string>
     <string name="settings_frame_generation_locate">Lossless.dll seç…</string>
+    <string name="retro_gs_frame_generation_subtitle">Bu konsol için Lossless Scaling ile ek kareler üretir.</string>
+    <string name="retro_gs_frame_generation_unsupported">Bu GPU, Lossless Scaling gölgelendiricilerinin gerektirdiği Vulkan özelliklerini sunmuyor.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io İndirmeleri</string>
     <string name="itch_store_sign_in">itch.io hesabına giriş yap</string>

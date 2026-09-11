@@ -404,6 +404,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">ขนาดหน้าจอ</string>
+    <string name="container_config_show_device_resolutions">แสดงความละเอียดของอุปกรณ์</string>
+    <string name="container_config_show_device_resolutions_help">ปรับความละเอียดมาตรฐานแต่ละค่าให้พอดีกับหน้าจอนี้ เพื่อไม่ให้ภาพยืดหรือมีแถบดำ (%1$s)</string>
     <string name="container_config_new_env_var">ตัวแปรสภาพแวดล้อมใหม่</string>
     <string name="container_config_env_vars">ตัวแปรสภาพแวดล้อม</string>
     <string name="container_config_processor_affinity">ความสัมพันธ์ของโปรเซสเซอร์</string>
@@ -2500,10 +2502,18 @@
     <string name="retro_scr_consoles_download">ดาวน์โหลดคอร์คอนโซล</string>
     <string name="retro_scr_consoles_downloading">กำลังดาวน์โหลด… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">คอร์คอนโซล</string>
+    <string name="retro_scr_consoles_install_selected">ติดตั้งรุ่นที่เลือก</string>
     <string name="retro_scr_consoles_installed">ติดตั้งแล้ว — บิลด์ %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">ติดตั้งแล้ว — บิลด์ %1$s (ตรวจหาการอัปเดตไม่สำเร็จ)</string>
+    <string name="retro_scr_consoles_installed_pinned">ติดตั้งแล้ว — บิลด์ %1$s (รุ่นที่ตรึงไว้)</string>
     <string name="retro_scr_consoles_installing">กำลังติดตั้ง…</string>
     <string name="retro_scr_consoles_missing">ยังไม่ได้ติดตั้ง — ดาวน์โหลดเพื่อเล่นเกมเรโทร</string>
+    <string name="retro_scr_consoles_reinstall">ติดตั้งรุ่นที่เลือกอีกครั้ง</string>
+    <string name="retro_scr_consoles_release">รุ่น</string>
+    <string name="retro_scr_consoles_release_latest">ล่าสุด</string>
+    <string name="retro_scr_consoles_releases_failed">รุ่น (ไม่สามารถโหลดรายการได้)</string>
+    <string name="retro_scr_consoles_releases_loading">รุ่น (กำลังโหลด…)</string>
+    <string name="retro_scr_consoles_selected_available">เลือกไว้ — บิลด์ %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">สถานะ</string>
     <string name="retro_scr_consoles_update">อัปเดตคอร์คอนโซล</string>
     <string name="retro_scr_consoles_update_available">มีการอัปเดต — บิลด์ %1$s (%2$d MB)</string>
@@ -2520,6 +2530,20 @@
     <string name="session_drawer_frame_generation_note">แทรกเฟรมระหว่างเฟรมที่เรนเดอร์ด้วย Lossless Scaling การเคลื่อนไหวลื่นขึ้น แต่มีความหน่วงของอินพุตเพิ่มขึ้นหนึ่งเฟรม</string>
     <string name="session_drawer_frame_generation_target_note">จะไต่ขึ้นสู่เป้าหมายเฉพาะเมื่อวัดผลได้ว่าช่วยจริง แทนที่จะคงตัวคูณไว้คงที่</string>
     <string name="session_drawer_frame_generation_missing">ติดตั้ง Lossless Scaling ในการตั้งค่าคอนเทนเนอร์เพื่อใช้การสร้างเฟรม</string>
+    <string name="session_drawer_dis_frame_generation">การสร้างเฟรม (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_enable">สร้างเฟรม (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_note">แทรกเฟรมระหว่างเฟรมที่เรนเดอร์ด้วย Dense Inverse Search มีในตัว ไม่ต้องใช้เชเดอร์ภายนอก</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">ปิดการสร้างเฟรม DIS เพื่อใช้ตัวเลือกนี้</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">ปิดการสร้างเฟรม Lossless Scaling เพื่อใช้ตัวเลือกนี้</string>
+    <string name="session_drawer_dis_resolution_scale">สเกลความละเอียด</string>
+    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
+    <string name="session_drawer_dis_preset_fast">เร็ว</string>
+    <string name="session_drawer_dis_preset_balance">สมดุล</string>
+    <string name="session_drawer_dis_preset_quality">คุณภาพ</string>
+    <string name="session_drawer_dis_resolution_scale_note">วิเคราะห์การเคลื่อนไหวที่ %1$d พิกเซลบนด้านสั้นของเฟรม ค่าต่ำใช้ทรัพยากรน้อยกว่า ค่าสูงติดตามรายละเอียดเล็กหรือเร็วได้ดีกว่า</string>
+    <string name="session_drawer_dis_target_fps">FPS เป้าหมาย</string>
+    <string name="session_drawer_dis_target_fps_max">อัตรารีเฟรชสูงสุด</string>
+    <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="frame_generation_preset">ค่าที่ตั้งไว้ของคุณภาพ</string>
     <string name="frame_generation_preset_ultra_performance">ประสิทธิภาพสูงสุด</string>
     <string name="frame_generation_preset_performance">ประสิทธิภาพ</string>
@@ -2542,6 +2566,8 @@
     <string name="settings_frame_generation_updated">อัปเดตจาก %1$s แล้ว</string>
     <string name="settings_frame_generation_not_owned">การสร้างเฟรมใช้เชเดอร์จาก Lossless Scaling ซื้อบน Steam ด้วยบัญชีที่ลงชื่อเข้าใช้อยู่เพื่อเปิดใช้งาน</string>
     <string name="settings_frame_generation_locate">เลือก Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">สร้างเฟรมเพิ่มเติมสำหรับเครื่องเล่นนี้ด้วย Lossless Scaling</string>
+    <string name="retro_gs_frame_generation_unsupported">GPU นี้ไม่รองรับความสามารถ Vulkan ที่เชดเดอร์ของ Lossless Scaling ต้องใช้</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">การดาวน์โหลด itch.io</string>
     <string name="itch_store_sign_in">ลงชื่อเข้าใช้ itch.io</string>

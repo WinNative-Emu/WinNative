@@ -404,6 +404,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">Tamanho do ecrã</string>
+    <string name="container_config_show_device_resolutions">Mostrar resoluções do dispositivo</string>
+    <string name="container_config_show_device_resolutions_help">Ajusta cada resolução padrão a este ecrã para que nada fique esticado ou com barras pretas (%1$s).</string>
     <string name="container_config_new_env_var">Nova variável de ambiente</string>
     <string name="container_config_env_vars">Variáveis de ambiente</string>
     <string name="container_config_processor_affinity">Afinidade do processador</string>
@@ -2500,10 +2502,18 @@ Caminho instalado:
     <string name="retro_scr_consoles_download">Transferir núcleos de consola</string>
     <string name="retro_scr_consoles_downloading">A transferir… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">Núcleos de Consola</string>
+    <string name="retro_scr_consoles_install_selected">Instalar a versão selecionada</string>
     <string name="retro_scr_consoles_installed">Instalado — compilação %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">Instalado — compilação %1$s (falha ao procurar atualizações)</string>
+    <string name="retro_scr_consoles_installed_pinned">Instalado — compilação %1$s (versão fixada)</string>
     <string name="retro_scr_consoles_installing">A instalar…</string>
     <string name="retro_scr_consoles_missing">Não instalado — transfira para jogar jogos retro</string>
+    <string name="retro_scr_consoles_reinstall">Reinstalar a versão selecionada</string>
+    <string name="retro_scr_consoles_release">Versão</string>
+    <string name="retro_scr_consoles_release_latest">Mais recente</string>
+    <string name="retro_scr_consoles_releases_failed">Versão (lista indisponível)</string>
+    <string name="retro_scr_consoles_releases_loading">Versão (a carregar…)</string>
+    <string name="retro_scr_consoles_selected_available">Selecionada — compilação %1$s (%2$d MB)</string>
     <string name="retro_scr_consoles_state">Estado</string>
     <string name="retro_scr_consoles_update">Atualizar núcleos de consola</string>
     <string name="retro_scr_consoles_update_available">Atualização disponível — compilação %1$s (%2$d MB)</string>
@@ -2520,6 +2530,20 @@ Caminho instalado:
     <string name="session_drawer_frame_generation_note">Interpola entre fotogramas renderizados com o Lossless Scaling. Movimento mais suave, mas um fotograma extra de latência de entrada.</string>
     <string name="session_drawer_frame_generation_target_note">Sobe em direção ao alvo apenas enquanto ajudar de forma mensurável, em vez de manter um multiplicador fixo.</string>
     <string name="session_drawer_frame_generation_missing">Instale o Lossless Scaling nas definições do contentor para usar a geração de fotogramas.</string>
+    <string name="session_drawer_dis_frame_generation">Geração de fotogramas (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_enable">Gerar fotogramas (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_note">Interpola entre fotogramas renderizados com Dense Inverse Search. Integrado; sem shaders externos.</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">Desative a geração de fotogramas DIS para usar esta opção.</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Desative a geração de fotogramas do Lossless Scaling para usar esta opção.</string>
+    <string name="session_drawer_dis_resolution_scale">Escala de resolução</string>
+    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
+    <string name="session_drawer_dis_preset_fast">Rápido</string>
+    <string name="session_drawer_dis_preset_balance">Equilibrado</string>
+    <string name="session_drawer_dis_preset_quality">Qualidade</string>
+    <string name="session_drawer_dis_resolution_scale_note">O movimento é analisado a %1$d píxeis no lado mais curto do fotograma. Menor é mais barato; maior acompanha melhor os detalhes pequenos ou rápidos.</string>
+    <string name="session_drawer_dis_target_fps">FPS alvo</string>
+    <string name="session_drawer_dis_target_fps_max">Frequência máx.</string>
+    <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="frame_generation_preset">Predefinição de qualidade</string>
     <string name="frame_generation_preset_ultra_performance">Ultra desempenho</string>
     <string name="frame_generation_preset_performance">Desempenho</string>
@@ -2542,6 +2566,8 @@ Caminho instalado:
     <string name="settings_frame_generation_updated">Atualizado de %1$s.</string>
     <string name="settings_frame_generation_not_owned">A geração de fotogramas usa shaders do Lossless Scaling. Compre-o no Steam com a conta com sessão iniciada para ativar isto.</string>
     <string name="settings_frame_generation_locate">Selecionar Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">Interpola fotogramas extra para esta consola com o Lossless Scaling.</string>
+    <string name="retro_gs_frame_generation_unsupported">Esta GPU não expõe as funcionalidades Vulkan de que os shaders do Lossless Scaling precisam.</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">Transferências itch.io</string>
     <string name="itch_store_sign_in">Iniciar sessão no itch.io</string>

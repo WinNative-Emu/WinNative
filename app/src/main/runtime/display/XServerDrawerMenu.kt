@@ -574,6 +574,13 @@ internal val FrameGenMultipliers = listOf(2, 3, 4)
 internal val FrameGenTargetRates = listOf(60, 90, 120, 144, 165)
 internal const val FrameGenFlowScaleMin = 25
 internal const val FrameGenFlowScaleMax = 100
+internal val DisFrameGenTargetRates = listOf(60, 90, 120, 144, 165)
+// Bounds for the DIS flow resolution, which is the frame's shorter side in
+// pixels rather than a percentage. Left at 25..100 they clamped every preset the
+// chips send - 180, 252, 360 - down to 100 on its way into the drawer state, so
+// the highlight never moved and the buttons looked inert.
+internal const val DisFrameGenScaleMin = 64
+internal const val DisFrameGenScaleMax = 1080
 
 data class XServerDrawerItem(
     val itemId: Int,
@@ -625,6 +632,10 @@ data class XServerDrawerState(
     val frameGenMultiplier: Int = 2,
     val frameGenTargetRate: Int = 0,
     val frameGenFlowScale: Int = 70,
+    val disFrameGenEnabled: Boolean = false,
+    val disFrameGenScale: Int = 180,
+    val disFrameGenTargetFps: Int = 0,
+    val disFrameGenDebugFlow: Boolean = false,
     val screenEffectsCardExpanded: Boolean = false,
     val sgsrEnabled: Boolean = false,
     val sgsrSharpness: Int = 100,
@@ -656,6 +667,7 @@ data class XServerDrawerState(
     val inputControlsAccentThemeNames: List<String> = emptyList(),
     val inputControlsSelectedAccentThemeIndex: Int = 0,
     val inputControlsShowOverlay: Boolean = false,
+    val inputControlsAdaptiveJoysticks: Boolean = false,
     val inputControlsTapToClick: Boolean = true,
     val inputControlsOverlayOpacity: Float = 0.4f,
     val inputControlsTouchscreenHaptics: Boolean = false,
@@ -1040,6 +1052,14 @@ interface XServerDrawerActionListener {
 
     fun onFrameGenFlowScaleChanged(percent: Int)
 
+    fun onDisFrameGenEnabledChanged(enabled: Boolean)
+
+    fun onDisFrameGenScaleChanged(percent: Int)
+
+    fun onDisFrameGenTargetFpsSelected(rate: Int)
+
+    fun onDisDebugFlowChanged(enabled: Boolean)
+
     fun onScreenEffectsCardExpandedChanged(expanded: Boolean)
 
     fun onOutputResolutionSelected(index: Int)
@@ -1123,6 +1143,8 @@ interface XServerDrawerActionListener {
     fun onInputControlsAccentThemeSelected(index: Int)
 
     fun onInputControlsShowOverlayChanged(enabled: Boolean)
+
+    fun onInputControlsAdaptiveJoysticksChanged(enabled: Boolean)
 
     fun onInputControlsTapToClickChanged(enabled: Boolean)
 
@@ -1233,6 +1255,7 @@ fun buildXServerDrawerState(
     inputControlsAccentThemeNames: List<String> = emptyList(),
     inputControlsSelectedAccentThemeIndex: Int = 0,
     inputControlsShowOverlay: Boolean = false,
+    inputControlsAdaptiveJoysticks: Boolean = false,
     inputControlsTapToClick: Boolean = true,
     inputControlsOverlayOpacity: Float = 0.4f,
     inputControlsTouchscreenHaptics: Boolean = false,
@@ -1438,6 +1461,7 @@ fun buildXServerDrawerState(
         inputControlsAccentThemeNames = inputControlsAccentThemeNames,
         inputControlsSelectedAccentThemeIndex = inputControlsSelectedAccentThemeIndex,
         inputControlsShowOverlay = inputControlsShowOverlay,
+        inputControlsAdaptiveJoysticks = inputControlsAdaptiveJoysticks,
         inputControlsTapToClick = inputControlsTapToClick,
         inputControlsOverlayOpacity = inputControlsOverlayOpacity,
         inputControlsTouchscreenHaptics = inputControlsTouchscreenHaptics,
@@ -1511,6 +1535,36 @@ fun withFrameGenState(
         frameGenMultiplier = multiplier.coerceIn(2, FrameGenMultipliers.last()),
         frameGenTargetRate = targetRate.coerceAtLeast(0),
         frameGenFlowScale = flowScale.coerceIn(FrameGenFlowScaleMin, FrameGenFlowScaleMax),
+    )
+
+// Append DIS frame-generation state and mark the frame-gen rail item active when DIS is on.
+fun withDisFrameGenState(
+    state: XServerDrawerState,
+    enabled: Boolean,
+    scale: Int,
+    targetFps: Int,
+    debugFlow: Boolean,
+): XServerDrawerState =
+    state.copy(
+        disFrameGenEnabled = enabled,
+        // Last line of defence for the exclusivity rule. This runs after
+        // withFrameGenState, so it is the one place that sees both flags, and it
+        // resolves a conflict the same way the renderer does: nativeSetDis...
+        // Enabled(true) tears LSFG down, so DIS wins. Without this the drawer can
+        // be handed two enabled engines by stale container extras and show two lit
+        // switches for a state the compositor cannot actually be in.
+        frameGenEnabled = state.frameGenEnabled && !enabled,
+        disFrameGenScale = scale.coerceIn(DisFrameGenScaleMin, DisFrameGenScaleMax),
+        disFrameGenTargetFps = targetFps.coerceAtLeast(0),
+        disFrameGenDebugFlow = debugFlow,
+        items =
+            state.items.map { item ->
+                if (item.itemId == R.id.main_menu_frame_generation) {
+                    item.copy(active = item.active || enabled)
+                } else {
+                    item
+                }
+            },
     )
 
 // Append the always-present "Output" tab item and its state to the drawer state.

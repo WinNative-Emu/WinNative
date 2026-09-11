@@ -37,6 +37,7 @@ import com.winlator.cmod.feature.library.GameSettingsStateHolder
 import com.winlator.cmod.feature.library.WinComponentItem
 import com.winlator.cmod.feature.library.parseEnvVarItems
 import com.winlator.cmod.runtime.audio.directaudio.DirectAudioDriver
+import com.winlator.cmod.shared.android.DeviceResolutions
 import com.winlator.cmod.runtime.compat.box64.Box64Preset
 import com.winlator.cmod.runtime.compat.box64.Box64PresetManager
 import com.winlator.cmod.runtime.container.Container
@@ -59,6 +60,7 @@ import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.util.KeyValueSet
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import com.winlator.cmod.shared.util.StringUtils
+import com.winlator.cmod.runtime.input.ui.InputControlsView
 import com.winlator.cmod.runtime.wine.WineInfo
 import com.winlator.cmod.runtime.wine.WineRegistryEditor
 import com.winlator.cmod.runtime.wine.WineThemeManager
@@ -437,6 +439,8 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             state.enableXInput.value = true
             state.enableDInput.value = true
         }
+        state.adaptiveJoysticks.value =
+            c?.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") == "1"
 
         state.fullscreenStretched.value = c?.isFullscreenStretched() ?: false
         state.useUnixLibs.value = c?.isUseUnixLibs() ?: true
@@ -522,7 +526,14 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         val c = container
 
         val screenSizeArr = context.resources.getStringArray(R.array.screen_size_entries).toList()
+        state.standardScreenSizeEntries.value = screenSizeArr
+        state.deviceScreenSizeEntries.value =
+            DeviceResolutions.screenSizeEntries(activity, screenSizeArr.firstOrNull() ?: "Custom")
+        state.devicePanelSummary.value = DeviceResolutions.panelSummary(activity)
         state.screenSizeEntries.value = screenSizeArr
+        state.applyScreenSizeEntries(
+            DeviceResolutions.isEnabled(c?.getExtra(DeviceResolutions.EXTRA_ENABLED))
+        )
         selectScreenSize(c?.getScreenSize() ?: Container.DEFAULT_SCREEN_SIZE)
 
         try {
@@ -591,13 +602,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             c?.getExtra(com.winlator.cmod.runtime.reshade.ReshadeConfigWriter.EXTRA_EFFECT, null),
         )
 
-        val audioDriverArr = audioDriverEntriesFor(c?.getWineVersion())
+        val containerAudioDriver = c?.getAudioDriver() ?: Container.DEFAULT_AUDIO_DRIVER
+        val audioDriverArr = audioDriverEntriesFor(c?.getWineVersion(), containerAudioDriver)
         state.audioDriverEntries.value = audioDriverArr
-        selectByIdentifier(
-            audioDriverArr,
-            c?.getAudioDriver() ?: Container.DEFAULT_AUDIO_DRIVER,
-            state.selectedAudioDriver
-        )
+        selectByIdentifier(audioDriverArr, containerAudioDriver, state.selectedAudioDriver)
         state.directAudioMic.value = DirectAudioDriver.isMicEnabled(
             c?.getExtra(DirectAudioDriver.EXTRA_MIC)
         )
@@ -863,6 +871,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             c.setDXWrapper(dxwrapper)
             c.setDXWrapperConfig(dxwrapperConfig)
             c.putExtra("swapRB", if (state.selectedSurfaceEffect.intValue == 1) "1" else "0")
+            c.putExtra(
+                DeviceResolutions.EXTRA_ENABLED,
+                DeviceResolutions.extraValue(state.showDeviceResolutions.value)
+            )
             c.putExtra("refreshRate", getRefreshRateFromState())
             writeFrameGenExtras(c)
             writeNetworkingExtras(c)
@@ -882,6 +894,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             }
             c.setAudioDriver(audioDriver)
             c.putExtra(DirectAudioDriver.EXTRA_MIC, if (state.directAudioMic.value) "1" else "0")
+            c.putExtra(
+                InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                if (state.adaptiveJoysticks.value) "1" else "0"
+            )
             c.setEmulator(emulator)
             c.setEmulator64(emulator64)
             c.setWinComponents(wincomponents)
@@ -956,10 +972,18 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
                             "swapRB",
                             if (state.selectedSurfaceEffect.intValue == 1) "1" else "0"
                         )
+                        newContainer.putExtra(
+                            DeviceResolutions.EXTRA_ENABLED,
+                            DeviceResolutions.extraValue(state.showDeviceResolutions.value)
+                        )
                         getRefreshRateFromState()?.let { newContainer.putExtra("refreshRate", it) }
                         newContainer.putExtra(
                             DirectAudioDriver.EXTRA_MIC,
                             if (state.directAudioMic.value) "1" else "0"
+                        )
+                        newContainer.putExtra(
+                            InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                            if (state.adaptiveJoysticks.value) "1" else "0"
                         )
                         writeFrameGenExtras(newContainer)
                         writeNetworkingExtras(newContainer)
@@ -1005,6 +1029,11 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
 
     private fun writeFrameGenExtras(c: Container) {
         c.putExtra("frameGen", if (state.frameGenEnabled.value) "1" else "0")
+        // The compositor drives one interpolator per frame. This dialog only
+        // exposes the Lossless Scaling engine, so turning it on here has to clear
+        // DIS - otherwise the container keeps both flags set, the session picks
+        // DIS on load, and the switch the user just flipped appears to do nothing.
+        if (state.frameGenEnabled.value) c.putExtra("disFrameGen", "0")
         c.putExtra("frameGenMultiplier", state.frameGenMultiplier.intValue.coerceIn(2, 4).toString())
         c.putExtra("frameGenTargetRate", state.frameGenTargetRate.intValue.coerceAtLeast(0).toString())
         c.putExtra("frameGenFlowScale", state.frameGenFlowScale.intValue.coerceIn(25, 100).toString())
@@ -1157,17 +1186,19 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         }
     }
 
-    private fun audioDriverEntriesFor(wineVersion: String?): List<String> {
+    private fun audioDriverEntriesFor(wineVersion: String?, selected: String): List<String> {
         val all = context.resources.getStringArray(R.array.audio_driver_entries).toList()
         if (wineVersion == null || DirectAudioDriver.isSupportedFor(wineVersion)) return all
+        if (DirectAudioDriver.isSelected(selected)) return all
         return all.filter { !it.equals("DirectAudio", true) }
     }
 
     private fun rebuildAudioDriverList(wineVersion: String?) {
         val current = state.audioDriverEntries.value.getOrNull(state.selectedAudioDriver.intValue)
-        val entries = audioDriverEntriesFor(wineVersion)
+            ?.let { StringUtils.parseIdentifier(it) } ?: Container.DEFAULT_AUDIO_DRIVER
+        val entries = audioDriverEntriesFor(wineVersion, current)
         state.audioDriverEntries.value = entries
-        selectByIdentifier(entries, current ?: Container.DEFAULT_AUDIO_DRIVER, state.selectedAudioDriver)
+        selectByIdentifier(entries, current, state.selectedAudioDriver)
     }
 
     private fun rebuildEmulatorLists() {

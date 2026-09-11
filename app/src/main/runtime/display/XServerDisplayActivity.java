@@ -421,7 +421,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private final java.util.concurrent.atomic.AtomicBoolean wnLauncherDrivesDismiss =
             new java.util.concurrent.atomic.AtomicBoolean(false);
     private Runnable configChangedCallback = null;
-    private boolean isPaused = false;
+    private volatile boolean isPaused = false;
     private boolean reusingSession = false;
     private boolean isRelativeMouseMovement = false;
     private boolean isRefactorSizeEnabled = false;
@@ -467,6 +467,17 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private int frameGenFlowScale = 70;
     private String frameGenCachePath = null;
     private float frameGenRefreshRate = 0f;
+    private boolean disFrameGenEnabled = false;
+    // Optical-flow processing resolution for DIS, as the length of the frame's
+    // SHORTER side in pixels. On a 720-tall frame the three presets are the old
+    // 25% / 35% / 50%, but stated this way the pyramid costs the same on any
+    // container resolution instead of ballooning on tall ones.
+    private static final int[] DIS_FLOW_MIN_SIDES = {180, 252, 360};
+    private static final int DIS_FRAME_GEN_SCALE_DEFAULT = 180;
+
+    private int disFrameGenScale = DIS_FRAME_GEN_SCALE_DEFAULT;
+    private int disFrameGenTargetFps = 0;
+    private boolean disFrameGenDebugFlow = false;
     private boolean sgsrEnabled = false;
     private boolean sgsrRuntimeEnabled = false;
     private int sgsrUpscaleMode = 1;
@@ -751,6 +762,30 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return shortcut != null ? shortcut.getSettingExtra(key, containerValue) : containerValue;
     }
 
+    private String containerAdaptiveJoysticks() {
+        return container != null ? container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") : "0";
+    }
+
+    private boolean isAdaptiveJoysticksEnabled() {
+        return "1".equals(getShortcutSetting(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, containerAdaptiveJoysticks()));
+    }
+
+    private void saveAdaptiveJoysticks(boolean enabled) {
+        String value = enabled ? "1" : "0";
+        if (shortcut != null) {
+            if (value.equals(containerAdaptiveJoysticks())) {
+                shortcut.putExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, null);
+            } else {
+                shortcut.putExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, value);
+                shortcut.putExtra("use_container_defaults", "0");
+            }
+            shortcut.saveData();
+        } else if (container != null) {
+            container.putExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, value);
+            container.saveData();
+        }
+    }
+
     private String getFrameGenSetting(String key, String containerValue) {
         if (shortcut == null) return containerValue;
         return shortcut.getSettingExtra(key, containerValue);
@@ -829,8 +864,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void syncFrameGenerationHud() {
-        boolean active = frameGenEnabled && frameGenCachePath != null;
-        FrameRating.OutputFrameSource source = frameGenEnabled ? frameGenOutputSource : null;
+        boolean active = (frameGenEnabled && frameGenCachePath != null) || disFrameGenEnabled;
+        FrameRating.OutputFrameSource source =
+                (frameGenEnabled || disFrameGenEnabled) ? frameGenOutputSource : null;
         if (frameRating != null) {
             frameRating.setOutputFrameSource(source);
             frameRating.setFrameGenerationActive(active);
@@ -935,9 +971,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void applyFrameGenerationLive() {
-        applyFrameGeneration(xServerView != null ? xServerView.getRenderer() : null);
-        if (!frameGenEnabled || frameGenCachePath == null) applyPreferredRefreshRate();
+        VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
+        applyFrameGeneration(renderer);
+        applyDisFrameGeneration(renderer);
+        if ((!frameGenEnabled || frameGenCachePath == null) && !disFrameGenEnabled) {
+            applyPreferredRefreshRate();
+        }
         saveFrameGenerationSettings();
+        saveDisFrameGenerationSettings();
         renderDrawerMenu();
     }
 
@@ -959,6 +1000,136 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             container.putExtra("frameGenFlowScale", String.valueOf(frameGenFlowScale));
             container.saveData();
         }
+    }
+
+    private void applyDisFrameGenerationSettings(VulkanRenderer renderer, Container container) {
+        if (renderer == null) return;
+
+        String containerValue = container != null ? container.getExtra("disFrameGen", "0") : "0";
+        String scaleDefault = String.valueOf(DIS_FRAME_GEN_SCALE_DEFAULT);
+        String containerScale =
+                container != null ? container.getExtra("disFrameGenScale", scaleDefault) : scaleDefault;
+        String containerTarget = container != null ? container.getExtra("disFrameGenTargetFps", "0") : "0";
+
+        disFrameGenEnabled = "1".equals(getFrameGenSetting("disFrameGen", containerValue));
+        disFrameGenScale = clampDisFrameGenScale(
+                parseSettingInt(getFrameGenSetting("disFrameGenScale", containerScale),
+                        DIS_FRAME_GEN_SCALE_DEFAULT));
+        disFrameGenTargetFps = Math.max(0,
+                parseSettingInt(getFrameGenSetting("disFrameGenTargetFps", containerTarget), 0));
+
+        if (disFrameGenEnabled && frameGenEnabled) {
+            frameGenEnabled = false;
+            applyFrameGeneration(renderer);
+        }
+
+        applyDisFrameGeneration(renderer);
+    }
+
+    private void applyDisFrameGeneration(VulkanRenderer renderer) {
+        if (renderer == null) return;
+
+        if (!disFrameGenEnabled) {
+            renderer.setDisFrameGenerationEnabled(false);
+            syncFrameGenerationHud();
+            return;
+        }
+
+        float refreshRate = applyDisFrameGenerationDisplayMode();
+        renderer.setDisFrameGenerationScale(disFrameGenScale);
+        renderer.setDisFrameGenerationTargetFps(disFrameGenTargetFps);
+        renderer.setDisDebugFlow(disFrameGenDebugFlow);
+        renderer.setFrameGenerationRefreshRate(refreshRate);
+        renderer.setDisFrameGenerationEnabled(true);
+        syncFrameGenerationHud();
+        Log.i("XServerDisplayActivity", "DIS frame generation on: scale=" + disFrameGenScale
+                + " targetFps=" + disFrameGenTargetFps + " refreshRate=" + refreshRate);
+    }
+
+    private void saveDisFrameGenerationSettings() {
+        if (shortcut != null) {
+            boolean overridden = saveFrameGenOverride("disFrameGen", disFrameGenEnabled ? "1" : "0", "0");
+            overridden |= saveFrameGenOverride("disFrameGenScale",
+                    String.valueOf(disFrameGenScale), String.valueOf(DIS_FRAME_GEN_SCALE_DEFAULT));
+            overridden |= saveFrameGenOverride("disFrameGenTargetFps", String.valueOf(disFrameGenTargetFps), "0");
+            if (overridden) shortcut.putExtra("use_container_defaults", "0");
+            shortcut.saveData();
+        } else if (container != null) {
+            container.putExtra("disFrameGen", disFrameGenEnabled ? "1" : "0");
+            container.putExtra("disFrameGenScale", String.valueOf(disFrameGenScale));
+            container.putExtra("disFrameGenTargetFps", String.valueOf(disFrameGenTargetFps));
+            container.saveData();
+        }
+    }
+
+    private float applyDisFrameGenerationDisplayMode() {
+        android.view.Window window = getWindow();
+        if (window == null) return 0f;
+
+        android.view.WindowManager.LayoutParams params = window.getAttributes();
+        if (!disFrameGenEnabled) {
+            if (params.preferredDisplayModeId != 0) {
+                params.preferredDisplayModeId = 0;
+                window.setAttributes(params);
+            }
+            return 0f;
+        }
+
+        android.view.Display display = getDisplayCompat();
+        if (display == null) return 0f;
+
+        android.view.Display.Mode active = display.getMode();
+        int wanted = disFrameGenTargetFps > 0 ? disFrameGenTargetFps : Integer.MAX_VALUE;
+
+        android.view.Display.Mode best = null;
+        for (android.view.Display.Mode mode : display.getSupportedModes()) {
+            if (mode.getPhysicalWidth() != active.getPhysicalWidth()
+                    || mode.getPhysicalHeight() != active.getPhysicalHeight()) {
+                continue;
+            }
+            if (best == null || betterDisFrameGenMode(mode, best, wanted)) best = mode;
+        }
+        if (best == null) return active.getRefreshRate();
+        if (best.getModeId() == params.preferredDisplayModeId && params.preferredRefreshRate == 0f) {
+            return best.getRefreshRate();
+        }
+
+        params.preferredDisplayModeId = best.getModeId();
+        params.preferredRefreshRate = 0f;
+        window.setAttributes(params);
+        Log.i("XServerDisplayActivity", "DIS frame generation display mode: wanted "
+                + (wanted == Integer.MAX_VALUE ? "highest" : wanted + "Hz")
+                + ", selected " + Math.round(best.getRefreshRate()) + "Hz (mode "
+                + best.getModeId() + ")");
+        return best.getRefreshRate();
+    }
+
+    private static boolean betterDisFrameGenMode(android.view.Display.Mode candidate,
+                                                 android.view.Display.Mode current, int wanted) {
+        float a = candidate.getRefreshRate();
+        float b = current.getRefreshRate();
+        boolean aMeets = a + 0.5f >= wanted;
+        boolean bMeets = b + 0.5f >= wanted;
+        if (aMeets != bMeets) return aMeets;
+        if (!aMeets) return a > b;
+        return a < b;
+    }
+
+    private static int clampDisFrameGenScale(int value) {
+        // Anything at or below 100 was written by the old percentage setting; read
+        // it as a fraction of a 720-tall frame so existing containers migrate to
+        // the nearest preset instead of collapsing to a 25-pixel pyramid.
+        int minSide = (value > 0 && value <= 100) ? value * 720 / 100 : value;
+        int best = DIS_FRAME_GEN_SCALE_DEFAULT;
+        int bestDelta = Integer.MAX_VALUE;
+        for (int candidate : DIS_FLOW_MIN_SIDES) {
+            int delta = Math.abs(candidate - minSide);
+            if (delta < bestDelta) {
+                bestDelta = delta;
+                best = candidate;
+            }
+        }
+        return best;
     }
 
     private static int clampFrameGenMultiplier(int value) {
@@ -1238,7 +1409,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void syncFrameGenerationRefreshRate() {
-        if (!frameGenEnabled || frameGenCachePath == null) return;
+        boolean lsfg = frameGenEnabled && frameGenCachePath != null;
+        if (!lsfg && !disFrameGenEnabled) return;
 
         android.view.Display display = getDisplayCompat();
         if (display == null) return;
@@ -1308,7 +1480,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         com.winlator.cmod.runtime.display.xserver.XKeycode kc;
         try {
             kc = com.winlator.cmod.runtime.display.xserver.XKeycode
-                    .valueOf("KEY_" + key.toUpperCase());
+                    .valueOf("KEY_" + key.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             Log.w("XServerDisplayActivity", "DEBUG_INJECT_KEY: unknown key " + key);
             return;
@@ -1730,6 +1902,15 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             com.winlator.cmod.feature.retro.RetroShortcuts.launch(this, shortcut);
             finish();
             return;
+        }
+
+        // When a game starts, sync the per-game setting into the global PrefManager so that
+        // background services (like SteamService) use the correct value for the current session.
+        if (shortcut != null) {
+            String steamLauncherExtra = shortcut.getExtra("steamLauncher");
+            if (!steamLauncherExtra.isEmpty()) {
+                com.winlator.cmod.feature.stores.steam.utils.PrefManager.INSTANCE.setWnPlanW(steamLauncherExtra.equals("1"));
+            }
         }
 
         loadScreenEffectsSettings();
@@ -4804,6 +4985,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 accentThemeNames,
                 selectedAccentThemeIndex,
                 preferences.getBoolean("show_touchscreen_controls_enabled", false),
+                isAdaptiveJoysticksEnabled(),
                 isTapToClickEnabled,
                 preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY),
                 preferences.getBoolean("touchscreen_haptics_enabled", false),
@@ -4840,6 +5022,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 frameGenTargetRate,
                 frameGenFlowScale,
                 getString(R.string.session_drawer_frame_generation));
+
+        state = XServerDrawerMenuKt.withDisFrameGenState(
+                state,
+                disFrameGenEnabled,
+                disFrameGenScale,
+                disFrameGenTargetFps,
+                disFrameGenDebugFlow);
 
         // Always-present "Output" tab (live controls while swapped, otherwise a Cast entry point).
         if (externalDisplayController != null) {
@@ -5216,6 +5405,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     @Override
                     public void onFrameGenEnabledChanged(boolean enabled) {
                         if (enabled && frameGenCachePath == null) return;
+                        // One interpolator per frame: the other engine has to be
+                        // switched off deliberately, not silently under the user.
+                        if (enabled && disFrameGenEnabled) return;
                         frameGenEnabled = enabled;
                         applyFrameGenerationLive();
                     }
@@ -5236,6 +5428,37 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     public void onFrameGenFlowScaleChanged(int percent) {
                         frameGenFlowScale = clampFrameGenFlowScale(percent);
                         applyFrameGenerationLive();
+                    }
+
+                    @Override
+                    public void onDisFrameGenEnabledChanged(boolean enabled) {
+                        // The renderer drives one interpolator at a time, so the two
+                        // engines are mutually exclusive rather than fighting over
+                        // the composite chain.
+                        if (enabled && frameGenEnabled) return;
+                        disFrameGenEnabled = enabled;
+                        applyFrameGenerationLive();
+                    }
+
+                    @Override
+                    public void onDisFrameGenScaleChanged(int percent) {
+                        disFrameGenScale = clampDisFrameGenScale(percent);
+                        applyFrameGenerationLive();
+                    }
+
+                    @Override
+                    public void onDisFrameGenTargetFpsSelected(int rate) {
+                        disFrameGenTargetFps = Math.max(0, rate);
+                        applyFrameGenerationLive();
+                    }
+
+                    @Override
+                    public void onDisDebugFlowChanged(boolean enabled) {
+                        disFrameGenDebugFlow = enabled;
+                        if (xServerView != null && xServerView.getRenderer() != null) {
+                            xServerView.getRenderer().setDisDebugFlow(enabled);
+                        }
+                        renderDrawerMenu();
                     }
 
 
@@ -5517,7 +5740,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
                     @Override
                     public void onInputControlsShowOverlayChanged(boolean enabled) {
-                        preferences.edit().putBoolean("show_touchscreen_controls_enabled", enabled).commit();
+                        preferences.edit().putBoolean("show_touchscreen_controls_enabled", enabled).apply();
                         // Manual re-enable while a controller is connected wins over auto-hide.
                         if (enabled && isAnyGameControllerConnected()) {
                             userOverrodeAutoHide = true;
@@ -5528,29 +5751,36 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     }
 
                     @Override
+                    public void onInputControlsAdaptiveJoysticksChanged(boolean enabled) {
+                        saveAdaptiveJoysticks(enabled);
+                        if (inputControlsView != null) inputControlsView.setAdaptiveJoysticks(enabled);
+                        renderDrawerMenu();
+                    }
+
+                    @Override
                     public void onInputControlsTapToClickChanged(boolean enabled) {
                         isTapToClickEnabled = enabled;
                         if (touchpadView != null) touchpadView.setTapToClickEnabled(enabled);
-                        preferences.edit().putBoolean("tap_to_click_enabled", enabled).commit();
+                        preferences.edit().putBoolean("tap_to_click_enabled", enabled).apply();
                         renderDrawerMenu();
                     }
 
                     @Override
                     public void onInputControlsOverlayOpacityChanged(float opacity) {
                         if (inputControlsView != null) inputControlsView.setOverlayOpacity(opacity);
-                        preferences.edit().putFloat("overlay_opacity", opacity).commit();
+                        preferences.edit().putFloat("overlay_opacity", opacity).apply();
                         renderDrawerMenu();
                     }
 
                     @Override
                     public void onInputControlsTouchscreenHapticsChanged(boolean enabled) {
-                        preferences.edit().putBoolean("touchscreen_haptics_enabled", enabled).commit();
+                        preferences.edit().putBoolean("touchscreen_haptics_enabled", enabled).apply();
                         renderDrawerMenu();
                     }
 
                     @Override
                     public void onInputControlsGamepadVibrationChanged(boolean enabled) {
-                        preferences.edit().putBoolean(ControllerManager.PREF_VIBRATION_GLOBAL, enabled).commit();
+                        preferences.edit().putBoolean(ControllerManager.PREF_VIBRATION_GLOBAL, enabled).apply();
                         if (winHandler != null) winHandler.setGlobalVibrationEnabled(enabled);
                         renderDrawerMenu();
                     }
@@ -5579,14 +5809,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             .putString(
                                 com.winlator.cmod.runtime.input.rumble.GcmRumbleMode.PREF_KEY,
                                 gcmMode.toPrefValue())
-                            .commit();
+                            .apply();
                         if (winHandler != null) winHandler.setGcmRumbleMode(gcmMode);
                         renderDrawerMenu();
                     }
 
                     @Override
                     public void onInputControlsReverseBindingOrderChanged(boolean enabled) {
-                        preferences.edit().putBoolean("reverse_binding_order", enabled).commit();
+                        preferences.edit().putBoolean("reverse_binding_order", enabled).apply();
                         if (inputControlsView != null) inputControlsView.setReverseBindingOrder(enabled);
                         renderDrawerMenu();
                     }
@@ -7134,7 +7364,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         int inputType = container.getInputType();
         if (shortcut != null) {
-            String shortcutInputType = shortcut.getExtra("inputType");
+            String shortcutInputType = shortcut.getSettingExtra("inputType", "");
             if (!shortcutInputType.isEmpty()) {
                 inputType = Byte.parseByte(shortcutInputType);
             }
@@ -8083,6 +8313,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         renderer.setSwapRB("1".equals(getShortcutSetting("swapRB", containerSwapRB)));
 
         applyFrameGenerationSettings(renderer, container);
+        applyDisFrameGenerationSettings(renderer, container);
 
         if (shortcut != null || (bootExePath != null && !bootExePath.isEmpty())) {
             renderer.setUnviewableWMClasses("explorer.exe");
@@ -8119,6 +8350,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         inputControlsView.setReverseBindingOrder(preferences.getBoolean("reverse_binding_order", false));
         inputControlsView.setTouchpadView(touchpadView);
         inputControlsView.setXServer(xServer);
+        inputControlsView.setAdaptiveJoysticks(isAdaptiveJoysticksEnabled());
         applyTouchscreenOverlayPreference();
         applyInputVisualStylePreferences();
         inputControlsView.setVisibility(View.GONE);
@@ -8428,7 +8660,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (shortcut == null || container == null) return;
         String gamePath = shortcut.path;
         if (gamePath == null || gamePath.isEmpty()) return;
-        if (!gamePath.toLowerCase().endsWith(".exe")) return;
+        if (!gamePath.toLowerCase(Locale.ROOT).endsWith(".exe")) return;
 
         String localeName = LocaleEnv.toBcp47(lc_all);
         try {
@@ -9999,7 +10231,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             if (file.isDirectory() && !file.getName().equals("steam_settings")) {
                 generateSteamInterfacesForGame(file);
             } else if (file.isFile()) {
-                String name = file.getName().toLowerCase();
+                String name = file.getName().toLowerCase(Locale.ROOT);
                 if (name.equals("steam_api.dll") || name.equals("steam_api64.dll")) {
                     generateSteamInterfacesFromDll(file.getParentFile(), file);
                 }
@@ -10448,10 +10680,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 File[] rootFiles = gameDir.listFiles();
                 if (rootFiles != null) {
                     for (File f : rootFiles) {
-                        if (f.isFile() && f.getName().toLowerCase().endsWith(".exe")
-                                && !f.getName().toLowerCase().contains("crash")
-                                && !f.getName().toLowerCase().contains("unins")
-                                && !f.getName().toLowerCase().contains("redist")) {
+                        if (f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".exe")
+                                && !f.getName().toLowerCase(Locale.ROOT).contains("crash")
+                                && !f.getName().toLowerCase(Locale.ROOT).contains("unins")
+                                && !f.getName().toLowerCase(Locale.ROOT).contains("redist")) {
                             gameExe = f;
                             break;
                         }
@@ -10580,7 +10812,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             if (file.isDirectory()) {
                 if (!file.getName().equals("steam_settings") && hasSteamApiDllInTree(file)) return true;
             } else {
-                String name = file.getName().toLowerCase();
+                String name = file.getName().toLowerCase(Locale.ROOT);
                 if (name.equals("steam_api.dll") || name.equals("steam_api64.dll")) return true;
             }
         }
@@ -10611,7 +10843,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         boolean hasSteamDll = false;
         for (File file : files) {
             if (file.isDirectory()) continue;
-            String name = file.getName().toLowerCase();
+            String name = file.getName().toLowerCase(Locale.ROOT);
             if (!name.equals("steam_api.dll") && !name.equals("steam_api64.dll")) continue;
 
             hasSteamDll = true;
@@ -10690,7 +10922,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         boolean hasSteamDll = false;
         for (File file : files) {
             if (!file.isDirectory()) {
-                String name = file.getName().toLowerCase();
+                String name = file.getName().toLowerCase(Locale.ROOT);
                 if (name.equals("steam_api.dll") || name.equals("steam_api64.dll")) {
                     hasSteamDll = true;
                 }
@@ -10719,7 +10951,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 if (!file.getName().equals("steam_settings")) copySteamclientStubs(file);
                 continue;
             }
-            String name = file.getName().toLowerCase();
+            String name = file.getName().toLowerCase(Locale.ROOT);
             if (!name.equals("steam_api.dll") && !name.equals("steam_api64.dll")) continue;
 
             String stubAsset = name.equals("steam_api64.dll")
@@ -10754,7 +10986,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     restoreSteamApiDlls(file);
                 }
             } else {
-                String name = file.getName().toLowerCase();
+                String name = file.getName().toLowerCase(Locale.ROOT);
                 if (name.equals("steam_api.dll.orig") || name.equals("steam_api64.dll.orig")) {
                     try {
                         String originalName = file.getName().substring(0, file.getName().length() - ".orig".length());
@@ -11110,11 +11342,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     for (File versionDir : versions) {
                         if (!versionDir.isDirectory()) continue;
                         File[] exes = versionDir.listFiles((dir, name) ->
-                                name.toLowerCase().endsWith(".exe"));
+                                name.toLowerCase(Locale.ROOT).endsWith(".exe"));
                         if (exes == null || exes.length == 0) continue;
 
                         for (File exe : exes) {
-                            String exeName = exe.getName().toLowerCase();
+                            String exeName = exe.getName().toLowerCase(Locale.ROOT);
                             if (exeName.startsWith("unins") || exeName.equals("detect.exe")) continue;
 
                             String winPath = WineUtils.getWindowsPath(container, exe.getAbsolutePath());
@@ -11232,7 +11464,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             Log.d("XServerDisplayActivity", "Steamless CLI output: " + slOutput);
 
             boolean steamlessSuccess = slOutput != null
-                    && slOutput.toLowerCase().contains("successfully unpacked");
+                    && slOutput.toLowerCase(Locale.ROOT).contains("successfully unpacked");
 
             String unixPath = executablePath.replace('\\', '/');
             File exe = new File(gameInstallPath, unixPath);
@@ -11262,7 +11494,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             } else if (!steamlessSuccess && !unpackedExe.exists()) {
                 // Stop retrying only when Steamless confirms no unpacker applies.
                 boolean allUnpackersFailed = slOutput != null
-                        && slOutput.toLowerCase().contains("all unpackers failed");
+                        && slOutput.toLowerCase(Locale.ROOT).contains("all unpackers failed");
 
                 if (allUnpackersFailed) {
                     Log.w("XServerDisplayActivity",
@@ -12244,7 +12476,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             File[] steamChildren = steamDirSrc.listFiles();
             if (steamChildren != null) {
                 for (File child : steamChildren) {
-                    String name = child.getName().toLowerCase();
+                    String name = child.getName().toLowerCase(Locale.ROOT);
                     if (name.equals("dumps") || name.equals("steamapps") || name.equals("userdata")) continue;
 
                     File targetChild = new File(gameSteamDir, child.getName());
@@ -12543,7 +12775,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 if (isApp) score += 100000000;
                 if (isMapped) score += 10000000;
 
-                String rName = prop.toString().toLowerCase();
+                String rName = prop.toString().toLowerCase(Locale.ROOT);
                 if (rName.contains("vkd3d")) {
                     score += 6000000;
                 } else if (rName.contains("dxvk")) {
@@ -12609,7 +12841,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             if (w.id == xServer.windowManager.rootWindow.id) continue;
             if (!w.isApplicationWindow()) continue;
             String cls = w.getClassName();
-            if (cls == null || !cls.toLowerCase().contains("explorer")) return true;
+            if (cls == null || !cls.toLowerCase(Locale.ROOT).contains("explorer")) return true;
         }
         return false;
     }
@@ -12617,7 +12849,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     /** Engine label for the Mango HUD: renderer name plus the DXVK version when running DXVK. */
     private String mangoEngineLabel() {
         String name = lastRendererName != null ? lastRendererName : "Vulkan";
-        if (name.toLowerCase().contains("dxvk") && dxwrapperConfig != null) {
+        if (name.toLowerCase(Locale.ROOT).contains("dxvk") && dxwrapperConfig != null) {
             String version = dxwrapperConfig.get("version");
             if (version != null && !version.isEmpty()) return "DXVK " + version;
         }
@@ -12689,8 +12921,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 for (File f : children) {
                     if (f.isDirectory()) {
                         nextDirs.add(f);
-                    } else if (f.getName().toLowerCase().endsWith(".exe")) {
-                        String name = f.getName().toLowerCase();
+                    } else if (f.getName().toLowerCase(Locale.ROOT).endsWith(".exe")) {
+                        String name = f.getName().toLowerCase(Locale.ROOT);
                         boolean excluded = false;
                         for (String exclusion : exclusions) {
                             if (name.contains(exclusion)) {
@@ -12704,8 +12936,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             }
 
             for (File cand : candidates) {
-                if (cand.getName().toLowerCase().contains("64") || 
-                    (cand.getParentFile() != null && cand.getParentFile().getName().toLowerCase().contains("64"))) {
+                if (cand.getName().toLowerCase(Locale.ROOT).contains("64") || 
+                    (cand.getParentFile() != null && cand.getParentFile().getName().toLowerCase(Locale.ROOT).contains("64"))) {
                     return cand;
                 }
             }

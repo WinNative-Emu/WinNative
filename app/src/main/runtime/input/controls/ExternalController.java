@@ -498,7 +498,7 @@ public class ExternalController {
     }
     String name = device.getName();
     if (name != null) {
-      String lowerName = name.toLowerCase();
+      String lowerName = name.toLowerCase(Locale.ROOT);
       if (lowerName.contains("uinput-fpc") || lowerName.contains("goodix_fp") || lowerName.contains("uinput-")) {
         return false;
       }

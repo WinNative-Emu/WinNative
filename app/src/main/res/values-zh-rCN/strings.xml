@@ -344,6 +344,8 @@
 
     <!-- Container > Configuration -->
     <string name="container_config_screen_size">屏幕大小</string>
+    <string name="container_config_show_device_resolutions">显示设备分辨率</string>
+    <string name="container_config_show_device_resolutions_help">将每个标准分辨率缩放到此屏幕，避免画面被拉伸或出现黑边 (%1$s)。</string>
     <string name="container_config_new_env_var">新建环境变量</string>
     <string name="container_config_env_vars">环境变量</string>
     <string name="container_config_processor_affinity">处理器亲和性</string>
@@ -2501,10 +2503,18 @@
     <string name="retro_scr_consoles_download">下载主机核心</string>
     <string name="retro_scr_consoles_downloading">正在下载… %1$d / %2$d MB</string>
     <string name="retro_scr_consoles_group">主机核心</string>
+    <string name="retro_scr_consoles_install_selected">安装所选发行版</string>
     <string name="retro_scr_consoles_installed">已安装 — 版本 %1$s</string>
     <string name="retro_scr_consoles_installed_no_check">已安装 — 版本 %1$s（检查更新失败）</string>
+    <string name="retro_scr_consoles_installed_pinned">已安装 — 版本 %1$s（已固定发行版）</string>
     <string name="retro_scr_consoles_installing">正在安装…</string>
     <string name="retro_scr_consoles_missing">未安装 — 下载后即可畅玩复古游戏</string>
+    <string name="retro_scr_consoles_reinstall">重新安装所选发行版</string>
+    <string name="retro_scr_consoles_release">发行版</string>
+    <string name="retro_scr_consoles_release_latest">最新</string>
+    <string name="retro_scr_consoles_releases_failed">发行版（无法获取列表）</string>
+    <string name="retro_scr_consoles_releases_loading">发行版（加载中…）</string>
+    <string name="retro_scr_consoles_selected_available">已选择 — 版本 %1$s（%2$d MB）</string>
     <string name="retro_scr_consoles_state">状态</string>
     <string name="retro_scr_consoles_update">更新主机核心</string>
     <string name="retro_scr_consoles_update_available">有可用更新 — 版本 %1$s（%2$d MB）</string>
@@ -2521,6 +2531,20 @@
     <string name="session_drawer_frame_generation_note">使用 Lossless Scaling 在已渲染的帧之间插帧。画面更流畅，但输入延迟会增加一帧。</string>
     <string name="session_drawer_frame_generation_target_note">仅在能带来可测量的提升时才向目标提升，而不是保持固定倍数。</string>
     <string name="session_drawer_frame_generation_missing">请在容器设置中安装 Lossless Scaling 以使用帧生成。</string>
+    <string name="session_drawer_dis_frame_generation">帧生成 (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_enable">生成帧 (DIS)</string>
+    <string name="session_drawer_dis_frame_generation_note">使用 Dense Inverse Search 在渲染帧之间插帧。内置功能，无需外部着色器。</string>
+    <string name="session_drawer_frame_generation_blocked_by_dis">关闭 DIS 帧生成后才能使用此项。</string>
+    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">关闭 Lossless Scaling 帧生成后才能使用此项。</string>
+    <string name="session_drawer_dis_resolution_scale">分辨率缩放</string>
+    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
+    <string name="session_drawer_dis_preset_fast">快速</string>
+    <string name="session_drawer_dis_preset_balance">均衡</string>
+    <string name="session_drawer_dis_preset_quality">画质</string>
+    <string name="session_drawer_dis_resolution_scale_note">以画面短边 %1$d 像素分析运动。数值越低开销越小，越高越能跟踪细小或快速的细节。</string>
+    <string name="session_drawer_dis_target_fps">目标 FPS</string>
+    <string name="session_drawer_dis_target_fps_max">最高刷新率</string>
+    <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="frame_generation_preset">画质预设</string>
     <string name="frame_generation_preset_ultra_performance">极致性能</string>
     <string name="frame_generation_preset_performance">性能</string>
@@ -2543,6 +2567,8 @@
     <string name="settings_frame_generation_updated">已从 %1$s 更新。</string>
     <string name="settings_frame_generation_not_owned">帧生成使用 Lossless Scaling 的着色器。请使用当前登录的账号在 Steam 上购买以启用此功能。</string>
     <string name="settings_frame_generation_locate">选择 Lossless.dll…</string>
+    <string name="retro_gs_frame_generation_subtitle">使用 Lossless Scaling 为该主机插入额外帧。</string>
+    <string name="retro_gs_frame_generation_unsupported">此 GPU 不提供 Lossless Scaling 着色器所需的 Vulkan 功能。</string>
     <string name="itch_store_title">itch.io</string>
     <string name="itch_store_downloads">itch.io 下载</string>
     <string name="itch_store_sign_in">登录 itch.io</string>
