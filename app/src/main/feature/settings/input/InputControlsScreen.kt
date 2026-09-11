@@ -229,6 +229,7 @@ data class InputControllerCardState(
     val expanded: Boolean,
     val showBindings: Boolean,
     val bindings: List<InputControllerBindingState> = emptyList(),
+    val reportRealIdentity: Boolean = false,
 )
 
 data class InputControllerBindingState(
@@ -286,6 +287,7 @@ data class InputControlsScreenActions(
     val onExportProfile: () -> Unit,
     val onControllerExpandedToggle: (String) -> Unit,
     val onRemoveController: (String) -> Unit,
+    val onReportRealIdentityChanged: (String, Boolean) -> Unit,
     val onBindingTypeClick: (String, Int) -> Unit,
     val onBindingValueClick: (String, Int) -> Unit,
     val onRemoveBinding: (String, Int) -> Unit,
@@ -2684,6 +2686,53 @@ private fun ControllerCard(
                         contentDescription = stringResource(R.string.common_ui_remove),
                         tint = InputDanger,
                         onClick = { actions.onRemoveController(state.controllerId) },
+                    )
+                }
+            }
+
+            // Only offer this for a pad that is actually attached: the identity comes from the
+            // live InputDevice, so there is nothing to report for a remembered-but-absent pad.
+            if (state.connected) {
+                Spacer(Modifier.height(InputCompactGap))
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(InputFieldCorner))
+                            .background(InputSubcard)
+                            .border(1.dp, InputOutline, RoundedCornerShape(InputFieldCorner))
+                            .paneNavItem(
+                                cornerRadius = InputFieldCorner,
+                                onActivate = {
+                                    actions.onReportRealIdentityChanged(
+                                        state.controllerId,
+                                        !state.reportRealIdentity,
+                                    )
+                                },
+                                highlightColor = InputNavHighlight,
+                            ).padding(horizontal = 8.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.input_controls_report_real_identity_title),
+                            color = InputTextPrimary,
+                            fontSize = InputPrimaryTextSize,
+                        )
+                        Spacer(Modifier.height(1.dp))
+                        Text(
+                            text = stringResource(R.string.input_controls_report_real_identity_summary),
+                            color = InputTextSecondary,
+                            fontSize = InputSecondaryTextSize,
+                            lineHeight = 14.sp,
+                        )
+                    }
+                    Spacer(Modifier.width(InputCompactGap))
+                    AppSwitch(
+                        checked = state.reportRealIdentity,
+                        onCheckedChange = { enabled ->
+                            actions.onReportRealIdentityChanged(state.controllerId, enabled)
+                        },
                     )
                 }
             }

@@ -742,6 +742,10 @@
     <string name="input_controls_auto_hide_section">觸控螢幕控制</string>
     <string name="input_controls_auto_hide_on_controller_title">連接控制器時自動隱藏</string>
     <string name="input_controls_auto_hide_on_controller_summary">連接控制器時隱藏觸控螢幕控制</string>
+
+    <string name="input_controls_report_real_identity_title">使用真實身分</string>
+    <string name="input_controls_report_real_identity_summary">向遊戲傳送本裝置自身的名稱和 ID，而不是偽裝成 Xbox 360 控制器。</string>
+
     <string name="session_gyroscope_title">陀螺儀</string>
     <string name="session_gyroscope_calibrate">校準陀螺儀</string>
     <string name="session_gyroscope_enable_right_stick">啟用右搖桿陀螺儀動態感應</string>

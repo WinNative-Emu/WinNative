@@ -742,6 +742,10 @@ De ex. <b>META</b> pentru <i>tasta META</i>, \n
     <string name="input_controls_auto_hide_section">Comenzi tactile</string>
     <string name="input_controls_auto_hide_on_controller_title">Ascunde automat la controler</string>
     <string name="input_controls_auto_hide_on_controller_summary">Ascunde comenzile tactile când este conectat un controler</string>
+
+    <string name="input_controls_report_real_identity_title">Folosește identitatea reală</string>
+    <string name="input_controls_report_real_identity_summary">Trimite jocurilor numele și ID-urile proprii ale acestui dispozitiv în loc să simuleze un controler Xbox 360.</string>
+
     <string name="session_gyroscope_title">Giroscop</string>
     <string name="session_gyroscope_calibrate">Calibreaza giroscopul</string>
     <string name="session_gyroscope_enable_right_stick">Activeaza miscarea giroscopica pe stick-ul drept</string>

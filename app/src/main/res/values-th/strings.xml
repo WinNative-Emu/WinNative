@@ -1027,6 +1027,9 @@
     <string name="input_controls_auto_hide_on_controller_title">ซ่อนอัตโนมัติเมื่อมีคอนโทรลเลอร์</string>
     <string name="input_controls_auto_hide_on_controller_summary">ซ่อนปุ่มควบคุมบนหน้าจอสัมผัสเมื่อเชื่อมต่อคอนโทรลเลอร์</string>
 
+    <string name="input_controls_report_real_identity_title">ใช้ข้อมูลระบุตัวตนจริง</string>
+    <string name="input_controls_report_real_identity_summary">ส่งชื่อและ ID ของอุปกรณ์นี้ไปยังเกมแทนการปลอมเป็นคอนโทรลเลอร์ Xbox 360</string>
+
     <!-- Session > Gyroscope -->
     <string name="session_gyroscope_title">ไจโรสโคป</string>
     <string name="session_gyroscope_calibrate">ปรับเทียบไจโรสโคป</string>

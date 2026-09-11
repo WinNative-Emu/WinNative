@@ -20,6 +20,7 @@ import com.winlator.cmod.runtime.display.connector.UnixSocketConfig;
 import com.winlator.cmod.runtime.display.environment.EnvironmentComponent;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
 import com.winlator.cmod.runtime.input.controls.FakeInputWriter;
+import com.winlator.cmod.runtime.input.controls.GamepadIdentityStore;
 import com.winlator.cmod.runtime.system.GPUInformation;
 import com.winlator.cmod.runtime.system.ProcessHelper;
 import com.winlator.cmod.runtime.wine.EnvVars;
@@ -799,49 +800,9 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     if (!byIdDir.exists()) byIdDir.mkdirs();
 
     int numControllers = getConfiguredControllerCount();
+
     for (int slot = 0; slot < numControllers; slot++) {
-      int vendorId = 0x1234 + slot;
-      int productId = 0x5678 + slot;
-      int eventMinor = 64 + slot;
-      String name = "Generic HID Gamepad " + slot;
-      File udevData = new File(udevDataDir, "c13:" + eventMinor);
-      String vendor = String.format(java.util.Locale.US, "%04x", vendorId);
-      String product = String.format(java.util.Locale.US, "%04x", productId);
-      String symlink = "input/by-id/usb-WinNative_Generic_HID_Gamepad_" + slot + "-event-joystick";
-      String content =
-          "I:"
-              + slot
-              + "\n"
-              + "N:input/event"
-              + slot
-              + "\n"
-              + "S:"
-              + symlink
-              + "\n"
-              + "E:DEVNAME=/dev/input/event"
-              + slot
-              + "\n"
-              + "E:ID_INPUT=1\n"
-              + "E:ID_INPUT_JOYSTICK=1\n"
-              + "E:ID_BUS=usb\n"
-              + "E:ID_VENDOR=WinNative\n"
-              + "E:ID_VENDOR_ID="
-              + vendor
-              + "\n"
-              + "E:ID_MODEL=Generic_HID_Gamepad_"
-              + slot
-              + "\n"
-              + "E:ID_MODEL_ID="
-              + product
-              + "\n"
-              + "E:ID_SERIAL=WinNative_Generic_HID_Gamepad_"
-              + slot
-              + "\n"
-              + "E:NAME=\""
-              + name
-              + "\"\n"
-              + "E:TAGS=:uaccess:\n";
-      FileUtils.writeString(udevData, content);
+      GamepadIdentityStore.configureSlot(slot, udevDataDir);
 
       File eventNode = new File(devInputDir, "event" + slot);
       if (!eventNode.exists()) {

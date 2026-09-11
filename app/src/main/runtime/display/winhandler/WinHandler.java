@@ -23,6 +23,7 @@ import com.winlator.cmod.runtime.input.controls.Binding;
 import com.winlator.cmod.runtime.input.controls.ControlsProfile;
 import com.winlator.cmod.runtime.input.controls.ExternalController;
 import com.winlator.cmod.runtime.input.controls.FakeInputWriter;
+import com.winlator.cmod.runtime.input.controls.GamepadIdentityStore;
 import com.winlator.cmod.runtime.input.controls.GamepadState;
 import com.winlator.cmod.runtime.input.rumble.GamepadRumbleManager;
 import com.winlator.cmod.runtime.input.rumble.GcmRumbleMode;
@@ -61,10 +62,10 @@ public class WinHandler {
   public static final byte FLAG_DINPUT_MAPPER_STANDARD = 1;
   public static final byte FLAG_DINPUT_MAPPER_XINPUT = 2;
   public static final byte INPUT_TYPE_MIXED = 2;
+  public static final int MAX_CONTROLLERS = 4;
   private static final int GAMEPAD_SOURCE_NONE = 0;
   private static final int GAMEPAD_SOURCE_VIRTUAL = 1;
   private static final int GAMEPAD_SOURCE_CONTROLLER = 2;
-  private static final int MAX_CONTROLLERS = 4;
   private static final int OSC_DEVICE_ID = -1;
   private static final short SERVER_PORT = 7947;
   private static final long VIRTUAL_REBALANCE_AFTER_PHYSICAL_DISCONNECT_MS = 200;
@@ -208,6 +209,7 @@ public class WinHandler {
       }
     }
 
+    GamepadIdentityStore.configurePreAssignedControllers(this.controllers, this.deviceToSlot);
     Log.d("WinHandler", "Pre-assigned " + assignedCount + " controller(s) before Wine startup.");
     return assignedCount;
   }
@@ -886,6 +888,9 @@ public class WinHandler {
       this.deviceToDescriptor.put(deviceId, descriptor);
     }
     ensureWriterForSlot(slot);
+    // Republish even when the writer already existed: the slot may have just changed
+    // hands (virtual pad -> physical pad, or one pad for another).
+    GamepadIdentityStore.refreshSlot(slot, getController(deviceId));
   }
 
   private boolean moveVirtualGamepadToSlot(int targetSlot, boolean releaseVacatedSlot) {
@@ -1091,6 +1096,7 @@ public class WinHandler {
           this.writers[slot] = null;
         }
         this.usedSlots.remove(slot);
+        GamepadIdentityStore.refreshSlot(slot, null);
         Log.d("WinHandler", "Device " + deviceId + " disconnected. Slot " + slot + " released.");
       } else {
         Log.d(
@@ -1101,6 +1107,7 @@ public class WinHandler {
                 + slot
                 + " still used by sibling sub-device.");
       }
+
       this.controllers.remove(deviceId);
       if (deviceId != OSC_DEVICE_ID) {
         if (!slotStillInUse) {
@@ -1374,6 +1381,7 @@ public class WinHandler {
       }
     }
     FakeInputWriter.releaseAllRingSlots();
+    GamepadIdentityStore.reset();
     this.deviceToSlot.clear();
     this.descriptorToSlot.clear();
     this.deviceToDescriptor.clear();

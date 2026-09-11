@@ -742,6 +742,10 @@
     <string name="input_controls_auto_hide_section">触摸屏控制</string>
     <string name="input_controls_auto_hide_on_controller_title">连接手柄时自动隐藏</string>
     <string name="input_controls_auto_hide_on_controller_summary">连接手柄时隐藏触摸屏控制</string>
+
+    <string name="input_controls_report_real_identity_title">使用真实身份</string>
+    <string name="input_controls_report_real_identity_summary">向游戏发送本设备自身的名称和 ID，而不是伪装成 Xbox 360 手柄。</string>
+
     <string name="session_gyroscope_title">陀螺仪</string>
     <string name="session_gyroscope_calibrate">校准陀螺仪</string>
     <string name="session_gyroscope_enable_right_stick">启用右摇杆陀螺仪运动</string>

@@ -1027,6 +1027,9 @@ E.g. <b>META</b> for <i>META-näppäin</i>, \n
     <string name="input_controls_auto_hide_on_controller_title">Piilota automaattisesti ohjaimella</string>
     <string name="input_controls_auto_hide_on_controller_summary">Piilota kosketusnäytön ohjaimet, kun ohjain on liitetty</string>
 
+    <string name="input_controls_report_real_identity_title">Käytä todellista tunnistetta</string>
+    <string name="input_controls_report_real_identity_summary">Lähetä peleille tämän laitteen oma nimi ja tunnisteet sen sijaan, että se esiintyisi Xbox 360 -ohjaimena.</string>
+
     <!-- Session > Gyroscope -->
     <string name="session_gyroscope_title">Gyroskooppi</string>
     <string name="session_gyroscope_calibrate">Kalibroi gyroskooppi</string>

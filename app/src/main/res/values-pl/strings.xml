@@ -748,6 +748,10 @@ Np. <b>META</b> dla <i>klawisza META</i>, \n
     <string name="input_controls_auto_hide_section">Sterowanie dotykowe</string>
     <string name="input_controls_auto_hide_on_controller_title">Ukryj automatycznie przy kontrolerze</string>
     <string name="input_controls_auto_hide_on_controller_summary">Ukryj sterowanie dotykowe, gdy podłączony jest kontroler</string>
+
+    <string name="input_controls_report_real_identity_title">Użyj prawdziwej tożsamości</string>
+    <string name="input_controls_report_real_identity_summary">Przekazuj grom własną nazwę i identyfikatory tego urządzenia zamiast podszywać się pod kontroler Xbox 360.</string>
+
     <string name="session_gyroscope_title">Żyroskop</string>
     <string name="session_gyroscope_calibrate">Kalibruj żyroskop</string>
     <string name="session_gyroscope_enable_right_stick">Włącz ruch żyroskopowy prawej gałki</string>

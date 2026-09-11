@@ -854,6 +854,10 @@
     <string name="input_controls_auto_hide_section">टचस्क्रीन नियंत्रण</string>
     <string name="input_controls_auto_hide_on_controller_title">कंट्रोलर पर अपने आप छिपाएँ</string>
     <string name="input_controls_auto_hide_on_controller_summary">कंट्रोलर कनेक्ट होने पर टचस्क्रीन नियंत्रण छिपाएँ</string>
+
+    <string name="input_controls_report_real_identity_title">वास्तविक पहचान का उपयोग करें</string>
+    <string name="input_controls_report_real_identity_summary">Xbox 360 कंट्रोलर की नकल करने के बजाय इस डिवाइस का अपना नाम और आईडी गेम को भेजें।</string>
+
     <string name="session_gyroscope_title">जाइरोस्कोप</string>
     <string name="session_gyroscope_calibrate">जाइरोस्कोप कैलिब्रेट करें</string>
     <string name="session_gyroscope_enable_right_stick">राइट स्टिक जाइरोस्कोपिक मोशन सक्षम करें</string>

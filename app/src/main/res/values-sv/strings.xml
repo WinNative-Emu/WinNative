@@ -1027,6 +1027,9 @@ T.ex. <b>META</b> för <i>META-tangent</i>, \n
     <string name="input_controls_auto_hide_on_controller_title">Dölj automatiskt med handkontroll</string>
     <string name="input_controls_auto_hide_on_controller_summary">Dölj pekskärmskontroller när en handkontroll är ansluten</string>
 
+    <string name="input_controls_report_real_identity_title">Använd verklig identitet</string>
+    <string name="input_controls_report_real_identity_summary">Skicka den här enhetens eget namn och ID:n till spel i stället för att imitera en Xbox 360-handkontroll.</string>
+
     <!-- Session > Gyroscope -->
     <string name="session_gyroscope_title">Gyroskop</string>
     <string name="session_gyroscope_calibrate">Kalibrera gyroskop</string>

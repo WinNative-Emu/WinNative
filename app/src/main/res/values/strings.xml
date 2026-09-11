@@ -1196,6 +1196,9 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="input_controls_auto_hide_on_controller_title">Auto-hide on Controller</string>
     <string name="input_controls_auto_hide_on_controller_summary">Hide touchscreen controls when a controller is connected</string>
 
+    <string name="input_controls_report_real_identity_title">Use Real Identity</string>
+    <string name="input_controls_report_real_identity_summary">Send this device\'s own name and IDs to games instead of spoofing an Xbox 360 controller.</string>
+
     <!-- Session > Gyroscope -->
     <string name="session_gyroscope_title">Gyroscope</string>
     <string name="session_gyroscope_calibrate">Calibrate Gyroscope</string>

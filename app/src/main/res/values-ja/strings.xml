@@ -1027,6 +1027,9 @@
     <string name="input_controls_auto_hide_on_controller_title">コントローラー接続時に自動的に隠す</string>
     <string name="input_controls_auto_hide_on_controller_summary">コントローラーが接続されているときにタッチスクリーンコントロールを隠す</string>
 
+    <string name="input_controls_report_real_identity_title">実際のIDを使用</string>
+    <string name="input_controls_report_real_identity_summary">Xbox 360 コントローラーを偽装する代わりに、このデバイス本来の名前とIDをゲームに送信します。</string>
+
     <!-- Session > Gyroscope -->
     <string name="session_gyroscope_title">ジャイロスコープ</string>
     <string name="session_gyroscope_calibrate">ジャイロスコープをキャリブレーション</string>

@@ -742,6 +742,10 @@ Z. B. <b>META</b> für <i>Meta-Taste</i>, \n
     <string name="input_controls_auto_hide_section">Touchscreen-Steuerung</string>
     <string name="input_controls_auto_hide_on_controller_title">Bei Controller automatisch ausblenden</string>
     <string name="input_controls_auto_hide_on_controller_summary">Touchscreen-Steuerung ausblenden, wenn ein Controller verbunden ist</string>
+
+    <string name="input_controls_report_real_identity_title">Echte Identität verwenden</string>
+    <string name="input_controls_report_real_identity_summary">Den eigenen Namen und die IDs dieses Geräts an Spiele senden, anstatt einen Xbox 360-Controller zu simulieren.</string>
+
     <string name="session_gyroscope_title">Gyroskop</string>
     <string name="session_gyroscope_calibrate">Gyroskop kalibrieren</string>
     <string name="session_gyroscope_enable_right_stick">Gyroskopische Bewegung des rechten Sticks aktivieren</string>

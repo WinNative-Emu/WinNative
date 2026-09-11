@@ -1027,6 +1027,9 @@ Por ex. <b>META</b> para <i>tecla META</i>, \n
     <string name="input_controls_auto_hide_on_controller_title">Ocultar automaticamente com comando</string>
     <string name="input_controls_auto_hide_on_controller_summary">Ocultar os controlos de ecrã tátil quando um comando está ligado</string>
 
+    <string name="input_controls_report_real_identity_title">Usar identidade real</string>
+    <string name="input_controls_report_real_identity_summary">Enviar aos jogos o nome e os IDs próprios deste dispositivo em vez de simular um comando Xbox 360.</string>
+
     <!-- Session > Gyroscope -->
     <string name="session_gyroscope_title">Giroscópio</string>
     <string name="session_gyroscope_calibrate">Calibrar giroscópio</string>
