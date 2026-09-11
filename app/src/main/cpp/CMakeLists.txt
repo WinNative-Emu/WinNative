@@ -151,6 +151,7 @@ add_custom_target(winlator_shaders DEPENDS ${SHADER_HEADERS})
 
 add_library(winlator SHARED
         winlator/drawable.c
+        winlator/fex_stats.c
         winlator/native_content_io.cpp
         winlator/gpu_image.c
         winlator/ring_fence.c

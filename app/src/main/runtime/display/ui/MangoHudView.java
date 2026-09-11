@@ -19,6 +19,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.preference.PreferenceManager;
+import com.winlator.cmod.runtime.display.environment.ImageFs;
 import com.winlator.cmod.runtime.system.CPUStatus;
 import java.io.BufferedReader;
 import java.io.File;
@@ -69,7 +70,27 @@ public class MangoHudView extends View {
   public static final int EL_DURATION = 17;
   public static final int EL_CLOCK = 18;
   public static final int EL_THROTTLE = 19;
-  public static final int ELEMENT_COUNT = 20;
+  public static final int EL_FEX = 20;
+  public static final int EL_FEX_STATUS = 21;
+  public static final int EL_FEX_APP_TYPE = 22;
+  public static final int EL_FEX_HOT_THREADS = 23;
+  public static final int EL_FEX_JIT_LOAD = 24;
+  public static final int EL_FEX_SIGBUS = 25;
+  public static final int EL_FEX_SMC = 26;
+  public static final int EL_FEX_SOFTFLOAT = 27;
+  public static final int EL_FEX_CACHE_MISS = 28;
+  public static final int EL_FEX_DISK_CACHE = 29;
+  public static final int ELEMENT_COUNT = 30;
+  private static final int FEX_SUBELEMENTS_MASK =
+      (1 << EL_FEX_STATUS)
+          | (1 << EL_FEX_APP_TYPE)
+          | (1 << EL_FEX_HOT_THREADS)
+           | (1 << EL_FEX_JIT_LOAD)
+           | (1 << EL_FEX_SIGBUS)
+          | (1 << EL_FEX_SMC)
+          | (1 << EL_FEX_SOFTFLOAT)
+          | (1 << EL_FEX_CACHE_MISS)
+          | (1 << EL_FEX_DISK_CACHE);
   // Original ten elements plus both clock cells on; the rest opt-in.
   private static final int DEFAULT_ELEMENTS_MASK = 0xFFF;
 
@@ -175,6 +196,20 @@ public class MangoHudView extends View {
   private final StringBuilder sbRes = new StringBuilder(24);
   private final StringBuilder sbDuration = new StringBuilder(20);
   private final StringBuilder sbClock = new StringBuilder(8);
+  private final StringBuilder sbFexStatus = new StringBuilder(16);
+  private final StringBuilder sbFexType = new StringBuilder(12);
+  private final StringBuilder sbFexProc = new StringBuilder(20);
+  private final StringBuilder sbFexSigbus = new StringBuilder(24);
+  private final StringBuilder sbFexSmc = new StringBuilder(24);
+  private final StringBuilder sbFexSoftfloat = new StringBuilder(24);
+  private final StringBuilder sbFexCacheMiss = new StringBuilder(24);
+  private final StringBuilder sbFexDiskCacheHit = new StringBuilder(24);
+  private final StringBuilder sbFexDiskCacheMiss = new StringBuilder(24);
+  private final float[] fexJitLoad = new float[FexStats.LOAD_SAMPLES];
+  private final float[] fexGraphLines = new float[(FexStats.LOAD_SAMPLES - 1) * 4];
+  private final float[] fexThreadLoads;
+  private int fexThreadLoadCount;
+  private boolean fexPidFound;
   private final StringBuilder[] sbCorePct;
   private final StringBuilder[] sbCoreMhz;
   private final String[] coreLabels;
@@ -198,12 +233,14 @@ public class MangoHudView extends View {
   private final Paint smallPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
   private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
   private final Paint graphPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+  private final Paint histPaint = new Paint();
   private final float[] graphLines = new float[(GRAPH_SAMPLES - 1) * 4];
   private final float[] graphSnapshot = new float[GRAPH_SAMPLES];
 
   // ── stats thread state ──
   private volatile HandlerThread statsThread;
   private volatile Handler statsHandler;
+  private final FexStats fexStats;
   private final float[] lowsScratch = new float[LOWS_CAPACITY];
   private CPUStatus.AppCpuSample prevCpuSample;
   private boolean cpuWarmedUp;
@@ -233,6 +270,38 @@ public class MangoHudView extends View {
       handler.postDelayed(this, visible ? TICK_MS : HIDDEN_TICK_MS);
     }
   };
+  private final Runnable fexTickRunnable = new Runnable() {
+    @Override
+    public void run() {
+      Handler handler = statsHandler;
+      if (handler == null) return;
+      boolean active = getVisibility() == VISIBLE && hasFexElements(elements);
+      if (!active) {
+        handler.postDelayed(this, HIDDEN_TICK_MS);
+        return;
+      }
+      fexStats.update();
+      boolean relayout;
+      synchronized (uiLock) {
+        boolean found = fexStats.isPidFound();
+        relayout = found != fexPidFound;
+        fexPidFound = found;
+        System.arraycopy(fexStats.loadData, 0, fexJitLoad, 0, FexStats.LOAD_SAMPLES);
+        fexThreadLoadCount = Math.min(fexStats.threadLoadCount, fexThreadLoads.length);
+        System.arraycopy(fexStats.threadLoads, 0, fexThreadLoads, 0, fexThreadLoadCount);
+        if (relayout) computeLayoutLocked();
+      }
+      if (relayout) {
+        post(() -> {
+          requestLayout();
+          invalidate();
+        });
+      } else if (fexPidFound) {
+        postInvalidate();
+      }
+      handler.postDelayed(this, GRAPH_REDRAW_MS);
+    }
+  };
 
   public MangoHudView(Context context) {
     super(context);
@@ -245,6 +314,8 @@ public class MangoHudView extends View {
     this.sbCorePct = new StringBuilder[coreCount];
     this.sbCoreMhz = new StringBuilder[coreCount];
     this.coreLabels = new String[coreCount];
+    this.fexStats = new FexStats(ImageFs.find(context).getRootDir());
+    this.fexThreadLoads = new float[Math.max(1, Runtime.getRuntime().availableProcessors())];
     for (int i = 0; i < coreCount; i++) {
       sbCorePct[i] = new StringBuilder(8);
       sbCoreMhz[i] = new StringBuilder(8);
@@ -297,6 +368,20 @@ public class MangoHudView extends View {
     return out;
   }
 
+  /** Whether the FEX stats element is on; used to opt the guest into FEX_PROFILESTATS. */
+  public static boolean fexElementEnabled(SharedPreferences preferences) {
+    if (!preferences.getBoolean(PREF_ENABLED, false)) return false;
+    int mask = preferences.getInt(PREF_ELEMENTS, DEFAULT_ELEMENTS_MASK);
+    return (mask & FEX_SUBELEMENTS_MASK) != 0;
+  }
+
+  private static boolean hasFexElements(boolean[] elements) {
+    for (int i = EL_FEX_STATUS; i <= EL_FEX_DISK_CACHE; i++) {
+      if (elements[i]) return true;
+    }
+    return false;
+  }
+
   public static void saveElement(SharedPreferences preferences, int index, boolean enabled) {
     if (index < 0 || index >= ELEMENT_COUNT) return;
     int mask = preferences.getInt(PREF_ELEMENTS, DEFAULT_ELEMENTS_MASK);
@@ -340,7 +425,19 @@ public class MangoHudView extends View {
     if (index < 0 || index >= ELEMENT_COUNT) return;
     synchronized (uiLock) {
       elements[index] = enabled;
+      if (index >= EL_FEX_STATUS && index <= EL_FEX_DISK_CACHE && !hasFexElements(elements)) {
+        fexStats.close();
+        fexPidFound = false;
+      }
       computeLayoutLocked();
+    }
+    if (index >= EL_FEX_STATUS && index <= EL_FEX_DISK_CACHE && enabled) {
+      // Kick the 10 Hz sampler now instead of waiting out a hidden-interval delay.
+      Handler handler = statsHandler;
+      if (handler != null) {
+        handler.removeCallbacks(fexTickRunnable);
+        handler.post(fexTickRunnable);
+      }
     }
     post(() -> {
       requestLayout();
@@ -416,6 +513,8 @@ public class MangoHudView extends View {
       if (handler != null) {
         handler.removeCallbacks(tickRunnable);
         handler.post(tickRunnable);
+        handler.removeCallbacks(fexTickRunnable);
+        handler.post(fexTickRunnable);
       }
     } else {
       setVisibility(GONE);
@@ -534,6 +633,7 @@ public class MangoHudView extends View {
     statsThread.start();
     statsHandler = new Handler(statsThread.getLooper());
     statsHandler.post(tickRunnable);
+    statsHandler.post(fexTickRunnable);
   }
 
   private void stopStats() {
@@ -545,6 +645,7 @@ public class MangoHudView extends View {
     if (thread != null) {
       thread.quitSafely();
     }
+    fexStats.close();
     prevCpuSample = null;
     cpuWarmedUp = false;
   }
@@ -662,6 +763,31 @@ public class MangoHudView extends View {
       }
       if (elements[EL_CLOCK]) {
         formatClock(sbClock);
+      }
+      if (hasFexElements(elements)) {
+        // Text cells only; graphs and fexPidFound are refreshed by fexTickRunnable at 10 Hz.
+        if (elements[EL_FEX_STATUS]) {
+          sbFexStatus.setLength(0);
+          sbFexStatus.append(fexStats.status);
+        }
+        if (elements[EL_FEX_APP_TYPE]) {
+          sbFexType.setLength(0);
+          sbFexType.append(fexStats.appType());
+        }
+        sbFexProc.setLength(0);
+        if (fexStats.processName.isEmpty()) {
+          sbFexProc.append("pid ").append(fexStats.trackedPid);
+        } else {
+          sbFexProc.append(fexStats.processName);
+        }
+        if (elements[EL_FEX_SIGBUS]) formatFexCount(sbFexSigbus, fexStats.sigbusCounts);
+        if (elements[EL_FEX_SMC]) formatFexCount(sbFexSmc, fexStats.smcCounts);
+        if (elements[EL_FEX_SOFTFLOAT]) formatFexCount(sbFexSoftfloat, fexStats.softfloatCounts);
+        if (elements[EL_FEX_CACHE_MISS]) formatFexCount(sbFexCacheMiss, fexStats.cacheMissCounts);
+        if (elements[EL_FEX_DISK_CACHE]) {
+          formatFexCount(sbFexDiskCacheHit, fexStats.diskCacheHitCounts);
+          formatFexCount(sbFexDiskCacheMiss, fexStats.diskCacheMissCounts);
+        }
       }
       sbMinMax.setLength(0);
       sbMinMax.append("min:");
@@ -1129,6 +1255,11 @@ public class MangoHudView extends View {
     sb.append(value);
   }
 
+  private static void formatFexCount(StringBuilder sb, FexStats.EventCounts counts) {
+    sb.setLength(0);
+    sb.append(counts.count()).append(" - ").append(Math.round(counts.avg())).append(" avg/s");
+  }
+
   // ── layout & drawing ─────────────────────────────────────────────
 
   private void applyScaleLocked() {
@@ -1253,10 +1384,31 @@ public class MangoHudView extends View {
     }
     if (elements[EL_CLOCK]) smallRows++;
     if (elements[EL_THROTTLE] && throttleStatus > 0) smallRows++;
+    // FEX block: status row always; details + two graphs once a stats shm is found.
+    if (hasFexElements(elements)) {
+      if (elements[EL_FEX_STATUS]) {
+        smallRows++;
+        w = Math.max(w, smallCharW * 20); // "FEX" + status (incl. "version mismatch")
+      }
+      if (fexPidFound) {
+        if (elements[EL_FEX_APP_TYPE]) smallRows++;
+        smallRows++; // process name / pid
+        if (elements[EL_FEX_SIGBUS]) smallRows++;
+        if (elements[EL_FEX_SMC]) smallRows++;
+        if (elements[EL_FEX_SOFTFLOAT]) smallRows++;
+        if (elements[EL_FEX_CACHE_MISS]) smallRows++;
+        if (elements[EL_FEX_DISK_CACHE]) smallRows += 2;
+        w = Math.max(w, smallCharW * 29); // "SIGBUS 1234567890 - 1234 avg/s"
+      }
+    }
     w = Math.max(w, charW * 13f);
     float h = rows * rowH + smallRows * smallRowH;
     if (elements[EL_GRAPH]) {
       h += smallRowH + graphH + pad * 0.5f;
+    }
+    if (hasFexElements(elements) && fexPidFound) {
+      if (elements[EL_FEX_HOT_THREADS]) h += smallRowH + graphH + pad * 0.5f;
+      if (elements[EL_FEX_JIT_LOAD]) h += smallRowH + graphH + pad * 0.5f;
     }
     panelW = (int) Math.ceil(w + pad * 2);
     panelH = (int) Math.ceil(h + pad * 2);
@@ -1388,6 +1540,34 @@ public class MangoHudView extends View {
         drawOutlinedSmall(canvas, sbMinMax, 0, sbMinMax.length(), panelW - pad - mmW, sy, C_TEXT);
         y += smallRowH + pad * 0.5f;
         drawGraph(canvas, pad, y, panelW - pad * 2, graphH);
+        y += graphH;
+      }
+      if (hasFexElements(elements)) {
+        if (elements[EL_FEX_STATUS]) y = drawFexRow(canvas, "FEX", sbFexStatus, y);
+        if (fexPidFound) {
+          if (elements[EL_FEX_APP_TYPE]) y = drawFexRow(canvas, "TYPE", sbFexType, y);
+          y = drawFexRow(canvas, "PROC", sbFexProc, y);
+          if (elements[EL_FEX_SIGBUS]) y = drawFexRow(canvas, "SIGBUS", sbFexSigbus, y);
+          if (elements[EL_FEX_SMC]) y = drawFexRow(canvas, "SMC", sbFexSmc, y);
+          if (elements[EL_FEX_SOFTFLOAT]) y = drawFexRow(canvas, "SOFTFLOAT", sbFexSoftfloat, y);
+          if (elements[EL_FEX_CACHE_MISS]) y = drawFexRow(canvas, "CACHEMISS", sbFexCacheMiss, y);
+          if (elements[EL_FEX_DISK_CACHE]) {
+            y = drawFexRow(canvas, "DCHIT", sbFexDiskCacheHit, y);
+            y = drawFexRow(canvas, "DCMISS", sbFexDiskCacheMiss, y);
+          }
+          if (elements[EL_FEX_HOT_THREADS]) {
+            drawOutlinedSmall(
+                canvas, "FEX JIT top loaded threads", 0, 26, pad, y + smallBaseline, C_ENGINE);
+            y += smallRowH + pad * 0.5f;
+            drawFexHistogram(canvas, pad, y, panelW - pad * 2, graphH);
+            y += graphH;
+          }
+          if (elements[EL_FEX_JIT_LOAD]) {
+            drawOutlinedSmall(canvas, "FEX JIT Load", 0, 12, pad, y + smallBaseline, C_ENGINE);
+            y += smallRowH + pad * 0.5f;
+            drawFexJitGraph(canvas, pad, y, panelW - pad * 2, graphH);
+          }
+        }
       }
     }
   }
@@ -1486,6 +1666,67 @@ public class MangoHudView extends View {
     if (ms > GRAPH_CEIL_MS - 0.1f) ms = GRAPH_CEIL_MS - 0.1f;
     if (ms < 0f) ms = 0f;
     return top + height - (ms / GRAPH_CEIL_MS) * height;
+  }
+
+  /** FEX small-font row: accent label left, right-aligned white value. */
+  private float drawFexRow(Canvas canvas, String label, StringBuilder value, float rowTop) {
+    float y = rowTop + smallBaseline;
+    drawOutlinedSmall(canvas, label, 0, label.length(), pad, y, C_ENGINE);
+    float vw = value.length() * smallCharW;
+    drawOutlinedSmall(canvas, value, 0, value.length(), panelW - pad - vw, y, C_TEXT);
+    return rowTop + smallRowH;
+  }
+
+  /** Hot-threads histogram, 0-100% scale; one warning color for the whole plot. */
+  private void drawFexHistogram(Canvas canvas, float left, float top, float width, float height) {
+    int count = fexThreadLoadCount;
+    if (count <= 0) return;
+    int color = C_GRAPH;
+    for (int i = 0; i < count; i++) {
+      if (fexThreadLoads[i] >= 75f) {
+        color = 0xFFFF0000;
+        break;
+      }
+      if (fexThreadLoads[i] >= 50f) color = 0xFFFFFF00;
+    }
+    histPaint.setColor(color);
+    histPaint.setAlpha(textAlphaInt());
+    float slot = width / count;
+    float barW = slot >= 3f ? slot - 1f : slot;
+    for (int i = 0; i < count; i++) {
+      float frac = fexThreadLoads[i] / 100f;
+      if (frac > 1f) frac = 1f;
+      if (frac < 0f || Float.isNaN(frac)) frac = 0f;
+      float barLeft = left + i * slot;
+      canvas.drawRect(barLeft, top + height - frac * height, barLeft + barW, top + height, histPaint);
+    }
+  }
+
+  /** JIT load history, fixed 0-100% scale */
+  private void drawFexJitGraph(Canvas canvas, float left, float top, float width, float height) {
+    float stepX = width / (FexStats.LOAD_SAMPLES - 1);
+    int segments = 0;
+    float prevX = left;
+    float prevY = fexLoadY(fexJitLoad[0], top, height);
+    for (int i = 1; i < FexStats.LOAD_SAMPLES; i++) {
+      float cx = left + i * stepX;
+      float cy = fexLoadY(fexJitLoad[i], top, height);
+      int base = segments * 4;
+      fexGraphLines[base] = prevX;
+      fexGraphLines[base + 1] = prevY;
+      fexGraphLines[base + 2] = cx;
+      fexGraphLines[base + 3] = cy;
+      segments++;
+      prevX = cx;
+      prevY = cy;
+    }
+    canvas.drawLines(fexGraphLines, 0, segments * 4, graphPaint);
+  }
+
+  private static float fexLoadY(float pct, float top, float height) {
+    if (pct > 100f) pct = 100f;
+    if (pct < 0f || Float.isNaN(pct)) pct = 0f;
+    return top + height - (pct / 100f) * height;
   }
 
   // ── touch: drag to move, double-tap to cycle size ──
