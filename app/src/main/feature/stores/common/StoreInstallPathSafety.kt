@@ -3,6 +3,8 @@ package com.winlator.cmod.feature.stores.common
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.steam.utils.PrefManager
 import com.winlator.cmod.shared.android.StoragePathUtils
 import com.winlator.cmod.shared.io.FileUtils
@@ -18,6 +20,7 @@ object StoreInstallPathSafety {
         context: Context?,
         targetPath: String,
         protectedRoots: Collection<String> = emptyList(),
+        owner: InstallStore? = null,
     ): DeleteCheck {
         if (targetPath.isBlank()) {
             return DeleteCheck(false, "empty install path")
@@ -30,6 +33,11 @@ object StoreInstallPathSafety {
             return DeleteCheck(false, "target is a protected root: ${matchedRoot.path}")
         }
 
+        if (owner != null && InstallOwnership.isForeign(targetPath, owner)) {
+            val actual = InstallOwnership.ownerOf(targetPath)?.id.orEmpty()
+            return DeleteCheck(false, "install belongs to $actual, not ${owner.id}")
+        }
+
         return DeleteCheck(true)
     }
 
@@ -37,7 +45,8 @@ object StoreInstallPathSafety {
         context: Context?,
         targetPath: String,
         protectedRoots: Collection<String> = emptyList(),
-    ): Boolean = checkInstallDirDelete(context, targetPath, protectedRoots).allowed
+        owner: InstallStore? = null,
+    ): Boolean = checkInstallDirDelete(context, targetPath, protectedRoots, owner).allowed
 
     private fun buildProtectedRoots(
         context: Context?,

@@ -1,6 +1,8 @@
 package com.winlator.cmod.feature.stores.gog.service
 import android.content.Context
 import com.winlator.cmod.R
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.gog.api.DepotFile
 import com.winlator.cmod.feature.stores.gog.api.FileChunk
 import com.winlator.cmod.feature.stores.gog.api.GOGApiClient
@@ -657,6 +659,7 @@ class GOGDownloadManager
         ) {
             MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
             MarkerUtils.addMarker(installPath.absolutePath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            InstallOwnership.claim(installPath.absolutePath, InstallStore.GOG)
 
             downloadInfo.updateStatusMessage("Updating database")
             try {

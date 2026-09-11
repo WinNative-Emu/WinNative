@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -64,6 +65,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
@@ -131,6 +133,11 @@ private val LaunchTextPrimary = Color(0xFFF0F4FF)
 private val LaunchTextSecondary = Color(0xFF93A6BC)
 private val LaunchDanger = Color(0xFFFF6B6B)
 
+internal data class LaunchStoreOption(
+    val id: String,
+    val label: String,
+)
+
 @Composable
 internal fun LibraryGameLaunchScreen(
     appName: String,
@@ -182,6 +189,9 @@ internal fun LibraryGameLaunchScreen(
     selectedBranchId: String = "",
     isBranchSelectionEnabled: Boolean = true,
     onSelectBranch: (String) -> Unit = {},
+    storeOptions: List<LaunchStoreOption> = emptyList(),
+    selectedStoreId: String = "",
+    onSelectStore: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     var uninstallMenuOpen by remember { mutableStateOf(false) }
@@ -318,6 +328,9 @@ internal fun LibraryGameLaunchScreen(
             }
             SourceTag(
                 sourceLabel = sourceLabel,
+                storeOptions = storeOptions,
+                selectedStoreId = selectedStoreId,
+                onSelectStore = onSelectStore,
                 menuEnabled = steamMenuEnabled,
                 showVerifyFiles = showVerifyFiles,
                 showCheckForUpdate = showCheckForUpdate,
@@ -915,6 +928,9 @@ private fun SourceTag(
     showCheats: Boolean = false,
     cheatsEnabled: Boolean = true,
     areSteamActionsEnabled: Boolean = true,
+    storeOptions: List<LaunchStoreOption> = emptyList(),
+    selectedStoreId: String = "",
+    onSelectStore: (String) -> Unit = {},
     onVerifyFiles: () -> Unit = {},
     onCheckForUpdate: () -> Unit = {},
     onWorkshop: () -> Unit = {},
@@ -923,7 +939,8 @@ private fun SourceTag(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var anchorHeightPx by remember { mutableStateOf(0) }
-    val menuInteractive = menuEnabled || showAchievements || showCheats
+    val showStoreSwitch = storeOptions.size > 1
+    val menuInteractive = menuEnabled || showAchievements || showCheats || showStoreSwitch
     Box {
         Surface(
             color = Color.White.copy(alpha = 0.1f),
@@ -970,6 +987,26 @@ private fun SourceTag(
                 onDismissRequest = { menuOpen = false },
                 offset = IntOffset(0, anchorHeightPx + gapPx),
             ) {
+                if (showStoreSwitch) {
+                    LaunchSourceMenuHeader(stringResource(R.string.library_games_store_switch_label))
+                    storeOptions.forEach { option ->
+                        LaunchStoreMenuItem(
+                            label = option.label,
+                            selected = option.id == selectedStoreId,
+                        ) {
+                            menuOpen = false
+                            if (option.id != selectedStoreId) onSelectStore(option.id)
+                        }
+                    }
+                    if (menuEnabled || showAchievements || showCheats) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(Color.White.copy(alpha = 0.14f)),
+                        )
+                    }
+                }
                 if (menuEnabled && showVerifyFiles) {
                     LaunchSourceMenuItem(
                         icon = Icons.AutoMirrored.Outlined.FactCheck,
@@ -1180,9 +1217,50 @@ private fun LaunchSourceActionPopup(
                 tonalElevation = 0.dp,
                 shadowElevation = 16.dp,
             ) {
-                Column { content() }
+                Column(Modifier.width(IntrinsicSize.Max)) { content() }
             }
         }
+    }
+}
+
+@Composable
+private fun LaunchSourceMenuHeader(label: String) {
+    Text(
+        label.uppercase(),
+        color = LaunchTextSecondary,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 4.dp),
+    )
+}
+
+@Composable
+private fun LaunchStoreMenuItem(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val contentColor = if (selected) LaunchAccentGlow else Color.White
+    Row(
+        modifier =
+            Modifier
+                .clickable(onClick = onClick)
+                .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            if (selected) Icons.Outlined.CheckCircle else Icons.Outlined.Storefront,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            label,
+            color = contentColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 

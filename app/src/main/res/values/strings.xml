@@ -184,6 +184,8 @@
     <string name="library_games_shortcut_created">Shortcut created</string>
     <string name="library_games_failed_to_create_shortcut">Failed to create shortcut: %s</string>
     <string name="library_games_install_path">Install Path</string>
+    <string name="library_games_store_switch_label">Store</string>
+    <string name="library_games_store_switched">Now using %1$s for this game</string>
     <string name="library_games_not_enough_space">Need %1$s more space</string>
     <string name="library_games_download_slash_install">Download / Install</string>
     <string name="library_games_save_management">SAVE MANAGEMENT</string>

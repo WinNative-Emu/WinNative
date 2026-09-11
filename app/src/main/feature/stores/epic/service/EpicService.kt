@@ -10,6 +10,8 @@ import com.winlator.cmod.app.db.download.DownloadRecord
 import com.winlator.cmod.app.service.DownloadService
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutUtils
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.common.StoreArtworkCache
 import com.winlator.cmod.feature.stores.epic.data.EpicCredentials
 import com.winlator.cmod.feature.stores.epic.data.EpicGame
@@ -210,6 +212,7 @@ class EpicService : Service() {
                         context,
                         path,
                         protectedRoots = listOf(EpicConstants.defaultEpicGamesPath(context)),
+                        owner = InstallStore.EPIC,
                     )
                 if (!deleteCheck.allowed) {
                     Timber.tag("Epic").e("Safety Triggered: Refusing to delete install path '$path': ${deleteCheck.reason}")
@@ -353,6 +356,12 @@ class EpicService : Service() {
             val game = getEpicGameOf(appId) ?: return false
 
             if (game.isInstalled && game.installPath.isNotEmpty()) {
+                if (InstallOwnership.isForeign(game.installPath, InstallStore.EPIC)) {
+                    runBlocking(Dispatchers.IO) {
+                        getInstance()?.epicManager?.updateGame(game.copy(isInstalled = false, installPath = ""))
+                    }
+                    return false
+                }
                 return MarkerUtils.hasMarker(game.installPath, Marker.DOWNLOAD_COMPLETE_MARKER) &&
                     !MarkerUtils.hasMarker(game.installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
             }
@@ -363,6 +372,8 @@ class EpicService : Service() {
                         EpicConstants.getGameInstallPath(context, it)
                     }
                     ?: return false
+
+            if (InstallOwnership.isForeign(installPath, InstallStore.EPIC)) return false
 
             val isDownloadComplete = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
             val isDownloadInProgress = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
@@ -1238,6 +1249,7 @@ class EpicService : Service() {
                                     applicationContext,
                                     pathToDelete,
                                     protectedRoots = listOf(EpicConstants.defaultEpicGamesPath(applicationContext)),
+                                    owner = InstallStore.EPIC,
                                 )
                             if (deleteCheck.allowed) {
                                 MarkerUtils.removeMarker(pathToDelete, Marker.DOWNLOAD_IN_PROGRESS_MARKER)

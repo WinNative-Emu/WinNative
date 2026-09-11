@@ -162,6 +162,8 @@
     <string name="library_games_shortcut_created">शॉर्टकट बनाया गया</string>
     <string name="library_games_failed_to_create_shortcut">शॉर्टकट बनाने में विफल: %s</string>
     <string name="library_games_install_path">इंस्टॉल पथ</string>
+    <string name="library_games_store_switch_label">स्टोर</string>
+    <string name="library_games_store_switched">अब इस गेम के लिए %1$s का उपयोग हो रहा है</string>
     <string name="library_games_not_enough_space">%1$s अधिक स्थान की आवश्यकता है</string>
     <string name="library_games_download_slash_install">डाउनलोड / इंस्टॉल</string>
     <string name="library_games_save_management">सेव प्रबंधन</string>

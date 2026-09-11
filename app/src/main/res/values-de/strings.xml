@@ -164,6 +164,8 @@
     <string name="library_games_shortcut_created">Verknüpfung erstellt</string>
     <string name="library_games_failed_to_create_shortcut">Verknüpfung konnte nicht erstellt werden: %s</string>
     <string name="library_games_install_path">Installationspfad</string>
+    <string name="library_games_store_switch_label">Store</string>
+    <string name="library_games_store_switched">Für dieses Spiel wird jetzt %1$s verwendet</string>
     <string name="library_games_not_enough_space">Benötigt %1$s mehr Speicherplatz</string>
     <string name="library_games_download_slash_install">Herunterladen / Installieren</string>
     <string name="library_games_save_management">SPEICHERVERWALTUNG</string>

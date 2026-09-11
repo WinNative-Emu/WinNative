@@ -168,6 +168,8 @@
     <string name="library_games_shortcut_created">Skrót utworzony</string>
     <string name="library_games_failed_to_create_shortcut">Nie udało się utworzyć skrótu: %s</string>
     <string name="library_games_install_path">Ścieżka instalacji</string>
+    <string name="library_games_store_switch_label">Sklep</string>
+    <string name="library_games_store_switched">Ta gra korzysta teraz z %1$s</string>
     <string name="library_games_not_enough_space">Potrzeba jeszcze %1$s miejsca</string>
     <string name="library_games_download_slash_install">Pobierz / Zainstaluj</string>
     <string name="library_games_save_management">ZARZĄDZANIE ZAPISAMI</string>

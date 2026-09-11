@@ -164,6 +164,8 @@
     <string name="library_games_shortcut_created">Genvej oprettet</string>
     <string name="library_games_failed_to_create_shortcut">Kunne ikke oprette genvej: %s</string>
     <string name="library_games_install_path">Installationssti</string>
+    <string name="library_games_store_switch_label">Butik</string>
+    <string name="library_games_store_switched">Bruger nu %1$s til dette spil</string>
     <string name="library_games_not_enough_space">Kræver %1$s mere plads</string>
     <string name="library_games_download_slash_install">Download / Installer</string>
     <string name="library_games_save_management">GEMMEDATA HÅNDTERING</string>

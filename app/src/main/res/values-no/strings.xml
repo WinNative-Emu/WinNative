@@ -165,6 +165,8 @@
     <string name="library_games_shortcut_created">Snarvei opprettet</string>
     <string name="library_games_failed_to_create_shortcut">Kunne ikke opprette snarvei: %s</string>
     <string name="library_games_install_path">Installasjonssti</string>
+    <string name="library_games_store_switch_label">Butikk</string>
+    <string name="library_games_store_switched">Bruker nå %1$s for dette spillet</string>
     <string name="library_games_not_enough_space">Trenger %1$s mer plass</string>
     <string name="library_games_download_slash_install">Last ned / Installer</string>
     <string name="library_games_save_management">LAGRINGSBEHANDLING</string>

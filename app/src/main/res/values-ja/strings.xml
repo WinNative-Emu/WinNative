@@ -165,6 +165,8 @@
     <string name="library_games_shortcut_created">ショートカットを作成しました</string>
     <string name="library_games_failed_to_create_shortcut">ショートカットの作成に失敗しました: %s</string>
     <string name="library_games_install_path">インストールパス</string>
+    <string name="library_games_store_switch_label">ストア</string>
+    <string name="library_games_store_switched">このゲームは %1$s を使用します</string>
     <string name="library_games_not_enough_space">あと %1$s の空き容量が必要です</string>
     <string name="library_games_download_slash_install">ダウンロード / インストール</string>
     <string name="library_games_save_management">セーブ管理</string>

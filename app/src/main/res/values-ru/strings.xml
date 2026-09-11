@@ -167,6 +167,8 @@
     <string name="library_games_shortcut_created">Ярлык создан.</string>
     <string name="library_games_failed_to_create_shortcut">Не удалось создать ярлык: %s</string>
     <string name="library_games_install_path">Путь установки</string>
+    <string name="library_games_store_switch_label">Магазин</string>
+    <string name="library_games_store_switched">Теперь для этой игры используется %1$s</string>
     <string name="library_games_not_enough_space">Нужно еще %1$s места</string>
     <string name="library_games_download_slash_install">Скачать/Установить</string>
     <string name="library_games_save_management">УПРАВЛЕНИЕ СОХРАНЕНИЯМИ</string>

@@ -165,6 +165,8 @@
     <string name="library_games_shortcut_created">Acceso directo creado</string>
     <string name="library_games_failed_to_create_shortcut">No se pudo crear el acceso directo: %s</string>
     <string name="library_games_install_path">Ruta de instalación</string>
+    <string name="library_games_store_switch_label">Tienda</string>
+    <string name="library_games_store_switched">Ahora se usa %1$s para este juego</string>
     <string name="library_games_not_enough_space">Se necesita %1$s más de espacio</string>
     <string name="library_games_download_slash_install">Descargar / Instalar</string>
     <string name="library_games_save_management">GESTIÓN DE PARTIDAS GUARDADAS</string>

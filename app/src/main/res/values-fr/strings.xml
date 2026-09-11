@@ -164,6 +164,8 @@
     <string name="library_games_shortcut_created">Raccourci créé</string>
     <string name="library_games_failed_to_create_shortcut">Échec de la création du raccourci : %s</string>
     <string name="library_games_install_path">Chemin d\'installation</string>
+    <string name="library_games_store_switch_label">Boutique</string>
+    <string name="library_games_store_switched">Ce jeu utilise désormais %1$s</string>
     <string name="library_games_not_enough_space">Il faut %1$s d\'espace en plus</string>
     <string name="library_games_download_slash_install">Télécharger / Installer</string>
     <string name="library_games_save_management">GESTION DES SAUVEGARDES</string>

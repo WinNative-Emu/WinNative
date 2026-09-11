@@ -40,7 +40,7 @@ class LibraryGameLaunchBranchTagTest {
                 playCount = 0,
                 lastPlayedMillis = 0L,
                 installSizeText = "12.9 GB",
-                isCustom = false,
+                removalKeepsFiles = false,
                 hasPinnedShortcut = false,
                 steamMenuEnabled = true,
                 onBack = {},
