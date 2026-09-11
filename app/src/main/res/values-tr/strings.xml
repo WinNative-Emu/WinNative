@@ -338,8 +338,10 @@
     <string name="steam_section_real_client">WinNative Gerçek Steam İstemcisi</string>
     <string name="steam_section_emulator">Eski Steam Emülatörü</string>
     <string name="shortcuts_properties_use_steam_input">Steam Input\'u Kullan</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Oyunu Wine içindeki Steam Launcher üzerinden çalıştırır (önerilir). Diğer Steam başlatma modlarını devre dışı bırakır.</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam Çevrimdışı Modu</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Emüle edilen Steam istemcisinin çevrimdışı olarak görünmesini sağlar, böylece oyun çevrimiçi bağlantı denemez. Steam\'in ağ kontrolünde takılan oyunlar için kullanın.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Steam Cloud kullanmadan oynar; kayıtlar bu cihazda kalır ve oyun bağlantı olmadan da açılır. Steam Cloud\'a devam etmek için kapatın; yerel kayıt ile buluttaki kayıt farklıysa hangisini saklayacağınız sorulur.</string>
     <string name="shortcuts_properties_reset">Özellikleri Sıfırla</string>
     <string name="shortcuts_properties_updated_at">Kısayol %1$s Tarihinde Güncellendi</string>
     <string name="shortcuts_properties_properties_reset">Özellikler başarıyla sıfırlandı.</string>
@@ -624,7 +626,7 @@
     <string name="container_graphics_bcn_emulation_type">BCn Öykünme Türü</string>
     <string name="container_graphics_bcn_emulation_cache">BCn Öykünme Önbelleği</string>
     <string name="container_graphics_transcoder">BCn Kod Dönüştürücü</string>
-    <string name="container_graphics_quality">BCn Kalitesi</string>
+    <string name="container_graphics_astc_transcoding">ASTC Dönüştürme</string>
     <string name="shortcuts_graphics_sgsr_full_title">Snapdragon™ Game Super Resolution 1</string>
     <!-- Container > Presets -->
     <string name="container_presets_confirm_duplicate">Bu ön ayarı çoğaltmak istiyor musunuz?</string>

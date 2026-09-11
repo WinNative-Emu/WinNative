@@ -418,8 +418,10 @@
     <string name="steam_section_real_client">WinNative Real Steam Client</string>
     <string name="steam_section_emulator">Legacy Steam Emulator</string>
     <string name="shortcuts_properties_use_steam_input">Use Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Run the game through the in-Wine Steam Launcher (recommended). Disables other Steam launch modes.</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam Offline Mode</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Makes the emulated Steam client report as offline, so the game won\'t attempt online connections. Use for games that hang on Steam\'s network check.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Plays without touching Steam Cloud, so this game\'s saves stay on this device and it still starts with no connection. Turn it off to resume Steam Cloud; if the local and cloud saves differ you are asked which one to keep.</string>
     <string name="shortcuts_properties_reset">Reset Properties</string>
     <string name="shortcuts_properties_updated_at">Shortcut Updated at %1$s</string>
     <string name="shortcuts_properties_properties_reset">Properties reset successfully.</string>
@@ -742,7 +744,7 @@
     <string name="container_graphics_bcn_emulation_type">BCn Emulation Type</string>
     <string name="container_graphics_bcn_emulation_cache">BCn Emulation Cache</string>
     <string name="container_graphics_transcoder">BCn Transcoder</string>
-    <string name="container_graphics_quality">BCn Quality</string>
+    <string name="container_graphics_astc_transcoding">ASTC Transcoding</string>
     <string name="shortcuts_graphics_sgsr_full_title">Snapdragon™ Game Super Resolution 1</string>
     <!-- Container > Presets -->
     <string name="container_presets_confirm_duplicate">Do you want to duplicate this preset?</string>

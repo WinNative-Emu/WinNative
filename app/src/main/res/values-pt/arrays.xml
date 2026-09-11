@@ -5,4 +5,9 @@
         <item>Original</item>
         <item>Cor Sólida</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>Desligado</item>
+        <item>Fidelidade</item>
+        <item>Desempenho</item>
+    </string-array>
 </resources>

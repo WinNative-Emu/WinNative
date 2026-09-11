@@ -5,4 +5,9 @@
         <item>ต้นฉบับ</item>
         <item>สีล้วน</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>ปิด</item>
+        <item>คุณภาพ</item>
+        <item>ประสิทธิภาพ</item>
+    </string-array>
 </resources>

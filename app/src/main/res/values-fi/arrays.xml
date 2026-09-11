@@ -5,4 +5,9 @@
         <item>Alkuperäinen</item>
         <item>Yhtenäinen väri</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>Pois</item>
+        <item>Laatu</item>
+        <item>Suorituskyky</item>
+    </string-array>
 </resources>

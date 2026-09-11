@@ -338,8 +338,10 @@
     <string name="steam_section_real_client">ไคลเอนต์ Steam จริงของ WinNative</string>
     <string name="steam_section_emulator">ตัวจำลอง Steam แบบเก่า</string>
     <string name="shortcuts_properties_use_steam_input">ใช้ Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">เรียกใช้เกมผ่าน Steam Launcher ใน Wine (แนะนำ) ปิดโหมดเปิดเกม Steam แบบอื่น</string>
     <string name="shortcuts_properties_steam_offline_mode">โหมดออฟไลน์ Steam</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">ทำให้ไคลเอนต์ Steam ที่จำลองรายงานว่าออฟไลน์ เพื่อให้เกมไม่พยายามเชื่อมต่อออนไลน์ ใช้กับเกมที่ค้างเมื่อตรวจสอบเครือข่ายของ Steam</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">เล่นโดยไม่ใช้ Steam Cloud ไฟล์บันทึกจะอยู่ในเครื่องนี้ และเกมเปิดได้แม้ไม่มีการเชื่อมต่อ ปิดตัวเลือกนี้เพื่อกลับไปใช้ Steam Cloud หากไฟล์บันทึกในเครื่องกับบนคลาวด์ต่างกัน ระบบจะถามว่าคุณต้องการเก็บไฟล์ใด</string>
     <string name="shortcuts_properties_reset">รีเซ็ตคุณสมบัติ</string>
     <string name="shortcuts_properties_updated_at">อัปเดตทางลัดเมื่อ %1$s</string>
     <string name="shortcuts_properties_properties_reset">รีเซ็ตคุณสมบัติสำเร็จ</string>
@@ -624,7 +626,7 @@
     <string name="container_graphics_bcn_emulation_type">ประเภทการจำลอง BCn</string>
     <string name="container_graphics_bcn_emulation_cache">แคชการจำลอง BCn</string>
     <string name="container_graphics_transcoder">ตัวถอดรหัส BCn</string>
-    <string name="container_graphics_quality">คุณภาพ BCn</string>
+    <string name="container_graphics_astc_transcoding">การแปลงรหัส ASTC</string>
     <string name="shortcuts_graphics_sgsr_full_title">Snapdragon™ Game Super Resolution 1</string>
     <!-- Container > Presets -->
     <string name="container_presets_confirm_duplicate">คุณต้องการทำสำเนาพรีเซ็ตนี้หรือไม่?</string>

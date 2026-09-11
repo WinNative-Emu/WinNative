@@ -338,8 +338,10 @@
     <string name="steam_section_real_client">Cliente Steam real do WinNative</string>
     <string name="steam_section_emulator">Emulador Steam antigo</string>
     <string name="shortcuts_properties_use_steam_input">Utilizar Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Executa o jogo através do Steam Launcher integrado no Wine (recomendado). Desativa os outros modos de arranque do Steam.</string>
     <string name="shortcuts_properties_steam_offline_mode">Modo offline do Steam</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Faz com que o cliente Steam emulado se apresente como offline, para que o jogo não tente estabelecer ligações online. Utilize para jogos que ficam bloqueados na verificação de rede do Steam.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Joga sem usar a Steam Cloud, pelo que os saves ficam neste dispositivo e o jogo arranca mesmo sem ligação. Desative para retomar a Steam Cloud; se o save local e o da nuvem forem diferentes, ser-lhe-á perguntado qual manter.</string>
     <string name="shortcuts_properties_reset">Repor propriedades</string>
     <string name="shortcuts_properties_updated_at">Atalho atualizado às %1$s</string>
     <string name="shortcuts_properties_properties_reset">Propriedades repostas com êxito.</string>
@@ -624,7 +626,7 @@
     <string name="container_graphics_bcn_emulation_type">Tipo de Emulação BCn</string>
     <string name="container_graphics_bcn_emulation_cache">Cache de Emulação BCn</string>
     <string name="container_graphics_transcoder">Transcodificador BCn</string>
-    <string name="container_graphics_quality">Qualidade BCn</string>
+    <string name="container_graphics_astc_transcoding">Transcodificação ASTC</string>
     <string name="shortcuts_graphics_sgsr_full_title">Snapdragon™ Game Super Resolution 1</string>
     <!-- Container > Presets -->
     <string name="container_presets_confirm_duplicate">Pretende duplicar esta predefinição?</string>

@@ -304,6 +304,8 @@
     <string name="shortcuts_properties_exclusive_input">Entrada exclusiva</string>
     <string name="shortcuts_properties_custom_game_settings">Ajustes personalizados del juego</string>
     <string name="shortcuts_properties_use_steam_input">Usar entrada de Steam</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Ejecuta el juego a través del Steam Launcher integrado en Wine (recomendado). Desactiva los demás modos de inicio de Steam.</string>
     <string name="shortcuts_properties_steam_offline_mode">Modo sin conexión de Steam</string>
     <string name="shortcuts_properties_reset">Restablecer propiedades</string>
     <string name="shortcuts_properties_updated_at">Acceso directo actualizado a las %1$s</string>
@@ -528,7 +530,7 @@
     <string name="container_graphics_driver">Controlador gráfico</string>
     <string name="container_zink_mode">Modo Zink</string>
     <string name="container_graphics_transcoder">Transcodificador BCn</string>
-    <string name="container_graphics_quality">Calidad BCn</string>
+    <string name="container_graphics_astc_transcoding">Transcodificación ASTC</string>
     <string name="container_graphics_configuration">Configuración del controlador gráfico</string>
     <string name="container_graphics_version">Versión del controlador gráfico</string>
     <string name="container_graphics_available_extensions">Extensiones disponibles</string>
@@ -1346,7 +1348,7 @@ Ruta instalada:
     <string name="shortcuts_properties_use_legacy_launcher_description">Emulación de Steam heredada: ejecuta el juego mediante el lanzador ColdClient y elimina SteamStub DRM del exe. Úsalo solo para juegos antiguos que no funcionan con Steam Launcher.</string>
     <string name="steam_section_real_client">Cliente real de Steam de WinNative</string>
     <string name="steam_section_emulator">Emulador de Steam heredado</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Hace que el cliente Steam emulado se reporte como desconectado, para que el juego no intente conexiones en línea. Úsalo en juegos que se quedan bloqueados en la comprobación de red de Steam.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Juega sin usar Steam Cloud, así las partidas guardadas permanecen en este dispositivo y el juego arranca aunque no haya conexión. Desactívalo para reanudar Steam Cloud; si la partida local y la de la nube difieren, se te preguntará cuál conservar.</string>
     <string name="input_controls_select_style">Seleccionar estilo</string>
     <string name="input_controls_style_original">Original</string>
     <string name="input_controls_style_gamehub">Glass</string>
