@@ -5011,7 +5011,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 MangoHudView.alphaFromPrefs(preferences),
                 MangoHudView.bgAlphaFromPrefs(preferences),
                 MangoHudView.scaleFromPrefs(preferences),
-                MangoHudView.lockedFromPrefs(preferences)
+                MangoHudView.lockedFromPrefs(preferences),
+                wineInfo != null && wineInfo.isArm64EC()
+                        && (container == null || !"wowbox64".equalsIgnoreCase(container.getEmulator()))
         );
 
         state = XServerDrawerMenuKt.withFrameGenState(
