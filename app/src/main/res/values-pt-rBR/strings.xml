@@ -533,7 +533,7 @@
     <string name="container_graphics_driver">Driver Grafico</string>
     <string name="container_zink_mode">Modo Zink</string>
     <string name="container_graphics_transcoder">Transcodificador BCn</string>
-    <string name="container_graphics_quality">Qualidade BCn</string>
+    <string name="container_graphics_astc_transcoding">Transcodificação ASTC</string>
     <string name="container_graphics_configuration">Configuracao do Driver Grafico</string>
     <string name="container_graphics_version">Versao do Driver Grafico</string>
     <string name="container_graphics_available_extensions">Extensoes Disponiveis</string>

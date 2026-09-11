@@ -5,4 +5,9 @@
         <item>Original</item>
         <item>Couleur unie</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>Désactivé</item>
+        <item>Fidélité</item>
+        <item>Performance</item>
+    </string-array>
 </resources>

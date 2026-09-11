@@ -629,7 +629,7 @@
     <string name="container_graphics_bcn_emulation_type">BCn Öykünme Türü</string>
     <string name="container_graphics_bcn_emulation_cache">BCn Öykünme Önbelleği</string>
     <string name="container_graphics_transcoder">BCn Kod Dönüştürücü</string>
-    <string name="container_graphics_quality">BCn Kalitesi</string>
+    <string name="container_graphics_astc_transcoding">ASTC Dönüştürme</string>
     <string name="shortcuts_graphics_sgsr_full_title">Snapdragon™ Game Super Resolution 1</string>
     <!-- Container > Presets -->
     <string name="container_presets_confirm_duplicate">Bu ön ayarı çoğaltmak istiyor musunuz?</string>

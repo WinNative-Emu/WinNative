@@ -5,4 +5,9 @@
         <item>Original</item>
         <item>Culoare uniformă</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>Dezactivat</item>
+        <item>Fidelitate</item>
+        <item>Performanță</item>
+    </string-array>
 </resources>

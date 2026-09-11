@@ -5,4 +5,9 @@
         <item>Original</item>
         <item>Ensfarget</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>Av</item>
+        <item>Kvalitet</item>
+        <item>Ytelse</item>
+    </string-array>
 </resources>
