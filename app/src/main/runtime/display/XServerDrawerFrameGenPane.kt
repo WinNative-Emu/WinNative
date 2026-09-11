@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.cmod.R
+import com.winlator.cmod.shared.framegen.DisFlowPreset
 import com.winlator.cmod.shared.framegen.FrameGenPreset
 import kotlin.math.roundToInt
 
@@ -60,6 +61,10 @@ internal fun FrameGenPaneContent(
                 verticalArrangement = Arrangement.spacedBy((10f * paneScale).dp),
             ) {
                 FrameGenerationSection(state = state, listener = listener, paneScale = paneScale)
+
+                ThinDivider()
+
+                DisFrameGenerationSection(state = state, listener = listener, paneScale = paneScale)
 
                 ThinDivider()
 
@@ -118,6 +123,7 @@ private fun FrameGenerationSection(
         onTargetRateSelected = listener::onFrameGenTargetRateSelected,
         onMultiplierSelected = listener::onFrameGenMultiplierSelected,
         onFlowScaleChanged = listener::onFrameGenFlowScaleChanged,
+        blockedByDis = state.disFrameGenEnabled,
     )
 }
 
@@ -134,12 +140,25 @@ internal fun FrameGenerationSection(
     onTargetRateSelected: (Int) -> Unit,
     onMultiplierSelected: (Int) -> Unit,
     onFlowScaleChanged: (Int) -> Unit,
+    // The compositor drives one interpolator per frame, so the two engines are
+    // exclusive. The engine that is not running shows no switch at all, only a
+    // line naming the one to turn off first.
+    blockedByDis: Boolean = false,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
         PaneSectionLabel(stringResource(R.string.session_drawer_frame_generation))
 
         if (!available) {
             FrameGenNote(stringResource(R.string.session_drawer_frame_generation_missing), paneScale)
+        } else if (blockedByDis) {
+            // Not an inert switch: a Material switch that is tapped but whose
+            // `checked` never changes can be left sitting in the new position,
+            // which is exactly how two engines end up looking enabled at once.
+            // With no switch present there is nothing to light up.
+            FrameGenNote(
+                stringResource(R.string.session_drawer_frame_generation_blocked_by_dis),
+                paneScale,
+            )
         } else {
             NavBooleanRow(
                 title = stringResource(R.string.session_drawer_frame_generation_enable),
@@ -302,4 +321,125 @@ private fun FrameGenNote(text: String, paneScale: Float) {
         fontSize = (11f * paneScale).sp,
         lineHeight = (15f * paneScale).sp,
     )
+}
+
+@Composable
+private fun DisFrameGenerationSection(
+    state: XServerDrawerState,
+    listener: XServerDrawerActionListener,
+    paneScale: Float,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
+        PaneSectionLabel(stringResource(R.string.session_drawer_dis_frame_generation))
+
+        if (state.frameGenEnabled) {
+            FrameGenNote(
+                stringResource(R.string.session_drawer_dis_frame_generation_blocked_by_lsfg),
+                paneScale,
+            )
+        } else {
+            NavBooleanRow(
+                title = stringResource(R.string.session_drawer_dis_frame_generation_enable),
+                checked = state.disFrameGenEnabled,
+                onCheckedChange = listener::onDisFrameGenEnabledChanged,
+            )
+
+            FrameGenNote(
+                stringResource(R.string.session_drawer_dis_frame_generation_note),
+                paneScale,
+            )
+        }
+
+        AnimatedVisibility(
+            visible = state.disFrameGenEnabled,
+            enter =
+                expandVertically(
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                    expandFrom = Alignment.Top,
+                ) + fadeIn(animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing)),
+            exit =
+                shrinkVertically(
+                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                    shrinkTowards = Alignment.Top,
+                ) + fadeOut(animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing)),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
+                FrameGenFieldLabel(
+                    stringResource(R.string.session_drawer_dis_resolution_scale),
+                    paneScale,
+                )
+
+                val flowPreset = DisFlowPreset.fromStored(state.disFrameGenScale)
+                ChipFlow {
+                    DisFlowPreset.values().forEach { preset ->
+                        HUDToggleChip(
+                            label = stringResource(preset.labelRes),
+                            checked = flowPreset == preset,
+                            onClick = { listener.onDisFrameGenScaleChanged(preset.minSide) },
+                            modifier = Modifier.paneNavItem(
+                                cornerRadius = (16f * paneScale).dp,
+                                onActivate = { listener.onDisFrameGenScaleChanged(preset.minSide) },
+                            ),
+                        )
+                    }
+                }
+
+                FrameGenNote(
+                    stringResource(
+                        R.string.session_drawer_dis_resolution_scale_note,
+                        flowPreset.minSide,
+                    ),
+                    paneScale,
+                )
+
+                NavBooleanRow(
+                    title = stringResource(R.string.session_drawer_dis_debug_flow),
+                    checked = state.disFrameGenDebugFlow,
+                    onCheckedChange = listener::onDisDebugFlowChanged,
+                )
+
+                FrameGenFieldLabel(
+                    stringResource(R.string.session_drawer_dis_target_fps),
+                    paneScale,
+                )
+
+                val rates =
+                    remember(state.maxRefreshRate, state.disFrameGenTargetFps) {
+                        (
+                            DisFrameGenTargetRates.filter { it <= state.maxRefreshRate } +
+                                listOfNotNull(state.disFrameGenTargetFps.takeIf { it > 0 })
+                        )
+                            .distinct()
+                            .sorted()
+                    }
+
+                ChipFlow {
+                    HUDToggleChip(
+                        label = stringResource(R.string.session_drawer_dis_target_fps_max),
+                        checked = state.disFrameGenTargetFps == 0,
+                        onClick = { listener.onDisFrameGenTargetFpsSelected(0) },
+                        modifier = Modifier.paneNavItem(
+                            cornerRadius = (16f * paneScale).dp,
+                            onActivate = { listener.onDisFrameGenTargetFpsSelected(0) },
+                        ),
+                    )
+                    rates.forEach { rate ->
+                        HUDToggleChip(
+                            label =
+                                stringResource(
+                                    R.string.session_drawer_dis_target_fps_value,
+                                    rate,
+                                ),
+                            checked = state.disFrameGenTargetFps == rate,
+                            onClick = { listener.onDisFrameGenTargetFpsSelected(rate) },
+                            modifier = Modifier.paneNavItem(
+                                cornerRadius = (16f * paneScale).dp,
+                                onActivate = { listener.onDisFrameGenTargetFpsSelected(rate) },
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

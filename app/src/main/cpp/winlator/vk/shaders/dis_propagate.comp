@@ -1,0 +1,132 @@
+#version 450
+
+// DIS (Dense Inverse Search) spatial propagation pass. For each sparse flow cell
+// it scores its own flow against its neighbours' at a given distance by the
+// mean-normalized patch SSD, and keeps the best. Repeated with doubling
+// distances this carries reliable flow into flat or occluded regions (the
+// parallel replacement for OpenCV's sequential row scan).
+//
+// All four neighbours at that distance are scored in one pass. The pass used to
+// take a single ivec2 offset, so a full round cost four dispatches - left,
+// right, up, down - each with a pipeline barrier between them, on a sparse grid
+// that at the coarse levels is a couple of hundred texels. The launches and the
+// barriers dominated; the arithmetic did not. Folding the four into one pass
+// leaves the number of candidate evaluations unchanged but cuts the dispatches
+// and barriers by four, and it makes each evaluation cheaper as well: the 8x8
+// reference block is fetched once and amortised over four candidates instead of
+// one, which halves the texture traffic per candidate.
+//
+// The incumbent's own score is carried in the flow map's third channel rather
+// than measured again every pass, which drops another 64 of the 320 warp samples
+// a cell would otherwise take.
+//
+// The warp UVs are still NOT hoisted: a second 64-entry array doubled the
+// private-memory footprint of every invocation for a value that is two
+// multiply-adds to recompute, and the spill cost far exceeded the arithmetic.
+
+precision highp float;
+precision highp int;
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// lastLumaMap/nextLumaMap are the precomputed luminance pyramid, not colour:
+// one channel, already on the 0-255 scale the tuned constants expect. The dot
+// product that used to run on every one of these fetches now runs once per texel
+// in dis_luma.comp.
+layout(set = 0, binding = 0) uniform sampler2D lastLumaMap;   // prev luma at this level
+layout(set = 0, binding = 1) uniform sampler2D nextLumaMap;   // next luma at this level
+layout(set = 0, binding = 2) uniform sampler2D flowIn;         // sparse flow (normalized)
+layout(set = 0, binding = 5, rgba32f) uniform image2D flowOut;
+
+layout(push_constant) uniform PC {
+    int dist;
+} pc;
+
+void main() {
+    ivec2 s = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 mx = textureSize(flowIn, 0) - 1;
+    if (s.x > mx.x || s.y > mx.y) return;
+
+    vec4 ownIn = texelFetch(flowIn, s, 0);
+    vec2 own = ownIn.xy;
+    // .z is the SSD this same cell already measured for this same vector, either
+    // in the previous propagation pass or - as -1 - not yet. Re-deriving it costs
+    // another 64 warp samples per cell per pass for a number that cannot have
+    // changed: the reference block and the next-frame plane are both fixed for
+    // the level. Only the incumbent can be reused this way; a neighbour's stored
+    // SSD was measured against its own reference block, not ours.
+    float ownSsd = ownIn.z;
+    bool needOwn = !(ownSsd >= 0.0);
+
+    // Gather the distinct candidates. A neighbour clamped back onto this cell is
+    // the same flow scored twice, so it is dropped rather than evaluated.
+    const ivec2 dirs[4] =
+        ivec2[4](ivec2(-1, 0), ivec2(1, 0), ivec2(0, -1), ivec2(0, 1));
+    vec2 cand[4];
+    int candCount = 0;
+    for (int i = 0; i < 4; i++) {
+        ivec2 q = clamp(s + dirs[i] * pc.dist, ivec2(0), mx);
+        if (q == s) continue;
+        cand[candCount++] = texelFetch(flowIn, q, 0).xy;
+    }
+    if (candCount == 0) {
+        imageStore(flowOut, s, vec4(own, ownSsd, 1.0));
+        return;
+    }
+
+    ivec2 org = s * 3;
+    ivec2 denseSize = textureSize(lastLumaMap, 0);
+    ivec2 denseMax = denseSize - 1;
+    vec2 invImageSize = 1.0 / vec2(denseSize);
+
+    float refLum[64];
+    for (int dy = 0; dy < 8; dy++) {
+        for (int dx = 0; dx < 8; dx++) {
+            ivec2 p = clamp(org + ivec2(dx, dy), ivec2(0), denseMax);
+            refLum[dy * 8 + dx] = texelFetch(lastLumaMap, p, 0).x;
+        }
+    }
+
+    // One accumulator pair per contender: index 0 is the incumbent flow, the
+    // rest are the neighbours. Mean-normalized SSD, so the running sum and sum
+    // of squares are both needed.
+    float sd[5];
+    float sd2[5];
+    for (int i = 0; i < 5; i++) {
+        sd[i] = 0.0;
+        sd2[i] = 0.0;
+    }
+
+    for (int dy = 0; dy < 8; dy++) {
+        for (int dx = 0; dx < 8; dx++) {
+            int i = dy * 8 + dx;
+            vec2 base = (vec2(org) + vec2(dx, dy) + 0.5) * invImageSize;
+            float r = refLum[i];
+
+            if (needOwn) {
+                float d0 = textureLod(nextLumaMap, base + own, 0.0).x - r;
+                sd[0] += d0;
+                sd2[0] += d0 * d0;
+            }
+
+            for (int c = 0; c < candCount; c++) {
+                float dc = textureLod(nextLumaMap, base + cand[c], 0.0).x - r;
+                sd[c + 1] += dc;
+                sd2[c + 1] += dc * dc;
+            }
+        }
+    }
+
+    vec2 best = own;
+    float bestSsd = needOwn ? (sd2[0] - sd[0] * sd[0] / 64.0) : ownSsd;
+    for (int c = 0; c < candCount; c++) {
+        float ssd = sd2[c + 1] - sd[c + 1] * sd[c + 1] / 64.0;
+        if (ssd < bestSsd) {
+            bestSsd = ssd;
+            best = cand[c];
+        }
+    }
+
+    // Carry the winner's score forward so the next pass inherits it.
+    imageStore(flowOut, s, vec4(best, bestSsd, 1.0));
+}

@@ -1,0 +1,52 @@
+#version 450
+
+// DIS (Dense Inverse Search) gradient pass. Computes a Sobel-style luminance
+// gradient of the previous frame for the inverse-search step. The storage view
+// targets a single pyramid level.
+
+precision highp float;
+precision highp int;
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// The prev/next planes bound here are the precomputed luminance pyramid, not
+// colour: a single channel already on the 0-255 scale the tuned constants
+// expect. The dot product that used to run on every fetch now runs once per
+// texel in dis_luma.comp.
+layout(set = 0, binding = 0) uniform sampler2D lumaMap;
+layout(set = 0, binding = 5, rg32f) uniform image2D gradientMap;
+
+layout(push_constant) uniform PC {
+    float lesser;
+    float upper;
+    float normVal;
+} pc;
+
+// Luminance is returned on the 0-255 scale the reference implementation works
+// on, not the 0-1 the samplers hand back. Every tuned constant downstream - the
+// densify confidence epsilon, the variational refinement's delta/gamma/zeta -
+// came from OpenCV, which feeds this chain 8-bit imagery converted to float
+// without dividing by 255. Feeding it 0-1 instead left those constants
+// mismatched by that same factor.
+void main() {
+    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz = imageSize(gradientMap);
+    if (pix.x >= sz.x || pix.y >= sz.y) return;
+
+    ivec2 mx = sz - 1;
+    float a00 = texelFetch(lumaMap, clamp(pix + ivec2(-1, -1), ivec2(0), mx), 0).x;
+    float a10 = texelFetch(lumaMap, clamp(pix + ivec2(0, -1), ivec2(0), mx), 0).x;
+    float a20 = texelFetch(lumaMap, clamp(pix + ivec2(1, -1), ivec2(0), mx), 0).x;
+    float a01 = texelFetch(lumaMap, clamp(pix + ivec2(-1, 0), ivec2(0), mx), 0).x;
+    float a21 = texelFetch(lumaMap, clamp(pix + ivec2(1, 0), ivec2(0), mx), 0).x;
+    float a02 = texelFetch(lumaMap, clamp(pix + ivec2(-1, 1), ivec2(0), mx), 0).x;
+    float a12 = texelFetch(lumaMap, clamp(pix + ivec2(0, 1), ivec2(0), mx), 0).x;
+    float a22 = texelFetch(lumaMap, clamp(pix + ivec2(1, 1), ivec2(0), mx), 0).x;
+
+    float sx = (pc.lesser * a00 + pc.upper * a01 + pc.lesser * a02)
+             - (pc.lesser * a20 + pc.upper * a21 + pc.lesser * a22);
+    float sy = (pc.lesser * a00 + pc.upper * a10 + pc.lesser * a20)
+             - (pc.lesser * a02 + pc.upper * a12 + pc.lesser * a22);
+
+    imageStore(gradientMap, pix, vec4(sx * pc.normVal, sy * pc.normVal, 0.0, 0.0));
+}

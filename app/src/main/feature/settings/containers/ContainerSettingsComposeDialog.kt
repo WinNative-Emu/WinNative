@@ -1029,6 +1029,11 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
 
     private fun writeFrameGenExtras(c: Container) {
         c.putExtra("frameGen", if (state.frameGenEnabled.value) "1" else "0")
+        // The compositor drives one interpolator per frame. This dialog only
+        // exposes the Lossless Scaling engine, so turning it on here has to clear
+        // DIS - otherwise the container keeps both flags set, the session picks
+        // DIS on load, and the switch the user just flipped appears to do nothing.
+        if (state.frameGenEnabled.value) c.putExtra("disFrameGen", "0")
         c.putExtra("frameGenMultiplier", state.frameGenMultiplier.intValue.coerceIn(2, 4).toString())
         c.putExtra("frameGenTargetRate", state.frameGenTargetRate.intValue.coerceAtLeast(0).toString())
         c.putExtra("frameGenFlowScale", state.frameGenFlowScale.intValue.coerceIn(25, 100).toString())
