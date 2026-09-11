@@ -2533,7 +2533,7 @@
     <string name="session_drawer_frame_generation_missing">请在容器设置中安装 Lossless Scaling 以使用帧生成。</string>
     <string name="session_drawer_system_frame_generation">帧生成（系统）</string>
     <string name="session_drawer_system_frame_generation_enable">在 HUD 中统计系统帧</string>
-    <string name="session_drawer_system_frame_generation_note">设备在游戏交出画面之后才生成帧，因此无法直接统计。开启后，HUD 会把屏幕的扫描输出率作为输出帧率显示。</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space 在游戏渲染完成后插入生成的帧。HUD 从驱动读取插帧倍率，并显示由此得到的输出帧率。</string>
     <string name="session_drawer_system_frame_generation_detected">已检测到：%1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">未检测到。如果 Game Space 插帧正在运行，请手动开启。</string>
     <string name="session_drawer_dis_frame_generation">帧生成 (DIS)</string>

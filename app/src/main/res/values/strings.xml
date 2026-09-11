@@ -875,7 +875,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_frame_generation_missing">Install Lossless Scaling in container settings to use frame generation.</string>
     <string name="session_drawer_system_frame_generation">Frame Generation (System)</string>
     <string name="session_drawer_system_frame_generation_enable">Count system frames in the HUD</string>
-    <string name="session_drawer_system_frame_generation_note">Your device generates frames after the game hands them over, so they cannot be counted directly. The HUD reports the panel\'s scan-out rate as the output rate while this is on.</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space inserts generated frames after the game renders them. The HUD reads the interpolation rate from the driver and shows the resulting output rate.</string>
     <string name="session_drawer_system_frame_generation_detected">Detected: %1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">Not detected. Turn this on by hand if Game Space frame interpolation is running.</string>
     <string name="session_drawer_dis_frame_generation">Frame Generation (DIS)</string>

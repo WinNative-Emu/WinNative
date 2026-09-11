@@ -1,8 +1,6 @@
 package com.winlator.cmod.runtime.display.framegen
 
-import android.content.Context
 import android.os.Build
-import android.provider.Settings
 import android.util.Log
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -12,11 +10,17 @@ data class SystemFrameGenState(
     val vendorSupported: Boolean = false,
     val active: Boolean = false,
     val signal: String = "",
-    val multiplier: Int = 0,
+    val multiplier: Int = 1,
 )
 
 object SystemFrameGenDetector {
     private const val TAG = "SystemFrameGen"
+
+    const val KEY_INTERP_RATE = "vendor.gpp.gfrc.interp.rate"
+    const val KEY_FRC_ENABLE = "vendor.gpp.frc.enable"
+
+    private val CAPABILITY_KEYS =
+        listOf("vendor.gpp.create_frc_extension", "ro.vendor.feature.zte_feature_gfrc")
 
     private val VENDOR_TOKENS = listOf("nubia", "redmagic", "red magic", "zte")
 
@@ -31,21 +35,31 @@ object SystemFrameGenDetector {
             "frame_interp",
             "frameinterpolation",
             "frame_interpolation",
-            "frameboost",
-            "frame_boost",
-            "framerateboost",
             "memc",
             "motionsmooth",
             "motion_smooth",
         )
 
-    private val SCOPE_TOKENS = VENDOR_TOKENS + listOf("game", "display", "video")
+    private val SCOPE_TOKENS = VENDOR_TOKENS + listOf("gpp", "game", "display")
 
-    private val NEGATIVE_TOKENS = listOf("support", "capable", "available", "version", "list", "whitelist")
+    private val EXCLUDED_TOKENS =
+        listOf(
+            "feature",
+            "support",
+            "capable",
+            "available",
+            "version",
+            "list",
+            "whitelist",
+            "extension",
+            "upscale",
+            "resolution",
+            "sharpness",
+        )
 
     private val PROPERTY_LINE = Regex("^\\[(.+?)]: \\[(.*)]$")
 
-    private val MULTIPLIER_HINT = Regex("(?:^|[^0-9])([234])\\s*[xX]|[xX]\\s*([234])(?:[^0-9]|$)")
+    private const val MAX_MULTIPLIER = 8
 
     @Volatile
     private var cached: SystemFrameGenState? = null
@@ -69,10 +83,7 @@ object SystemFrameGenDetector {
 
     @JvmStatic
     @JvmOverloads
-    fun detect(
-        context: Context,
-        maxAgeMs: Long = 2000L,
-    ): SystemFrameGenState {
+    fun detect(maxAgeMs: Long = 1500L): SystemFrameGenState {
         val now = android.os.SystemClock.elapsedRealtime()
         cached?.let { if (now - cachedAtMs < maxAgeMs) return it }
 
@@ -80,7 +91,12 @@ object SystemFrameGenDetector {
             if (!isVendorDevice()) {
                 SystemFrameGenState()
             } else {
-                evaluate(readProperties() + readSettings(context))
+                evaluate(
+                    interpRate = readProperty(KEY_INTERP_RATE),
+                    frcEnable = readProperty(KEY_FRC_ENABLE),
+                    capable = CAPABILITY_KEYS.any { isTruthy(readProperty(it)) },
+                    fallback = { readAllProperties() },
+                )
             }
         cached = state
         cachedAtMs = now
@@ -92,87 +108,136 @@ object SystemFrameGenDetector {
         cached = null
     }
 
-    internal fun evaluate(entries: Map<String, String>): SystemFrameGenState {
-        var best: Pair<String, String>? = null
-        for ((key, value) in entries) {
-            if (!isFrameGenKey(key)) continue
-            if (!isEnabledValue(value)) {
-                if (best == null) best = key to value
-                continue
-            }
-            best = key to value
-            break
+    internal fun evaluate(
+        interpRate: String?,
+        frcEnable: String?,
+        capable: Boolean,
+        fallback: () -> Map<String, String>,
+    ): SystemFrameGenState {
+        val inserted = parseNumber(interpRate)
+        if (inserted != null) {
+            val multiplier = (inserted + 1).coerceIn(1, MAX_MULTIPLIER)
+            return SystemFrameGenState(
+                vendorSupported = true,
+                active = multiplier > 1,
+                signal = "$KEY_INTERP_RATE=$interpRate",
+                multiplier = multiplier,
+            )
         }
 
-        val match = best ?: return SystemFrameGenState(vendorSupported = true)
-        val active = isEnabledValue(match.second)
+        val enable = parseNumber(frcEnable)
+        if (enable != null) {
+            val multiplier = (enable and 0xF).coerceIn(1, MAX_MULTIPLIER)
+            return SystemFrameGenState(
+                vendorSupported = true,
+                active = multiplier > 1,
+                signal = "$KEY_FRC_ENABLE=$frcEnable",
+                multiplier = multiplier,
+            )
+        }
+
+        return scan(fallback(), capable)
+    }
+
+    internal fun scan(
+        entries: Map<String, String>,
+        capable: Boolean,
+    ): SystemFrameGenState {
+        val candidates =
+            entries.entries
+                .filter { isStateKey(it.key) }
+                .sortedByDescending { if (isRateKey(it.key)) 1 else 0 }
+
+        for ((key, value) in candidates) {
+            if (!isTruthy(value)) continue
+            val multiplier =
+                if (isRateKey(key)) {
+                    ((parseNumber(value) ?: 1) + 1).coerceIn(2, MAX_MULTIPLIER)
+                } else {
+                    2
+                }
+            return SystemFrameGenState(
+                vendorSupported = true,
+                active = true,
+                signal = "$key=$value",
+                multiplier = multiplier,
+            )
+        }
+
+        val first = candidates.firstOrNull()
         return SystemFrameGenState(
-            vendorSupported = true,
-            active = active,
-            signal = "${match.first}=${match.second}",
-            multiplier = if (active) parseMultiplier(match.second) else 0,
+            vendorSupported = capable || first != null,
+            active = false,
+            signal = if (first != null) "${first.key}=${first.value}" else "",
+            multiplier = 1,
         )
     }
 
-    internal fun isFrameGenKey(key: String): Boolean {
+    internal fun isRateKey(key: String): Boolean {
         val lower = key.lowercase(Locale.ROOT)
-        if (NEGATIVE_TOKENS.any { lower.contains(it) }) return false
+        return lower.contains("rate") || lower.contains("interp")
+    }
+
+    internal fun isStateKey(key: String): Boolean {
+        if (key == KEY_INTERP_RATE || key == KEY_FRC_ENABLE) return false
+        val lower = key.lowercase(Locale.ROOT)
+        if (lower.startsWith("ro.")) return false
+        if (EXCLUDED_TOKENS.any { lower.contains(it) }) return false
         if (FEATURE_TOKENS.none { lower.contains(it) }) return false
         return SCOPE_TOKENS.any { lower.contains(it) }
     }
 
-    internal fun isEnabledValue(value: String): Boolean {
-        val v = value.trim().lowercase(Locale.ROOT)
+    internal fun parseNumber(value: String?): Int? {
+        val v = value?.trim()?.lowercase(Locale.ROOT).orEmpty()
+        if (v.isEmpty()) return null
+        return if (v.startsWith("0x")) {
+            v.substring(2).toIntOrNull(16)
+        } else {
+            v.toIntOrNull()
+        }
+    }
+
+    internal fun isTruthy(value: String?): Boolean {
+        val v = value?.trim()?.lowercase(Locale.ROOT).orEmpty()
         if (v.isEmpty()) return false
-        if (v == "0" || v == "false" || v == "off" || v == "none" || v == "null") return false
-        v.toIntOrNull()?.let { return it > 0 }
-        return v == "true" || v == "on" || v == "enable" || v == "enabled" || MULTIPLIER_HINT.containsMatchIn(v)
+        parseNumber(v)?.let { return it > 0 }
+        return v == "true" || v == "on" || v == "enabled" || v == "enable"
     }
 
-    internal fun parseMultiplier(value: String): Int {
-        val v = value.trim().lowercase(Locale.ROOT)
-        v.toIntOrNull()?.let { if (it in 2..4) return it }
-        val m = MULTIPLIER_HINT.find(v) ?: return 0
-        val digits = m.groupValues[1].ifEmpty { m.groupValues[2] }
-        return digits.toIntOrNull() ?: 0
+    private fun readProperty(key: String): String? {
+        val viaFramework = readPropertyReflective(key)
+        if (viaFramework != null) return viaFramework.ifEmpty { null }
+        return runCommand(listOf("/system/bin/getprop", key))?.trim()?.ifEmpty { null }
     }
 
-    private fun readProperties(): Map<String, String> {
-        val out = LinkedHashMap<String, String>()
+    private fun readPropertyReflective(key: String): String? =
         try {
-            val process = ProcessBuilder("/system/bin/getprop").redirectErrorStream(true).start()
-            BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-                while (true) {
-                    val line = reader.readLine() ?: break
-                    val m = PROPERTY_LINE.find(line.trim()) ?: continue
-                    out[m.groupValues[1]] = m.groupValues[2]
-                }
-            }
-            process.waitFor()
-        } catch (e: Exception) {
-            Log.w(TAG, "Could not enumerate system properties", e)
+            val clazz = Class.forName("android.os.SystemProperties")
+            clazz.getMethod("get", String::class.java).invoke(null, key) as? String
+        } catch (e: Throwable) {
+            Log.w(TAG, "SystemProperties unavailable, falling back to getprop", e)
+            null
+        }
+
+    private fun readAllProperties(): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        val dump = runCommand(listOf("/system/bin/getprop")) ?: return out
+        for (line in dump.lineSequence()) {
+            val m = PROPERTY_LINE.find(line.trim()) ?: continue
+            out[m.groupValues[1]] = m.groupValues[2]
         }
         return out
     }
 
-    private fun readSettings(context: Context): Map<String, String> {
-        val out = LinkedHashMap<String, String>()
-        val resolver = context.contentResolver ?: return out
-        for (uri in listOf(Settings.Global.CONTENT_URI, Settings.System.CONTENT_URI, Settings.Secure.CONTENT_URI)) {
-            try {
-                resolver.query(uri, arrayOf("name", "value"), null, null, null)?.use { cursor ->
-                    val nameIndex = cursor.getColumnIndex("name")
-                    val valueIndex = cursor.getColumnIndex("value")
-                    if (nameIndex < 0 || valueIndex < 0) return@use
-                    while (cursor.moveToNext()) {
-                        val name = cursor.getString(nameIndex) ?: continue
-                        out[name] = cursor.getString(valueIndex).orEmpty()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Could not enumerate $uri", e)
-            }
+    private fun runCommand(command: List<String>): String? =
+        try {
+            val process = ProcessBuilder(command).redirectErrorStream(true).start()
+            val text =
+                BufferedReader(InputStreamReader(process.inputStream)).use { it.readText() }
+            process.waitFor()
+            text
+        } catch (e: Exception) {
+            Log.w(TAG, "Command failed: ${command.joinToString(" ")}", e)
+            null
         }
-        return out
-    }
 }

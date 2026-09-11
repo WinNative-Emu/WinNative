@@ -477,6 +477,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private boolean systemFrameGenHudEnabled = false;
     private boolean systemFrameGenHudPinned = false;
     private boolean systemFrameGenProbeRunning = false;
+    private int systemFrameGenMultiplier = 1;
+    private Runnable systemFrameGenPollRunnable = null;
+    private static final long SYSTEM_FRAME_GEN_POLL_MS = 2000L;
     private String systemFrameGenSignal = "";
     // Optical-flow processing resolution for DIS, as the length of the frame's
     // SHORTER side in pixels. On a 720-tall frame the three presets are the old
@@ -889,7 +892,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         if (systemFrameGen) {
             SystemFrameGenMonitor monitor = ensureSystemFrameGenMonitor();
-            if (!monitor.isRunning()) monitor.start();
+            if (monitor.isRunning()) {
+                monitor.setMultiplier(systemFrameGenMultiplier);
+            } else {
+                monitor.start(systemFrameGenMultiplier);
+            }
         } else if (systemFrameGenMonitor != null) {
             systemFrameGenMonitor.stop();
         }
@@ -907,11 +914,15 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private SystemFrameGenMonitor ensureSystemFrameGenMonitor() {
         if (systemFrameGenMonitor == null) {
             systemFrameGenMonitor = new SystemFrameGenMonitor(
-                    this::getDisplayCompat,
                     () -> {
                         VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
                         return renderer != null ? renderer.getPresentedFrameCount() : 0L;
-                    });
+                    },
+                    () -> {
+                        android.view.Display display = getDisplayCompat();
+                        return display != null ? display.getRefreshRate() : 0f;
+                    },
+                    System::nanoTime);
         }
         return systemFrameGenMonitor;
     }
@@ -922,7 +933,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         new Thread(() -> {
             SystemFrameGenState state;
             try {
-                state = SystemFrameGenDetector.detect(this);
+                state = SystemFrameGenDetector.detect();
             } catch (Exception e) {
                 Log.w("XServerDisplayActivity", "System frame generation probe failed", e);
                 state = new SystemFrameGenState();
@@ -943,18 +954,37 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     + (systemFrameGenSignal.isEmpty() ? "none" : systemFrameGenSignal));
         }
         boolean detectedChanged = systemFrameGenDetected != state.getActive();
+        boolean multiplierChanged = systemFrameGenMultiplier != state.getMultiplier();
         systemFrameGenDetected = state.getActive();
-        if (systemFrameGenHudPinned) {
-            if (detectedChanged && drawerStateHolder != null) renderDrawerMenu();
-            return;
-        }
-        if (systemFrameGenHudEnabled == state.getActive()) {
+        systemFrameGenMultiplier = state.getMultiplier();
+        if (systemFrameGenHudPinned || systemFrameGenHudEnabled == state.getActive()) {
+            if (multiplierChanged) syncFrameGenerationHud();
             if (detectedChanged && drawerStateHolder != null) renderDrawerMenu();
             return;
         }
         systemFrameGenHudEnabled = state.getActive();
         syncFrameGenerationHud();
         if (drawerStateHolder != null) renderDrawerMenu();
+    }
+
+    private void startSystemFrameGenPolling() {
+        if (!systemFrameGenSupported || systemFrameGenPollRunnable != null) return;
+        systemFrameGenPollRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (activityDestroyed.get()) return;
+                SystemFrameGenDetector.invalidate();
+                refreshSystemFrameGenState();
+                handler.postDelayed(this, SYSTEM_FRAME_GEN_POLL_MS);
+            }
+        };
+        handler.postDelayed(systemFrameGenPollRunnable, SYSTEM_FRAME_GEN_POLL_MS);
+    }
+
+    private void stopSystemFrameGenPolling() {
+        if (systemFrameGenPollRunnable == null) return;
+        handler.removeCallbacks(systemFrameGenPollRunnable);
+        systemFrameGenPollRunnable = null;
     }
 
     void setSystemFrameGenHudEnabled(boolean enabled) {
@@ -3204,12 +3234,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             SystemFrameGenDetector.invalidate();
             refreshSystemFrameGenState();
             syncFrameGenerationHud();
+            startSystemFrameGenPolling();
         }
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        stopSystemFrameGenPolling();
         if (systemFrameGenMonitor != null) systemFrameGenMonitor.stop();
         isVolumeUpPressed = false;
         isVolumeDownPressed = false;
@@ -4774,6 +4806,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     @Override
     protected void onDestroy() {
         activityDestroyed.set(true);
+        stopSystemFrameGenPolling();
         if (systemFrameGenMonitor != null) {
             systemFrameGenMonitor.stop();
             systemFrameGenMonitor = null;

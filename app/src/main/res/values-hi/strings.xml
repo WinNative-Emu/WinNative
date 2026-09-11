@@ -2469,7 +2469,7 @@
     <string name="session_drawer_frame_generation_missing">फ़्रेम जनरेशन उपयोग करने के लिए कंटेनर सेटिंग्स में Lossless Scaling इंस्टॉल करें।</string>
     <string name="session_drawer_system_frame_generation">फ़्रेम जनरेशन (सिस्टम)</string>
     <string name="session_drawer_system_frame_generation_enable">HUD में सिस्टम फ़्रेम गिनें</string>
-    <string name="session_drawer_system_frame_generation_note">गेम द्वारा फ़्रेम सौंपने के बाद आपका डिवाइस उन्हें बनाता है, इसलिए उन्हें सीधे नहीं गिना जा सकता। यह चालू रहने पर HUD पैनल की स्कैन-आउट दर को आउटपुट दर के रूप में दिखाता है।</string>
+    <string name="session_drawer_system_frame_generation_note">गेम के रेंडर करने के बाद Game Space बनाए गए फ़्रेम जोड़ता है। HUD ड्राइवर से इंटरपोलेशन दर पढ़कर परिणामी आउटपुट दर दिखाता है।</string>
     <string name="session_drawer_system_frame_generation_detected">पता चला: %1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">पता नहीं चला। अगर Game Space फ़्रेम इंटरपोलेशन चल रहा है तो इसे खुद चालू करें।</string>
     <string name="session_drawer_dis_frame_generation">फ़्रेम जनरेशन (DIS)</string>

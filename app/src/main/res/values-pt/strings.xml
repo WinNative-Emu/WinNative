@@ -2532,7 +2532,7 @@ Caminho instalado:
     <string name="session_drawer_frame_generation_missing">Instale o Lossless Scaling nas definições do contentor para usar a geração de fotogramas.</string>
     <string name="session_drawer_system_frame_generation">Geração de fotogramas (sistema)</string>
     <string name="session_drawer_system_frame_generation_enable">Contar fotogramas do sistema no HUD</string>
-    <string name="session_drawer_system_frame_generation_note">O seu dispositivo gera fotogramas depois de o jogo os entregar, por isso não podem ser contados diretamente. Com isto ligado, o HUD indica a taxa de varrimento do painel como taxa de saída.</string>
+    <string name="session_drawer_system_frame_generation_note">O Game Space insere fotogramas gerados depois de o jogo os desenhar. O HUD lê a taxa de interpolação do controlador e mostra a taxa de saída resultante.</string>
     <string name="session_drawer_system_frame_generation_detected">Detetado: %1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">Não detetado. Ligue manualmente se a interpolação de fotogramas do Game Space estiver a correr.</string>
     <string name="session_drawer_dis_frame_generation">Geração de fotogramas (DIS)</string>

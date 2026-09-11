@@ -2533,7 +2533,7 @@ Caminho instalado:
     <string name="session_drawer_frame_generation_missing">Instale o Lossless Scaling nas configurações do contêiner para usar a geração de quadros.</string>
     <string name="session_drawer_system_frame_generation">Geração de quadros (sistema)</string>
     <string name="session_drawer_system_frame_generation_enable">Contar quadros do sistema no HUD</string>
-    <string name="session_drawer_system_frame_generation_note">Seu aparelho gera quadros depois que o jogo os entrega, então eles não podem ser contados diretamente. Com isto ligado, o HUD informa a taxa de varredura do painel como taxa de saída.</string>
+    <string name="session_drawer_system_frame_generation_note">O Game Space insere quadros gerados depois que o jogo os renderiza. O HUD lê a taxa de interpolação do driver e mostra a taxa de saída resultante.</string>
     <string name="session_drawer_system_frame_generation_detected">Detectado: %1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">Não detectado. Ligue manualmente se a interpolação de quadros do Game Space estiver rodando.</string>
     <string name="session_drawer_dis_frame_generation">Geração de quadros (DIS)</string>

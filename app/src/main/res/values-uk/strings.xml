@@ -2539,7 +2539,7 @@
     <string name="session_drawer_frame_generation_missing">Установіть Lossless Scaling у налаштуваннях контейнера, щоб використовувати генерацію кадрів.</string>
     <string name="session_drawer_system_frame_generation">Генерація кадрів (система)</string>
     <string name="session_drawer_system_frame_generation_enable">Рахувати системні кадри в HUD</string>
-    <string name="session_drawer_system_frame_generation_note">Пристрій створює кадри вже після того, як гра їх передала, тож порахувати їх напряму неможливо. Поки це ввімкнено, HUD показує частоту розгортки панелі як частоту на виході.</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space вставляє згенеровані кадри після того, як гра їх відмалювала. HUD читає коефіцієнт інтерполяції з драйвера й показує підсумкову частоту на виході.</string>
     <string name="session_drawer_system_frame_generation_detected">Виявлено: %1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">Не виявлено. Увімкніть вручну, якщо працює інтерполяція кадрів Game Space.</string>
     <string name="session_drawer_dis_frame_generation">Генерація кадрів (DIS)</string>

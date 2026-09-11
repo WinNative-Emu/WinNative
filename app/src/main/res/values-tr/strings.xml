@@ -2532,7 +2532,7 @@ Yüklü konum:
     <string name="session_drawer_frame_generation_missing">Kare üretimini kullanmak için kapsayıcı ayarlarından Lossless Scaling\'i yükleyin.</string>
     <string name="session_drawer_system_frame_generation">Kare Üretimi (sistem)</string>
     <string name="session_drawer_system_frame_generation_enable">Sistem karelerini HUD\'da say</string>
-    <string name="session_drawer_system_frame_generation_note">Cihazınız kareleri oyun onları teslim ettikten sonra üretir, bu yüzden doğrudan sayılamazlar. Bu açıkken HUD, panelin tarama hızını çıkış hızı olarak bildirir.</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space, oyun kareleri çizdikten sonra üretilen kareleri araya ekler. HUD, ara değerleme oranını sürücüden okur ve ortaya çıkan çıkış hızını gösterir.</string>
     <string name="session_drawer_system_frame_generation_detected">Bulundu: %1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">Bulunamadı. Game Space kare ara değerlemesi çalışıyorsa elle açın.</string>
     <string name="session_drawer_dis_frame_generation">Kare Üretimi (DIS)</string>

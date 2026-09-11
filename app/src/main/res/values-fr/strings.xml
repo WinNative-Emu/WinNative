@@ -2533,7 +2533,7 @@ Chemin installé :
     <string name="session_drawer_frame_generation_missing">Installez Lossless Scaling dans les paramètres du conteneur pour utiliser la génération d\'images.</string>
     <string name="session_drawer_system_frame_generation">Génération d\'images (système)</string>
     <string name="session_drawer_system_frame_generation_enable">Compter les images système dans le HUD</string>
-    <string name="session_drawer_system_frame_generation_note">Votre appareil génère des images après que le jeu les a transmises : elles ne peuvent donc pas être comptées directement. Tant que ceci est activé, le HUD indique la fréquence de balayage de l\'écran comme fréquence de sortie.</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space insère des images générées après que le jeu les a rendues. Le HUD lit le taux d\'interpolation du pilote et affiche la fréquence de sortie obtenue.</string>
     <string name="session_drawer_system_frame_generation_detected">Détecté : %1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">Non détecté. Activez-le manuellement si l\'interpolation d\'images de Game Space est en cours.</string>
     <string name="session_drawer_dis_frame_generation">Génération d\'images (DIS)</string>

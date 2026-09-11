@@ -2534,7 +2534,7 @@ Installeret sti:
     <string name="session_drawer_frame_generation_missing">Installér Lossless Scaling i containerindstillingerne for at bruge billedgenerering.</string>
     <string name="session_drawer_system_frame_generation">Frame Generation (system)</string>
     <string name="session_drawer_system_frame_generation_enable">Tæl systemframes i HUD\'en</string>
-    <string name="session_drawer_system_frame_generation_note">Din enhed genererer frames, efter spillet har afleveret dem, så de kan ikke tælles direkte. Mens dette er slået til, viser HUD\'en panelets scanningsfrekvens som outputfrekvens.</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space indsætter genererede frames, efter spillet har renderet dem. HUD\'en læser interpolationsraten fra driveren og viser den resulterende outputrate.</string>
     <string name="session_drawer_system_frame_generation_detected">Fundet: %1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">Ikke fundet. Slå til manuelt, hvis Game Space-frameinterpolation kører.</string>
     <string name="session_drawer_dis_frame_generation">Billedgenerering (DIS)</string>

@@ -2532,7 +2532,7 @@ Asennuspolku:
     <string name="session_drawer_frame_generation_missing">Asenna Lossless Scaling säilön asetuksista käyttääksesi ruudun generointia.</string>
     <string name="session_drawer_system_frame_generation">Ruudunluonti (järjestelmä)</string>
     <string name="session_drawer_system_frame_generation_enable">Laske järjestelmän ruudut HUD:ssa</string>
-    <string name="session_drawer_system_frame_generation_note">Laitteesi luo ruutuja sen jälkeen, kun peli on luovuttanut ne, joten niitä ei voi laskea suoraan. Kun tämä on käytössä, HUD ilmoittaa näytön päivitystahdin ulostulotahtina.</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space lisää luotuja ruutuja sen jälkeen, kun peli on piirtänyt ne. HUD lukee interpolointitahdin ajurilta ja näyttää tuloksena olevan ulostulotahdin.</string>
     <string name="session_drawer_system_frame_generation_detected">Havaittu: %1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">Ei havaittu. Kytke käsin päälle, jos Game Spacen ruuduninterpolointi on käynnissä.</string>
     <string name="session_drawer_dis_frame_generation">Ruudun generointi (DIS)</string>

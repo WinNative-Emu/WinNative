@@ -2532,7 +2532,7 @@ Installerad sökväg:
     <string name="session_drawer_frame_generation_missing">Installera Lossless Scaling i containerinställningarna för att använda bildgenerering.</string>
     <string name="session_drawer_system_frame_generation">Frame Generation (system)</string>
     <string name="session_drawer_system_frame_generation_enable">Räkna systemets bildrutor i HUD:en</string>
-    <string name="session_drawer_system_frame_generation_note">Enheten skapar bildrutor efter att spelet lämnat ifrån sig dem, så de går inte att räkna direkt. När det här är på rapporterar HUD:en panelens uppdateringsfrekvens som utfrekvens.</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space lägger in genererade bildrutor efter att spelet ritat dem. HUD:en läser interpoleringstakten från drivrutinen och visar den resulterande utfrekvensen.</string>
     <string name="session_drawer_system_frame_generation_detected">Hittad: %1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">Hittades inte. Slå på manuellt om Game Space-bildinterpolering körs.</string>
     <string name="session_drawer_dis_frame_generation">Bildgenerering (DIS)</string>

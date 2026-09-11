@@ -2532,7 +2532,7 @@
     <string name="session_drawer_frame_generation_missing">請在容器設定中安裝 Lossless Scaling 以使用影格生成。</string>
     <string name="session_drawer_system_frame_generation">影格生成（系統）</string>
     <string name="session_drawer_system_frame_generation_enable">在 HUD 中統計系統影格</string>
-    <string name="session_drawer_system_frame_generation_note">裝置在遊戲交出畫面之後才生成影格，因此無法直接統計。開啟後，HUD 會把螢幕的掃描輸出率當作輸出影格率顯示。</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space 在遊戲算繪完成後插入生成的影格。HUD 會從驅動程式讀取補幀倍率，並顯示由此得到的輸出影格率。</string>
     <string name="session_drawer_system_frame_generation_detected">已偵測到：%1$s</string>
     <string name="session_drawer_system_frame_generation_not_detected">未偵測到。如果 Game Space 補幀正在執行，請手動開啟。</string>
     <string name="session_drawer_dis_frame_generation">影格生成 (DIS)</string>
