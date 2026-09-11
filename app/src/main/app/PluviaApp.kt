@@ -42,8 +42,15 @@ class PluviaApp : Application() {
         super.onCreate()
         instance = this
 
+        val systemUncaughtHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("PluviaApp", "CRASH in thread ${thread.name}", throwable)
+            if (systemUncaughtHandler != null) {
+                systemUncaughtHandler.uncaughtException(thread, throwable)
+            } else {
+                android.os.Process.killProcess(android.os.Process.myPid())
+                kotlin.system.exitProcess(10)
+            }
         }
 
         com.winlator.cmod.feature.retro.Ps2GameOverlay.install()

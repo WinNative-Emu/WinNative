@@ -9814,7 +9814,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void startSteamControllerSupport() {
-        if (steamControllerBackend != null || winHandler == null || isFinishing()) return;
+        if (steamControllerBackend != null || winHandler == null) return;
+        if (isFinishing() || isDestroyed() || activityDestroyed.get()) return;
         if (!com.winlator.cmod.runtime.input.controls.SteamControllerPrefs.isEnabled(this)) return;
         int trackpadMode =
                 com.winlator.cmod.runtime.input.controls.SteamControllerPrefs.getTrackpadMouseMode(this);

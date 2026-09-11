@@ -360,6 +360,7 @@ class InputControlsFragment : Fragment() {
     }
 
     private fun publishUiState() {
+        val ctx = context ?: return
         val profile = currentProfile
         val bindingTypeEntries = resources.getStringArray(R.array.binding_type_entries)
         val triggerDescription =
@@ -397,11 +398,11 @@ class InputControlsFragment : Fragment() {
                 triggerTypeIndex = preferences.getInt("trigger_type", ExternalController.TRIGGER_IS_AXIS.toInt()),
                 triggerCardExpanded = triggerTypeExpanded,
                 triggerDescription = triggerDescription,
-                steamControllerEnabled = SteamControllerPrefs.isEnabled(requireContext()),
-                steamTrackpadModeIndex = SteamControllerPrefs.getTrackpadMouseMode(requireContext()),
+                steamControllerEnabled = SteamControllerPrefs.isEnabled(ctx),
+                steamTrackpadModeIndex = SteamControllerPrefs.getTrackpadMouseMode(ctx),
                 steamPaddleLabels =
                     (0 until SteamControllerBackend.PADDLE_COUNT).map { index ->
-                        SteamControllerPrefs.getPaddleBinding(requireContext(), index).toString()
+                        SteamControllerPrefs.getPaddleBinding(ctx, index).toString()
                     },
                 controllerCards =
                     visibleControllers.map { controller ->

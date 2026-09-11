@@ -169,6 +169,8 @@ public final class SteamControllerBackend {
       hidManager = HIDDeviceManager.acquire(activity);
     } catch (Throwable t) {
       Log.e(TAG, "SDL Java setup failed; Steam Controller support stays off", t);
+      releaseHidManager();
+      clearSdlContextIfUnowned();
       return false;
     }
     final boolean bluetooth = hasBluetoothPermission(activity);
@@ -181,23 +183,52 @@ public final class SteamControllerBackend {
   }
 
   public void stop() {
-    if (pollThread == null) return;
     running = false;
-    try {
-      pollThread.join(1500);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    boolean pollThreadFinished = true;
+    if (pollThread != null) {
+      try {
+        pollThread.join(1500);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+      pollThreadFinished = !pollThread.isAlive();
+      pollThread = null;
     }
-    pollThread = null;
     if (running_ == this) running_ = null;
     mainHandler.removeCallbacks(applyFrame);
-    pads.clear();
-    if (hidManager != null) {
-      HIDDeviceManager.release(hidManager);
-      hidManager = null;
+    synchronized (frameLock) {
+      applyQueued = false;
+      frameInts = null;
+      frameFloats = null;
+      frameCount = 0;
     }
-    SDL.setContext(null);
+    pads.clear();
+    if (!pollThreadFinished) {
+      Log.w(TAG, "Poll thread did not finish in time; leaving SDL teardown to it");
+      return;
+    }
+    releaseHidManager();
+    clearSdlContextIfUnowned();
     Log.i(TAG, "Stopped");
+  }
+
+  private void releaseHidManager() {
+    if (hidManager == null) return;
+    try {
+      HIDDeviceManager.release(hidManager);
+    } catch (Throwable t) {
+      Log.e(TAG, "HIDDeviceManager.release failed", t);
+    }
+    hidManager = null;
+  }
+
+  private static void clearSdlContextIfUnowned() {
+    if (running_ != null) return;
+    try {
+      SDL.setContext(null);
+    } catch (Throwable t) {
+      Log.e(TAG, "Clearing the SDL context failed", t);
+    }
   }
 
   public void rumble(int deviceId, int low, int high, int durationMs) {
@@ -217,6 +248,20 @@ public final class SteamControllerBackend {
   }
 
   private void pollLoop(boolean bluetooth) {
+    try {
+      pollLoopInner(bluetooth);
+    } catch (Throwable t) {
+      Log.e(TAG, "Steam Controller poll thread failed; support stops this session", t);
+      running = false;
+      try {
+        nativeShutdown();
+      } catch (Throwable shutdownFailure) {
+        Log.e(TAG, "nativeShutdown after poll failure also failed", shutdownFailure);
+      }
+    }
+  }
+
+  private void pollLoopInner(boolean bluetooth) {
     Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY);
     if (!nativeInit(bluetooth)) {
       Log.w(TAG, "SDL init failed; Steam Controller support stays off this session");
@@ -271,6 +316,14 @@ public final class SteamControllerBackend {
   }
 
   private void applyFrame() {
+    try {
+      applyFrameInner();
+    } catch (Throwable t) {
+      Log.e(TAG, "Steam Controller frame delivery failed", t);
+    }
+  }
+
+  private void applyFrameInner() {
     int[] ints;
     float[] floats;
     String[] names;
