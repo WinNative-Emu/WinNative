@@ -421,7 +421,7 @@
     <string name="steam_launcher_real_client">Steam Launcher</string>
     <string name="steam_launcher_real_client_description">Run the game through the in-Wine Steam Launcher (recommended). Disables other Steam launch modes.</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam Offline Mode</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Plays without touching Steam Cloud, so this game\'s saves stay on this device and it still starts with no connection. Turn it off to resume Steam Cloud; if the local and cloud saves differ you are asked which one to keep.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Signs in to Steam using the credentials this container already cached and never touches Steam Cloud, so this game\'s saves stay on this device. WinNative turns this on by itself whenever the device has no connection. Sign in once while online first, or Steam will have nothing cached to sign in against. Turn it off to resume Steam Cloud; if the local and cloud saves differ you are asked which one to keep.</string>
     <string name="shortcuts_properties_reset">Reset Properties</string>
     <string name="shortcuts_properties_updated_at">Shortcut Updated at %1$s</string>
     <string name="shortcuts_properties_properties_reset">Properties reset successfully.</string>
@@ -1686,6 +1686,7 @@ Installed path:
     <string name="preloader_loading_steam_client">Loading Steam client</string>
     <string name="preloader_connecting_to_steam">Connecting to Steam</string>
     <string name="preloader_signing_in_to_steam">Signing in to Steam</string>
+    <string name="preloader_signing_in_offline">Signing in offline</string>
     <string name="preloader_fetching_game_info">Signed in — fetching game info</string>
     <string name="preloader_steam_ready">Steam ready</string>
     <string name="preloader_updating_game_info">Updating game info</string>

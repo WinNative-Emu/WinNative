@@ -322,7 +322,10 @@ void teardown(const char* reason) {
         } else {
             const char* acEnv = getenv("WN_STEAM_AGENT_CLOUD");
             const char* offEnv = getenv("WN_STEAM_OFFLINE");
-            if (offEnv && offEnv[0] != '0' && offEnv[0] != '\0') {
+            const char* netEnv = getenv("WN_STEAM_NET_DOWN");
+            const bool offline = (offEnv && offEnv[0] != '0' && offEnv[0] != '\0')
+                || (netEnv && netEnv[0] != '0' && netEnv[0] != '\0');
+            if (offline) {
                 wn_log("cloud: exit upload skipped — Steam Offline Mode keeps this session's "
                        "saves local until the shortcut goes back online");
             } else if (!acEnv || acEnv[0] != '0') {

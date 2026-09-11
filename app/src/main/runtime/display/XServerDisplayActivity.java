@@ -3798,7 +3798,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             return;
         }
 
-        if (!isCloudSyncEnabledForShortcut() || com.winlator.cmod.feature.sync.CloudSyncHelper.isOfflineMode(shortcut)) {
+        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()) {
             onComplete.run();
             return;
         }
@@ -3936,13 +3936,34 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private boolean isOfflineModeForShortcut() {
-        return shortcut != null && "1".equals(shortcut.getExtra("offline_mode", "0"));
+        if (shortcut == null) return false;
+        if ("1".equals(shortcut.getExtra("offline_mode", "0"))) return true;
+        return isSteamShortcut() && isSteamOfflineModeForShortcut();
     }
 
     private boolean isSteamOfflineModeForShortcut() {
         if (shortcut == null) return false;
         return parseBoolean(getShortcutSetting("steamOfflineMode",
                 container != null && container.isSteamOfflineMode() ? "1" : "0"));
+    }
+
+    private boolean hasValidatedInternet() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return true;
+            android.net.Network active = cm.getActiveNetwork();
+            if (active == null) return false;
+            android.net.NetworkCapabilities caps = cm.getNetworkCapabilities(active);
+            if (caps == null) return false;
+            return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    && caps.hasCapability(
+                            android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        } catch (Exception e) {
+            Log.w("XServerDisplayActivity",
+                    "Could not read the network state; assuming this device is online", e);
+            return true;
+        }
     }
 
     private static final boolean STEAM_AGENT_CLOUD_ENABLED = true;
@@ -7894,13 +7915,19 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             .PrefManager.INSTANCE.getSteamUserSteamId64());
                     String planWTok = com.winlator.cmod.feature.stores.steam.utils
                             .PrefManager.INSTANCE.getRefreshToken();
-                    if (planWTok != null && !planWTok.isEmpty()
-                            && planWUser != null && !planWUser.isEmpty()
+                    if (planWUser != null && !planWUser.isEmpty()
                             && !planWSid.equals("0")
                             && bsAppId > 0) {
                         envVars.put("WN_STEAM_USERNAME", planWUser);
                         envVars.put("WN_STEAM_STEAMID", planWSid);
-                        envVars.put("WN_STEAM_TOKEN", planWTok);
+                        if (planWTok != null && !planWTok.isEmpty()) {
+                            envVars.put("WN_STEAM_TOKEN", planWTok);
+                        } else {
+                            Log.w("XServerDisplayActivity",
+                                    "Steam Launcher: no cached refresh token — the agent can "
+                                    + "only sign in against the Steam credentials this container "
+                                    + "already cached, which is the offline path");
+                        }
                         envVars.put("WN_STEAM_APPID", String.valueOf(bsAppId));
                         // Pass language for native launcher ACF UserConfig/MountedConfig
                         String acfLang = PrefManager.INSTANCE.getContainerLanguage();
@@ -8076,7 +8103,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             Log.w("XServerDisplayActivity",
                                     "Steam Launcher: Could not query depot data", depotIgnored);
                         }
-                        boolean steamOffline = isSteamOfflineModeForShortcut();
+                        boolean netDown = !hasValidatedInternet();
+                        boolean steamOffline = isSteamOfflineModeForShortcut() || netDown;
                         if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()
                                 || steamOffline) {
                             envVars.put("WN_STEAM_AGENT_CLOUD", "0");
@@ -8084,6 +8112,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                                     "Steam Launcher: WN_STEAM_AGENT_CLOUD=0 — cloud saves are "
                                     + "turned off for this shortcut, so the agent skips both "
                                     + "the launch download and the exit upload");
+                        }
+                        if (netDown) {
+                            envVars.put("WN_STEAM_NET_DOWN", "1");
+                            Log.i("XServerDisplayActivity",
+                                    "Steam Launcher: WN_STEAM_NET_DOWN=1 — this device has no "
+                                    + "validated internet connection, so the agent signs in "
+                                    + "offline and never waits on Steam's servers");
                         }
                         if (steamOffline) {
                             envVars.put("WN_STEAM_OFFLINE", "1");
@@ -8124,16 +8159,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                                 "Steam Launcher: token+identity published (user=" + planWUser
                                 + " sid=" + planWSid
                                 + " appId=" + bsAppId
-                                + " tokenLen=" + planWTok.length() + ")");
+                                + " tokenLen=" + (planWTok == null ? 0 : planWTok.length()) + ")");
                     } else {
                         Log.w("XServerDisplayActivity",
-                                "Steam Launcher: refresh token / user / steamId missing "
+                                "Steam Launcher: user / steamId / appId missing "
                                 + "(user='" + planWUser + "' sidIsZero="
                                 + planWSid.equals("0") + " tokenEmpty="
                                 + (planWTok == null || planWTok.isEmpty())
                                 + " bsAppId=" + bsAppId
                                 + ") — launcher will refuse to start; "
-                                + "sign into Steam first");
+                                + "sign into Steam once while online first");
                     }
                 }
             } catch (Exception e) {
