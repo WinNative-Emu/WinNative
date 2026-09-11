@@ -2534,6 +2534,11 @@
     <string name="session_drawer_frame_generation_note">Lossless Scaling으로 렌더링된 프레임 사이를 보간합니다. 움직임은 부드러워지지만 입력 지연이 한 프레임 늘어납니다.</string>
     <string name="session_drawer_frame_generation_target_note">고정 배수를 유지하는 대신, 측정 가능한 이득이 있을 때만 목표를 향해 올립니다.</string>
     <string name="session_drawer_frame_generation_missing">프레임 생성을 사용하려면 컨테이너 설정에서 Lossless Scaling을 설치하세요.</string>
+    <string name="session_drawer_system_frame_generation">프레임 생성 (시스템)</string>
+    <string name="session_drawer_system_frame_generation_enable">HUD에서 시스템 프레임 계산</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space는 게임이 렌더링한 뒤에 생성된 프레임을 삽입합니다. HUD는 드라이버에서 보간 배율을 읽어 결과 출력 속도를 표시합니다.</string>
+    <string name="session_drawer_system_frame_generation_detected">감지됨: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">감지되지 않음. Game Space 프레임 보간이 실행 중이라면 직접 켜세요.</string>
     <string name="session_drawer_dis_frame_generation">프레임 생성 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">프레임 생성 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search로 렌더링된 프레임 사이를 보간합니다. 내장 기능이며 외부 셰이더가 필요 없습니다.</string>

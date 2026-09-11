@@ -2533,6 +2533,11 @@ Caminho instalado:
     <string name="session_drawer_frame_generation_note">Interpola entre quadros renderizados com o Lossless Scaling. Movimento mais suave, mas um quadro extra de latência de entrada.</string>
     <string name="session_drawer_frame_generation_target_note">Sobe em direção ao alvo apenas enquanto ajudar de forma mensurável, em vez de manter um multiplicador fixo.</string>
     <string name="session_drawer_frame_generation_missing">Instale o Lossless Scaling nas configurações do contêiner para usar a geração de quadros.</string>
+    <string name="session_drawer_system_frame_generation">Geração de quadros (sistema)</string>
+    <string name="session_drawer_system_frame_generation_enable">Contar quadros do sistema no HUD</string>
+    <string name="session_drawer_system_frame_generation_note">O Game Space insere quadros gerados depois que o jogo os renderiza. O HUD lê a taxa de interpolação do driver e mostra a taxa de saída resultante.</string>
+    <string name="session_drawer_system_frame_generation_detected">Detectado: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">Não detectado. Ligue manualmente se a interpolação de quadros do Game Space estiver rodando.</string>
     <string name="session_drawer_dis_frame_generation">Geração de quadros (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Gerar quadros (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpola entre quadros renderizados com Dense Inverse Search. Integrado; sem shaders externos.</string>

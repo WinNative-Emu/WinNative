@@ -2532,6 +2532,11 @@
     <string name="session_drawer_frame_generation_note">Lossless Scaling でレンダリング済みフレーム間を補間します。動きは滑らかになりますが、入力遅延が 1 フレーム増えます。</string>
     <string name="session_drawer_frame_generation_target_note">固定倍率を保つのではなく、効果が測定できる間だけ目標に向けて上げていきます。</string>
     <string name="session_drawer_frame_generation_missing">フレーム生成を使用するには、コンテナ設定で Lossless Scaling をインストールしてください。</string>
+    <string name="session_drawer_system_frame_generation">フレーム生成 (システム)</string>
+    <string name="session_drawer_system_frame_generation_enable">システムのフレームを HUD で数える</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space はゲームの描画後に生成フレームを挿入します。HUD はドライバーから補間レートを読み取り、結果の出力レートを表示します。</string>
+    <string name="session_drawer_system_frame_generation_detected">検出: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">未検出。Game Space のフレーム補間が動作している場合は手動で有効にしてください。</string>
     <string name="session_drawer_dis_frame_generation">フレーム生成 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">フレームを生成 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search で描画フレーム間を補間します。アプリ内蔵で外部シェーダーは不要です。</string>
