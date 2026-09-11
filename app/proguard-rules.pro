@@ -50,6 +50,9 @@
     native <methods>;
 }
 
+# SDL3 (Steam Controller): SDL's native side resolves these classes by name.
+-keep class org.libsdl.app.** { *; }
+
 # zstd-jni — the native side does GetFieldID("srcPos", "J") /
 # GetFieldID("dstPos", "J") on ZstdInputStreamNoFinalizer and
 # similar via JNI; R8 renames the Kotlin/Java fields and the lookup

@@ -182,6 +182,10 @@ public class ExternalController {
     this.id = id;
   }
 
+  public void setDeviceId(int deviceId) {
+    this.deviceId = deviceId;
+  }
+
   public byte getTriggerType() {
     return triggerType;
   }

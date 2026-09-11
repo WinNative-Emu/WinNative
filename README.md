@@ -171,6 +171,8 @@ Please match the existing code style and ensure any AI-assisted code is thorough
 - **DIS optical flow** — the algorithm and its reference implementation come from [OpenCV](https://github.com/opencv/opencv) (`DISOpticalFlow`, [LICENSE](https://github.com/opencv/opencv/blob/5.x/LICENSE)), which adopted Till Kroeger's original [OF_DIS](https://github.com/tikroeger/OF_DIS)
 - **DXVK** by [Philip Rebohle and contributors](https://github.com/doitsujin/dxvk) (zlib/libpng) — the `dxbc` shader translator, vendored at `app/src/main/cpp/thirdparty/dxbc` to convert the frame generation shaders to SPIR-V
 - **DirectAudio** by [The412Banner](https://github.com/The412Banner/directaudio) (LGPL-2.1-or-later) — the native Wine → Android AAudio audio driver, and the only audio path in WinNative that carries a working microphone. See [DirectAudio — what came from The412Banner's driver](#directaudio--what-came-from-the412banners-driver) below
+- **Steam Controller support and the visual controller test / binder** by [The412Banner](https://github.com/The412Banner/Bannerlator) (GPL-3.0) — written for **Bannerlator** and ported into WinNative, including the per-family pad artwork. See [Steam Controller — what came from The412Banner's Bannerlator](#steam-controller--what-came-from-the412banners-bannerlator) below
+- **SDL3** by [Sam Lantinga and the SDL contributors](https://github.com/libsdl-org/SDL) (Zlib) — its HIDAPI Steam drivers are what actually read the Steam Controller; the official 3.4.16 Android release AAR is vendored unmodified at `vendor/maven/org/libsdl/android/SDL3/`
 - **Lossless Scaling** (Steam) — the source of the frame generation shaders. They are read from the user's own installed copy at runtime; none are redistributed with WinNative
 
 #### Frame generation — what came from Camille LaVey's Eden port
@@ -237,6 +239,66 @@ sparse-to-dense step and the pacing — built to run inside a mobile compositor 
 The engine sits behind its own settings — a Fast / Balance / Quality flow resolution and an
 optional target frame rate — kept separate from the Lossless Scaling ones, and the two engines
 are mutually exclusive because the compositor drives one interpolator per frame.
+
+#### Steam Controller — what came from The412Banner's Bannerlator
+
+WinNative's Steam Controller support, the animated controller test panel and the tap-the-pad
+visual binder are **The412Banner's work**, written for
+**[Bannerlator](https://github.com/The412Banner/Bannerlator)** and ported here. The design, the
+SDL3 bridge, the input model, the pad artwork and the hotspot manifest are all his; WinNative's
+own part is the adaptation to this fork's input plumbing (`WinHandler`'s slot machinery, the
+`InputControlsView` binding lane and the Compose settings screen) plus full localization.
+
+Out of the box a Steam Controller is not a gamepad: it presents as a keyboard and mouse
+("lizard mode"), so Android never reports a controller and WinNative's normal `InputDevice` path
+cannot see it. SDL3's HIDAPI Steam drivers speak Valve's protocol instead — over Bluetooth LE or
+USB — keep lizard mode off and parse the reports. Only those drivers are enabled
+(`SDL_HINT_JOYSTICK_HIDAPI=0`, `SDL_HINT_JOYSTICK_HIDAPI_STEAM=1`), so SDL never opens, claims or
+requests USB permission for any other controller, and every non-Valve pad keeps the untouched
+Android input path.
+
+| Piece | What it does |
+| --- | --- |
+| `steamctrl/steam_controller_bridge.cpp` | JNI bridge over SDL3's gamepad API: flat int/float arrays for up to four Valve HIDAPI pads, plus rumble |
+| `SteamControllerBackend` | ~250 Hz poll thread, frame coalescing onto the main thread, the 22-bit button model, trackpad-as-mouse and the back-paddle / "…" bindings |
+| `WinHandler` SDL pads | Seats each pad in the ordinary player-slot machinery under a synthetic device id, shadows the Valve device Android also exposes, and routes rumble back through SDL |
+| `ControllerTestPanel` | The animated pad picture: live button glow, movable stick nubs that glow with deflection, trigger and battery readouts, and the inputs-verified tally (18 on a Steam Controller) |
+| `VisualControllerBinder` | Tap a button on the pad art to rebind it, written into the same profile store the list editor uses |
+| `pad_*.png` | The per-family controller artwork (Xbox 360 / Xbox / DualSense / DualShock 4 / DualShock 3 / Switch Pro / 8BitDo / GameCube / SNES / Steam / Generic) |
+
+Support is **off by default** and lives in *Settings → Input Controls → Steam Controller*. While
+it is off, SDL is never loaded and the normal controller path is byte-for-byte unchanged.
+
+Credit history — every commit below is The412Banner's, in
+[The412Banner/Bannerlator](https://github.com/The412Banner/Bannerlator):
+
+| Commit | Date | Subject |
+| --- | --- | --- |
+| `9ca9bcf` | 2026-08-31 | Controller Test: reuse the visualizer in Settings > Input Controls |
+| `d32a03f` | 2026-08-31 | Controller Test: accurate per-family pad art + smaller in-game popup |
+| `1678f23` | 2026-08-31 | Controller Test: bound the pad picture to a compact size |
+| `4344ef4` | 2026-08-31 | Visual controller binder: tap the pad to remap, in Settings + in-game |
+| `475721e` | 2026-08-31 | Controller pads: pre-rendered PNG art + overlay; Settings test-first; fix live-input arm |
+| `8d2e1e3` | 2026-08-31 | Controller test: movable stick nubs + pinned footer (Identify never clips) |
+| `90a8286` | 2026-08-31 | Controller test: stick nubs glow on deflection + landscape pad-left / metrics-right |
+| `1e0d46f` | 2026-08-31 | Controller test: landscape metrics as a 2x2 grid so all four tiles fit |
+| `9722956` | 2026-08-31 | feat(controller-test): independent OSC/physical profile lanes + live profile lists |
+| `095269d` | 2026-08-31 | Bind screen: add Delete profile + outline/dividers on menus and popup |
+| `b02d981` | 2026-08-31 | Controller test: unify popup-menu styling on outlinedMenuCard; rename Settings card |
+| `b9e6552` | 2026-09-10 | Steam Controller support via SDL3 (opt-in, Input Controls > Device) |
+| `e5b1272` | 2026-09-10 | Steam Controller: fetch pad name/path on the poll thread |
+| `6d3b2a7` | 2026-09-10 | Steam Controller: back buttons, profile bindings, settings test dialog |
+| `d03f6b1` | 2026-09-10 | Steam Controller: make the "…" (Quick Access) button mappable |
+| `3d243e4` | 2026-09-10 | Controller test: count the Steam Controller's "…" button (18 inputs) |
+| `b597711` | 2026-09-10 | Steam Controller: pick which trackpad moves the mouse (right / left / both / off) |
+| `c2acbbd` | 2026-09-10 | Merge branch 'feat/steam-controller-sdl': opt-in Steam Controller support via SDL3 |
+
+Bannerlator is GPL-3.0, the same license as WinNative, and remains so. SDL3 is Zlib-licensed and
+is vendored unmodified; see [`vendor/maven/README.md`](vendor/maven/README.md) and
+[`EMULATOR_CREDITS.md`](EMULATOR_CREDITS.md).
+
+> Steam Controller support, controller test and visual binder by The412Banner
+> (https://github.com/The412Banner/Bannerlator)
 
 #### DirectAudio — what came from The412Banner's driver
 

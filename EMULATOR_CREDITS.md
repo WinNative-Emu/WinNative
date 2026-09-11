@@ -92,6 +92,18 @@ the user's own Lossless Scaling installation, which they must own separately on 
 | Snapdragon Game Super Resolution (SGSR) | Upscaling shader | BSD-3-Clause | https://github.com/quic/snapdragon-gsr |
 | Winlator | Windows-on-Android base this project forks | GPL-3.0 | https://github.com/brunodev85/winlator |
 
+## Controller support
+
+Steam Controller support and the visual controller test / binding screen were written by
+**The412Banner** for **Bannerlator** and ported into WinNative. The SDL3 Android release AAR is
+vendored unmodified under `vendor/maven/org/libsdl/android/SDL3/` and is only used to read Valve
+HIDAPI devices; every other controller keeps WinNative's normal Android input path.
+
+| Component | Role | License | Source |
+| --- | --- | --- | --- |
+| Bannerlator | Steam Controller backend, pad artwork and the controller test / visual binder this port is derived from | GPL-3.0 | https://github.com/The412Banner/Bannerlator |
+| SDL3 3.4.16 (official Android release AAR, unmodified) | HIDAPI Steam Controller drivers | Zlib | https://github.com/libsdl-org/SDL |
+
 ## Source availability
 
 WinNative is released under the GPL-3.0. As required by that license and by the GPL-2.0
