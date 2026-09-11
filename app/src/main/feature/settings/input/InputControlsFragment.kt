@@ -577,10 +577,14 @@ class InputControlsFragment : Fragment() {
         }
     }
 
+    private fun inputControlsUrl(): String =
+        com.winlator.cmod.shared.io.DownloadSource
+            .mirroredUrl(requireContext(), INPUT_CONTROLS_URL)
+
     private fun downloadProfileList() {
         val activity = activity ?: return
         if (!remoteProfileRequestInFlight.compareAndSet(false, true)) return
-        HttpUtils.download(String.format(INPUT_CONTROLS_URL, "index.txt")) { content ->
+        HttpUtils.download(String.format(inputControlsUrl(), "index.txt")) { content ->
             if (!isAdded) {
                 remoteProfileRequestInFlight.set(false)
                 return@download
@@ -686,7 +690,7 @@ class InputControlsFragment : Fragment() {
 
     private fun buildRemoteProfileUrl(itemName: String): String {
         val remoteName = if (itemName.endsWith(".icp", ignoreCase = true)) itemName else "$itemName.icp"
-        return String.format(INPUT_CONTROLS_URL, android.net.Uri.encode(remoteName))
+        return String.format(inputControlsUrl(), android.net.Uri.encode(remoteName))
     }
 
     private fun installedProfileKeys(): Set<String> {

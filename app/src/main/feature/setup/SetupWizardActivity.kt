@@ -75,6 +75,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -1216,7 +1217,12 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
                     // 2. Fetch full catalog (content.json)
                     val fullCatalog =
                         parseRecommendedPackages(
-                            Downloader.downloadString(ContentsManager.REMOTE_PROFILES),
+                            Downloader.downloadString(
+                                com.winlator.cmod.shared.io.DownloadSource.mirroredUrl(
+                                    this@SetupWizardActivity,
+                                    ContentsManager.REMOTE_PROFILES,
+                                )
+                            )
                         )
 
                     // 3. Merge: start with recommended, then add any full catalog entries not already present
@@ -1271,7 +1277,7 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
         }
 
     private fun fetchRecommendedPackages(): List<RemotePackageSpec> {
-        val json = Downloader.downloadString(resolveJsonDownloadUrl(DEFAULT_JSON_URL))
+        val json = Downloader.downloadString(com.winlator.cmod.shared.io.DownloadSource.mirroredUrl(this, resolveJsonDownloadUrl(DEFAULT_JSON_URL)))
         if (!json.isNullOrBlank()) {
             prefs(this).edit().putString(KEY_DEFAULT_JSON_CACHE, json).apply()
             val specs = parseRecommendedPackages(json)
@@ -1417,7 +1423,7 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
                                 val downloaded =
                                     downloadFileToCache(
                                         label = spec.verName,
-                                        url = spec.remoteUrl,
+                                        url = com.winlator.cmod.shared.io.DownloadSource.mirroredUrl(this@SetupWizardActivity, spec.remoteUrl),
                                         currentIndex = position,
                                         total = total,
                                         title = title,
@@ -2502,10 +2508,44 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
                                             val installAllEnabled = !allRecommendedInstalled
                                             val navHere = controller && region == REGION_CONTENT && navIdx == 0
                                             val installAllShape = RoundedCornerShape(8.dp)
-                                            Box(
+                                            val mirrorOn =
+                                                com.winlator.cmod.shared.io.DownloadSource
+                                                    .chinaMirrorEnabled(this@SetupWizardActivity)
+                                            var mirrorChecked by remember(mirrorOn) {
+                                                mutableStateOf(mirrorOn)
+                                            }
+                                            Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                contentAlignment = Alignment.CenterEnd,
+                                                verticalAlignment = Alignment.CenterVertically,
                                             ) {
+                                                if (com.winlator.cmod.shared.io.DownloadSource.isChineseLocale()) {
+                                                    Text(
+                                                        text = stringResource(R.string.setup_wizard_mirror),
+                                                        color =
+                                                            if (mirrorChecked) {
+                                                                Color(0xFF1A9FFF)
+                                                            } else {
+                                                                Color(0xFF7A8FA8)
+                                                            },
+                                                        fontFamily = InterFont,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontSize = 11.sp,
+                                                    )
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Switch(
+                                                        checked = mirrorChecked,
+                                                        onCheckedChange = { checked ->
+                                                            mirrorChecked = checked
+                                                            androidx.preference.PreferenceManager
+                                                                .getDefaultSharedPreferences(this@SetupWizardActivity)
+                                                                .edit()
+                                                                .putBoolean("use_china_mirror", checked)
+                                                                .apply()
+                                                            refreshRecommendedPackageCache()
+                                                        },
+                                                    )
+                                                    Spacer(Modifier.weight(1f))
+                                                }
                                                 Box(
                                                     modifier =
                                                         Modifier

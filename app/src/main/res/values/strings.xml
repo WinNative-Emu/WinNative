@@ -148,6 +148,8 @@
     <string name="store_game_branch_build">Build %1$s</string>
     <string name="store_game_branch_changed">Version set to %1$s. Download to apply it.</string>
     <string name="store_game_branch_switch_installed">Version set to %1$s. Check for Update to switch the installed files.</string>
+    <string name="steam_download_use_china_cdn">Steam China CDN</string>
+    <string name="steam_download_use_china_cdn_summary">Include Steam-China-only download servers. Off by default.</string>
     <string name="common_ui_select">Select</string>
     <string name="common_ui_storage_roots">Storage Roots</string>
     <string name="common_ui_browse_local_folders_directly">Browse local folders directly</string>
@@ -1354,6 +1356,10 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_other_game_language_summary">Preferred language for Steam/Epic/GOG downloads</string>
 
     <string name="settings_other_section_integration">Integration</string>
+    <string name="settings_other_download_source_title">Download Source (GitHub Mirror)</string>
+    <string name="settings_other_download_source_default">GitHub (default)</string>
+    <string name="settings_other_download_source_message">Switch on to fetch component downloads through a China GitHub accelerator (e.g. gh-proxy.com — reverse proxy for github.com). Pick a working proxy in the field; result looks like {proxy}/https://github.com/... Leave off to use GitHub directly.</string>
+    <string name="settings_other_download_source_hint">GitHub proxy base URL</string>
     <string name="settings_other_setup_wizard_title">Setup Wizard</string>
     <string name="settings_other_setup_wizard_summary">Open the setup wizard again to review permissions, system files, and default containers.</string>
     <string name="settings_other_checking_for_updates">Checking for updates\u2026</string>
@@ -1477,6 +1483,7 @@ Installed path:
     <string name="setup_wizard_no_runtime_hint">Install a Wine or Proton package from the previous step, or skip this for now.</string>
     <string name="setup_wizard_recommended_label">Recommended</string>
     <string name="setup_wizard_install_all_recommended">Install All Recommended</string>
+    <string name="setup_wizard_mirror">Mirror</string>
     <string name="setup_wizard_create_container">Create Container</string>
     <string name="setup_wizard_creating_container">Creating\u2026</string>
 

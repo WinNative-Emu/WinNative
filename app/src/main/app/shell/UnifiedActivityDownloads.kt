@@ -367,6 +367,34 @@ internal fun UnifiedActivity.DownloadsTab(
         @Suppress("UNUSED_EXPRESSION")
         tick
 
+        if (com.winlator.cmod.shared.io.DownloadSource.isChineseLocale()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.steam_download_use_china_cdn),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = stringResource(R.string.steam_download_use_china_cdn_summary),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp,
+                    )
+                }
+                Switch(
+                    checked = com.winlator.cmod.feature.stores.steam.utils.PrefManager.steamUseChinaCdn,
+                    onCheckedChange = { enabled ->
+                        com.winlator.cmod.feature.stores.steam.utils.PrefManager.steamUseChinaCdn = enabled
+                        com.winlator.cmod.feature.stores.steam.wnsteam.WnSteamSession.setUseChinaCdn(enabled)
+                    },
+                )
+            }
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),

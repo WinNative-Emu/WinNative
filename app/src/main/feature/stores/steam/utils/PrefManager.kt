@@ -318,6 +318,19 @@ object PrefManager {
             setBoolean("enable_steam_logs", value)
         }
 
+    var steamUseChinaCdn: Boolean
+        get() {
+            val prefs = requirePrefs()
+            return if (prefs.contains("steam_use_china_cdn")) {
+                prefs.getBoolean("steam_use_china_cdn", false)
+            } else {
+                com.winlator.cmod.shared.io.DownloadSource.isChineseLocale()
+            }
+        }
+        set(value) {
+            setBoolean("steam_use_china_cdn", value)
+        }
+
     var useSingleDownloadFolder: Boolean
         get() = getBoolean("use_single_download_folder", true)
         set(value) {

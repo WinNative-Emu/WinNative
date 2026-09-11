@@ -715,6 +715,17 @@ class WnSteamSession : AutoCloseable {
             listener: WnDownloadListener,
         )
         @JvmStatic private external fun nativeCancelDownload(handle: Long)
+        @JvmStatic private external fun nativeSetUseChinaCdn(enabled: Boolean)
+
+        @JvmStatic
+        fun setUseChinaCdn(enabled: Boolean) {
+            runCatching {
+                com.winlator.cmod.feature.stores.steam.wnsteam.WnSteamClient.ensureLoaded()
+                nativeSetUseChinaCdn(enabled)
+            }.onFailure { t ->
+                android.util.Log.w("WnSteamSession", "setUseChinaCdn failed: ${t.message}")
+            }
+        }
         @JvmStatic private external fun nativeStartWineBridge(
             handle: Long, steam3Port: Int, clientServicePort: Int): Boolean
         @JvmStatic private external fun nativeStopWineBridge(handle: Long)

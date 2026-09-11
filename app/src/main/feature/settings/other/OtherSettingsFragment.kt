@@ -115,6 +115,14 @@ class OtherSettingsFragment : Fragment() {
                             UpdateService.setChannel(ctx, UpdateChannel.entries[index])
                             refresh()
                         },
+                        onChinaMirrorChanged = { checked ->
+                            preferences.edit { putBoolean("use_china_mirror", checked) }
+                            refresh()
+                        },
+                        onChinaMirrorBaseChanged = { base ->
+                            preferences.edit { putString("china_mirror_base", base) }
+                            refresh()
+                        },
                         onLanguageSelected = { index ->
                             val currentIndex =
                                 LocaleHelper.indexForTag(
@@ -233,6 +241,10 @@ class OtherSettingsFragment : Fragment() {
             OtherSettingsState(
                 checkForUpdates = preferences.getBoolean("check_for_updates", true),
                 updateChannelIndex = UpdateChannel.entries.indexOf(UpdateService.channel(ctx)),
+                useChinaMirror = com.winlator.cmod.shared.io.DownloadSource.chinaMirrorEnabled(ctx),
+                chinaMirrorBase = preferences.getString("china_mirror_base", "")?.ifBlank {
+                    com.winlator.cmod.shared.io.DownloadSource.DEFAULT_CHINA_MIRROR_BASE
+                } ?: com.winlator.cmod.shared.io.DownloadSource.DEFAULT_CHINA_MIRROR_BASE,
                 languageLabels = languageLabels,
                 languageIndex = languageIndex,
                 soundFontFiles = soundFontFiles,

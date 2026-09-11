@@ -1851,6 +1851,15 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSteamSession_nativeSetUseChinaCdn(
+    _env: JNIEnv,
+    _class: JClass,
+    enabled: jboolean,
+) {
+    crate::depot_downloader::USE_CHINA_CDN.store(enabled != JNI_FALSE, Ordering::Relaxed);
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSteamSession_nativeConnect(
     mut env: JNIEnv,
     _class: JClass,

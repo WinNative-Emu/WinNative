@@ -137,12 +137,15 @@ pub fn validate_resolved_download_inputs(
     Ok(())
 }
 
+pub static USE_CHINA_CDN: AtomicBool = AtomicBool::new(false);
+
 pub fn filter_usable_cdn_servers(
     servers: impl IntoIterator<Item = CContentServerDirectoryServerInfo>,
 ) -> Vec<CContentServerDirectoryServerInfo> {
+    let allow_china = USE_CHINA_CDN.load(Ordering::Relaxed);
     servers
         .into_iter()
-        .filter(|server| !server.steam_china_only && !server.host.is_empty())
+        .filter(|server| (allow_china || !server.steam_china_only) && !server.host.is_empty())
         .collect()
 }
 

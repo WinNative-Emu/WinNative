@@ -58,6 +58,9 @@ class PluviaApp : Application() {
         PrefManager.install(this)
         GOGConstants.init(this)
 
+        com.winlator.cmod.feature.stores.steam.wnsteam.WnSteamSession
+            .setUseChinaCdn(com.winlator.cmod.feature.stores.steam.utils.PrefManager.steamUseChinaCdn)
+
         com.winlator.cmod.app.service.NetworkMonitor
             .init(this)
         scheduleColdStartWarmups()

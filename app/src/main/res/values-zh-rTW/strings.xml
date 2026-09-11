@@ -2629,5 +2629,10 @@
     <string name="itch_facet_gamepad">手把</string>
     <string name="itch_store_update_none">已是最新</string>
     <string name="itch_store_update_available">有可用更新 — %1$s</string>
+    <string name="settings_other_download_source_title">下載來源（GitHub 鏡像）</string>
+    <string name="settings_other_download_source_default">GitHub（預設）</string>
+    <string name="settings_other_download_source_message">開啟後透過中國 GitHub 加速（例如 gh-proxy.com）下載元件。請填入可用的代理；結果形如 {proxy}/https://github.com/... 關閉＝直接連 GitHub。</string>
+    <string name="settings_other_download_source_hint">GitHub 代理基礎網址</string>
+    <string name="setup_wizard_mirror">鏡像</string>
 </resources>
 

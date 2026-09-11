@@ -4,6 +4,7 @@ package com.winlator.cmod.feature.settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SliderState
@@ -100,6 +102,8 @@ private const val SettingsSliderTrackScaleY = 0.72f
 data class OtherSettingsState(
     val checkForUpdates: Boolean = true,
     val updateChannelIndex: Int = 0,
+    val useChinaMirror: Boolean = false,
+    val chinaMirrorBase: String = com.winlator.cmod.shared.io.DownloadSource.DEFAULT_CHINA_MIRROR_BASE,
     val languageLabels: List<String> = emptyList(),
     val languageIndex: Int = 0,
     val soundFontFiles: List<String> = emptyList(),
@@ -144,6 +148,8 @@ fun OtherSettingsScreen(
     onCheckForUpdatesChanged: (Boolean) -> Unit,
     onCheckForUpdatesNow: () -> Unit,
     onUpdateChannelSelected: (Int) -> Unit,
+    onChinaMirrorChanged: (Boolean) -> Unit,
+    onChinaMirrorBaseChanged: (String) -> Unit,
     onLanguageSelected: (Int) -> Unit,
     onSoundFontSelected: (Int) -> Unit,
     onInstallSoundFont: () -> Unit,
@@ -329,6 +335,15 @@ fun OtherSettingsScreen(
             )
 
             SectionLabel(stringResource(R.string.settings_general_imagefs), modifier = Modifier.padding(top = 8.dp))
+
+            if (com.winlator.cmod.shared.io.DownloadSource.isChineseLocale()) {
+                DownloadSourceCard(
+                    enabled = state.useChinaMirror,
+                    base = state.chinaMirrorBase,
+                    onEnabled = onChinaMirrorChanged,
+                    onChange = onChinaMirrorBaseChanged,
+                )
+            }
 
             ReinstallImagefsCard(onClick = { showReinstallDialog = true })
 
@@ -946,6 +961,98 @@ private fun CursorSpeedCard(
                             highlightColor = NavHighlight,
                         ),
             )
+        }
+    }
+}
+
+@Composable
+private fun DownloadSourceCard(
+    enabled: Boolean,
+    base: String,
+    onEnabled: (Boolean) -> Unit,
+    onChange: (String) -> Unit,
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    val surface = CardDark
+    val onSurface = TextPrimary
+    val outline = CardBorder
+    val onSurfaceVariant = TextSecondary
+
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(surface)
+                .border(1.dp, outline, RoundedCornerShape(12.dp))
+                .clickable { showDialog = true }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(IconBoxBg),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = null,
+                    tint = Accent,
+                    modifier = Modifier.size(17.dp),
+                )
+            }
+            Spacer(Modifier.width(13.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_other_download_source_title),
+                    color = onSurface,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text =
+                        if (enabled) {
+                            base
+                        } else {
+                            stringResource(R.string.settings_other_download_source_default)
+                        },
+                    color = onSurfaceVariant,
+                    fontSize = 11.sp,
+                )
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = onEnabled,
+            )
+        }
+    }
+
+    if (showDialog) {
+        var draft by remember { mutableStateOf(base) }
+        Dialog(onDismissRequest = { showDialog = false }) {
+            PopupDialog(
+                title = stringResource(R.string.settings_other_download_source_title),
+                message = stringResource(R.string.settings_other_download_source_message),
+                icon = Icons.Outlined.Settings,
+                confirmLabel = stringResource(R.string.common_ui_ok),
+                onConfirm = {
+                    onChange(draft.trim().trimEnd('/'))
+                    showDialog = false
+                },
+                onCancel = { showDialog = false },
+            ) {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    label = { Text(stringResource(R.string.settings_other_download_source_hint)) },
+                    placeholder = { Text(com.winlator.cmod.shared.io.DownloadSource.DEFAULT_CHINA_MIRROR_BASE) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+            }
         }
     }
 }

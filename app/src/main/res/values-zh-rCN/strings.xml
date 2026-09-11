@@ -125,6 +125,8 @@
     <string name="store_game_update_failed_notice">更新失败</string>
     <string name="store_game_update_check_failed_notice">检查更新失败</string>
     <string name="store_game_download_already_active">此游戏已在下载。请先取消当前下载，然后再添加 DLC。</string>
+    <string name="steam_download_use_china_cdn">Steam 中国 CDN</string>
+    <string name="steam_download_use_china_cdn_summary">允许使用仅限 Steam 中国区的下载服务器。默认关闭。</string>
     <string name="common_ui_select">选择</string>
     <string name="common_ui_select_folder">选择文件夹</string>
     <string name="common_ui_current_folder">当前文件夹</string>
@@ -879,6 +881,10 @@
     <string name="settings_other_language_system_default">系统默认</string>
 
     <string name="settings_other_section_integration">集成</string>
+    <string name="settings_other_download_source_title">下载源（GitHub 镜像）</string>
+    <string name="settings_other_download_source_default">GitHub（默认）</string>
+    <string name="settings_other_download_source_message">开启后组件下载将套上国内 GitHub 加速前缀（如 gh-proxy.com，GitHub 反代）。在下方填写可用的加速地址，效果为 {proxy}/https://github.com/...。关闭则直连 GitHub。</string>
+    <string name="settings_other_download_source_hint">GitHub 加速基础地址</string>
     <string name="settings_other_checking_for_updates">正在检查更新\u2026</string>
     <string name="settings_other_update_check_cooldown">请等待 %1$d 秒后再次检查</string>
     <string name="settings_other_persistable_permission_failed">无法获取持久化权限：%1$s</string>
@@ -999,6 +1005,7 @@
     <string name="setup_wizard_no_runtime_hint">请在上一步安装 Wine 或 Proton 软件包，或暂时跳过。</string>
     <string name="setup_wizard_recommended_label">推荐</string>
     <string name="setup_wizard_install_all_recommended">安装所有推荐</string>
+    <string name="setup_wizard_mirror">镜像</string>
     <string name="setup_wizard_create_container">创建容器</string>
     <string name="setup_wizard_creating_container">正在创建\u2026</string>
 
