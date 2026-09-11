@@ -338,8 +338,10 @@
     <string name="steam_section_real_client">Cliente real de Steam de WinNative</string>
     <string name="steam_section_emulator">Emulador heredado de Steam</string>
     <string name="shortcuts_properties_use_steam_input">Usar Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Ejecuta el juego a través del Steam Launcher integrado en Wine (recomendado). Desactiva los demás modos de inicio de Steam.</string>
     <string name="shortcuts_properties_steam_offline_mode">Modo sin conexión de Steam</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Hace que el cliente de Steam emulado se muestre como sin conexión, para que el juego no intente conexiones en línea. Úsalo para juegos que se quedan bloqueados en la verificación de red de Steam.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Juega sin usar Steam Cloud, así las partidas guardadas permanecen en este dispositivo y el juego arranca aunque no haya conexión. Desactívalo para reanudar Steam Cloud; si la partida local y la de la nube difieren, se te preguntará cuál conservar.</string>
     <string name="shortcuts_properties_reset">Restablecer propiedades</string>
     <string name="shortcuts_properties_updated_at">Acceso directo actualizado el %1$s</string>
     <string name="shortcuts_properties_properties_reset">Propiedades restablecidas correctamente.</string>

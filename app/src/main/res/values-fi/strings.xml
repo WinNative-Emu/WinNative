@@ -338,8 +338,10 @@
     <string name="steam_section_real_client">WinNative-oikea Steam-asiakas</string>
     <string name="steam_section_emulator">Vanha Steam-emulaattori</string>
     <string name="shortcuts_properties_use_steam_input">Käytä Steam-syötettä</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Käynnistää pelin Wine-ympäristön Steam Launcherilla (suositus). Poistaa muut Steamin käynnistystilat käytöstä.</string>
     <string name="shortcuts_properties_steam_offline_mode">Steamin offline-tila</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Saa emuloidun Steam-asiakkaan ilmoittautumaan offline-tilaan, jotta peli ei yritä muodostaa verkkoyhteyksiä. Käytä peleihin, jotka jumittuvat Steamin verkkotarkistuksessa.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Pelaa ilman Steam Cloudia, joten tallennukset pysyvät tällä laitteella ja peli käynnistyy myös ilman yhteyttä. Poista käytöstä jatkaaksesi Steam Cloudia; jos paikallinen ja pilvitallennus eroavat, sinulta kysytään kumman säilytät.</string>
     <string name="shortcuts_properties_reset">Palauta ominaisuudet</string>
     <string name="shortcuts_properties_updated_at">Pikakuvake päivitetty %1$s</string>
     <string name="shortcuts_properties_properties_reset">Ominaisuudet palautettu onnistuneesti.</string>

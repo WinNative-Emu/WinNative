@@ -338,8 +338,10 @@
     <string name="steam_section_real_client">WinNative Real Steam Client</string>
     <string name="steam_section_emulator">Äldre Steam-emulator</string>
     <string name="shortcuts_properties_use_steam_input">Använd Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Kör spelet via Steam Launcher i Wine (rekommenderas). Stänger av de andra Steam-startlägena.</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam offlineläge</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Får den emulerade Steam-klienten att rapportera som offline, så att spelet inte försöker upprätta onlineanslutningar. Använd för spel som hänger sig vid Steams nätverkskontroll.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Spelar utan Steam Cloud, så sparfilerna stannar på den här enheten och spelet startar även utan anslutning. Stäng av för att återuppta Steam Cloud; om den lokala och molnets sparfil skiljer sig får du välja vilken du vill behålla.</string>
     <string name="shortcuts_properties_reset">Återställ egenskaper</string>
     <string name="shortcuts_properties_updated_at">Genväg uppdaterad %1$s</string>
     <string name="shortcuts_properties_properties_reset">Egenskaperna återställdes.</string>
