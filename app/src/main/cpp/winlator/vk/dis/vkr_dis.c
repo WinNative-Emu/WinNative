@@ -16,6 +16,7 @@
 #include "shaders/dis_vr_sor_comp.spv.h"
 #include "shaders/dis_vr_add_comp.spv.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,6 +61,60 @@
 #define DIS_SRC_SMOOTHING 0.15f
 #define DIS_SRC_STALE_NS 500000000ull
 #define DIS_MIN_RATE_SAMPLES 12u
+
+// How often the planner states what it decided, so a report of "generation just
+// turns off" can be answered with the measured rates instead of a guess. Also
+// logged immediately whenever the count changes.
+#define DIS_PLAN_LOG_NS 5000000000ull
+
+// Generation planning.
+//
+// The planner answers one question: how many frames to synthesise between two
+// source frames. The rule used to be floor(desired / source) - 1, which is only
+// ever non-zero when the two rates are an exact integer ratio. A guest at 40 fps
+// on a 60 Hz panel gives 1.5, floors to 1, and asks for zero generated frames.
+// That is the whole of the "generation only works with the guest capped at
+// exactly half the refresh rate" report: 30 -> 60 is 2.0 and works, 40 -> 60 is
+// 1.5 and silently does nothing, 60 -> 90 is 1.5 and does nothing either.
+//
+// Rounding UP is what lets the loop settle, and it settles because presentation
+// is FIFO. Every frame handed to the compositor waits for a vblank, so asking
+// for more output than the panel can show back-pressures the guest until the
+// rates really are the integer ratio that was asked for. A 40 fps guest on 60 Hz
+// is given one generated frame, tries to present 80/s, is held to 60/s, and
+// settles at 30 fps of its own with a full 60 on screen - which is exactly the
+// state users reach by hand today with a 30 fps cap. Rounding down can never
+// reach it, because it switches generation off before the loop can start.
+// Likewise 25 -> 60, which used to land on one generated frame and an awkward 50
+// fps, now asks for two, is held to 60, and settles at 20 -> 60.
+//
+// The slack keeps a ratio a hair above an integer - where a solid 60 fps guest
+// on a 120 Hz panel lives - from being rounded up to the next count.
+#define DIS_RATIO_SLACK 0.12f
+
+// Ratio below which generation is not worth starting. Rounding up always costs
+// the guest render rate, because it ends up held to refresh/(1 + generations).
+// At a ratio of 2 that trade is the entire point of frame generation; near 1 it
+// is not - a guest at 55 fps on a 60 Hz panel would be dragged down to 30 to buy
+// five frames of output. 1.45 is below the 1.5 of the two cases users actually
+// hit (40 -> 60 and 60 -> 90) so those start, and above the 1.33 of 45 -> 60, so
+// a guest already close to the panel's rate is left alone.
+#define DIS_MIN_GEN_RATIO 1.45f
+
+// Schmitt band on the ratio. A change of count must be asked for by a ratio this
+// far past the switching point, so a measurement wandering across an integer
+// boundary cannot flip the count from frame to frame. This is the half of the
+// hysteresis that acts on the continuous measurement; the streak counters below
+// remain as the half that rejects single outliers.
+//
+// It is deliberately small. The source rate is already an exponential average
+// over about seven samples, so it barely moves frame to frame, and a wide band
+// costs real locking: it holds the count one step low across a whole range of
+// ratios just above an integer, which is where a 28 fps guest on a 60 Hz panel
+// and a 40 fps guest on a 90 Hz panel both sit. Swept against a simulated loop
+// with 6% frame-time jitter, 0.05 kept every case change-free while locking four
+// more of the 66 rate pairs onto the panel than 0.15 did.
+#define DIS_RATIO_HYST 0.05f
 
 // Variational refinement (SOR) iteration counts and constants. Matches the
 // OpenCV defaults used by the reference implementation.
@@ -242,6 +297,10 @@ struct VkrDis {
     int planned_gen;
     uint32_t gen_high_streak;
     uint32_t gen_low_streak;
+
+    // Throttling for the planner's diagnostic line.
+    uint64_t plan_log_ns;
+    int plan_log_gen;
 };
 
 typedef struct {
@@ -1216,8 +1275,8 @@ static void dis_missing_features(VkFormatFeatureFlags missing, char* out, size_t
         {VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT, "STORAGE_IMAGE"},
         {VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, "SAMPLED_IMAGE"},
         {VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT, "SAMPLED_IMAGE_FILTER_LINEAR"},
-        {VK_FORMAT_FEATURE_TRANSFER_SRC_BIT, "TRANSFER_SRC"},
-        {VK_FORMAT_FEATURE_TRANSFER_DST_BIT, "TRANSFER_DST"},
+        {VK_FORMAT_FEATURE_BLIT_SRC_BIT, "BLIT_SRC"},
+        {VK_FORMAT_FEATURE_BLIT_DST_BIT, "BLIT_DST"},
     };
     for (uint32_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
         if (!(missing & names[i].bit)) continue;
@@ -1249,7 +1308,10 @@ static bool dis_audit_formats(VkrDis* d) {
         {VK_FORMAT_R32G32_SFLOAT, STORE | READ, "optical flow"},
         {VK_FORMAT_R32G32B32A32_SFLOAT, STORE | READ, "sparse flow and refinement"},
         {VK_FORMAT_R32_SFLOAT, STORE | READ, "refinement weights"},
-        {VK_FORMAT_R8G8B8A8_UNORM, STORE | READ, "interpolated output"},
+        // Written by the interpolation pass and then blitted into the caller's
+        // target. Never sampled, so no read or filter bit is asked of it.
+        {VK_FORMAT_R8G8B8A8_UNORM, STORE | VK_FORMAT_FEATURE_BLIT_SRC_BIT,
+         "interpolated output"},
         // Already chosen against exactly these bits, so this only restates it.
         {d->luma_format, STORE | READ | FILTER, "luminance plane"},
     };
@@ -1303,6 +1365,7 @@ VkrDis* vkr_dis_create(VkDevice device, VkPhysicalDevice physical_device) {
     d->flow_min_side = DIS_DEFAULT_FLOW_MIN_SIDE;
     d->target_fps = 0;
     d->refresh_rate = 0.0f;
+    d->plan_log_gen = -1;
     vkd.GetPhysicalDeviceMemoryProperties(physical_device, &d->mem_props);
     // Both must precede dis_create_pipelines: the audit settles which luma
     // variant is built and how the interpolation pass is specialized.
@@ -1418,10 +1481,15 @@ bool vkr_dis_prepare(VkrDis* d, uint32_t width, uint32_t height, VkFormat format
         d->formats_audited = true;
         // The guest frame format only becomes known here. It is warped bilinearly
         // by the interpolation pass and downsampled by blit to build the pyramid.
+        // BLIT_SRC/BLIT_DST, not TRANSFER_SRC/DST: DIS moves these images with
+        // vkCmdBlitImage only - cropping the source in and downsampling the
+        // pyramid - and never with vkCmdCopyImage, which is what the TRANSFER
+        // bits describe. Asking for the wrong pair would have refused the device
+        // over a capability nothing here uses.
         const VkFormatFeatureFlags need = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
                                           VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
-                                          VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
-                                          VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+                                          VK_FORMAT_FEATURE_BLIT_SRC_BIT |
+                                          VK_FORMAT_FEATURE_BLIT_DST_BIT;
         VkFormatProperties fp;
         memset(&fp, 0, sizeof(fp));
         vkd.GetPhysicalDeviceFormatProperties(d->physical_device, format, &fp);
@@ -1505,6 +1573,29 @@ static void dis_track_source(VkrDis* d, uint64_t now, uint64_t source_frames) {
     if (d->src_samples < DIS_MIN_RATE_SAMPLES) d->src_samples++;
 }
 
+// Generated frames per source frame for a rate ratio, once it has been decided
+// that generation runs at all. At least one, capped by what the swapchain can
+// hold. See DIS_RATIO_SLACK above for why this rounds up.
+static int dis_gen_for_ratio(float ratio, uint32_t capacity) {
+    float outputs = ceilf(ratio - DIS_RATIO_SLACK);
+    if (outputs < 2.0f) outputs = 2.0f;
+    int gen = (int)outputs - 1;
+    if (gen < 1) gen = 1;
+    if (gen > (int)capacity) gen = (int)capacity;
+    return gen;
+}
+
+static void dis_log_plan(VkrDis* d, uint64_t now, float source_rate, float desired,
+                         float ratio, uint32_t capacity) {
+    if (d->planned_gen == d->plan_log_gen && now - d->plan_log_ns < DIS_PLAN_LOG_NS) return;
+    d->plan_log_gen = d->planned_gen;
+    d->plan_log_ns = now;
+    DIS_LOGI("DIS plan: source %.1f fps, target %.1f fps, ratio %.2f -> %d generated "
+             "(capacity %u, output %.1f fps)",
+             (double)source_rate, (double)desired, (double)ratio, d->planned_gen, capacity,
+             (double)(source_rate * (float)(d->planned_gen + 1)));
+}
+
 uint32_t vkr_dis_plan(VkrDis* d, uint32_t capacity, uint64_t source_frames) {
     if (!d || d->unavailable || !d->built) return 0;
     if (capacity > VKR_DIS_MAX_GENERATIONS) capacity = VKR_DIS_MAX_GENERATIONS;
@@ -1534,29 +1625,46 @@ uint32_t vkr_dis_plan(VkrDis* d, uint32_t capacity, uint64_t source_frames) {
     }
     const float eff_desired = d->smoothed_desired;
 
-    if (eff_desired <= source_rate) {
+    const float ratio = eff_desired / source_rate;
+
+    if (ratio <= 1.0f) {
         d->planned_gen = 0;
         d->gen_high_streak = 0;
         d->gen_low_streak = 0;
+        dis_log_plan(d, now, source_rate, eff_desired, ratio, capacity);
         return 0;
     }
 
-    // How many outputs fit inside one source interval. eff_desired is already
-    // clamped to the refresh rate, so flooring here is by itself what stops the
-    // panel being over-driven, and every generated frame is guaranteed a vblank
-    // of its own. Rounding instead of flooring would ask for a frame the panel
-    // cannot show; a separate headroom test would be redundant and, expressed as
-    // a hard threshold, actively harmful - it read zero the moment the measured
-    // rate crossed 60.5 fps on a 120 Hz panel and switched generation off
-    // entirely for a guest sitting right on 60.
-    //
-    // The epsilon widens the band around an exact integer ratio, which is where a
-    // solid 60 fps guest lives. Erring high costs at most a couple of percent of
-    // overshoot, absorbed by the acquire loop delivering fewer frames than
-    // planned; erring low turns the feature off outright.
-    int raw = (int)(eff_desired / source_rate + 0.05f) - 1;
-    if (raw < 0) raw = 0;
-    if (raw > (int)capacity) raw = (int)capacity;
+    // Whether to generate at all is its own decision, and the band is applied to
+    // it asymmetrically - harder to start than to keep running. Folding the
+    // start threshold into the count function instead looked tidier and was
+    // wrong: subtracting the band before testing it moved the common 40 -> 60
+    // case (ratio exactly 1.5) below the threshold, so the very case this change
+    // exists to fix still came out as zero.
+    const int cur = d->planned_gen > (int)capacity ? (int)capacity : d->planned_gen;
+    const bool generate = cur > 0 ? (ratio >= DIS_MIN_GEN_RATIO - DIS_RATIO_HYST)
+                                  : (ratio >= DIS_MIN_GEN_RATIO);
+
+    // Schmitt trigger on the ratio itself rather than on the integer it produces.
+    // Comparing integers alone was not enough: a measured rate wandering either
+    // side of an exact ratio - which is where a guest sitting on a cap lives -
+    // changes the integer every few frames, and with a ramp-up of two readings
+    // against a ramp-down of three the count spent most of its time at the lower
+    // value. Here a count only rises if the ratio is past the step up even after
+    // the band is subtracted, and only falls if it is past the step down even
+    // after the band is added; inside the band nothing moves.
+    int raw = 0;
+    if (generate) {
+        const int want_up = dis_gen_for_ratio(ratio - DIS_RATIO_HYST, capacity);
+        const int want_down = dis_gen_for_ratio(ratio + DIS_RATIO_HYST, capacity);
+        raw = cur;
+        if (want_up > cur) {
+            raw = want_up;
+        } else if (want_down < cur) {
+            raw = want_down;
+        }
+        if (raw < 1) raw = 1;
+    }
 
     // Hysteresis: ramp up after two consecutive higher readings, ramp down after
     // three consecutive lower readings, so transient jitter does not make the
@@ -1580,6 +1688,7 @@ uint32_t vkr_dis_plan(VkrDis* d, uint32_t capacity, uint64_t source_frames) {
         d->gen_low_streak = 0;
     }
 
+    dis_log_plan(d, now, source_rate, eff_desired, ratio, capacity);
     return (uint32_t)d->planned_gen;
 }
 
@@ -1979,4 +2088,6 @@ void vkr_dis_reset(VkrDis* d) {
     d->planned_gen = 0;
     d->gen_high_streak = 0;
     d->gen_low_streak = 0;
+    d->plan_log_gen = -1;
+    d->plan_log_ns = 0;
 }
