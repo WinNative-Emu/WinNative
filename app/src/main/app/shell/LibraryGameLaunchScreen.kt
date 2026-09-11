@@ -938,6 +938,7 @@ private fun SourceTag(
     onCheats: () -> Unit = {},
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var storeMenuOpen by remember { mutableStateOf(false) }
     var anchorHeightPx by remember { mutableStateOf(0) }
     val showStoreSwitch = storeOptions.size > 1
     val menuInteractive = menuEnabled || showAchievements || showCheats || showStoreSwitch
@@ -988,16 +989,10 @@ private fun SourceTag(
                 offset = IntOffset(0, anchorHeightPx + gapPx),
             ) {
                 if (showStoreSwitch) {
-                    LaunchSourceMenuHeader(stringResource(R.string.library_games_store_switch_label))
-                    storeOptions.forEach { option ->
-                        LaunchStoreMenuItem(
-                            label = option.label,
-                            selected = option.id == selectedStoreId,
-                        ) {
-                            menuOpen = false
-                            if (option.id != selectedStoreId) onSelectStore(option.id)
-                        }
-                    }
+                    LaunchSourceMenuItem(
+                        icon = Icons.Outlined.Storefront,
+                        label = stringResource(R.string.library_games_store_change),
+                    ) { menuOpen = false; storeMenuOpen = true }
                     if (menuEnabled || showAchievements || showCheats) {
                         Box(
                             Modifier
@@ -1040,6 +1035,23 @@ private fun SourceTag(
                         label = stringResource(R.string.retro_cheats_title),
                         enabled = cheatsEnabled,
                     ) { menuOpen = false; onCheats() }
+                }
+            }
+
+            LaunchSourceActionPopup(
+                expanded = storeMenuOpen,
+                onDismissRequest = { storeMenuOpen = false },
+                offset = IntOffset(0, anchorHeightPx + gapPx),
+            ) {
+                LaunchSourceMenuHeader(stringResource(R.string.library_games_store_switch_label))
+                storeOptions.forEach { option ->
+                    LaunchStoreMenuItem(
+                        label = option.label,
+                        selected = option.id == selectedStoreId,
+                    ) {
+                        storeMenuOpen = false
+                        if (option.id != selectedStoreId) onSelectStore(option.id)
+                    }
                 }
             }
         }

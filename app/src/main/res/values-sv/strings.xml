@@ -165,6 +165,7 @@
     <string name="library_games_shortcut_created">Genväg skapad</string>
     <string name="library_games_failed_to_create_shortcut">Det gick inte att skapa genväg: %s</string>
     <string name="library_games_install_path">Installationssökväg</string>
+    <string name="library_games_store_change">Byt butik</string>
     <string name="library_games_store_switch_label">Butik</string>
     <string name="library_games_store_switched">Använder nu %1$s för det här spelet</string>
     <string name="library_games_not_enough_space">Behöver %1$s mer utrymme</string>

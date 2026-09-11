@@ -164,6 +164,7 @@
     <string name="library_games_shortcut_created">Comanda rapida creata</string>
     <string name="library_games_failed_to_create_shortcut">Nu s-a putut crea comanda rapida: %s</string>
     <string name="library_games_install_path">Cale de instalare</string>
+    <string name="library_games_store_change">Schimbă magazinul</string>
     <string name="library_games_store_switch_label">Magazin</string>
     <string name="library_games_store_switched">Acum se folosește %1$s pentru acest joc</string>
     <string name="library_games_not_enough_space">Mai este nevoie de %1$s spatiu</string>

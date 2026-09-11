@@ -164,6 +164,7 @@
     <string name="library_games_shortcut_created">Scorciatoia creata</string>
     <string name="library_games_failed_to_create_shortcut">Impossibile creare la scorciatoia: %s</string>
     <string name="library_games_install_path">Percorso di installazione</string>
+    <string name="library_games_store_change">Cambia store</string>
     <string name="library_games_store_switch_label">Store</string>
     <string name="library_games_store_switched">Ora questo gioco usa %1$s</string>
     <string name="library_games_not_enough_space">Servono altri %1$s di spazio</string>

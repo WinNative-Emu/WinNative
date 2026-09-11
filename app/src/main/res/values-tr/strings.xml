@@ -165,6 +165,7 @@
     <string name="library_games_shortcut_created">Kısayol oluşturuldu</string>
     <string name="library_games_failed_to_create_shortcut">Kısayol oluşturulamadı: %s</string>
     <string name="library_games_install_path">Yükleme Yolu</string>
+    <string name="library_games_store_change">Mağaza değiştir</string>
     <string name="library_games_store_switch_label">Mağaza</string>
     <string name="library_games_store_switched">Bu oyun için artık %1$s kullanılıyor</string>
     <string name="library_games_not_enough_space">%1$s daha fazla alan gerekli</string>

@@ -164,6 +164,7 @@
     <string name="library_games_shortcut_created">바로가기가 생성되었습니다</string>
     <string name="library_games_failed_to_create_shortcut">바로가기 생성 실패: %s</string>
     <string name="library_games_install_path">설치 경로</string>
+    <string name="library_games_store_change">스토어 변경</string>
     <string name="library_games_store_switch_label">스토어</string>
     <string name="library_games_store_switched">이 게임은 이제 %1$s을(를) 사용합니다</string>
     <string name="library_games_not_enough_space">%1$s의 공간이 더 필요합니다</string>
