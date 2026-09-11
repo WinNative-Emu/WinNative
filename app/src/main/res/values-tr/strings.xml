@@ -2530,6 +2530,11 @@ Yüklü konum:
     <string name="session_drawer_frame_generation_note">Lossless Scaling ile işlenmiş kareler arasında ara kare üretir. Daha akıcı hareket, ancak bir kare fazladan giriş gecikmesi.</string>
     <string name="session_drawer_frame_generation_target_note">Sabit bir çarpanı korumak yerine, yalnızca ölçülebilir fayda sağladığı sürece hedefe doğru yükselir.</string>
     <string name="session_drawer_frame_generation_missing">Kare üretimini kullanmak için kapsayıcı ayarlarından Lossless Scaling\'i yükleyin.</string>
+    <string name="session_drawer_system_frame_generation">Kare Üretimi (sistem)</string>
+    <string name="session_drawer_system_frame_generation_enable">Sistem karelerini HUD\'da say</string>
+    <string name="session_drawer_system_frame_generation_note">Cihazınız kareleri oyun onları teslim ettikten sonra üretir, bu yüzden doğrudan sayılamazlar. Bu açıkken HUD, panelin tarama hızını çıkış hızı olarak bildirir.</string>
+    <string name="session_drawer_system_frame_generation_detected">Bulundu: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">Bulunamadı. Game Space kare ara değerlemesi çalışıyorsa elle açın.</string>
     <string name="session_drawer_dis_frame_generation">Kare Üretimi (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Kare Oluştur (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search ile işlenmiş kareler arasında ara kare oluşturur. Uygulamaya gömülü; harici shader gerekmez.</string>

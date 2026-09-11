@@ -2530,6 +2530,11 @@ Installerad sökväg:
     <string name="session_drawer_frame_generation_note">Interpolerar mellan renderade bildrutor med Lossless Scaling. Mjukare rörelse, men en extra bildruta med inmatningsfördröjning.</string>
     <string name="session_drawer_frame_generation_target_note">Stiger mot målet endast så länge det hjälper mätbart, i stället för att hålla en fast multiplikator.</string>
     <string name="session_drawer_frame_generation_missing">Installera Lossless Scaling i containerinställningarna för att använda bildgenerering.</string>
+    <string name="session_drawer_system_frame_generation">Frame Generation (system)</string>
+    <string name="session_drawer_system_frame_generation_enable">Räkna systemets bildrutor i HUD:en</string>
+    <string name="session_drawer_system_frame_generation_note">Enheten skapar bildrutor efter att spelet lämnat ifrån sig dem, så de går inte att räkna direkt. När det här är på rapporterar HUD:en panelens uppdateringsfrekvens som utfrekvens.</string>
+    <string name="session_drawer_system_frame_generation_detected">Hittad: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">Hittades inte. Slå på manuellt om Game Space-bildinterpolering körs.</string>
     <string name="session_drawer_dis_frame_generation">Bildgenerering (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generera bilder (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolerar mellan renderade bildrutor med Dense Inverse Search. Inbyggd; inga externa shaders krävs.</string>

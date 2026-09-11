@@ -2530,6 +2530,11 @@ Installert bane:
     <string name="session_drawer_frame_generation_note">Interpolerer mellom gjengitte bilder med Lossless Scaling. Jevnere bevegelse, men ett ekstra bilde med inndataforsinkelse.</string>
     <string name="session_drawer_frame_generation_target_note">Stiger mot målet bare så lenge det hjelper målbart, i stedet for å holde en fast multiplikator.</string>
     <string name="session_drawer_frame_generation_missing">Installer Lossless Scaling i containerinnstillingene for å bruke bildegenerering.</string>
+    <string name="session_drawer_system_frame_generation">Frame Generation (system)</string>
+    <string name="session_drawer_system_frame_generation_enable">Tell systemframes i HUD-en</string>
+    <string name="session_drawer_system_frame_generation_note">Enheten din lager frames etter at spillet har levert dem, så de kan ikke telles direkte. Mens dette er på, viser HUD-en panelets oppdateringsfrekvens som utgangsfrekvens.</string>
+    <string name="session_drawer_system_frame_generation_detected">Funnet: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">Ikke funnet. Slå på manuelt hvis Game Space-frameinterpolering kjører.</string>
     <string name="session_drawer_dis_frame_generation">Bildegenerering (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generer bilder (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolerer mellom gjengitte bilder med Dense Inverse Search. Innebygd; ingen eksterne shadere kreves.</string>

@@ -2530,6 +2530,11 @@ Cale instalata:
     <string name="session_drawer_frame_generation_note">Interpolează între cadrele randate cu Lossless Scaling. Mișcare mai fluidă, dar un cadru suplimentar de latență la intrare.</string>
     <string name="session_drawer_frame_generation_target_note">Urcă spre țintă doar cât timp ajută în mod măsurabil, în loc să păstreze un multiplicator fix.</string>
     <string name="session_drawer_frame_generation_missing">Instalează Lossless Scaling din setările containerului pentru a folosi generarea de cadre.</string>
+    <string name="session_drawer_system_frame_generation">Generare de cadre (sistem)</string>
+    <string name="session_drawer_system_frame_generation_enable">Numără cadrele sistemului în HUD</string>
+    <string name="session_drawer_system_frame_generation_note">Dispozitivul generează cadre după ce jocul le predă, deci nu pot fi numărate direct. Cât timp această opțiune e pornită, HUD-ul raportează rata de scanare a ecranului ca rată de ieșire.</string>
+    <string name="session_drawer_system_frame_generation_detected">Detectat: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">Nedetectat. Pornește manual dacă interpolarea de cadre din Game Space rulează.</string>
     <string name="session_drawer_dis_frame_generation">Generare de cadre (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generează cadre (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolează între cadrele randate cu Dense Inverse Search. Încorporat; fără shadere externe.</string>
