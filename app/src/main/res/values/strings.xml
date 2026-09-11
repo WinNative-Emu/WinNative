@@ -965,6 +965,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="mango_hud_element_fex_smc">SMC</string>
     <string name="mango_hud_element_fex_softfloat">Softfloat</string>
     <string name="mango_hud_element_fex_cache_miss">Cache Misses</string>
+    <string name="mango_hud_element_fex_disk_cache">DiskCache</string>
     <string name="mango_hud_lock">Lock HUD</string>
     <string name="mango_hud_lock_subtitle">Let touches pass through to the controls behind the HUD. Press and hold the HUD to lock it. (5s)</string>
     <string name="hud_position_menu_title">Move HUD to</string>

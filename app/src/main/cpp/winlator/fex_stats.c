@@ -40,7 +40,7 @@ Java_com_winlator_cmod_runtime_display_ui_FexStats_nativeCopyThreadStats(
     JNIEnv *env, jclass clazz, jobject buffer, jint base, jint stats_size, jlongArray dest) {
     (void)clazz;
 
-    if (buffer == NULL || dest == NULL || base < 0 || stats_size < 0 || stats_size > 64) {
+    if (buffer == NULL || dest == NULL || base < 0 || stats_size < 0 || stats_size > 112) {
         return JNI_FALSE;
     }
 
@@ -50,7 +50,7 @@ Java_com_winlator_cmod_runtime_display_ui_FexStats_nativeCopyThreadStats(
         return JNI_FALSE;
     }
 
-    if ((*env)->GetArrayLength(env, dest) < 6) {
+    if ((*env)->GetArrayLength(env, dest) < 8) {
         return JNI_FALSE;
     }
 
@@ -63,7 +63,7 @@ Java_com_winlator_cmod_runtime_display_ui_FexStats_nativeCopyThreadStats(
     // snapshot rule as MangoHud instead of reading counters independently.
     const size_t copy_size = ((size_t)stats_size / 16U) * 16U;
     if (copy_size != 0) {
-        uint8_t snapshot[64] __attribute__((aligned(16)));
+        uint8_t snapshot[112] __attribute__((aligned(16)));
         const uint8_t *source = buffer_base + base;
 
         fex_stats_memory_barrier();
@@ -92,6 +92,10 @@ Java_com_winlator_cmod_runtime_display_ui_FexStats_nativeCopyThreadStats(
             memcpy(&values[4], snapshot + 40, sizeof(uint64_t));
         }
         if (copy_size >= 64) memcpy(&values[5], snapshot + 48, sizeof(uint64_t));
+        if (copy_size >= 96) {
+            memcpy(&values[6], snapshot + 80, sizeof(uint64_t));
+            memcpy(&values[7], snapshot + 88, sizeof(uint64_t));
+        }
     }
 
     (*env)->ReleaseLongArrayElements(env, dest, values, 0);

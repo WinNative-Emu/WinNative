@@ -79,16 +79,18 @@ public class MangoHudView extends View {
   public static final int EL_FEX_SMC = 26;
   public static final int EL_FEX_SOFTFLOAT = 27;
   public static final int EL_FEX_CACHE_MISS = 28;
-  public static final int ELEMENT_COUNT = 29;
+  public static final int EL_FEX_DISK_CACHE = 29;
+  public static final int ELEMENT_COUNT = 30;
   private static final int FEX_SUBELEMENTS_MASK =
       (1 << EL_FEX_STATUS)
           | (1 << EL_FEX_APP_TYPE)
           | (1 << EL_FEX_HOT_THREADS)
-          | (1 << EL_FEX_JIT_LOAD)
-          | (1 << EL_FEX_SIGBUS)
+           | (1 << EL_FEX_JIT_LOAD)
+           | (1 << EL_FEX_SIGBUS)
           | (1 << EL_FEX_SMC)
           | (1 << EL_FEX_SOFTFLOAT)
-          | (1 << EL_FEX_CACHE_MISS);
+          | (1 << EL_FEX_CACHE_MISS)
+          | (1 << EL_FEX_DISK_CACHE);
   // Original ten elements plus both clock cells on; the rest opt-in.
   private static final int DEFAULT_ELEMENTS_MASK = 0xFFF;
 
@@ -201,6 +203,8 @@ public class MangoHudView extends View {
   private final StringBuilder sbFexSmc = new StringBuilder(24);
   private final StringBuilder sbFexSoftfloat = new StringBuilder(24);
   private final StringBuilder sbFexCacheMiss = new StringBuilder(24);
+  private final StringBuilder sbFexDiskCacheHit = new StringBuilder(24);
+  private final StringBuilder sbFexDiskCacheMiss = new StringBuilder(24);
   private final float[] fexJitLoad = new float[FexStats.LOAD_SAMPLES];
   private final float[] fexGraphLines = new float[(FexStats.LOAD_SAMPLES - 1) * 4];
   private final float[] fexThreadLoads;
@@ -372,7 +376,7 @@ public class MangoHudView extends View {
   }
 
   private static boolean hasFexElements(boolean[] elements) {
-    for (int i = EL_FEX_STATUS; i <= EL_FEX_CACHE_MISS; i++) {
+    for (int i = EL_FEX_STATUS; i <= EL_FEX_DISK_CACHE; i++) {
       if (elements[i]) return true;
     }
     return false;
@@ -421,13 +425,13 @@ public class MangoHudView extends View {
     if (index < 0 || index >= ELEMENT_COUNT) return;
     synchronized (uiLock) {
       elements[index] = enabled;
-      if (index >= EL_FEX_STATUS && index <= EL_FEX_CACHE_MISS && !hasFexElements(elements)) {
+      if (index >= EL_FEX_STATUS && index <= EL_FEX_DISK_CACHE && !hasFexElements(elements)) {
         fexStats.close();
         fexPidFound = false;
       }
       computeLayoutLocked();
     }
-    if (index >= EL_FEX_STATUS && index <= EL_FEX_CACHE_MISS && enabled) {
+    if (index >= EL_FEX_STATUS && index <= EL_FEX_DISK_CACHE && enabled) {
       // Kick the 10 Hz sampler now instead of waiting out a hidden-interval delay.
       Handler handler = statsHandler;
       if (handler != null) {
@@ -780,6 +784,10 @@ public class MangoHudView extends View {
         if (elements[EL_FEX_SMC]) formatFexCount(sbFexSmc, fexStats.smcCounts);
         if (elements[EL_FEX_SOFTFLOAT]) formatFexCount(sbFexSoftfloat, fexStats.softfloatCounts);
         if (elements[EL_FEX_CACHE_MISS]) formatFexCount(sbFexCacheMiss, fexStats.cacheMissCounts);
+        if (elements[EL_FEX_DISK_CACHE]) {
+          formatFexCount(sbFexDiskCacheHit, fexStats.diskCacheHitCounts);
+          formatFexCount(sbFexDiskCacheMiss, fexStats.diskCacheMissCounts);
+        }
       }
       sbMinMax.setLength(0);
       sbMinMax.append("min:");
@@ -1389,6 +1397,7 @@ public class MangoHudView extends View {
         if (elements[EL_FEX_SMC]) smallRows++;
         if (elements[EL_FEX_SOFTFLOAT]) smallRows++;
         if (elements[EL_FEX_CACHE_MISS]) smallRows++;
+        if (elements[EL_FEX_DISK_CACHE]) smallRows += 2;
         w = Math.max(w, smallCharW * 29); // "SIGBUS 1234567890 - 1234 avg/s"
       }
     }
@@ -1542,6 +1551,10 @@ public class MangoHudView extends View {
           if (elements[EL_FEX_SMC]) y = drawFexRow(canvas, "SMC", sbFexSmc, y);
           if (elements[EL_FEX_SOFTFLOAT]) y = drawFexRow(canvas, "SOFTFLOAT", sbFexSoftfloat, y);
           if (elements[EL_FEX_CACHE_MISS]) y = drawFexRow(canvas, "CACHEMISS", sbFexCacheMiss, y);
+          if (elements[EL_FEX_DISK_CACHE]) {
+            y = drawFexRow(canvas, "DCHIT", sbFexDiskCacheHit, y);
+            y = drawFexRow(canvas, "DCMISS", sbFexDiskCacheMiss, y);
+          }
           if (elements[EL_FEX_HOT_THREADS]) {
             drawOutlinedSmall(
                 canvas, "FEX JIT top loaded threads", 0, 26, pad, y + smallBaseline, C_ENGINE);

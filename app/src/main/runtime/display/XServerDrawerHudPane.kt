@@ -553,6 +553,7 @@ internal fun MangoHudSettingsDialog(
             stringResource(R.string.mango_hud_element_fex_smc),
             stringResource(R.string.mango_hud_element_fex_softfloat),
             stringResource(R.string.mango_hud_element_fex_cache_miss),
+            stringResource(R.string.mango_hud_element_fex_disk_cache),
         )
     // Display groups (label res -> element indices), decoupled from index order.
     val groups =
@@ -564,7 +565,7 @@ internal fun MangoHudSettingsDialog(
             R.string.mango_hud_group_system to listOf(5, 13, 15, 16, 17, 18, 19),
         ) +
         if (fexStatsAvailable) {
-            listOf(R.string.mango_hud_group_fex to listOf(21, 22, 23, 24, 25, 26, 27, 28))
+            listOf(R.string.mango_hud_group_fex to listOf(21, 22, 23, 24, 25, 26, 27, 28, 29))
         } else {
             emptyList()
         }
