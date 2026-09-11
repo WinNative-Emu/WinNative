@@ -27,6 +27,16 @@ native NetPlay engine.
 | --- | --- | --- | --- |
 | Dolphin | GameCube/Wii emulation + NetPlay | GPL-2.0-or-later | https://github.com/dolphin-emu/dolphin |
 
+## Audio
+
+The DirectAudio audio driver is a native Wine → Android AAudio mmdevapi driver by
+**The412Banner**. WinNative ships his release binaries **unmodified**; checksums, the source
+offer and the verbatim license files are in `app/src/main/assets/directaudio/`.
+
+| Component | Role | License | Source |
+| --- | --- | --- | --- |
+| DirectAudio | Wine → Android AAudio audio driver, incl. microphone capture | LGPL-2.1-or-later | https://github.com/The412Banner/directaudio |
+
 ## Bundled libretro cores
 
 Each core is shipped as an unmodified `arm64-v8a` build and loaded through LibretroDroid.

@@ -24,6 +24,9 @@ import com.winlator.cmod.feature.stores.epic.ui.auth.EpicOAuthActivity
 import com.winlator.cmod.feature.stores.gog.service.GOGAuthManager
 import com.winlator.cmod.feature.stores.gog.service.GOGService
 import com.winlator.cmod.feature.stores.gog.ui.auth.GOGOAuthActivity
+import com.winlator.cmod.feature.stores.itch.service.ItchAuthManager
+import com.winlator.cmod.feature.stores.itch.service.ItchService
+import com.winlator.cmod.feature.stores.itch.ui.auth.ItchLoginActivity
 import com.winlator.cmod.feature.stores.steam.SteamLoginActivity
 import com.winlator.cmod.feature.stores.steam.enums.Language
 import com.winlator.cmod.feature.stores.steam.service.SteamService
@@ -85,6 +88,13 @@ class StoresFragment : Fragment() {
             refresh()
         }
 
+    private val itchLoginLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult(),
+        ) {
+            refresh()
+        }
+
     // Lifecycle
     override fun onViewCreated(
         view: View,
@@ -127,6 +137,13 @@ class StoresFragment : Fragment() {
                             EpicAuthManager.logoutSync(requireContext())
                             refresh()
                         },
+                        onItchSignIn = { itchLoginLauncher.launch(Intent(requireContext(), ItchLoginActivity::class.java)) },
+                        onItchSignOut = {
+                            CoroutineScope(Dispatchers.Main).launch {
+                                ItchService.signOut(requireContext())
+                                refresh()
+                            }
+                        },
                         onGogSignIn = { gogLoginLauncher.launch(Intent(requireContext(), GOGOAuthActivity::class.java)) },
                         onGogSignOut = {
                             CoroutineScope(Dispatchers.Main).launch {
@@ -151,6 +168,7 @@ class StoresFragment : Fragment() {
                         onPickSteamFolder = { pickFolder(PrefManager.steamDownloadFolder) { PrefManager.steamDownloadFolder = it } },
                         onPickEpicFolder = { pickFolder(PrefManager.epicDownloadFolder) { PrefManager.epicDownloadFolder = it } },
                         onPickGogFolder = { pickFolder(PrefManager.gogDownloadFolder) { PrefManager.gogDownloadFolder = it } },
+                        onPickItchFolder = { pickFolder(PrefManager.itchDownloadFolder) { PrefManager.itchDownloadFolder = it } },
                         onContainerLanguageSelected = { index ->
                             val langName = Language.containerLangForIndex(index)
                             PrefManager.containerLanguage = langName
@@ -178,6 +196,8 @@ class StoresFragment : Fragment() {
                 isSteamLoggedIn = SteamService.isLoggedIn,
                 isEpicLoggedIn = EpicAuthManager.isLoggedIn(ctx),
                 isGogLoggedIn = GOGAuthManager.isLoggedIn(ctx),
+                isItchLoggedIn = ItchAuthManager.isLoggedIn(ctx),
+                itchUserName = ItchAuthManager.userName(ctx),
                 sharedFolder = PrefManager.useSingleDownloadFolder,
                 downloadSpeed = PrefManager.downloadSpeed,
                 downloadServer = PrefManager.cellId,
@@ -186,6 +206,7 @@ class StoresFragment : Fragment() {
                 steamFolder = resolveUri(PrefManager.steamDownloadFolder, ctx),
                 epicFolder = resolveUri(PrefManager.epicDownloadFolder, ctx),
                 gogFolder = resolveUri(PrefManager.gogDownloadFolder, ctx),
+                itchFolder = resolveUri(PrefManager.itchDownloadFolder, ctx),
                 containerLanguageLabels = containerLanguageLabels,
                 containerLanguageIndex = containerLanguageIndex,
             )

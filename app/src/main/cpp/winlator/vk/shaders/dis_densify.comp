@@ -1,0 +1,74 @@
+#version 450
+
+// DIS (Dense Inverse Search) densify pass — confidence-weighted upsample of the
+// sparse flow grid (stride 3) into a dense per-pixel flow image. Each sparse
+// sample contributes its flow weighted by 1/max(|warp residual|, 1), normalized
+// by the summed weight. Implemented as a gather over the 3x3 sparse neighborhood
+// covering each dense pixel (the WebGL scatters 8x8 point sprites; the two are
+// equivalent).
+
+precision highp float;
+precision highp int;
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D sparseFlowMap;
+// lastLumaMap/nextLumaMap are the precomputed luminance pyramid, not colour:
+// one channel, already on the 0-255 scale the tuned constants expect. The dot
+// product that used to run on every one of these fetches now runs once per texel
+// in dis_luma.comp.
+layout(set = 0, binding = 1) uniform sampler2D lastImage;   // prev luma
+layout(set = 0, binding = 2) uniform sampler2D nextImage;   // next luma
+layout(set = 0, binding = 5, rg32f) uniform image2D denseFlowMap;
+
+// Luminance is returned on the 0-255 scale the reference implementation works
+// on, not the 0-1 the samplers hand back. Every tuned constant downstream - the
+// densify confidence epsilon, the variational refinement's delta/gamma/zeta -
+// came from OpenCV, which feeds this chain 8-bit imagery converted to float
+// without dividing by 255. Feeding it 0-1 instead left those constants
+// mismatched by that same factor.
+float uluminance(vec3 c) {
+    return (0.299 * c.x + 0.587 * c.y + 0.114 * c.z) * 255.0;
+}
+
+void main() {
+    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 denseSize = imageSize(denseFlowMap);
+    if (pix.x >= denseSize.x || pix.y >= denseSize.y) return;
+
+    ivec2 sparseSize = textureSize(sparseFlowMap, 0);
+    if (sparseSize.x <= 0 || sparseSize.y <= 0) {
+        imageStore(denseFlowMap, pix, vec4(0.0, 0.0, 0.0, 1.0));
+        return;
+    }
+
+    vec2 invDenseSize = 1.0 / vec2(denseSize);
+    vec2 uv = (vec2(pix) + 0.5) * invDenseSize;
+    float lastLum = textureLod(lastImage, uv, 0.0).x;
+
+    vec2 acc = vec2(0.0);
+    float accW = 0.0;
+
+    // Sparse samples covering this dense pixel: floor(pix/3)-2 .. floor(pix/3).
+    ivec2 s0 = ivec2(pix.x / 3, pix.y / 3) - 2;
+    for (int dy = 0; dy <= 2; dy++) {
+        for (int dx = 0; dx <= 2; dx++) {
+            ivec2 s = s0 + ivec2(dx, dy);
+            if (s.x < 0 || s.y < 0 || s.x >= sparseSize.x || s.y >= sparseSize.y) continue;
+            vec4 flow = texelFetch(sparseFlowMap, s, 0);
+            float diff =
+                textureLod(nextImage, uv + flow.xy, 0.0).x - lastLum;
+            // With luminance on the 0-255 scale this spans roughly 150x between a
+            // clean match and a hopeless one. On the 0-1 scale abs(diff) never
+            // reached 1, so the max() pinned every weight to exactly 1.0 and the
+            // whole confidence weighting below was a plain unweighted average -
+            // a garbage sparse estimate counted for as much as a good one.
+            float w = 1.0 / max(abs(diff), 1.0);
+            acc += flow.xy * w;
+            accW += w;
+        }
+    }
+
+    vec2 denseFlow = accW > 0.0 ? acc / accW : vec2(0.0);
+    imageStore(denseFlowMap, pix, vec4(denseFlow, 0.0, 1.0));
+}

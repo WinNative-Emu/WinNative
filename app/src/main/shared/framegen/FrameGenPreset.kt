@@ -3,6 +3,42 @@ package com.winlator.cmod.shared.framegen
 import com.winlator.cmod.R
 import kotlin.math.abs
 
+/**
+ * Optical-flow processing resolution for DIS frame generation, given as the
+ * length of the frame's SHORTER side in pixels. The longer side follows from the
+ * aspect ratio, so a preset is a fixed pixel budget whatever the container's
+ * resolution is. As a percentage it was not: the same setting cost four times as
+ * much on a 1440p container as on a 720p one while telling the patch search
+ * nothing extra about the motion.
+ *
+ * On a 720-tall frame the three land on the old 25% / 35% / 50%.
+ */
+enum class DisFlowPreset(val minSide: Int, val labelRes: Int) {
+    FAST(180, R.string.session_drawer_dis_preset_fast),
+    BALANCE(252, R.string.session_drawer_dis_preset_balance),
+    QUALITY(360, R.string.session_drawer_dis_preset_quality),
+    ;
+
+    companion object {
+        val DEFAULT = FAST
+
+        /** Snaps a stored setting, including a legacy percentage, to a preset. */
+        fun fromStored(value: Int): DisFlowPreset {
+            val minSide = if (value in 1..100) value * 720 / 100 else value
+            var best = DEFAULT
+            var bestDelta = Int.MAX_VALUE
+            for (preset in values()) {
+                val delta = abs(preset.minSide - minSide)
+                if (delta < bestDelta) {
+                    bestDelta = delta
+                    best = preset
+                }
+            }
+            return best
+        }
+    }
+}
+
 enum class FrameGenPreset(
     val flowScale: Int,
     val labelRes: Int,

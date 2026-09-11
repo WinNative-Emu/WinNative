@@ -89,7 +89,13 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
     }
 
     protected Surface getNativeSurface() {
-        return getHolder().getSurface();
+        SurfaceHolder holder = getHolder();
+        Surface output = holder.getSurface();
+        android.graphics.Rect frame = holder.getSurfaceFrame();
+        int width = frame.width() > 0 ? frame.width() : getWidth();
+        int height = frame.height() > 0 ? frame.height() : getHeight();
+        Surface producer = com.winlator.cmod.shared.framegen.FrameGen.wrap(output, width, height);
+        return producer != null ? producer : output;
     }
 
     // Called when we have a valid drawing surface

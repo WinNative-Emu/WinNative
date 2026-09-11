@@ -1,18 +1,15 @@
 # Dolphin (GameCube / Wii)
 
-> **Packaging note (current):** the emucore and its runtime data are no longer committed
-> here. They are built in the [WinNative-Emu](https://github.com/WinNative-Emu) fork and
-> shipped in the [Retro-Consoles](https://github.com/WinNative-Emu/Retro-Consoles) bundle
-> the app downloads at runtime. The build/patch details below describe how that fork
-> produces the binary and remain accurate for the fork.
+> **Packaging note (current):** GameCube and Wii use the embedded Dolphin core by default.
+> It is built in [WinNative-Emu/dolphin](https://github.com/WinNative-Emu/dolphin) on the
+> `winnative` branch, where `winnative-emucore.yml` publishes `libmain.so`. The app downloads
+> it in the [Retro-Consoles](https://github.com/WinNative-Emu/Retro-Consoles) bundle and loads
+> it from `files/retro/bundle/cores/`; it is not committed to the APK or Git LFS. See
+> [DOLPHIN_EMBED.md](DOLPHIN_EMBED.md) for the embedded-core build and patch details.
 
-Built from source like every other libretro core, in
-[WinNative-Emu/dolphin-libretro](https://github.com/WinNative-Emu/dolphin-libretro) on the
-`winnative` branch (fork of `libretro/dolphin`). Its `winnative-core.yml` publishes
-`libdolphin_libretro_android.so` to the rolling `latest` release, `Retro-Consoles` packs it
-into the bundle via `cores.list`, and the app resolves it from
-`files/retro/bundle/cores/` like the rest — no copy in the APK and none in Git LFS.
+## Libretro fallback
 
+The older libretro route remains available only when the embedded Dolphin path is disabled.
 It was previously a hand-placed libretro buildbot nightly committed to
 `app/src/main/jniLibs/arm64-v8a/`, which is why `RetroCoreManager.resolveCore` used to
 special-case it to `nativeLibraryDir`. That special case is gone.

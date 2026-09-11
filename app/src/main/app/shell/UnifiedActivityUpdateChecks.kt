@@ -376,6 +376,72 @@ internal fun UnifiedActivity.startGogUpdateCheck(gameId: String, gameName: Strin
     }
 }
 
+internal fun UnifiedActivity.startItchUpdateCheck(gameId: Int, gameName: String) {
+    if (updateCheckInProgress) return
+    if (!com.winlator.cmod.app.service.NetworkMonitor.hasInternet.value) {
+        com.winlator.cmod.shared.ui.toast.WinToast.show(
+            this,
+            getString(R.string.downloads_no_internet),
+            android.widget.Toast.LENGTH_SHORT,
+        )
+        return
+    }
+    updateCheckInProgress = true
+    taskCheckingGameName = gameName
+    taskCheckingShown = true
+    taskDoneMessage = null
+    lifecycleScope.launch {
+        val result =
+            runCatching {
+                com.winlator.cmod.feature.stores.itch.service.ItchService
+                    .checkInstalledForUpdate(this@startItchUpdateCheck, gameId)
+            }.getOrNull()
+        try {
+            val upload = result?.upload
+            when {
+                result == null -> {
+                    taskCheckingShown = false
+                    taskDoneFailed = true
+                    taskDoneMessage = getString(R.string.store_game_update_check_failed_notice)
+                }
+                result.available && upload != null -> {
+                    val started =
+                        withContext(Dispatchers.IO) {
+                            val queued =
+                                com.winlator.cmod.feature.stores.itch.service.ItchService
+                                    .downloadInstalledUpdate(this@startItchUpdateCheck, gameId, upload)
+                            if (queued) {
+                                com.winlator.cmod.feature.stores.itch.service.ItchService
+                                    .downloadInfo(gameId)
+                            } else {
+                                null
+                            }
+                        }
+                    if (started != null) {
+                        showTaskProgressPopup(
+                            started,
+                            gameName,
+                            getString(R.string.store_game_update_complete),
+                            getString(R.string.store_game_update_failed_notice),
+                        )
+                    } else {
+                        taskCheckingShown = false
+                        taskDoneFailed = true
+                        taskDoneMessage = getString(R.string.store_game_update_failed_notice)
+                    }
+                }
+                else -> {
+                    taskCheckingShown = false
+                    taskDoneFailed = false
+                    taskDoneMessage = getString(R.string.store_game_no_updates_notice)
+                }
+            }
+        } finally {
+            updateCheckInProgress = false
+        }
+    }
+}
+
 internal fun UnifiedActivity.startEpicUpdateCheck(appId: Int, gameName: String) {
     if (updateCheckInProgress) return
     if (!com.winlator.cmod.app.service.NetworkMonitor.hasInternet.value) {

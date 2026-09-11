@@ -53,6 +53,7 @@ data class DownloadRecord(
         const val STORE_STEAM = "STEAM"
         const val STORE_EPIC = "EPIC"
         const val STORE_GOG = "GOG"
+        const val STORE_ITCH = "ITCH"
 
         const val TASK_INSTALL = "INSTALL"
         const val TASK_UPDATE = "UPDATE"

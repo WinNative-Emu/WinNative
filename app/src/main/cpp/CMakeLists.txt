@@ -102,6 +102,20 @@ set(SHADER_LIST
     "effect_colorblind:frag:effect_colorblind_frag"
     "effect_pixelate:frag:effect_pixelate_frag"
     "sgsr1:frag:sgsr1_frag"
+    "dis_luma_r16:comp:dis_luma_r16_comp"
+    "dis_luma_r32:comp:dis_luma_r32_comp"
+    "dis_gradient:comp:dis_gradient_comp"
+    "dis_inverse_search:comp:dis_inverse_search_comp"
+    "dis_propagate:comp:dis_propagate_comp"
+    "dis_densify:comp:dis_densify_comp"
+    "dis_interpolate:comp:dis_interpolate_comp"
+    "dis_vr_prep:comp:dis_vr_prep_comp"
+    "dis_vr_d1:comp:dis_vr_d1_comp"
+    "dis_vr_d2:comp:dis_vr_d2_comp"
+    "dis_vr_w:comp:dis_vr_w_comp"
+    "dis_vr_coef:comp:dis_vr_coef_comp"
+    "dis_vr_sor:comp:dis_vr_sor_comp"
+    "dis_vr_add:comp:dis_vr_add_comp"
 )
 
 set(SHADER_HEADERS "")
@@ -163,6 +177,9 @@ add_library(winlator SHARED
         winlator/vk/lsfg/vkr_lsfg.cpp
         winlator/vk/lsfg/lsfg_probe.c
         winlator/vk/lsfg/lsfg_jni.c
+        winlator/vk/framegen/fg_present.c
+        winlator/vk/framegen/fg_jni.c
+        winlator/vk/dis/vkr_dis.c
 )
 
 add_dependencies(winlator winlator_shaders)
@@ -182,6 +199,7 @@ target_compile_features(winlator PRIVATE cxx_std_17)
 target_link_libraries(winlator
         log
         android
+        mediandk
         jnigraphics
         vulkan
         adrenotools
@@ -192,8 +210,20 @@ target_link_libraries(winlator
 )
 
 # Fake evdev input shim used by the pb_controller_fix controller path.
+add_library(netshim SHARED
+        winlator/netshim.c
+)
+target_compile_options(netshim PRIVATE -Wall -Wextra)
+target_link_libraries(netshim log)
+
 add_library(fakeinput SHARED
         winlator/fakeinput.cpp
 )
 target_compile_options(fakeinput PRIVATE -Wall -Wextra -fvisibility=hidden)
 target_link_libraries(fakeinput log dl)
+
+add_library(waudio SHARED
+        wnaudiohook/wn_aaudio_shim.c
+)
+target_compile_options(waudio PRIVATE -Wall -Wextra -fvisibility=hidden)
+target_link_libraries(waudio log dl)

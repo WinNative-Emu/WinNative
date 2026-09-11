@@ -35,7 +35,7 @@ Designed for enthusiasts and power users, WinNative delivers the full Winlator e
 
 1. **Clone with submodules and pull LFS objects** (Required):
    ```bash
-   git clone --recursive https://github.com/MaxsTechReview/WinNative.git
+   git clone --recursive https://github.com/WinNative-Emu/WinNative.git
    cd WinNative
    git lfs pull                          # fetches imagefs
    git submodule update --init --recursive
@@ -80,10 +80,21 @@ in-game **Online** tab).
 
 ### Frame Generation
 
-WinNative can interpolate extra frames between the ones your game actually renders, using the
-Lossless Scaling frame generation shaders. Interpolation runs **on the Android side**, inside
-WinNative's own Vulkan compositor rather than inside the Wine container, so it works with any
-graphics API Wine can drive — DXVK, WineD3D or native Vulkan alike.
+WinNative can interpolate extra frames between the ones your game actually renders.
+Interpolation runs **on the Android side**, inside WinNative's own Vulkan compositor rather than
+inside the Wine container, so it works with any graphics API Wine can drive — DXVK, WineD3D or
+native Vulkan alike.
+
+There are **two engines**, both in the **FG** tab of the session drawer. Pick one — they are
+mutually exclusive, because the compositor drives a single interpolator per frame, and each
+keeps its own settings so switching between them does not disturb the other.
+
+| Engine | Needs | Character |
+| --- | --- | --- |
+| **Lossless Scaling (LSFG)** | Your own copy of Lossless Scaling on Steam | The 25-shader chain from Lossless Scaling, ported to Vulkan |
+| **DIS** | Nothing — ships with the APK | Dense Inverse Search optical flow, fully open source |
+
+#### Lossless Scaling (LSFG)
 
 **You must own [Lossless Scaling](https://store.steampowered.com/) on Steam.** Its shaders are
 not redistributable, so nothing ships with the APK. WinNative reads them out of your own copy of
@@ -92,10 +103,8 @@ The DLL is parsed as data and never executed.
 
 **Setup:** sign in to Steam, install Lossless Scaling, then open **Container Settings → Frame
 Generation**. WinNative finds the DLL automatically from your Steam library; if it can't, use
-**Select Lossless.dll…** to point at it. The in-game **FG** tab stays disabled until the shaders
-import successfully.
-
-**In-game controls** live in the **FG** tab of the session drawer, between HUD and Gyro:
+**Select Lossless.dll…** to point at it. The LSFG half of the **FG** tab stays disabled until
+the shaders import successfully.
 
 | Control | What it does |
 | --- | --- |
@@ -103,7 +112,30 @@ import successfully.
 | Adaptive Target | Aim for a specific output rate (60/90/120/144/165) instead of a fixed multiplier |
 | Multiplier | 2× / 3× / 4× — generated frames per rendered frame |
 | Flow Scale | 25–100%, resolution of the optical-flow pyramid; lower is cheaper and softer |
-| FPS Limiter | Caps the game's own frame rate, from 15 fps upward |
+
+#### DIS
+
+**Nothing to buy, nothing to import.** DIS is a complete open-source Dense Inverse Search frame
+generator built into WinNative — twelve compute shaders that ship with the APK — so it works on
+a fresh install with no Steam account and no `Lossless.dll`. Turn it on in the **FG** tab and it
+runs.
+
+| Control | What it does |
+| --- | --- |
+| Generate Frames (DIS) | Master toggle |
+| Resolution Scale | Fast / Balance / Quality — 180 / 252 / 360 pixels on the frame's **shorter** side |
+| Target FPS | Max refresh rate, or a specific one (60/90/120/144/165) |
+| Show flow | Debug view: renders the estimated motion field instead of the frame |
+
+Resolution Scale is stated in pixels rather than as a percentage on purpose: a fixed pixel budget
+costs the same on a 720p container and a 1440p one, whereas the same percentage cost four times
+as much on the larger container without telling the search anything more about the motion. Lower
+is cheaper; higher tracks small or fast-moving detail better.
+
+#### Both engines
+
+The **FPS Limiter** at the bottom of the tab caps the game's own frame rate, from 15 fps upward,
+and applies whichever engine is running.
 
 **What to expect.** Frame generation costs **one extra frame of input latency** — interpolating
 between two frames means holding the newer one back. It also needs spare display refresh:
@@ -135,7 +167,10 @@ Please match the existing code style and ensure any AI-assisted code is thorough
 - **ARMSX2** by the [ARMSX2](https://github.com/ARMSX2/ARMSX2) team (GPL-3.0) — the PlayStation 2 core, a fork of **[PCSX2](https://github.com/pcsx2/pcsx2)** (GPL-3.0), built from source into `libemucore`. PS2 online play uses PCSX2's DEV9 network adapter
 - **lsfg-vk** by [PancakeTAS](https://github.com/PancakeTAS/lsfg-vk) (GPL-3.0-or-later) — the original Vulkan reimplementation of the Lossless Scaling frame generation chain
 - **LSFG frame generation** by **Camille LaVey** of the [Eden Emulator Project](https://git.eden-emu.dev/eden-emu/eden) (GPL-3.0-or-later) — the Vulkan port of that chain that WinNative's frame generation is derived from. See [Frame generation — what came from Camille LaVey's Eden port](#frame-generation--what-came-from-camille-laveys-eden-port) below
+- **DIS optical flow frame generation** by **qwertypower** ([DEVAR Entertainment LLC](https://github.com/qwertypower)) (GPL-3.0) — a complete open-source implementation of a Dense Inverse Search frame generator, the second frame generation engine in WinNative and the one that needs no shaders from anywhere else. See [DIS frame generation — the fully open-source engine](#dis-frame-generation--the-fully-open-source-engine) below
+- **DIS optical flow** — the algorithm and its reference implementation come from [OpenCV](https://github.com/opencv/opencv) (`DISOpticalFlow`, [LICENSE](https://github.com/opencv/opencv/blob/5.x/LICENSE)), which adopted Till Kroeger's original [OF_DIS](https://github.com/tikroeger/OF_DIS)
 - **DXVK** by [Philip Rebohle and contributors](https://github.com/doitsujin/dxvk) (zlib/libpng) — the `dxbc` shader translator, vendored at `app/src/main/cpp/thirdparty/dxbc` to convert the frame generation shaders to SPIR-V
+- **DirectAudio** by [The412Banner](https://github.com/The412Banner/directaudio) (LGPL-2.1-or-later) — the native Wine → Android AAudio audio driver, and the only audio path in WinNative that carries a working microphone. See [DirectAudio — what came from The412Banner's driver](#directaudio--what-came-from-the412banners-driver) below
 - **Lossless Scaling** (Steam) — the source of the frame generation shaders. They are read from the user's own installed copy at runtime; none are redistributed with WinNative
 
 #### Frame generation — what came from Camille LaVey's Eden port
@@ -175,3 +210,72 @@ What WinNative added on top is the Windows and Android side of it: reading the s
 of a user's own Lossless Scaling install (`lsfg_dll.*`), translating them when only DXBC is
 available (`lsfg_dxbc.*`), the JNI surface (`lsfg_jni.*`), driver probing (`lsfg_probe.*`), and
 wiring the chain into WinNative's compositor and swapchain (`vkr_lsfg.*`).
+
+#### DIS frame generation — the fully open-source engine
+
+WinNative's second frame generator is a complete open-source implementation of **Dense Inverse
+Search** optical flow, contributed by **qwertypower** (DEVAR Entertainment LLC) under GPL-3.0.
+
+Unlike the Lossless Scaling path it depends on nothing the user has to own or install. The whole
+chain ships with the APK as twelve compute shaders and runs in the same Vulkan compositor, so
+frame generation is available on a fresh install with no Steam account and no `Lossless.dll`.
+
+The algorithm is DIS, and its reference implementation is OpenCV's `DISOpticalFlow`
+([OpenCV LICENSE](https://github.com/opencv/opencv/blob/5.x/LICENSE)). OpenCV in turn adopted
+Till Kroeger's original [OF_DIS](https://github.com/tikroeger/OF_DIS). What is original here is
+the Vulkan compute realisation of it — the pyramid, the descriptor and barrier layout, the
+sparse-to-dense step and the pacing — built to run inside a mobile compositor at frame rate.
+
+| Stage | Shaders |
+| --- | --- |
+| Pyramid and gradients | `dis_gradient` |
+| Patch inverse search, coarse to fine | `dis_inverse_search`, `dis_propagate` |
+| Sparse grid to dense flow | `dis_densify` |
+| Variational refinement | `dis_vr_prep`, `dis_vr_d1`, `dis_vr_d2`, `dis_vr_w`, `dis_vr_coef`, `dis_vr_sor`, `dis_vr_add` |
+| Warp to the in-between frame | `dis_interpolate` |
+
+The engine sits behind its own settings — a Fast / Balance / Quality flow resolution and an
+optional target frame rate — kept separate from the Lossless Scaling ones, and the two engines
+are mutually exclusive because the compositor drives one interpolator per frame.
+
+#### DirectAudio — what came from The412Banner's driver
+
+WinNative's microphone support exists because **The412Banner** wrote
+**[DirectAudio](https://github.com/The412Banner/directaudio)**, a native Wine → Android AAudio
+mmdevapi driver, and then completed its capture half. Nothing in that driver is WinNative's
+work. We ship his release binaries unmodified and add only the host-side plumbing that selects
+and configures them.
+
+Wine has no AAudio backend upstream. DirectAudio is an original driver whose structure is
+modelled on Wine's `winecoreaudio.drv`, with the CoreAudio device layer replaced by Android
+AAudio — no PulseAudio daemon and no ALSA server anywhere in the path. That is also the reason
+it is the only one of WinNative's three audio stacks that can carry a microphone at all: the
+ALSA aserver protocol has no capture verb (its guest plugin refuses a non-playback PCM
+outright), and the bundled PulseAudio ships no source module, so any capture endpoint winepulse
+advertises would record silence.
+
+| Component | What it provides |
+| --- | --- |
+| `winedirectaudio.drv` (arm64ec + i386 PE) | The mmdevapi driver the guest game loads |
+| `winedirectaudio.so` (bionic unixlib) | The AAudio backend both PE halves share |
+| Render mixer | One shared AAudio output stream, per-voice mixing, adaptive buffering with decay, and a dead-callback watchdog |
+| Capture path *(v1.3.2)* | One shared AAudio `INPUT` stream (48 kHz / float / stereo, `VOICE_COMMUNICATION` preset for platform echo-cancel, noise-suppress and auto-gain), opened lazily on the first capture stream and started only on the first `Start` |
+
+What WinNative added is only the host half: picking the driver build that matches the
+container's Wine ABI and the device's kernel page size, overlaying the three files onto the
+Proton layer, writing the Wine registry key that selects the driver, requesting `RECORD_AUDIO`,
+and exposing the microphone opt-in per container and per shortcut.
+
+The microphone is **off by default and per-container**, which is the driver's own design rather
+than caution on our part: a capture endpoint a game can enumerate but not open makes titles that
+probe the microphone while loading abandon audio init and boot to a black screen (God of War and
+DiRT 3, device-proven upstream). With the gate off the driver is byte-identical to its
+render-only build. WinNative additionally withholds the gate when `RECORD_AUDIO` has not been
+granted, so a denied permission degrades to render-only rather than to an unopenable endpoint.
+
+DirectAudio is licensed **LGPL-2.1-or-later** and remains so. The bundled binaries, their
+checksums, the upstream source offer and the verbatim `COPYING`, `NOTICE` and `AUTHORS` files
+live in [`app/src/main/assets/directaudio/`](app/src/main/assets/directaudio/). Integration
+notes are in [`docs/direct-audio-integration.md`](docs/direct-audio-integration.md).
+
+> DirectAudio by The412Banner (https://github.com/The412Banner/directaudio)

@@ -19,7 +19,7 @@ VkrLsfg* vkr_lsfg_create(VkDevice device, VkPhysicalDevice physical_device,
 void vkr_lsfg_destroy(VkrLsfg* lsfg);
 
 void vkr_lsfg_configure(VkrLsfg* lsfg, uint32_t multiplier, uint32_t target_rate,
-                        float flow_scale, float refresh_rate);
+                        float flow_scale, float refresh_rate, float source_rate);
 
 void vkr_lsfg_set_refresh_rate(VkrLsfg* lsfg, float refresh_rate);
 
@@ -31,6 +31,8 @@ bool vkr_lsfg_needs_rebuild(const VkrLsfg* lsfg, uint32_t width, uint32_t height
 bool vkr_lsfg_prepare(VkrLsfg* lsfg, uint32_t width, uint32_t height, VkFormat format);
 
 uint32_t vkr_lsfg_plan(VkrLsfg* lsfg, uint32_t capacity, uint64_t source_frames);
+
+void vkr_lsfg_note_frame(VkrLsfg* lsfg, uint64_t draw_ns, uint32_t delivered);
 
 void vkr_lsfg_process(VkrLsfg* lsfg, VkCommandBuffer cmd, VkImage source,
                       uint32_t width, uint32_t height, uint32_t generations);

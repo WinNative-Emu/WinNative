@@ -1,0 +1,332 @@
+[
+ {
+  "slot": 8,
+  "scope": "user",
+  "field": "0x18",
+  "interface": "IClientUserMap"
+ },
+ {
+  "slot": 9,
+  "scope": "user",
+  "field": "0x30",
+  "interface": "IClientGameServerInternalMap"
+ },
+ {
+  "slot": 10,
+  "scope": "user",
+  "field": null,
+  "interface": "IClientGameServerPacketHandlerMap"
+ },
+ {
+  "slot": 13,
+  "scope": "user",
+  "field": "0x20",
+  "interface": "IClientFriendsMap"
+ },
+ {
+  "slot": 14,
+  "scope": "pipe",
+  "field": "0x18",
+  "interface": "IClientUtilsMap"
+ },
+ {
+  "slot": 15,
+  "scope": "user",
+  "field": "0x28",
+  "interface": "IClientBillingMap"
+ },
+ {
+  "slot": 16,
+  "scope": "user",
+  "field": "0x48",
+  "interface": "IClientMatchmakingMap"
+ },
+ {
+  "slot": 17,
+  "scope": "user",
+  "field": "0x50",
+  "interface": "IClientAppsMap"
+ },
+ {
+  "slot": 18,
+  "scope": "user",
+  "field": null,
+  "interface": "(CSteamMatchMakingServers)"
+ },
+ {
+  "slot": 21,
+  "scope": "user",
+  "field": "0x58",
+  "interface": "IClientUserStatsMap"
+ },
+ {
+  "slot": 22,
+  "scope": "user",
+  "field": "0xa0",
+  "interface": "IClientGameServerStatsMap"
+ },
+ {
+  "slot": 23,
+  "scope": "user",
+  "field": "0x60",
+  "interface": "IClientNetworkingMap"
+ },
+ {
+  "slot": 24,
+  "scope": "user",
+  "field": "0x68",
+  "interface": "IClientRemoteStorageMap"
+ },
+ {
+  "slot": 25,
+  "scope": "user",
+  "field": "0x70",
+  "interface": "IClientScreenshotsMap"
+ },
+ {
+  "slot": 27,
+  "scope": "user",
+  "field": "0x78",
+  "interface": "IClientGameCoordinatorMap"
+ },
+ {
+  "slot": 34,
+  "scope": "user",
+  "field": "0x80",
+  "interface": "IClientProductBuilderMap"
+ },
+ {
+  "slot": 35,
+  "scope": "user",
+  "field": "0x88",
+  "interface": "IClientDepotBuilderMap"
+ },
+ {
+  "slot": 36,
+  "scope": "pipe",
+  "field": "0x28",
+  "interface": "IClientNetworkDeviceManagerMap"
+ },
+ {
+  "slot": 37,
+  "scope": "pipe",
+  "field": "0x30",
+  "interface": "IClientSystemPerfManagerMap"
+ },
+ {
+  "slot": 38,
+  "scope": "pipe",
+  "field": "0x38",
+  "interface": "IClientSystemManagerMap"
+ },
+ {
+  "slot": 39,
+  "scope": "pipe",
+  "field": "0x40",
+  "interface": "IClientSystemDockManagerMap"
+ },
+ {
+  "slot": 40,
+  "scope": "pipe",
+  "field": "0x48",
+  "interface": "IClientSystemAudioManagerMap"
+ },
+ {
+  "slot": 41,
+  "scope": "pipe",
+  "field": "0x50",
+  "interface": "IClientSystemDisplayManagerMap"
+ },
+ {
+  "slot": 43,
+  "scope": "user",
+  "field": "0x90",
+  "interface": "IClientAppManagerMap"
+ },
+ {
+  "slot": 44,
+  "scope": "user",
+  "field": "0x98",
+  "interface": "IClientConfigStoreMap"
+ },
+ {
+  "slot": 46,
+  "scope": "user",
+  "field": "0xa8",
+  "interface": "IClientGameStatsMap"
+ },
+ {
+  "slot": 47,
+  "scope": "user",
+  "field": "0xb0",
+  "interface": "IClientHTTPMap"
+ },
+ {
+  "slot": 50,
+  "scope": "user",
+  "field": "0xb8",
+  "interface": "IClientAudioMap"
+ },
+ {
+  "slot": 51,
+  "scope": "user",
+  "field": "0xc0",
+  "interface": "IClientMusicMap"
+ },
+ {
+  "slot": 52,
+  "scope": "user",
+  "field": "0xc8",
+  "interface": "IClientUnifiedMessagesMap"
+ },
+ {
+  "slot": 53,
+  "scope": "pipe",
+  "field": "0x78",
+  "interface": "(factory 0x5c88e0)"
+ },
+ {
+  "slot": 54,
+  "scope": "user",
+  "field": "0x148",
+  "interface": "IClientParentalSettingsMap"
+ },
+ {
+  "slot": 55,
+  "scope": "user",
+  "field": "0xd0",
+  "interface": "IClientStreamLauncherMap"
+ },
+ {
+  "slot": 56,
+  "scope": "pipe",
+  "field": "0x20",
+  "interface": "IClientRemoteClientManagerMap"
+ },
+ {
+  "slot": 57,
+  "scope": "user",
+  "field": "0xe8",
+  "interface": "IClientStreamClientMap"
+ },
+ {
+  "slot": 58,
+  "scope": "user",
+  "field": "0xf0",
+  "interface": "IClientShortcutsMap"
+ },
+ {
+  "slot": 59,
+  "scope": "user",
+  "field": "0xd8",
+  "interface": "IClientUGCMap"
+ },
+ {
+  "slot": 60,
+  "scope": "user",
+  "field": "0xe0",
+  "interface": "IClientInventoryMap"
+ },
+ {
+  "slot": 61,
+  "scope": "pipe",
+  "field": "0x58",
+  "interface": "IClientVRMap"
+ },
+ {
+  "slot": 62,
+  "scope": "user",
+  "field": "0xf8",
+  "interface": "IClientGameNotificationsMap"
+ },
+ {
+  "slot": 63,
+  "scope": "user",
+  "field": null,
+  "interface": "(CSteamHTMLSurface)"
+ },
+ {
+  "slot": 64,
+  "scope": "user",
+  "field": "0x100",
+  "interface": "IClientTimelineMap"
+ },
+ {
+  "slot": 65,
+  "scope": "user",
+  "field": "0x108",
+  "interface": "IClientVideoMap"
+ },
+ {
+  "slot": 66,
+  "scope": "pipe",
+  "field": "0x60",
+  "interface": "IClientControllerSerializedMap"
+ },
+ {
+  "slot": 67,
+  "scope": "user",
+  "field": "0x110",
+  "interface": "IClientAppDisableUpdateMap"
+ },
+ {
+  "slot": 69,
+  "scope": "user",
+  "field": "0x118",
+  "interface": "IClientSharedConnectionMap"
+ },
+ {
+  "slot": 70,
+  "scope": "user",
+  "field": "0x120",
+  "interface": "IClientShaderMap"
+ },
+ {
+  "slot": 71,
+  "scope": "user",
+  "field": "0x128",
+  "interface": "IClientNetworkingSocketsSerializedMap"
+ },
+ {
+  "slot": 72,
+  "scope": "user",
+  "field": "0x130",
+  "interface": "IClientCompatMap"
+ },
+ {
+  "slot": 74,
+  "scope": "user",
+  "field": "0x138",
+  "interface": "IClientPartiesMap"
+ },
+ {
+  "slot": 75,
+  "scope": "user",
+  "field": null,
+  "interface": "(CSteamClient-family)"
+ },
+ {
+  "slot": 76,
+  "scope": "user",
+  "field": null,
+  "interface": "(CSteamClient-family)"
+ },
+ {
+  "slot": 77,
+  "scope": "pipe",
+  "field": "0x68",
+  "interface": "(CSteamClient-family, factory 0xa78d90)"
+ },
+ {
+  "slot": 78,
+  "scope": "pipe",
+  "field": "0x70",
+  "interface": "IClientNetworkingUtilsSerializedMap"
+ },
+ {
+  "slot": 79,
+  "scope": "user",
+  "field": "0x140",
+  "interface": "IClientRemotePlayMap"
+ }
+]

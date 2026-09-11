@@ -6,6 +6,7 @@ import com.winlator.cmod.R
 import com.winlator.cmod.app.PluviaApp
 import com.winlator.cmod.feature.stores.epic.service.EpicService
 import com.winlator.cmod.feature.stores.gog.service.GOGService
+import com.winlator.cmod.feature.stores.itch.service.ItchService
 import com.winlator.cmod.feature.stores.steam.service.SteamService
 import com.winlator.cmod.shared.io.StorageUtils
 import kotlinx.coroutines.Dispatchers
@@ -111,6 +112,7 @@ object DownloadService {
         SteamService.getAllDownloads().forEach { (id, info) -> list.add("STEAM_$id" to info) }
         EpicService.getAllDownloads().forEach { (id, info) -> list.add("EPIC_$id" to info) }
         GOGService.getAllDownloads().forEach { (id, info) -> list.add("GOG_$id" to info) }
+        ItchService.getAllDownloads().forEach { (id, info) -> list.add("ITCH_$id" to info) }
 
         // Cover the cross-restart case: the DownloadCoordinator may know about records
         // (PAUSED or QUEUED) for which no store has yet created an in-memory DownloadInfo.
@@ -188,6 +190,7 @@ object DownloadService {
         SteamService.pauseAll()
         EpicService.pauseAll()
         GOGService.pauseAll()
+        ItchService.pauseAll()
     }
 
     fun pauseDownload(id: String) {
@@ -206,6 +209,10 @@ object DownloadService {
                 val gameId = id.removePrefix("GOG_")
                 GOGService.pauseDownload(gameId)
             }
+
+            id.startsWith("ITCH_") -> {
+                ItchService.pauseDownload(id.removePrefix("ITCH_"))
+            }
         }
     }
 
@@ -213,6 +220,7 @@ object DownloadService {
         SteamService.resumeAll()
         EpicService.resumeAll()
         GOGService.resumeAll()
+        ItchService.resumeAll()
     }
 
     fun resumeDownload(id: String) {
@@ -231,6 +239,10 @@ object DownloadService {
                 val gameId = id.removePrefix("GOG_")
                 GOGService.resumeDownload(gameId)
             }
+
+            id.startsWith("ITCH_") -> {
+                ItchService.resumeDownload(id.removePrefix("ITCH_"))
+            }
         }
     }
 
@@ -238,12 +250,14 @@ object DownloadService {
         SteamService.cancelAll()
         EpicService.cancelAll()
         GOGService.cancelAll()
+        ItchService.cancelAll()
     }
 
     fun clearCompletedDownloads() {
         SteamService.clearCompletedDownloads()
         EpicService.clearCompletedDownloads()
         GOGService.clearCompletedDownloads()
+        ItchService.clearCompletedDownloads()
         // Sweep finished records from the cross-store coordinator table too.
         com.winlator.cmod.app.service.download.DownloadCoordinator.runOnScope {
             com.winlator.cmod.app.service.download.DownloadCoordinator.clear()
@@ -254,6 +268,7 @@ object DownloadService {
         SteamService.clearCompletedDownloadsForShutdown()
         EpicService.clearCompletedDownloads()
         GOGService.clearCompletedDownloads()
+        ItchService.clearCompletedDownloads()
         // Shutdown can kill the process immediately, so wait for persisted history cleanup.
         com.winlator.cmod.app.service.download.DownloadCoordinator.clearBlocking()
     }
@@ -273,6 +288,10 @@ object DownloadService {
             id.startsWith("GOG_") -> {
                 val gameId = id.removePrefix("GOG_")
                 GOGService.cancelDownload(gameId)
+            }
+
+            id.startsWith("ITCH_") -> {
+                ItchService.cancelDownload(id.removePrefix("ITCH_"))
             }
         }
     }

@@ -45,12 +45,14 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
+import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings
 import com.winlator.cmod.shared.ui.layout.isPortraitLayout
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -82,10 +84,12 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.Switch
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -140,11 +144,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.scale
 import com.winlator.cmod.R
+import com.winlator.cmod.runtime.audio.directaudio.DirectAudioDriver
 import com.winlator.cmod.runtime.reshade.ReshadeCatalog
 import com.winlator.cmod.runtime.reshade.ReshadeCatalogEntry
 import com.winlator.cmod.runtime.reshade.ReshadeDownloader
 import com.winlator.cmod.runtime.reshade.ReshadeLoadout
 import com.winlator.cmod.runtime.reshade.ReshadeManager
+import com.winlator.cmod.shared.util.StringUtils
 import com.winlator.cmod.shared.framegen.FrameGenPreset
 import com.winlator.cmod.shared.theme.GameSettingsStyle
 import com.winlator.cmod.runtime.wine.WineThemeManager
@@ -402,6 +408,10 @@ class GameSettingsStateHolder {
     val containerEntries = mutableStateOf<List<String>>(emptyList())
     val selectedContainer = mutableIntStateOf(0)
     val screenSizeEntries = mutableStateOf<List<String>>(emptyList())
+    val standardScreenSizeEntries = mutableStateOf<List<String>>(emptyList())
+    val deviceScreenSizeEntries = mutableStateOf<List<String>>(emptyList())
+    val devicePanelSummary = mutableStateOf("")
+    val showDeviceResolutions = mutableStateOf(false)
     val selectedScreenSize = mutableIntStateOf(0)
     val customWidth = mutableStateOf("")
     val customHeight = mutableStateOf("")
@@ -430,6 +440,11 @@ class GameSettingsStateHolder {
 
     val frameGenEnabled = mutableStateOf(false)
     val frameGenMultiplier = mutableIntStateOf(2)
+
+    val netDriverEntries = mutableStateOf<List<String>>(emptyList())
+    val selectedNetDriver = mutableIntStateOf(0)
+    val netMac = mutableStateOf("")
+    val netMacAuto = mutableStateOf("")
     val frameGenTargetRate = mutableIntStateOf(0)
     val frameGenFlowScale = mutableIntStateOf(70)
     val frameGenShaderState = mutableIntStateOf(FRAMEGEN_SHADERS_CHECKING)
@@ -465,8 +480,9 @@ class GameSettingsStateHolder {
     val gfxSelectedBcnEmulationCache = mutableIntStateOf(0)
     val gfxTranscoderEntries = mutableStateOf<List<String>>(emptyList())
     val gfxSelectedTranscoder = mutableIntStateOf(0)
-    val gfxQualityEntries = mutableStateOf<List<String>>(emptyList())
-    val gfxSelectedQuality = mutableIntStateOf(0)
+    val gfxAstcTranscodingEntries = mutableStateOf<List<String>>(emptyList())
+    val gfxAstcTranscodingValues = mutableStateOf<List<String>>(emptyList())
+    val gfxSelectedAstcTranscoding = mutableIntStateOf(0)
     val gfxSyncFrame = mutableStateOf(false)
     val gfxDisablePresentWait = mutableStateOf(false)
 
@@ -501,6 +517,7 @@ class GameSettingsStateHolder {
     // Audio
     val audioDriverEntries = mutableStateOf<List<String>>(emptyList())
     val selectedAudioDriver = mutableIntStateOf(0)
+    val directAudioMic = mutableStateOf(false)
     val midiSoundFontEntries = mutableStateOf<List<String>>(emptyList())
     val selectedMidiSoundFont = mutableIntStateOf(0)
 
@@ -552,6 +569,7 @@ class GameSettingsStateHolder {
     val numControllersEntries = mutableStateOf<List<String>>(emptyList())
     val selectedNumControllers = mutableIntStateOf(0)
     val disableXInput = mutableStateOf(false)
+    val adaptiveJoysticks = mutableStateOf(false)
     val simTouchScreen = mutableStateOf(false)
     val screenTouchMode = mutableIntStateOf(0)
     val gestureProfileEntries = mutableStateOf<List<String>>(emptyList())
@@ -597,6 +615,51 @@ class GameSettingsStateHolder {
     val drives = mutableStateOf("")
 
     val isLoaded = mutableStateOf(false)
+
+    fun applyScreenSizeEntries(useDeviceResolutions: Boolean) {
+        val device = deviceScreenSizeEntries.value
+        val standard = standardScreenSizeEntries.value
+        val useDevice = useDeviceResolutions && device.size > 1
+        showDeviceResolutions.value = useDevice
+        val next = if (useDevice) device else standard
+        if (next.isEmpty()) return
+
+        val current = selectedScreenSizeValue()
+        screenSizeEntries.value = next
+        val index = next.indexOfFirst { StringUtils.parseIdentifier(it) == current }
+        if (index >= 0) {
+            selectedScreenSize.intValue = index
+            return
+        }
+        val currentHeight = heightOf(current)
+        if (currentHeight > 0) {
+            val tierIndex = next.indexOfFirst { heightOf(StringUtils.parseIdentifier(it)) == currentHeight }
+            if (tierIndex >= 0) {
+                selectedScreenSize.intValue = tierIndex
+                return
+            }
+        }
+        selectedScreenSize.intValue = 0
+        val parts = current.split("x")
+        if (parts.size == 2) {
+            customWidth.value = parts[0]
+            customHeight.value = parts[1]
+        }
+    }
+
+    private fun heightOf(screenSize: String): Int {
+        val parts = screenSize.split("x")
+        return if (parts.size == 2) parts[1].toIntOrNull() ?: 0 else 0
+    }
+
+    private fun selectedScreenSizeValue(): String {
+        val entries = screenSizeEntries.value
+        val index = selectedScreenSize.intValue
+        if (index > 0 && index in entries.indices) return StringUtils.parseIdentifier(entries[index])
+        val width = customWidth.value.trim()
+        val height = customHeight.value.trim()
+        return if (width.isEmpty() || height.isEmpty()) "" else "${width}x$height"
+    }
 }
 
 interface GameSettingsCallbacks {
@@ -687,6 +750,7 @@ private const val SEC_INPUT = 7
 private const val SEC_ADVANCED = 8
 private const val SEC_DRIVES = 9
 private const val SEC_SAVES = 10
+private const val SEC_NETWORKING = 11
 
 private fun buildSections(isSteam: Boolean, isContainer: Boolean): List<Pair<Int, SidebarSection>> {
     val list = mutableListOf<Pair<Int, SidebarSection>>()
@@ -698,6 +762,7 @@ private fun buildSections(isSteam: Boolean, isContainer: Boolean): List<Pair<Int
     list += SEC_VARIABLES to SidebarSection(Icons.Outlined.Code, R.string.container_config_variables)
     list += SEC_INPUT to SidebarSection(Icons.Outlined.SportsEsports, R.string.common_ui_input_controls)
     list += SEC_COMPONENTS to SidebarSection(Icons.Outlined.Extension, R.string.settings_content_components)
+    list += SEC_NETWORKING to SidebarSection(Icons.Outlined.Wifi, R.string.networking_section_title)
     if (isContainer) {
         list += SEC_DRIVES to SidebarSection(Icons.Outlined.Storage, R.string.container_config_drives)
     }
@@ -1042,6 +1107,7 @@ private fun SectionContent(
                     SEC_ADVANCED -> AdvancedSection(state, callbacks)
                     SEC_DRIVES -> DrivesSection(state, callbacks)
                     SEC_SAVES -> SavesSection(state, callbacks)
+                    SEC_NETWORKING -> NetworkingSection(state)
                 }
                 Spacer(Modifier.height(SettingSectionGap))
             }
@@ -1576,6 +1642,26 @@ private fun GeneralSection(
             }
         }
 
+        if (state.deviceScreenSizeEntries.value.size > 1) {
+            Spacer(Modifier.height(SettingItemGap))
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SettingSwitch(
+                    label = stringResource(R.string.container_config_show_device_resolutions),
+                    checked = state.showDeviceResolutions.value,
+                    onCheckedChange = { on -> state.applyScreenSizeEntries(on) }
+                )
+                Text(
+                    stringResource(
+                        R.string.container_config_show_device_resolutions_help,
+                        state.devicePanelSummary.value
+                    ),
+                    color = TextDim,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
+            }
+        }
+
         // Custom resolution fields when "Custom" is selected (index 0)
         if (state.selectedScreenSize.intValue == 0) {
             Spacer(Modifier.height(SettingItemGap))
@@ -1621,6 +1707,37 @@ private fun GeneralSection(
                     entries = state.midiSoundFontEntries.value,
                     selectedIndex = state.selectedMidiSoundFont.intValue,
                     onSelected = { state.selectedMidiSoundFont.intValue = it }
+                )
+            }
+        }
+
+        // Only DirectAudio has a capture path; ALSA and PulseAudio cannot record.
+        val audioContext = LocalContext.current
+        val directAudioSelected = StringUtils.parseIdentifier(
+            state.audioDriverEntries.value.getOrNull(state.selectedAudioDriver.intValue) ?: ""
+        ) == DirectAudioDriver.IDENTIFIER
+
+        AnimatedVisibility(
+            visible = directAudioSelected,
+            enter = graphicsCardExpandEnter(),
+            exit = graphicsCardExpandExit()
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SettingSwitch(
+                    label = stringResource(R.string.container_config_direct_audio_mic),
+                    checked = state.directAudioMic.value,
+                    onCheckedChange = { on ->
+                        state.directAudioMic.value = on
+                        if (on) {
+                            DirectAudioDriver.requestMicPermission(audioContext)
+                        }
+                    }
+                )
+                Text(
+                    stringResource(R.string.container_config_direct_audio_mic_help),
+                    color = TextDim,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
                 )
             }
         }
@@ -2130,10 +2247,10 @@ private fun GraphicsDriverConfigCard(
                         }
                         Box(Modifier.weight(1f)) {
                             SettingDropdown(
-                                label = stringResource(R.string.container_graphics_quality),
-                                entries = state.gfxQualityEntries.value,
-                                selectedIndex = state.gfxSelectedQuality.intValue,
-                                onSelected = { state.gfxSelectedQuality.intValue = it }
+                                label = stringResource(R.string.container_graphics_astc_transcoding),
+                                entries = state.gfxAstcTranscodingEntries.value,
+                                selectedIndex = state.gfxSelectedAstcTranscoding.intValue,
+                                onSelected = { state.gfxSelectedAstcTranscoding.intValue = it }
                             )
                         }
                     }
@@ -3586,30 +3703,46 @@ private fun ReshadeCatalogRow(
 @Composable
 private fun SteamSection(state: GameSettingsStateHolder) {
 
-    // Steam Launcher is the default path; enabling it unchecks every other Steam mode (mutually exclusive launch paths).
     val onSteamLauncherChange: (Boolean) -> Unit = { enabled ->
         state.steamLauncher.value = enabled
         if (enabled) {
             state.useLegacyLauncher.value = false
             state.runtimePatcher.value = false
-            state.steamOfflineMode.value = false
         }
     }
+
+    val offlineModeAvailable = state.steamLauncher.value || state.useLegacyLauncher.value
 
     SubsectionLabel(stringResource(R.string.steam_section_real_client))
     Spacer(Modifier.height(8.dp))
     SettingGroup {
         SettingCheckbox(
-            label = "Steam Launcher",
+            label = stringResource(R.string.steam_launcher_real_client),
             checked = state.steamLauncher.value,
             onCheckedChange = onSteamLauncherChange
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "Run the game through the in-Wine Steam Launcher (recommended). Disables other Steam launch modes.",
+            stringResource(R.string.steam_launcher_real_client_description),
             color = TextDim,
             fontSize = 11.sp,
             lineHeight = 16.sp
+        )
+        Spacer(Modifier.height(SettingItemGap))
+
+        SettingCheckbox(
+            label = stringResource(R.string.shortcuts_properties_steam_offline_mode),
+            checked = state.steamOfflineMode.value,
+            onCheckedChange = { state.steamOfflineMode.value = it },
+            enabled = offlineModeAvailable
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.shortcuts_properties_steam_offline_mode_description),
+            color = TextDim,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+            modifier = Modifier.alpha(if (offlineModeAvailable) 1f else 0.4f)
         )
     }
 
@@ -3649,25 +3782,6 @@ private fun SteamSection(state: GameSettingsStateHolder) {
         )
         Spacer(Modifier.height(SettingItemGap))
         */
-
-        SettingCheckbox(
-            label = stringResource(R.string.shortcuts_properties_steam_offline_mode),
-            checked = state.steamOfflineMode.value,
-            onCheckedChange = {
-                state.steamOfflineMode.value = it
-                if (it) state.steamLauncher.value = false
-            },
-            enabled = state.useLegacyLauncher.value
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            stringResource(R.string.shortcuts_properties_steam_offline_mode_description),
-            color = TextDim,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            modifier = Modifier.alpha(if (state.useLegacyLauncher.value) 1f else 0.4f)
-        )
-        Spacer(Modifier.height(SettingItemGap))
 
         SettingCheckbox(
             label = stringResource(R.string.shortcuts_properties_runtime_patcher),
@@ -3937,6 +4051,48 @@ private fun ComponentsSection(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NetworkingSection(state: GameSettingsStateHolder) {
+    val driverActive = state.selectedNetDriver.intValue == 0
+    val macValid = NetworkingSettings.isValidMac(state.netMac.value)
+    SubsectionLabel(stringResource(R.string.networking_driver))
+    Spacer(Modifier.height(8.dp))
+    SettingGroup {
+        SettingDropdown(
+            label = stringResource(R.string.networking_driver),
+            entries = state.netDriverEntries.value,
+            selectedIndex = state.selectedNetDriver.intValue,
+            onSelected = { state.selectedNetDriver.intValue = it }
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = stringResource(R.string.networking_driver_summary),
+            style = MaterialTheme.typography.bodySmall,
+            color = LocalContentColor.current.copy(alpha = 0.7f)
+        )
+    }
+    Spacer(Modifier.height(SettingSectionGap))
+    SubsectionLabel(stringResource(R.string.networking_mac))
+    Spacer(Modifier.height(8.dp))
+    SettingGroup {
+        SettingTextField(
+            label = stringResource(R.string.networking_mac),
+            value = state.netMac.value,
+            onValueChange = { v -> state.netMac.value = v.filter { it.isLetterOrDigit() || it == ':' || it == '-' }.take(17) },
+            keyboardType = KeyboardType.Ascii,
+            enabled = driverActive
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = if (!macValid) stringResource(R.string.networking_mac_invalid)
+            else if (state.netMac.value.isBlank()) stringResource(R.string.networking_mac_automatic, state.netMacAuto.value)
+            else stringResource(R.string.networking_mac_summary),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (!macValid) MaterialTheme.colorScheme.error else LocalContentColor.current.copy(alpha = 0.7f)
+        )
     }
 }
 
@@ -4858,6 +5014,14 @@ private fun InputSection(state: GameSettingsStateHolder) {
                 )
             }
         }
+
+        Spacer(Modifier.height(4.dp))
+
+        SettingCheckbox(
+            label = stringResource(R.string.input_controls_adaptive_joysticks),
+            checked = state.adaptiveJoysticks.value,
+            onCheckedChange = { state.adaptiveJoysticks.value = it }
+        )
 
         if (!isContainer) {
             Spacer(Modifier.height(4.dp))

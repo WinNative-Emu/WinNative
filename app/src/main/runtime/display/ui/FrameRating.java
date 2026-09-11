@@ -1105,7 +1105,7 @@ public class FrameRating extends LinearLayout implements Runnable {
     if (renderer == null) {
       return;
     }
-    String r = renderer.toLowerCase();
+    String r = renderer.toLowerCase(Locale.ROOT);
     if (r.contains("vkd3d")) {
       this.rendererName = "VKD3D";
     } else if (r.contains("dxvk")) {

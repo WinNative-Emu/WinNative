@@ -201,6 +201,7 @@ fun WnKeyValue.generateSteamApp(): SteamApp =
                             type = it["type"].value.orEmpty(),
                             configOS = OS.from(it["config"]["oslist"].value),
                             configArch = OSArch.from(it["config"]["osarch"].value),
+                            launchId = it.name?.toIntOrNull() ?: -1,
                         )
                     },
                 steamControllerTemplateIndex = this["config"]["steamcontrollertemplateindex"].asInteger(),

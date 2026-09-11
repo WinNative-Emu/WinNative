@@ -8,12 +8,19 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import org.json.JSONArray
 import org.json.JSONObject
 
 object RetroBundle {
-    private const val BASE = "https://github.com/WinNative-Emu/Retro-Consoles/releases/download/latest"
+    private const val REPO = "WinNative-Emu/Retro-Consoles"
+    private const val DOWNLOADS = "https://github.com/$REPO/releases/download"
+    private const val RELEASES_API = "https://api.github.com/repos/$REPO/releases?per_page=100"
     private const val ARCHIVE = "retro-consoles.tzst"
     private const val INFO = "bundle-info.json"
+    private const val PREFS = "retro_bundle"
+    private const val KEY_CHANNEL = "channel"
+
+    const val LATEST = "latest"
 
     fun root(context: Context): File = File(context.filesDir, "retro/bundle")
 
@@ -63,7 +70,54 @@ object RetroBundle {
     fun installed(context: Context): Version? =
         runCatching { Version.parse(marker(context).readText()) }.getOrNull()
 
-    fun published(): Result<Version> = runCatching { Version.parse(fetchText("$BASE/$INFO")) }
+    fun published(tag: String = LATEST): Result<Version> =
+        runCatching { Version.parse(fetchText("$DOWNLOADS/$tag/$INFO")) }
+
+    data class Release(
+        val tag: String,
+        val day: String,
+        val build: String,
+    ) {
+        val label: String get() = if (build.isEmpty()) day else "$day ($build)"
+    }
+
+    fun releases(): Result<List<Release>> =
+        runCatching {
+            val array = JSONArray(fetchText(RELEASES_API))
+            (0 until array.length())
+                .asSequence()
+                .map { array.getJSONObject(it) }
+                .filterNot { it.optBoolean("draft") }
+                .map { it.optString("tag_name") }
+                .filter { it.startsWith("bundle-") }
+                .distinct()
+                .sortedDescending()
+                .map { tag ->
+                    val parts = tag.removePrefix("bundle-").split('-')
+                    val stamp = parts.getOrElse(0) { "" }
+                    Release(
+                        tag = tag,
+                        day =
+                            if (stamp.length == 8) {
+                                "${stamp.take(4)}-${stamp.substring(4, 6)}-${stamp.substring(6)}"
+                            } else {
+                                stamp
+                            },
+                        build = parts.getOrElse(1) { "" },
+                    )
+                }
+                .toList()
+        }
+
+    fun selectedTag(context: Context): String =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_CHANNEL, LATEST) ?: LATEST
+
+    fun selectTag(
+        context: Context,
+        tag: String,
+    ) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_CHANNEL, tag).apply()
+    }
 
     sealed class Progress {
         data class Downloading(val bytes: Long, val total: Long) : Progress()
@@ -76,13 +130,14 @@ object RetroBundle {
     fun install(
         context: Context,
         version: Version,
+        tag: String = LATEST,
         onProgress: (Progress) -> Unit = {},
     ): Result<Version> =
         runCatching {
             val work = File(context.cacheDir, "retro-bundle").apply { deleteRecursively(); mkdirs() }
             val archive = File(work, ARCHIVE)
 
-            download("$BASE/$ARCHIVE", archive) { got, total ->
+            download("$DOWNLOADS/$tag/$ARCHIVE", archive) { got, total ->
                 onProgress(Progress.Downloading(got, if (total > 0) total else version.size))
             }
 
@@ -121,6 +176,8 @@ object RetroBundle {
             connectTimeout = 15000
             readTimeout = 60000
             instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "WinNative")
+            setRequestProperty("Accept", "application/vnd.github+json")
         }
 
     private fun fetchText(url: String): String =

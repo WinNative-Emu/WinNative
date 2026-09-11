@@ -5,4 +5,9 @@
         <item>원본</item>
         <item>단색</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>끄기</item>
+        <item>고화질</item>
+        <item>성능</item>
+    </string-array>
 </resources>

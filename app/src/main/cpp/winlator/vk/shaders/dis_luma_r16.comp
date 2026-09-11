@@ -1,0 +1,50 @@
+#version 450
+
+// Precomputes the luminance plane the search, propagation and densify passes
+// work on.
+//
+// Colour is never wanted by any of them: every one of their ~16-65 million
+// texture reads per frame fetched RGBA and immediately collapsed it to a single
+// number with the same dot product. Doing that once per texel instead of once
+// per read halves the bytes each of those passes moves - one channel instead of
+// four - and removes the dot from the inner loops entirely.
+//
+// Run per pyramid level against the matching colour mip, rather than computed
+// once and downsampled. Luminance is linear in RGB, so the two agree in exact
+// arithmetic, but a blit down a chain of UNORM mips does not have to round the
+// same way, and this pass is cheap enough that matching the old values exactly
+// is worth more than saving it.
+
+precision highp float;
+precision highp int;
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D colorMap;
+// The format is spelled out rather than left to the write-only rule. An image
+// with no format qualifier compiles to SPIR-V that needs
+// StorageImageWriteWithoutFormat, an optional device feature this device does not
+// enable - the pipeline simply fails to build and frame generation disappears
+// with no other symptom. r16f needs StorageImageExtendedFormats instead, which
+// the rest of the chain already relies on for its rg32f targets.
+//
+// Two variants exist because the qualifier is baked into the SPIR-V and has to
+// match the image: R16F is not a storage format Vulkan guarantees, so the host
+// picks R32F where the device does not report it. Everything downstream only
+// samples this plane, so it needs no variants of its own.
+layout(set = 0, binding = 5, r16f) writeonly uniform image2D lumaMap;
+
+// The 0-255 scale the reference implementation works on, not the 0-1 the
+// samplers hand back. Every tuned constant downstream came from OpenCV, which
+// feeds this chain 8-bit imagery converted to float without dividing by 255.
+float uluminance(vec3 c) {
+    return (0.299 * c.x + 0.587 * c.y + 0.114 * c.z) * 255.0;
+}
+
+void main() {
+    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = textureSize(colorMap, 0);
+    if (pix.x >= size.x || pix.y >= size.y) return;
+
+    imageStore(lumaMap, pix, vec4(uluminance(texelFetch(colorMap, pix, 0).xyz), 0.0, 0.0, 1.0));
+}

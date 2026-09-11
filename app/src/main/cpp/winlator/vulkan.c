@@ -51,8 +51,13 @@ static char *get_native_library_dir(JNIEnv *env, jobject context) {
     return NULL;
   }
 
-  if (nativeLibDir)
-    native_libdir = (char *)(*env)->GetStringUTFChars(env, nativeLibDir, NULL);
+  if (nativeLibDir) {
+    const char *utf = (*env)->GetStringUTFChars(env, nativeLibDir, NULL);
+    if (utf) {
+      native_libdir = strdup(utf);
+      (*env)->ReleaseStringUTFChars(env, nativeLibDir, utf);
+    }
+  }
 
   return native_libdir;
 }
@@ -163,8 +168,13 @@ static char *get_library_name(JNIEnv *env, jobject context,
     return NULL;
   }
 
-  if (libraryName)
-    library_name = (char *)(*env)->GetStringUTFChars(env, libraryName, NULL);
+  if (libraryName) {
+    const char *utf = (*env)->GetStringUTFChars(env, libraryName, NULL);
+    if (utf) {
+      library_name = strdup(utf);
+      (*env)->ReleaseStringUTFChars(env, libraryName, utf);
+    }
+  }
 
   return library_name;
 }
@@ -206,26 +216,29 @@ void *winlator_open_vulkan(JNIEnv *env, jobject context, const char *driver_name
 
   preload_vendor_icd_deps();
 
-  const char *driver_path = get_driver_path(env, context, driver_name);
+  char *driver_path = get_driver_path(env, context, driver_name);
   if (!driver_path || access(driver_path, F_OK) != 0) {
+    free(driver_path);
     return winlator_open_system_vulkan();
   }
 
   char *library_name = get_library_name(env, context, driver_name);
   char *native_library_dir = get_native_library_dir(env, context);
-  if (!library_name || !native_library_dir) {
-    return winlator_open_system_vulkan();
-  }
-
   char *tmpdir = NULL;
-  asprintf(&tmpdir, "%s%s", driver_path, "temp");
-  mkdir(tmpdir, S_IRWXU | S_IRWXG);
-
-  void *handle = adrenotools_open_libvulkan(
-      RTLD_LOCAL | RTLD_NOW,
-      ADRENOTOOLS_DRIVER_CUSTOM, tmpdir,
-      native_library_dir, driver_path, library_name, NULL,
-      NULL);
+  void *handle = NULL;
+  if (library_name && native_library_dir) {
+    asprintf(&tmpdir, "%s%s", driver_path, "temp");
+    mkdir(tmpdir, S_IRWXU | S_IRWXG);
+    handle = adrenotools_open_libvulkan(
+        RTLD_LOCAL | RTLD_NOW,
+        ADRENOTOOLS_DRIVER_CUSTOM, tmpdir,
+        native_library_dir, driver_path, library_name, NULL,
+        NULL);
+  }
+  free(tmpdir);
+  free(native_library_dir);
+  free(library_name);
+  free(driver_path);
   if (!handle) return winlator_open_system_vulkan();
   return handle;
 }
@@ -242,15 +255,18 @@ static VkResult create_instance(jstring driverName, JNIEnv *env,
                                 jobject context) {
   VkResult result;
   VkInstanceCreateInfo create_info = {};
-  char *driver_name = NULL;
+  const char *driver_name = NULL;
 
   if (driverName != NULL)
-    driver_name = (char *)(*env)->GetStringUTFChars(env, driverName, NULL);
+    driver_name = (*env)->GetStringUTFChars(env, driverName, NULL);
 
   if (driver_name && strcmp(driver_name, "System"))
     init_vulkan(env, context, driver_name);
   else
     init_original_vulkan();
+
+  if (driver_name)
+    (*env)->ReleaseStringUTFChars(env, driverName, driver_name);
 
   if (!vulkan_handle)
     return VK_ERROR_INITIALIZATION_FAILED;

@@ -481,7 +481,7 @@ internal fun UnifiedActivity.DrawerContent(
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DrawerFilterButton("GOG", storeVisible["gog"] == true, Modifier.weight(1f)) { onStoreVisibleChanged("gog", it) }
-                Spacer(Modifier.weight(1f))
+                DrawerFilterButton("itch.io", storeVisible["itch"] == true, Modifier.weight(1f)) { onStoreVisibleChanged("itch", it) }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -1256,22 +1256,28 @@ internal suspend fun scrapeCustomGameArtwork(
     }
 }
 
-internal fun UnifiedActivity.addCustomGame(
+internal fun addCustomGame(
     context: android.content.Context,
     name: String,
     exePath: String,
     gameFolderPath: String,
+    coverArt: java.io.File? = null,
 ) {
     val containerManager = ContainerManager(context)
-    var container = SetupWizardActivity.getPreferredGameContainer(context, containerManager)
+    val container = SetupWizardActivity.getPreferredGameContainer(context, containerManager)
     if (container == null) {
         SetupWizardActivity.promptToInstallWineOrCreateContainer(context)
         return
     }
 
     val exeFile = java.io.File(exePath)
-    normalizeContainerDrives(container)
-    val execCmd = buildWineExecCommand(container, gameFolderPath, exeFile)
+    container.drives =
+        com.winlator.cmod.runtime.wine.WineUtils
+            .normalizePersistentDrives(context, container.drives ?: Container.DEFAULT_DRIVES, false)
+    val windowsPath =
+        com.winlator.cmod.runtime.wine.WineUtils
+            .resolveGameExeWindowsPath(container, "CUSTOM", gameFolderPath, exeFile.absolutePath)
+    val execCmd = "wine \"$windowsPath\""
 
     val desktopDir = container.getDesktopDir()
     if (!desktopDir.exists()) desktopDir.mkdirs()
@@ -1282,7 +1288,10 @@ internal fun UnifiedActivity.addCustomGame(
     val preferences: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
     val extractedArtworkPath =
         try {
-            if (PeIconExtractor.extractAndSave(java.io.File(exePath), iconOutFile)) {
+            if (coverArt != null && coverArt.isFile) {
+                coverArt.copyTo(iconOutFile, overwrite = true)
+                iconOutFile.absolutePath
+            } else if (PeIconExtractor.extractAndSave(java.io.File(exePath), iconOutFile)) {
                 iconOutFile.absolutePath
             } else {
                 null
@@ -1308,11 +1317,28 @@ internal fun UnifiedActivity.addCustomGame(
     com.winlator.cmod.shared.io.FileUtils
         .writeString(shortcutFile, content.toString())
     container.saveData()
-    if (preferences.getBoolean("enable_auto_scraping", false)) {
+    if (coverArt == null && preferences.getBoolean("enable_auto_scraping", false)) {
         CoroutineScope(Dispatchers.IO).launch {
             scrapeCustomGameArtwork(context, name, shortcutUuid, container, shortcutFile)
         }
     }
+}
+
+internal fun removeCustomGame(
+    context: android.content.Context,
+    gameFolderPath: String,
+): Boolean {
+    if (gameFolderPath.isBlank()) return false
+    val target = java.io.File(gameFolderPath).absolutePath.trimEnd('/')
+    val shortcuts = runCatching { ContainerManager(context).loadShortcuts() }.getOrDefault(emptyList())
+    val matches =
+        shortcuts.filter { shortcut ->
+            shortcut.getExtra("game_source") == "CUSTOM" &&
+                shortcut.getExtra("custom_game_folder").trimEnd('/') == target
+        }
+    matches.forEach { LibraryShortcutUtils.deleteShortcutArtifacts(context, it) }
+    if (matches.isNotEmpty()) UnifiedActivity.refreshLibrary()
+    return matches.isNotEmpty()
 }
 
 @Composable

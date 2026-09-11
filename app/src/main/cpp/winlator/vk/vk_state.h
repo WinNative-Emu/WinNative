@@ -15,6 +15,7 @@
 // this translation unit (do not include <vulkan/vulkan.h> directly).
 #include "vk_dispatch.h"
 #include "lsfg/vkr_lsfg.h"
+#include "dis/vkr_dis.h"
 
 #define VK_LOG_TAG "VkRenderer"
 #define VK_LOGI(...) __android_log_print(ANDROID_LOG_INFO,  VK_LOG_TAG, __VA_ARGS__)
@@ -422,6 +423,14 @@ typedef struct VkRenderer {
     uint64_t          framegen_present_failures;
     struct VkrLsfg*   lsfg;
     char*             lsfg_cache_path;
+    struct VkrDis*    dis;
+    bool              dis_requested;
+    uint32_t          dis_scale;
+    uint32_t          dis_target_fps;
+    bool              dis_debug_flow;
+    // Signature of the last logged SGSR1 geometry, so the diagnostic prints once
+    // per configuration instead of once per frame.
+    uint64_t          sgsr1_dbg_sig;
     uint32_t          framegen_multiplier;
     uint32_t          framegen_target_rate;
     float             framegen_flow_scale;

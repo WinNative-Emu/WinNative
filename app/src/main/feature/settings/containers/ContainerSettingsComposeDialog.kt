@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatDialog
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings
 import com.winlator.cmod.shared.ui.nav.PANE_DIR_ACTIVATE
 import com.winlator.cmod.shared.ui.nav.PaneNavWindowHandlers
 import com.winlator.cmod.shared.ui.nav.bindPaneNav
@@ -35,6 +36,8 @@ import com.winlator.cmod.feature.library.GameSettingsNav
 import com.winlator.cmod.feature.library.GameSettingsStateHolder
 import com.winlator.cmod.feature.library.WinComponentItem
 import com.winlator.cmod.feature.library.parseEnvVarItems
+import com.winlator.cmod.runtime.audio.directaudio.DirectAudioDriver
+import com.winlator.cmod.shared.android.DeviceResolutions
 import com.winlator.cmod.runtime.compat.box64.Box64Preset
 import com.winlator.cmod.runtime.compat.box64.Box64PresetManager
 import com.winlator.cmod.runtime.container.Container
@@ -57,6 +60,7 @@ import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.util.KeyValueSet
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import com.winlator.cmod.shared.util.StringUtils
+import com.winlator.cmod.runtime.input.ui.InputControlsView
 import com.winlator.cmod.runtime.wine.WineInfo
 import com.winlator.cmod.runtime.wine.WineRegistryEditor
 import com.winlator.cmod.runtime.wine.WineThemeManager
@@ -261,6 +265,7 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
                 state.isArm64EC.value = isArm64EC
                 state.wineVersionDisplay.value = formatWineVersionDisplay(wineInfo)
                 applyDefaultContainerName(wineInfo, identifier)
+                rebuildAudioDriverList(identifier)
                 // Box64 list depends on arch (box64 vs wowbox64 entries).
                 rebuildEmulatorLists()
                 loadBox64Versions()
@@ -434,6 +439,8 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             state.enableXInput.value = true
             state.enableDInput.value = true
         }
+        state.adaptiveJoysticks.value =
+            c?.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") == "1"
 
         state.fullscreenStretched.value = c?.isFullscreenStretched() ?: false
         state.useUnixLibs.value = c?.isUseUnixLibs() ?: true
@@ -519,7 +526,14 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         val c = container
 
         val screenSizeArr = context.resources.getStringArray(R.array.screen_size_entries).toList()
+        state.standardScreenSizeEntries.value = screenSizeArr
+        state.deviceScreenSizeEntries.value =
+            DeviceResolutions.screenSizeEntries(activity, screenSizeArr.firstOrNull() ?: "Custom")
+        state.devicePanelSummary.value = DeviceResolutions.panelSummary(activity)
         state.screenSizeEntries.value = screenSizeArr
+        state.applyScreenSizeEntries(
+            DeviceResolutions.isEnabled(c?.getExtra(DeviceResolutions.EXTRA_ENABLED))
+        )
         selectScreenSize(c?.getScreenSize() ?: Container.DEFAULT_SCREEN_SIZE)
 
         try {
@@ -568,6 +582,15 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         state.frameGenFlowScale.intValue =
             c?.getExtra("frameGenFlowScale", "70")?.toIntOrNull()?.coerceIn(25, 100) ?: 70
 
+        state.netDriverEntries.value = listOf(
+            context.getString(R.string.networking_driver_winnative),
+            context.getString(R.string.networking_driver_none)
+        )
+        state.selectedNetDriver.intValue =
+            if (NetworkingSettings.driverOrDefault(c?.getExtra(NetworkingSettings.EXTRA_DRIVER, NetworkingSettings.DEFAULT_DRIVER)) == NetworkingSettings.DRIVER_NONE) 1 else 0
+        state.netMac.value = c?.getExtra(NetworkingSettings.EXTRA_MAC, "") ?: ""
+        state.netMacAuto.value = NetworkingSettings.automaticMac(context)
+
         // init() migrates a legacy single reshadeEffect / flat reshadeParams into the loadout model
         val reshadeEffects = com.winlator.cmod.runtime.reshade.ReshadeManager.scanEffects(context)
         state.reshadeEffects.value = reshadeEffects
@@ -579,12 +602,12 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             c?.getExtra(com.winlator.cmod.runtime.reshade.ReshadeConfigWriter.EXTRA_EFFECT, null),
         )
 
-        val audioDriverArr = context.resources.getStringArray(R.array.audio_driver_entries).toList()
+        val containerAudioDriver = c?.getAudioDriver() ?: Container.DEFAULT_AUDIO_DRIVER
+        val audioDriverArr = audioDriverEntriesFor(c?.getWineVersion(), containerAudioDriver)
         state.audioDriverEntries.value = audioDriverArr
-        selectByIdentifier(
-            audioDriverArr,
-            c?.getAudioDriver() ?: Container.DEFAULT_AUDIO_DRIVER,
-            state.selectedAudioDriver
+        selectByIdentifier(audioDriverArr, containerAudioDriver, state.selectedAudioDriver)
+        state.directAudioMic.value = DirectAudioDriver.isMicEnabled(
+            c?.getExtra(DirectAudioDriver.EXTRA_MIC)
         )
 
         loadMidiSoundFonts()
@@ -848,8 +871,13 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             c.setDXWrapper(dxwrapper)
             c.setDXWrapperConfig(dxwrapperConfig)
             c.putExtra("swapRB", if (state.selectedSurfaceEffect.intValue == 1) "1" else "0")
+            c.putExtra(
+                DeviceResolutions.EXTRA_ENABLED,
+                DeviceResolutions.extraValue(state.showDeviceResolutions.value)
+            )
             c.putExtra("refreshRate", getRefreshRateFromState())
             writeFrameGenExtras(c)
+            writeNetworkingExtras(c)
             run {
                 // reshadeEffect stays coherent (= first effect) for legacy readers; all null when empty
                 val loadoutJson = state.reshadeLoadout.loadoutJsonOrNull()
@@ -865,6 +893,11 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
                     if (loadoutJson == null) null else state.reshadeLoadout.firstEffectName())
             }
             c.setAudioDriver(audioDriver)
+            c.putExtra(DirectAudioDriver.EXTRA_MIC, if (state.directAudioMic.value) "1" else "0")
+            c.putExtra(
+                InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                if (state.adaptiveJoysticks.value) "1" else "0"
+            )
             c.setEmulator(emulator)
             c.setEmulator64(emulator64)
             c.setWinComponents(wincomponents)
@@ -939,8 +972,21 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
                             "swapRB",
                             if (state.selectedSurfaceEffect.intValue == 1) "1" else "0"
                         )
+                        newContainer.putExtra(
+                            DeviceResolutions.EXTRA_ENABLED,
+                            DeviceResolutions.extraValue(state.showDeviceResolutions.value)
+                        )
                         getRefreshRateFromState()?.let { newContainer.putExtra("refreshRate", it) }
+                        newContainer.putExtra(
+                            DirectAudioDriver.EXTRA_MIC,
+                            if (state.directAudioMic.value) "1" else "0"
+                        )
+                        newContainer.putExtra(
+                            InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                            if (state.adaptiveJoysticks.value) "1" else "0"
+                        )
                         writeFrameGenExtras(newContainer)
+                        writeNetworkingExtras(newContainer)
                         newContainer.setZinkMode(if (state.selectedZinkMode.intValue == 1) "windows" else "unix")
                         newContainer.saveData()
                         saveMouseWarpOverride(newContainer)
@@ -983,9 +1029,22 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
 
     private fun writeFrameGenExtras(c: Container) {
         c.putExtra("frameGen", if (state.frameGenEnabled.value) "1" else "0")
+        // The compositor drives one interpolator per frame. This dialog only
+        // exposes the Lossless Scaling engine, so turning it on here has to clear
+        // DIS - otherwise the container keeps both flags set, the session picks
+        // DIS on load, and the switch the user just flipped appears to do nothing.
+        if (state.frameGenEnabled.value) c.putExtra("disFrameGen", "0")
         c.putExtra("frameGenMultiplier", state.frameGenMultiplier.intValue.coerceIn(2, 4).toString())
         c.putExtra("frameGenTargetRate", state.frameGenTargetRate.intValue.coerceAtLeast(0).toString())
         c.putExtra("frameGenFlowScale", state.frameGenFlowScale.intValue.coerceIn(25, 100).toString())
+    }
+
+    private fun writeNetworkingExtras(c: Container) {
+        c.putExtra(
+            NetworkingSettings.EXTRA_DRIVER,
+            if (state.selectedNetDriver.intValue == 1) NetworkingSettings.DRIVER_NONE else NetworkingSettings.DRIVER_WINNATIVE
+        )
+        c.putExtra(NetworkingSettings.EXTRA_MAC, NetworkingSettings.normalizeMac(state.netMac.value))
     }
 
     private fun saveMouseWarpOverride(c: Container) {
@@ -1127,6 +1186,21 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         }
     }
 
+    private fun audioDriverEntriesFor(wineVersion: String?, selected: String): List<String> {
+        val all = context.resources.getStringArray(R.array.audio_driver_entries).toList()
+        if (wineVersion == null || DirectAudioDriver.isSupportedFor(wineVersion)) return all
+        if (DirectAudioDriver.isSelected(selected)) return all
+        return all.filter { !it.equals("DirectAudio", true) }
+    }
+
+    private fun rebuildAudioDriverList(wineVersion: String?) {
+        val current = state.audioDriverEntries.value.getOrNull(state.selectedAudioDriver.intValue)
+            ?.let { StringUtils.parseIdentifier(it) } ?: Container.DEFAULT_AUDIO_DRIVER
+        val entries = audioDriverEntriesFor(wineVersion, current)
+        state.audioDriverEntries.value = entries
+        selectByIdentifier(entries, current, state.selectedAudioDriver)
+    }
+
     private fun rebuildEmulatorLists() {
         val fullList = state.emulatorEntries.value
         val hasWowbox64 = hasInstalledWowbox64()
@@ -1193,8 +1267,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             context.resources.getStringArray(R.array.bcn_emulation_cache_entries).toList()
         state.gfxTranscoderEntries.value =
             context.resources.getStringArray(R.array.wrapper_transcoder_entries).toList()
-        state.gfxQualityEntries.value =
-            context.resources.getStringArray(R.array.wrapper_quality_entries).toList()
+        state.gfxAstcTranscodingEntries.value =
+            context.resources.getStringArray(R.array.wrapper_astc_transcoding_entries).toList()
+        state.gfxAstcTranscodingValues.value =
+            context.resources.getStringArray(R.array.wrapper_astc_transcoding_values).toList()
 
         val gpuNames = mutableListOf("Device")
         try {
@@ -1222,7 +1298,7 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         selectByValue(state.gfxBcnEmulationTypeEntries.value, config.get("bcnEmulationType") ?: "compute", state.gfxSelectedBcnEmulationType)
         selectByValue(state.gfxBcnEmulationCacheEntries.value, config.get("bcnEmulationCache") ?: "0", state.gfxSelectedBcnEmulationCache)
         selectByValue(state.gfxTranscoderEntries.value, config.get("transcoder") ?: "cpu", state.gfxSelectedTranscoder)
-        selectByValue(state.gfxQualityEntries.value, config.get("quality") ?: "low", state.gfxSelectedQuality)
+        selectByValue(state.gfxAstcTranscodingValues.value, config.get("astcTranscoding") ?: "off", state.gfxSelectedAstcTranscoding)
         state.gfxSyncFrame.value = config.get("syncFrame") == "1"
         state.gfxDisablePresentWait.value = config.get("disablePresentWait") == "1"
         state.graphicsDriverVersion.value = config.get("version") ?: ""
@@ -1385,14 +1461,14 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         val bcnEmulationType = state.gfxBcnEmulationTypeEntries.value.getOrElse(state.gfxSelectedBcnEmulationType.intValue) { "compute" }
         val bcnEmulationCache = state.gfxBcnEmulationCacheEntries.value.getOrElse(state.gfxSelectedBcnEmulationCache.intValue) { "0" }
         val transcoder = state.gfxTranscoderEntries.value.getOrElse(state.gfxSelectedTranscoder.intValue) { "cpu" }
-        val quality = state.gfxQualityEntries.value.getOrElse(state.gfxSelectedQuality.intValue) { "low" }
+        val astcTranscoding = state.gfxAstcTranscodingValues.value.getOrElse(state.gfxSelectedAstcTranscoding.intValue) { "off" }
         return "vulkanVersion=$vulkanVersion;version=$version;blacklistedExtensions=$blacklisted;" +
             "maxDeviceMemory=$maxDeviceMemory;presentMode=$presentMode;syncFrame=$syncFrame;" +
             "disablePresentWait=$disablePresentWait;resourceType=$resourceType;" +
             "bcnEmulation=$bcnEmulation;bcnEmulationType=$bcnEmulationType;" +
             "bcnEmulationCache=$bcnEmulationCache;gpuName=$gpuName;" +
             "compositorPresentMode=$compositorPresentMode;" +
-            "transcoder=$transcoder;quality=$quality"
+            "transcoder=$transcoder;astcTranscoding=$astcTranscoding"
     }
 
     private fun buildDxvkConfigFromState(): String {
