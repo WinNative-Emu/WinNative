@@ -2535,6 +2535,11 @@
     <string name="session_drawer_frame_generation_note">แทรกเฟรมระหว่างเฟรมที่เรนเดอร์ด้วย Lossless Scaling การเคลื่อนไหวลื่นขึ้น แต่มีความหน่วงของอินพุตเพิ่มขึ้นหนึ่งเฟรม</string>
     <string name="session_drawer_frame_generation_target_note">จะไต่ขึ้นสู่เป้าหมายเฉพาะเมื่อวัดผลได้ว่าช่วยจริง แทนที่จะคงตัวคูณไว้คงที่</string>
     <string name="session_drawer_frame_generation_missing">ติดตั้ง Lossless Scaling ในการตั้งค่าคอนเทนเนอร์เพื่อใช้การสร้างเฟรม</string>
+    <string name="session_drawer_system_frame_generation">การสร้างเฟรม (ระบบ)</string>
+    <string name="session_drawer_system_frame_generation_enable">นับเฟรมของระบบใน HUD</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space แทรกเฟรมที่สร้างขึ้นหลังจากเกมเรนเดอร์แล้ว HUD อ่านอัตราการแทรกเฟรมจากไดรเวอร์และแสดงอัตราขาออกที่ได้</string>
+    <string name="session_drawer_system_frame_generation_detected">ตรวจพบ: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">ไม่พบ เปิดเองหากการแทรกเฟรมของ Game Space กำลังทำงาน</string>
     <string name="session_drawer_dis_frame_generation">การสร้างเฟรม (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">สร้างเฟรม (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">แทรกเฟรมระหว่างเฟรมที่เรนเดอร์ด้วย Dense Inverse Search มีในตัว ไม่ต้องใช้เชเดอร์ภายนอก</string>

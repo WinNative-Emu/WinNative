@@ -636,6 +636,10 @@ data class XServerDrawerState(
     val disFrameGenScale: Int = 180,
     val disFrameGenTargetFps: Int = 0,
     val disFrameGenDebugFlow: Boolean = false,
+    val systemFrameGenSupported: Boolean = false,
+    val systemFrameGenDetected: Boolean = false,
+    val systemFrameGenHudEnabled: Boolean = false,
+    val systemFrameGenSignal: String = "",
     val screenEffectsCardExpanded: Boolean = false,
     val sgsrEnabled: Boolean = false,
     val sgsrSharpness: Int = 100,
@@ -1053,6 +1057,8 @@ interface XServerDrawerActionListener {
     fun onFrameGenFlowScaleChanged(percent: Int)
 
     fun onDisFrameGenEnabledChanged(enabled: Boolean)
+
+    fun onSystemFrameGenHudChanged(enabled: Boolean)
 
     fun onDisFrameGenScaleChanged(percent: Int)
 
@@ -1535,6 +1541,20 @@ fun withFrameGenState(
         frameGenMultiplier = multiplier.coerceIn(2, FrameGenMultipliers.last()),
         frameGenTargetRate = targetRate.coerceAtLeast(0),
         frameGenFlowScale = flowScale.coerceIn(FrameGenFlowScaleMin, FrameGenFlowScaleMax),
+    )
+
+fun withSystemFrameGenState(
+    state: XServerDrawerState,
+    supported: Boolean,
+    detected: Boolean,
+    hudEnabled: Boolean,
+    signal: String,
+): XServerDrawerState =
+    state.copy(
+        systemFrameGenSupported = supported,
+        systemFrameGenDetected = detected,
+        systemFrameGenHudEnabled = hudEnabled,
+        systemFrameGenSignal = signal,
     )
 
 // Append DIS frame-generation state and mark the frame-gen rail item active when DIS is on.

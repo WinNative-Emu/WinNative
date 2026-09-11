@@ -2535,6 +2535,11 @@
     <string name="session_drawer_frame_generation_note">使用 Lossless Scaling 在已算繪的影格之間插補。畫面更流暢，但輸入延遲會增加一個影格。</string>
     <string name="session_drawer_frame_generation_target_note">僅在能帶來可測量的提升時才朝目標提升，而不是維持固定倍數。</string>
     <string name="session_drawer_frame_generation_missing">請在容器設定中安裝 Lossless Scaling 以使用影格生成。</string>
+    <string name="session_drawer_system_frame_generation">影格生成（系統）</string>
+    <string name="session_drawer_system_frame_generation_enable">在 HUD 中統計系統影格</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space 在遊戲算繪完成後插入生成的影格。HUD 會從驅動程式讀取補幀倍率，並顯示由此得到的輸出影格率。</string>
+    <string name="session_drawer_system_frame_generation_detected">已偵測到：%1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">未偵測到。如果 Game Space 補幀正在執行，請手動開啟。</string>
     <string name="session_drawer_dis_frame_generation">影格生成 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">生成影格 (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">使用 Dense Inverse Search 在已算繪的影格之間插補。內建功能，無需外部著色器。</string>

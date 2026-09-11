@@ -66,6 +66,12 @@ internal fun FrameGenPaneContent(
 
                 DisFrameGenerationSection(state = state, listener = listener, paneScale = paneScale)
 
+                if (state.systemFrameGenSupported) {
+                    ThinDivider()
+
+                    SystemFrameGenerationSection(state = state, listener = listener, paneScale = paneScale)
+                }
+
                 ThinDivider()
 
                 Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
@@ -321,6 +327,54 @@ private fun FrameGenNote(text: String, paneScale: Float) {
         fontSize = (11f * paneScale).sp,
         lineHeight = (15f * paneScale).sp,
     )
+}
+
+@Composable
+private fun SystemFrameGenerationSection(
+    state: XServerDrawerState,
+    listener: XServerDrawerActionListener,
+    paneScale: Float,
+) {
+    SystemFrameGenerationSection(
+        detected = state.systemFrameGenDetected,
+        hudEnabled = state.systemFrameGenHudEnabled,
+        signal = state.systemFrameGenSignal,
+        paneScale = paneScale,
+        onHudEnabledChanged = listener::onSystemFrameGenHudChanged,
+    )
+}
+
+@Composable
+internal fun SystemFrameGenerationSection(
+    detected: Boolean,
+    hudEnabled: Boolean,
+    signal: String,
+    paneScale: Float,
+    onHudEnabledChanged: (Boolean) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
+        PaneSectionLabel(stringResource(R.string.session_drawer_system_frame_generation))
+
+        NavBooleanRow(
+            title = stringResource(R.string.session_drawer_system_frame_generation_enable),
+            checked = hudEnabled,
+            onCheckedChange = onHudEnabledChanged,
+        )
+
+        FrameGenNote(
+            stringResource(R.string.session_drawer_system_frame_generation_note),
+            paneScale,
+        )
+
+        FrameGenNote(
+            if (detected) {
+                stringResource(R.string.session_drawer_system_frame_generation_detected, signal)
+            } else {
+                stringResource(R.string.session_drawer_system_frame_generation_not_detected)
+            },
+            paneScale,
+        )
+    }
 }
 
 @Composable

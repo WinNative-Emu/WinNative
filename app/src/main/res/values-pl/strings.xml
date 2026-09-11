@@ -2542,6 +2542,11 @@ Zainstalowana ścieżka:
     <string name="session_drawer_frame_generation_note">Interpoluje między wyrenderowanymi klatkami przy użyciu Lossless Scaling. Płynniejszy ruch, ale jedna dodatkowa klatka opóźnienia sterowania.</string>
     <string name="session_drawer_frame_generation_target_note">Zwiększa się w kierunku celu tylko wtedy, gdy przynosi to mierzalną korzyść, zamiast utrzymywać stały mnożnik.</string>
     <string name="session_drawer_frame_generation_missing">Zainstaluj Lossless Scaling w ustawieniach kontenera, aby korzystać z generowania klatek.</string>
+    <string name="session_drawer_system_frame_generation">Generowanie klatek (system)</string>
+    <string name="session_drawer_system_frame_generation_enable">Licz klatki systemowe na HUD</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space wstawia wygenerowane klatki po tym, jak gra je wyrenderuje. HUD odczytuje współczynnik interpolacji ze sterownika i pokazuje wynikową liczbę klatek wyjściowych.</string>
+    <string name="session_drawer_system_frame_generation_detected">Wykryto: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">Nie wykryto. Włącz ręcznie, jeśli interpolacja klatek Game Space działa.</string>
     <string name="session_drawer_dis_frame_generation">Generowanie klatek (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generuj klatki (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpoluje między wyrenderowanymi klatkami przy użyciu Dense Inverse Search. Wbudowane; nie wymaga zewnętrznych shaderów.</string>

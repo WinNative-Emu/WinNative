@@ -2542,6 +2542,11 @@
     <string name="session_drawer_frame_generation_note">Інтерполює між відрендереними кадрами за допомогою Lossless Scaling. Рух плавніший, але затримка вводу зростає на один кадр.</string>
     <string name="session_drawer_frame_generation_target_note">Підвищується до цілі лише доки це дає вимірний виграш, замість утримання фіксованого множника.</string>
     <string name="session_drawer_frame_generation_missing">Установіть Lossless Scaling у налаштуваннях контейнера, щоб використовувати генерацію кадрів.</string>
+    <string name="session_drawer_system_frame_generation">Генерація кадрів (система)</string>
+    <string name="session_drawer_system_frame_generation_enable">Рахувати системні кадри в HUD</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space вставляє згенеровані кадри після того, як гра їх відмалювала. HUD читає коефіцієнт інтерполяції з драйвера й показує підсумкову частоту на виході.</string>
+    <string name="session_drawer_system_frame_generation_detected">Виявлено: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">Не виявлено. Увімкніть вручну, якщо працює інтерполяція кадрів Game Space.</string>
     <string name="session_drawer_dis_frame_generation">Генерація кадрів (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Генерувати кадри (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Інтерполює між відрендереними кадрами методом Dense Inverse Search. Вбудовано; зовнішні шейдери не потрібні.</string>

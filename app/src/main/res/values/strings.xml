@@ -878,6 +878,11 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_frame_generation_note">Interpolates between rendered frames with Lossless Scaling. Smoother motion, but one extra frame of input latency.</string>
     <string name="session_drawer_frame_generation_target_note">Climbs toward the target only while it measurably helps, instead of holding a fixed multiplier.</string>
     <string name="session_drawer_frame_generation_missing">Install Lossless Scaling in container settings to use frame generation.</string>
+    <string name="session_drawer_system_frame_generation">Frame Generation (System)</string>
+    <string name="session_drawer_system_frame_generation_enable">Count system frames in the HUD</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space inserts generated frames after the game renders them. The HUD reads the interpolation rate from the driver and shows the resulting output rate.</string>
+    <string name="session_drawer_system_frame_generation_detected">Detected: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">Not detected. Turn this on by hand if Game Space frame interpolation is running.</string>
     <string name="session_drawer_dis_frame_generation">Frame Generation (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Generate Frames (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolates between rendered frames with Dense Inverse Search. Built into the app; no external shaders required.</string>

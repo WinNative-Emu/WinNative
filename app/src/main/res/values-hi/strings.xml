@@ -2472,6 +2472,11 @@
     <string name="session_drawer_frame_generation_note">Lossless Scaling से रेंडर किए गए फ़्रेमों के बीच इंटरपोलेट करता है। गति अधिक सहज, लेकिन इनपुट में एक अतिरिक्त फ़्रेम की देरी।</string>
     <string name="session_drawer_frame_generation_target_note">स्थिर गुणक बनाए रखने के बजाय, केवल तभी लक्ष्य की ओर बढ़ता है जब इससे मापने योग्य लाभ हो।</string>
     <string name="session_drawer_frame_generation_missing">फ़्रेम जनरेशन उपयोग करने के लिए कंटेनर सेटिंग्स में Lossless Scaling इंस्टॉल करें।</string>
+    <string name="session_drawer_system_frame_generation">फ़्रेम जनरेशन (सिस्टम)</string>
+    <string name="session_drawer_system_frame_generation_enable">HUD में सिस्टम फ़्रेम गिनें</string>
+    <string name="session_drawer_system_frame_generation_note">गेम के रेंडर करने के बाद Game Space बनाए गए फ़्रेम जोड़ता है। HUD ड्राइवर से इंटरपोलेशन दर पढ़कर परिणामी आउटपुट दर दिखाता है।</string>
+    <string name="session_drawer_system_frame_generation_detected">पता चला: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">पता नहीं चला। अगर Game Space फ़्रेम इंटरपोलेशन चल रहा है तो इसे खुद चालू करें।</string>
     <string name="session_drawer_dis_frame_generation">फ़्रेम जनरेशन (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">फ़्रेम जनरेट करें (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search से रेंडर किए गए फ़्रेम के बीच इंटरपोलेट करता है। ऐप में बिल्ट-इन; बाहरी शेडर की ज़रूरत नहीं।</string>

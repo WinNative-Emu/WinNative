@@ -2536,6 +2536,11 @@ Percorso installato:
     <string name="session_drawer_frame_generation_note">Interpola tra i fotogrammi renderizzati con Lossless Scaling. Movimento più fluido, ma un fotogramma in più di latenza di input.</string>
     <string name="session_drawer_frame_generation_target_note">Sale verso l\'obiettivo solo finché aiuta in modo misurabile, invece di mantenere un moltiplicatore fisso.</string>
     <string name="session_drawer_frame_generation_missing">Installa Lossless Scaling nelle impostazioni del contenitore per usare la generazione fotogrammi.</string>
+    <string name="session_drawer_system_frame_generation">Generazione fotogrammi (sistema)</string>
+    <string name="session_drawer_system_frame_generation_enable">Conta i fotogrammi di sistema nell\'HUD</string>
+    <string name="session_drawer_system_frame_generation_note">Game Space inserisce fotogrammi generati dopo che il gioco li ha disegnati. L\'HUD legge il tasso di interpolazione dal driver e mostra la frequenza in uscita risultante.</string>
+    <string name="session_drawer_system_frame_generation_detected">Rilevato: %1$s</string>
+    <string name="session_drawer_system_frame_generation_not_detected">Non rilevato. Attivalo a mano se l\'interpolazione fotogrammi di Game Space è in funzione.</string>
     <string name="session_drawer_dis_frame_generation">Generazione fotogrammi (DIS)</string>
     <string name="session_drawer_dis_frame_generation_enable">Genera fotogrammi (DIS)</string>
     <string name="session_drawer_dis_frame_generation_note">Interpola tra i fotogrammi renderizzati con Dense Inverse Search. Integrato; nessuno shader esterno richiesto.</string>
