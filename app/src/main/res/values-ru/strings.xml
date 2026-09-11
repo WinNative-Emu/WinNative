@@ -330,6 +330,8 @@
     <string name="shortcuts_properties_runtime_patcher_description">Внедряет DLL DRM-патчера при запуске. Снижает FPS — используйте только если один устаревший лаунчер не помогает.</string>
     <string name="steam_section_title">Steam</string>
     <string name="shortcuts_properties_use_steam_input">Использовать Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Запускает игру через Steam Launcher внутри Wine (рекомендуется). Отключает другие режимы запуска Steam.</string>
     <string name="shortcuts_properties_steam_offline_mode">Офлайн-режим Steam</string>
     <string name="shortcuts_properties_reset">Сбросить свойства</string>
     <string name="shortcuts_properties_updated_at">Ярлык обновлен: %1$s.</string>
@@ -1271,7 +1273,7 @@
     <string name="shortcuts_properties_use_legacy_launcher_description">Устаревшая эмуляция Steam: запускает игру через лаунчер ColdClient и удаляет SteamStub DRM из exe. Используйте только для старых игр, которые не работают со Steam Launcher.</string>
     <string name="steam_section_real_client">Настоящий клиент Steam WinNative</string>
     <string name="steam_section_emulator">Устаревший эмулятор Steam</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Заставляет эмулируемый клиент Steam сообщать, что он офлайн, чтобы игра не пыталась подключаться к сети. Используйте для игр, которые зависают на сетевой проверке Steam.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Игра запускается без Steam Cloud: сохранения остаются на этом устройстве, и игра стартует даже без подключения. Отключите параметр, чтобы возобновить Steam Cloud; если локальное и облачное сохранения различаются, вы выберете, какое оставить.</string>
     <string name="cloud_sync_disable_title">Отключить облачные сохранения</string>
     <string name="cloud_saves_steam_push_label">Отправить в Steam Cloud</string>
     <string name="cloud_saves_steam_push_helper">Принудительно загрузить локальное сохранение</string>

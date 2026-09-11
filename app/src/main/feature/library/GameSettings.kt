@@ -3703,30 +3703,46 @@ private fun ReshadeCatalogRow(
 @Composable
 private fun SteamSection(state: GameSettingsStateHolder) {
 
-    // Steam Launcher is the default path; enabling it unchecks every other Steam mode (mutually exclusive launch paths).
     val onSteamLauncherChange: (Boolean) -> Unit = { enabled ->
         state.steamLauncher.value = enabled
         if (enabled) {
             state.useLegacyLauncher.value = false
             state.runtimePatcher.value = false
-            state.steamOfflineMode.value = false
         }
     }
+
+    val offlineModeAvailable = state.steamLauncher.value || state.useLegacyLauncher.value
 
     SubsectionLabel(stringResource(R.string.steam_section_real_client))
     Spacer(Modifier.height(8.dp))
     SettingGroup {
         SettingCheckbox(
-            label = "Steam Launcher",
+            label = stringResource(R.string.steam_launcher_real_client),
             checked = state.steamLauncher.value,
             onCheckedChange = onSteamLauncherChange
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "Run the game through the in-Wine Steam Launcher (recommended). Disables other Steam launch modes.",
+            stringResource(R.string.steam_launcher_real_client_description),
             color = TextDim,
             fontSize = 11.sp,
             lineHeight = 16.sp
+        )
+        Spacer(Modifier.height(SettingItemGap))
+
+        SettingCheckbox(
+            label = stringResource(R.string.shortcuts_properties_steam_offline_mode),
+            checked = state.steamOfflineMode.value,
+            onCheckedChange = { state.steamOfflineMode.value = it },
+            enabled = offlineModeAvailable
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.shortcuts_properties_steam_offline_mode_description),
+            color = TextDim,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+            modifier = Modifier.alpha(if (offlineModeAvailable) 1f else 0.4f)
         )
     }
 
@@ -3766,25 +3782,6 @@ private fun SteamSection(state: GameSettingsStateHolder) {
         )
         Spacer(Modifier.height(SettingItemGap))
         */
-
-        SettingCheckbox(
-            label = stringResource(R.string.shortcuts_properties_steam_offline_mode),
-            checked = state.steamOfflineMode.value,
-            onCheckedChange = {
-                state.steamOfflineMode.value = it
-                if (it) state.steamLauncher.value = false
-            },
-            enabled = state.useLegacyLauncher.value
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            stringResource(R.string.shortcuts_properties_steam_offline_mode_description),
-            color = TextDim,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            modifier = Modifier.alpha(if (state.useLegacyLauncher.value) 1f else 0.4f)
-        )
-        Spacer(Modifier.height(SettingItemGap))
 
         SettingCheckbox(
             label = stringResource(R.string.shortcuts_properties_runtime_patcher),

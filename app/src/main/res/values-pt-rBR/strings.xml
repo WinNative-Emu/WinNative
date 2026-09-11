@@ -304,6 +304,8 @@
     <string name="shortcuts_properties_exclusive_input">Entrada Exclusiva</string>
     <string name="shortcuts_properties_custom_game_settings">Configuracoes Personalizadas do Jogo</string>
     <string name="shortcuts_properties_use_steam_input">Usar Entrada Steam</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Executa o jogo pelo Steam Launcher integrado ao Wine (recomendado). Desativa os outros modos de inicialização da Steam.</string>
     <string name="shortcuts_properties_steam_offline_mode">Modo Offline do Steam</string>
     <string name="shortcuts_properties_reset">Redefinir Propriedades</string>
     <string name="shortcuts_properties_updated_at">Atalho Atualizado em %1$s</string>
@@ -1346,7 +1348,7 @@ Caminho instalado:
     <string name="shortcuts_properties_use_legacy_launcher_description">Emulação Steam legada: executa o jogo pelo inicializador ColdClient e remove o DRM SteamStub do exe. Use apenas em jogos antigos que não funcionam com o Steam Launcher.</string>
     <string name="steam_section_real_client">Cliente Steam real do WinNative</string>
     <string name="steam_section_emulator">Emulador Steam legado</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Faz o cliente Steam emulado informar que está offline, para que o jogo não tente conexões online. Use em jogos que travam na verificação de rede do Steam.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Joga sem usar a Steam Cloud, então os saves ficam neste dispositivo e o jogo abre mesmo sem conexão. Desative para retomar a Steam Cloud; se o save local e o da nuvem forem diferentes, você escolhe qual manter.</string>
     <string name="input_controls_select_style">Selecionar estilo</string>
     <string name="input_controls_style_original">Original</string>
     <string name="input_controls_style_gamehub">Glass</string>
