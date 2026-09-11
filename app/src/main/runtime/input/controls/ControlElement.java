@@ -29,6 +29,7 @@ import org.json.JSONObject;
 
 public class ControlElement {
   public static final float STICK_DEAD_ZONE = 0.15f;
+  private static final float ADAPTIVE_REACH = 1.0f;
   public static final float DPAD_DEAD_ZONE = 0.3f;
   public static final float STICK_SENSITIVITY = 3.0f;
   public static final float STICK_CROSS_ZONE = 0.3f;
@@ -102,6 +103,7 @@ public class ControlElement {
   private boolean isRadialBindingCurrentlyHeld = false;
   private boolean wasExpandedOnDown = false;
   private int currentPointerId = -1;
+  private boolean adaptiveShifted = false;
   private final Rect boundingBox = new Rect();
   private final Path path = new Path();
   private Path[] paths;
@@ -295,6 +297,7 @@ public class ControlElement {
     this.x = (short) x;
     boundingBoxNeedsUpdate = true;
     paths = null;
+    if (currentPointerId == -1) currentPosition = null;
   }
 
   public short getY() {
@@ -305,6 +308,7 @@ public class ControlElement {
     this.y = (short) y;
     boundingBoxNeedsUpdate = true;
     paths = null;
+    if (currentPointerId == -1) currentPosition = null;
   }
 
   public boolean isSelected() {
@@ -608,6 +612,7 @@ return boundingBox;
   }
 
   public void draw(Canvas canvas) {
+    if (isAdaptiveHidden()) return;
     VisualStyle style = inputControlsView.getVisualStyle();
     if (style == VisualStyle.GAMEHUB) {
       drawGameHub(canvas);
@@ -3755,6 +3760,39 @@ return boundingBox;
     }
   }
 
+  private boolean isAdaptiveStick() {
+    return type == Type.STICK
+        && inputControlsView.isAdaptiveJoysticks()
+        && !inputControlsView.isEditMode();
+  }
+
+  private boolean isAdaptiveHidden() {
+    return isAdaptiveStick() && !isEngaged();
+  }
+
+  private boolean acceptsTouchAt(float x, float y) {
+    if (!isAdaptiveStick()) return containsPoint(x, y);
+    Rect box = getBoundingBox();
+    float reach = box.width() * ADAPTIVE_REACH;
+    if (Mathf.distance((float) box.centerX(), (float) box.centerY(), x, y) > reach) return false;
+    return !inputControlsView.isPointOverOtherElement(this, x, y);
+  }
+
+  private void shiftAdaptiveOrigin(float x, float y) {
+    Rect box = getBoundingBox();
+    int half = box.width() / 2;
+    int cx = Math.round(Mathf.clamp(x, half, inputControlsView.getWidth() - half));
+    int cy = Math.round(Mathf.clamp(y, half, inputControlsView.getHeight() - half));
+    box.offset(cx - box.centerX(), cy - box.centerY());
+    adaptiveShifted = true;
+  }
+
+  private void restoreAdaptiveOrigin() {
+    if (!adaptiveShifted) return;
+    adaptiveShifted = false;
+    computeBoundingBox();
+  }
+
   public boolean containsPoint(float x, float y) {
     if (type == Type.RADIAL_MENU && radialMenuExpanded) {
       float outerRadius = boundingBox.width() + (inputControlsView.getSnappingSize() * scale);
@@ -3798,7 +3836,7 @@ return boundingBox;
   }
 
   public boolean handleTouchDown(int pointerId, float x, float y) {
-    if (currentPointerId == -1 && containsPoint(x, y)) {
+    if (currentPointerId == -1 && acceptsTouchAt(x, y)) {
       if (type != Type.RANGE_BUTTON && type != Type.RADIAL_MENU) {
         boolean hasBinding = false;
         for (Binding binding : bindings) {
@@ -3811,6 +3849,7 @@ return boundingBox;
       }
 
       currentPointerId = pointerId;
+      if (isAdaptiveStick()) shiftAdaptiveOrigin(x, y);
       if (type == Type.BUTTON) {
         if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
         if (!toggleSwitch || !selected) {
@@ -4121,6 +4160,7 @@ return boundingBox;
           inputControlsView.handleStickInput(firstBinding, 0.0f, 0.0f);
         }
         currentPosition = null;
+        restoreAdaptiveOrigin();
       }
       if (type == Type.TRACKPAD) {
         Binding firstBinding = getBindingAt(0);

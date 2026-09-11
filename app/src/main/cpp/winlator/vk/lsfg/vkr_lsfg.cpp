@@ -10,9 +10,11 @@
 #include <string>
 
 #include <android/log.h>
+#include <sys/system_properties.h>
 
 #define LSFG_LOGI(...) __android_log_print(ANDROID_LOG_INFO, "VkrLsfg", __VA_ARGS__)
 #define LSFG_LOGW(...) __android_log_print(ANDROID_LOG_WARN, "VkrLsfg", __VA_ARGS__)
+#define LSFG_LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, "VkrLsfg", __VA_ARGS__)
 
 namespace {
 
@@ -23,6 +25,7 @@ constexpr uint64_t LSFG_TELEMETRY_INTERVAL = 120;
 constexpr float LSFG_FLOW_SCALE_MIN = 0.25f;
 constexpr float LSFG_FLOW_SCALE_MAX = 1.0f;
 constexpr float LSFG_FLOW_SCALE_STEPS = 20.0f;
+constexpr char LSFG_TRACE_PROPERTY[] = "log.tag.VkrLsfg";
 
 VkImageMemoryBarrier MakeTransitionBarrier(VkImage image, VkAccessFlags src_access,
                                            VkAccessFlags dst_access, VkImageLayout old_layout,
@@ -102,11 +105,20 @@ struct VkrLsfg {
     uint64_t last_count{};
     size_t last_generations{};
     uint64_t plan_calls{};
+    uint64_t last_draw_ns{};
+    uint32_t last_delivered{};
     uint32_t warm_streak{};
     bool warm{};
     bool generated{};
     bool unavailable{};
+    bool trace{};
 };
+
+static bool lsfg_trace_requested() {
+    char value[PROP_VALUE_MAX] = {};
+    if (__system_property_get(LSFG_TRACE_PROPERTY, value) <= 0) return false;
+    return value[0] == 'V' || value[0] == 'v';
+}
 
 static float lsfg_effective_flow_scale(const VkrLsfg* lsfg, uint32_t width) {
     if (width == 0 || lsfg->peak_guest_extent.width == 0) return lsfg->flow_scale;
@@ -207,6 +219,7 @@ bool vkr_lsfg_prepare(VkrLsfg* lsfg, uint32_t width, uint32_t height, VkFormat f
     lsfg->warm_streak = 0;
     lsfg->warm = false;
     lsfg->generated = false;
+    lsfg->trace = lsfg_trace_requested();
     lsfg->pacer.Reset();
     LSFG_LOGI("chain built at %ux%u, flow %ux%u scale %.2f (preset %.2f, guest %ux%u)", width,
               height, (unsigned)(width * lsfg->built_flow_scale),
@@ -227,8 +240,24 @@ uint32_t vkr_lsfg_plan(VkrLsfg* lsfg, uint32_t capacity, uint64_t source_frames)
     lsfg->generated =
         lsfg->warm && lsfg->warm_streak >= LSFG_RECURRENCE_FRAMES && lsfg->plan.generations > 0;
 
+    const lsfg::LsfgPacerStats stats = lsfg->pacer.Stats();
+    if (lsfg->trace) {
+        LSFG_LOGV("trace t=%lld src=%llu cap=%u drawn=%llu el=%.3f inst=%.3f si=%.3f jumps=%u "
+              "settled=%d cost=%zu lim=%zu probing=%d rar=%.1f credit=%.3f delay=%.2f gen=%zu "
+              "warm=%d streak=%u out=%u draw=%.2f got=%u",
+              (long long)stats.now_ns, (unsigned long long)source_frames, capacity,
+              (unsigned long long)stats.last_drawn, (double)stats.last_elapsed * 1000.0,
+              (double)stats.instant_interval * 1000.0,
+              stats.source_rate > 0.0f ? 1000.0 / (double)stats.source_rate : 0.0,
+              stats.rate_jumps, stats.rates_settled ? 1 : 0, stats.cost_limit, stats.limit,
+              stats.probing ? 1 : 0, (double)stats.rate_at_raise, (double)stats.output_credit,
+              (double)stats.raise_delay, lsfg->plan.generations, lsfg->plan.warm ? 1 : 0,
+              lsfg->warm_streak,
+              lsfg->generated ? static_cast<unsigned>(lsfg->plan.generations) : 0u,
+              (double)lsfg->last_draw_ns / 1.0e6, lsfg->last_delivered);
+    }
+
     if ((lsfg->plan_calls++ % LSFG_TELEMETRY_INTERVAL) == 0) {
-        const lsfg::LsfgPacerStats stats = lsfg->pacer.Stats();
         const float wanted =
             stats.source_rate * static_cast<float>(lsfg->plan.generations + 1);
         LSFG_LOGI("pace gen=%zu max=%zu cost=%zu cap=%u guest=%.1f loop=%.1f refresh=%.1f "
@@ -244,6 +273,12 @@ uint32_t vkr_lsfg_plan(VkrLsfg* lsfg, uint32_t capacity, uint64_t source_frames)
     }
 
     return lsfg->generated ? static_cast<uint32_t>(lsfg->plan.generations) : 0;
+}
+
+void vkr_lsfg_note_frame(VkrLsfg* lsfg, uint64_t draw_ns, uint32_t delivered) {
+    if (!lsfg) return;
+    lsfg->last_draw_ns = draw_ns;
+    lsfg->last_delivered = delivered;
 }
 
 void vkr_lsfg_process(VkrLsfg* lsfg, VkCommandBuffer cmd, VkImage source, uint32_t width,

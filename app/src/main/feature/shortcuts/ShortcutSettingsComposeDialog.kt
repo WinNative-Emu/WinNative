@@ -74,6 +74,7 @@ import com.winlator.cmod.shared.util.KeyValueSet
 import com.winlator.cmod.shared.android.RefreshRateUtils
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import com.winlator.cmod.shared.util.StringUtils
+import com.winlator.cmod.runtime.input.ui.InputControlsView
 import com.winlator.cmod.runtime.wine.WineInfo
 import com.winlator.cmod.runtime.compat.fexcore.FEXCoreManager
 import com.winlator.cmod.runtime.compat.fexcore.FEXCorePreset
@@ -389,6 +390,10 @@ class ShortcutSettingsComposeDialog private constructor(
         state.selectedDInputMapperType.intValue =
             if ((inputType and WinHandler.FLAG_DINPUT_MAPPER_STANDARD.toInt()) == WinHandler.FLAG_DINPUT_MAPPER_STANDARD.toInt()) 0 else 1
         state.disableXInput.value = shortcut.getExtra("disableXinput", "0") == "1"
+        state.adaptiveJoysticks.value = getShortcutSetting(
+            InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+            container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0")
+        ) == "1"
         state.shortcutExclusiveXInput.value = shortcut.getExtra("exclusiveXInput", "").let {
             if (it.isEmpty()) container.isExclusiveXInput() else it == "1"
         }
@@ -600,7 +605,8 @@ class ShortcutSettingsComposeDialog private constructor(
         selectByIdentifier(
             graphicsDriverArr,
             getShortcutSetting("graphicsDriver", container.getGraphicsDriver()),
-            state.selectedGraphicsDriver
+            state.selectedGraphicsDriver,
+            container.getGraphicsDriver()
         )
 
         state.zinkModeEntries.value = context.resources.getStringArray(R.array.zink_mode_entries).toList()
@@ -614,7 +620,8 @@ class ShortcutSettingsComposeDialog private constructor(
         selectByIdentifier(
             dxWrapperArr,
             getShortcutSetting("dxwrapper", container.getDXWrapper()),
-            state.selectedDxWrapper
+            state.selectedDxWrapper,
+            container.getDXWrapper()
         )
 
         // Surface Effect
@@ -623,17 +630,10 @@ class ShortcutSettingsComposeDialog private constructor(
         state.selectedSurfaceEffect.intValue = if (getShortcutSetting("swapRB", container.getExtra("swapRB", "0")) == "1") 1 else 0
 
         // Audio driver
-        val audioDriverArr =
-            context.resources.getStringArray(R.array.audio_driver_entries).toList()
-                .filter {
-                    DirectAudioDriver.isSupportedFor(container.wineVersion) ||
-                        !it.equals("DirectAudio", true)
-                }
-        state.audioDriverEntries.value = audioDriverArr
-        selectByIdentifier(
-            audioDriverArr,
+        seedAudioDriver(
+            container,
             getShortcutSetting("audioDriver", container.getAudioDriver()),
-            state.selectedAudioDriver
+            getShortcutSetting("wineVersion", container.wineVersion)
         )
         state.directAudioMic.value = DirectAudioDriver.isMicEnabled(
             getShortcutSetting(
@@ -663,12 +663,14 @@ class ShortcutSettingsComposeDialog private constructor(
         selectByIdentifier(
             state.emulator32Entries.value,
             getShortcutSetting("emulator", container.getEmulator()),
-            state.selectedEmulator
+            state.selectedEmulator,
+            container.getEmulator()
         )
         selectByIdentifier(
             state.emulator64Entries.value,
             getShortcutSetting("emulator64", container.getEmulator64()),
-            state.selectedEmulator64
+            state.selectedEmulator64,
+            container.getEmulator64()
         )
 
         // Locales
@@ -772,12 +774,14 @@ class ShortcutSettingsComposeDialog private constructor(
             selectByIdentifier(
                 state.emulator32Entries.value,
                 getShortcutSetting("emulator", container.getEmulator()),
-                state.selectedEmulator
+                state.selectedEmulator,
+                container.getEmulator()
             )
             selectByIdentifier(
                 state.emulator64Entries.value,
                 getShortcutSetting("emulator64", container.getEmulator64()),
-                state.selectedEmulator64
+                state.selectedEmulator64,
+                container.getEmulator64()
             )
         }
 
@@ -1311,6 +1315,12 @@ class ShortcutSettingsComposeDialog private constructor(
 
             shortcut.putExtra("exclusiveXInput", if (state.shortcutExclusiveXInput.value) "1" else "0")
             if (state.shortcutExclusiveXInput.value != container.isExclusiveXInput()) hasContainerOverride = true
+
+            hasContainerOverride = hasContainerOverride or saveOverride(
+                InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                if (state.adaptiveJoysticks.value) "1" else "0",
+                container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0")
+            )
 
             // Touchscreen mode
             val mode = state.screenTouchMode.intValue
@@ -1929,6 +1939,28 @@ class ShortcutSettingsComposeDialog private constructor(
         return shortcut.getSettingExtra(key, containerValue)
     }
 
+    private fun seedAudioDriver(container: Container, resolved: String, wineVersion: String) {
+        val entries =
+            context.resources.getStringArray(R.array.audio_driver_entries).toList()
+                .filter {
+                    !it.equals("DirectAudio", true) ||
+                        DirectAudioDriver.isSupportedFor(wineVersion) ||
+                        DirectAudioDriver.isSelected(resolved)
+                }
+        state.audioDriverEntries.value = entries
+        selectByIdentifier(entries, resolved, state.selectedAudioDriver, container.getAudioDriver())
+        Log.d(
+            TAG,
+            "audio seed: resolved='" + resolved +
+                "' container='" + container.getAudioDriver() +
+                "' extra='" + shortcut.getExtra("audioDriver") +
+                "' useContainerDefaults=" + shortcut.usesContainerDefaults() +
+                " wine='" + wineVersion +
+                "' entries=" + entries +
+                " selected=" + state.selectedAudioDriver.intValue
+        )
+    }
+
     private fun getIdentifierFromEntries(entries: List<String>, index: Int): String {
         return if (index in entries.indices) StringUtils.parseIdentifier(entries[index]) else ""
     }
@@ -1936,10 +1968,13 @@ class ShortcutSettingsComposeDialog private constructor(
     private fun selectByIdentifier(
         entries: List<String>,
         identifier: String,
-        target: androidx.compose.runtime.MutableIntState
+        target: androidx.compose.runtime.MutableIntState,
+        fallback: String = ""
     ) {
-        val idx =
-            entries.indexOfFirst { StringUtils.parseIdentifier(it) == identifier }
+        var idx = entries.indexOfFirst { StringUtils.parseIdentifier(it) == identifier }
+        if (idx < 0 && fallback.isNotEmpty()) {
+            idx = entries.indexOfFirst { StringUtils.parseIdentifier(it) == fallback }
+        }
         target.intValue = if (idx >= 0) idx else 0
     }
 
@@ -2043,7 +2078,7 @@ class ShortcutSettingsComposeDialog private constructor(
         val bcnEmulationType = state.gfxBcnEmulationTypeEntries.value.getOrElse(state.gfxSelectedBcnEmulationType.intValue) { "compute" }
         val bcnEmulationCache = state.gfxBcnEmulationCacheEntries.value.getOrElse(state.gfxSelectedBcnEmulationCache.intValue) { "0" }
         val transcoder = state.gfxTranscoderEntries.value.getOrElse(state.gfxSelectedTranscoder.intValue) { "cpu" }
-        val quality = state.gfxQualityEntries.value.getOrElse(state.gfxSelectedQuality.intValue) { "low" }
+        val astcTranscoding = state.gfxAstcTranscodingValues.value.getOrElse(state.gfxSelectedAstcTranscoding.intValue) { "off" }
 
         return "vulkanVersion=$vulkanVersion;version=$version;blacklistedExtensions=$blacklisted;" +
                 "maxDeviceMemory=$maxDeviceMemory;presentMode=$presentMode;syncFrame=$syncFrame;" +
@@ -2051,7 +2086,7 @@ class ShortcutSettingsComposeDialog private constructor(
                 "bcnEmulation=$bcnEmulation;bcnEmulationType=$bcnEmulationType;" +
                 "bcnEmulationCache=$bcnEmulationCache;gpuName=$gpuName;" +
                 "compositorPresentMode=$compositorPresentMode;" +
-                "transcoder=$transcoder;quality=$quality"
+                "transcoder=$transcoder;astcTranscoding=$astcTranscoding"
     }
 
     private fun buildDxvkConfigFromState(): String {
@@ -2092,7 +2127,8 @@ class ShortcutSettingsComposeDialog private constructor(
         state.gfxBcnEmulationTypeEntries.value = context.resources.getStringArray(R.array.bcn_emulation_type_entries).toList()
         state.gfxBcnEmulationCacheEntries.value = context.resources.getStringArray(R.array.bcn_emulation_cache_entries).toList()
         state.gfxTranscoderEntries.value = context.resources.getStringArray(R.array.wrapper_transcoder_entries).toList()
-        state.gfxQualityEntries.value = context.resources.getStringArray(R.array.wrapper_quality_entries).toList()
+        state.gfxAstcTranscodingEntries.value = context.resources.getStringArray(R.array.wrapper_astc_transcoding_entries).toList()
+        state.gfxAstcTranscodingValues.value = context.resources.getStringArray(R.array.wrapper_astc_transcoding_values).toList()
 
         val gpuNames = mutableListOf("Device")
         try {
@@ -2121,7 +2157,7 @@ class ShortcutSettingsComposeDialog private constructor(
         selectByValue(state.gfxBcnEmulationTypeEntries.value, config["bcnEmulationType"] ?: "compute", state.gfxSelectedBcnEmulationType)
         selectByValue(state.gfxBcnEmulationCacheEntries.value, config["bcnEmulationCache"] ?: "0", state.gfxSelectedBcnEmulationCache)
         selectByValue(state.gfxTranscoderEntries.value, config["transcoder"] ?: "cpu", state.gfxSelectedTranscoder)
-        selectByValue(state.gfxQualityEntries.value, config["quality"] ?: "low", state.gfxSelectedQuality)
+        selectByValue(state.gfxAstcTranscodingValues.value, config["astcTranscoding"] ?: "off", state.gfxSelectedAstcTranscoding)
 
         state.gfxSyncFrame.value = config["syncFrame"] == "1"
         state.gfxDisablePresentWait.value = config["disablePresentWait"] == "1"
@@ -2376,10 +2412,9 @@ class ShortcutSettingsComposeDialog private constructor(
             container.getDXWrapper(),
             state.selectedDxWrapper
         )
-        selectByIdentifier(
-            state.audioDriverEntries.value,
-            container.getAudioDriver(),
-            state.selectedAudioDriver
+        seedAudioDriver(container, container.getAudioDriver(), container.getWineVersion())
+        state.directAudioMic.value = DirectAudioDriver.isMicEnabled(
+            container.getExtra(DirectAudioDriver.EXTRA_MIC, "0")
         )
 
         state.selectedSurfaceEffect.intValue = if (container.getExtra("swapRB", "0") == "1") 1 else 0
@@ -2441,6 +2476,8 @@ class ShortcutSettingsComposeDialog private constructor(
         state.selectedDInputMapperType.intValue =
             if ((inputType and WinHandler.FLAG_DINPUT_MAPPER_STANDARD.toInt()) == WinHandler.FLAG_DINPUT_MAPPER_STANDARD.toInt()) 0 else 1
         state.shortcutExclusiveXInput.value = container.isExclusiveXInput()
+        state.adaptiveJoysticks.value =
+            container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") == "1"
         if (!state.shortcutExclusiveXInput.value) {
             state.enableXInput.value = true
             state.enableDInput.value = true

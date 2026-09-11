@@ -762,6 +762,30 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return shortcut != null ? shortcut.getSettingExtra(key, containerValue) : containerValue;
     }
 
+    private String containerAdaptiveJoysticks() {
+        return container != null ? container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") : "0";
+    }
+
+    private boolean isAdaptiveJoysticksEnabled() {
+        return "1".equals(getShortcutSetting(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, containerAdaptiveJoysticks()));
+    }
+
+    private void saveAdaptiveJoysticks(boolean enabled) {
+        String value = enabled ? "1" : "0";
+        if (shortcut != null) {
+            if (value.equals(containerAdaptiveJoysticks())) {
+                shortcut.putExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, null);
+            } else {
+                shortcut.putExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, value);
+                shortcut.putExtra("use_container_defaults", "0");
+            }
+            shortcut.saveData();
+        } else if (container != null) {
+            container.putExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, value);
+            container.saveData();
+        }
+    }
+
     private String getFrameGenSetting(String key, String containerValue) {
         if (shortcut == null) return containerValue;
         return shortcut.getSettingExtra(key, containerValue);
@@ -3915,6 +3939,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return shortcut != null && "1".equals(shortcut.getExtra("offline_mode", "0"));
     }
 
+    private boolean isSteamOfflineModeForShortcut() {
+        if (shortcut == null) return false;
+        return parseBoolean(getShortcutSetting("steamOfflineMode",
+                container != null && container.isSteamOfflineMode() ? "1" : "0"));
+    }
+
     private static final boolean STEAM_AGENT_CLOUD_ENABLED = true;
 
     private boolean steamCloudHandledByAgent() {
@@ -4961,6 +4991,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 accentThemeNames,
                 selectedAccentThemeIndex,
                 preferences.getBoolean("show_touchscreen_controls_enabled", false),
+                isAdaptiveJoysticksEnabled(),
                 isTapToClickEnabled,
                 preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY),
                 preferences.getBoolean("touchscreen_haptics_enabled", false),
@@ -5722,6 +5753,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             controllerAutoHidden = false;
                         }
                         applyTouchscreenOverlayPreference();
+                        renderDrawerMenu();
+                    }
+
+                    @Override
+                    public void onInputControlsAdaptiveJoysticksChanged(boolean enabled) {
+                        saveAdaptiveJoysticks(enabled);
+                        if (inputControlsView != null) inputControlsView.setAdaptiveJoysticks(enabled);
                         renderDrawerMenu();
                     }
 
@@ -7332,7 +7370,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         int inputType = container.getInputType();
         if (shortcut != null) {
-            String shortcutInputType = shortcut.getExtra("inputType");
+            String shortcutInputType = shortcut.getSettingExtra("inputType", "");
             if (!shortcutInputType.isEmpty()) {
                 inputType = Byte.parseByte(shortcutInputType);
             }
@@ -8038,12 +8076,20 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             Log.w("XServerDisplayActivity",
                                     "Steam Launcher: Could not query depot data", depotIgnored);
                         }
-                        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()) {
+                        boolean steamOffline = isSteamOfflineModeForShortcut();
+                        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()
+                                || steamOffline) {
                             envVars.put("WN_STEAM_AGENT_CLOUD", "0");
                             Log.i("XServerDisplayActivity",
                                     "Steam Launcher: WN_STEAM_AGENT_CLOUD=0 — cloud saves are "
-                                    + "turned off for this shortcut, so the agent skips "
-                                    + "RunAutoCloudOnAppLaunch and RunAutoCloudOnAppExit");
+                                    + "turned off for this shortcut, so the agent skips both "
+                                    + "the launch download and the exit upload");
+                        }
+                        if (steamOffline) {
+                            envVars.put("WN_STEAM_OFFLINE", "1");
+                            Log.i("XServerDisplayActivity",
+                                    "Steam Launcher: WN_STEAM_OFFLINE=1 — the agent signs in "
+                                    + "offline and never touches Steam Cloud for this session");
                         }
                         if (wnSteamLaunchOption >= 0) {
                             envVars.put("WN_STEAM_LAUNCH_OPTION", String.valueOf(wnSteamLaunchOption));
@@ -8318,6 +8364,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         inputControlsView.setReverseBindingOrder(preferences.getBoolean("reverse_binding_order", false));
         inputControlsView.setTouchpadView(touchpadView);
         inputControlsView.setXServer(xServer);
+        inputControlsView.setAdaptiveJoysticks(isAdaptiveJoysticksEnabled());
         applyTouchscreenOverlayPreference();
         applyInputVisualStylePreferences();
         inputControlsView.setVisibility(View.GONE);
@@ -9357,13 +9404,26 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (wantGamenative) {
             String transcoder = graphicsDriverConfig.get("transcoder");
             envVars.put("WRAPPER_BCN_GPU", "gpu".equalsIgnoreCase(transcoder) ? "1" : "0");
-            String wrapperQuality = graphicsDriverConfig.get("quality");
-            envVars.put("WRAPPER_ASTC_BLOCK", "high".equalsIgnoreCase(wrapperQuality) ? "4x4" : "8x8");
+
+            String astcTranscoding = graphicsDriverConfig.get("astcTranscoding");
+            if (isSupportedAstcBlockSize(astcTranscoding)) {
+                envVars.put("WRAPPER_BCN_ASTC", "1");
+                envVars.put("WRAPPER_ASTC_BLOCK", astcTranscoding);
+                Log.i("XServerDisplayActivity", "ASTC transcoding on: block size " + astcTranscoding);
+            }
+            else {
+                envVars.put("WRAPPER_BCN_ASTC", "0");
+                Log.i("XServerDisplayActivity", "ASTC transcoding off");
+            }
         }
 
         String bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache");
         envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache);
 
+    }
+
+    private static boolean isSupportedAstcBlockSize(String blockSize) {
+        return "4x4".equals(blockSize) || "8x8".equals(blockSize);
     }
 
     @Override

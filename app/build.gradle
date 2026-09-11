@@ -144,6 +144,26 @@ def appVersionCode = providers.gradleProperty("VERSION_CODE")
         .map { Integer.parseInt(it.trim()) }
         .getOrElse(2)
 
+def gitBuildId = "unknown"
+try {
+    def gitDescribe = providers.exec {
+        commandLine "git", "-C", rootProject.projectDir.absolutePath, "rev-parse", "--short=8", "HEAD"
+    }.standardOutput.asText.get().trim()
+    if (!gitDescribe.isEmpty()) gitBuildId = gitDescribe
+} catch (Exception ignored) {
+}
+
+def appBuildId = providers.gradleProperty("BUILD_ID")
+        .orElse(providers.environmentVariable("BUILD_ID"))
+        .map { it.trim() }
+        .getOrElse(gitBuildId)
+
+def playUnreachableVersionCodeBase = 2100000000
+def brandedVersionCode = playUnreachableVersionCodeBase + appVersionCode
+if (brandedVersionCode < playUnreachableVersionCodeBase || brandedVersionCode > 2147483647) {
+    throw new GradleException("VERSION_CODE ${appVersionCode} pushes the branded versionCode past the 32-bit limit")
+}
+
 def coldClientVersionFile = rootProject.file("tools/gbe_fork.version")
 def coldClientVersion = coldClientVersionFile.exists() ? coldClientVersionFile.text.trim() : "unknown"
 
@@ -175,6 +195,8 @@ android {
         resConfigs "en", "da", "de", "es", "b+es+419", "fi", "fr", "hi", "it", "ja", "ko", "no", "pl", "pt", "pt-rBR", "ro", "ru", "sv", "th", "tr", "uk", "zh-rCN", "zh-rTW"
 
         buildConfigField("String", "COLD_CLIENT_VERSION", "\"${coldClientVersion}\"")
+        buildConfigField "int", "TRUE_VERSION_CODE", "${appVersionCode}"
+        buildConfigField "String", "BUILD_ID", "\"${appBuildId}\""
         buildConfigField "String", "RESHADE_CATALOG_URL", "\"https://raw.githubusercontent.com/nicholasx417/WinNative-Components/main/Reshade.json\""
     }
 
@@ -234,14 +256,17 @@ android {
         ludashi {
             dimension "branding"
             applicationId "com.ludashi.benchmark"
+            versionCode brandedVersionCode
         }
         pubg {
             dimension "branding"
             applicationId "com.tencent.ig"
+            versionCode brandedVersionCode
         }
         antutu {
             dimension "branding"
             applicationId "com.antutu.ABenchMark"
+            versionCode brandedVersionCode
         }
     }
 

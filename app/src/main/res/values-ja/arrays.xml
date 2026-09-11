@@ -5,4 +5,9 @@
         <item>オリジナル</item>
         <item>単色</item>
     </string-array>
+    <string-array name="wrapper_astc_transcoding_entries">
+        <item>オフ</item>
+        <item>高画質</item>
+        <item>パフォーマンス</item>
+    </string-array>
 </resources>

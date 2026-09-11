@@ -1123,13 +1123,9 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
           + "and titles that derive a hardware id from the MAC (e.g. Brawlhalla) will be rejected");
     }
 
-    String effectiveAudioDriver = container.getAudioDriver();
-    if (shortcut != null) {
-      String shortcutAudioDriver = shortcut.getExtra("audioDriver");
-      if (shortcutAudioDriver != null && !shortcutAudioDriver.isEmpty()) {
-        effectiveAudioDriver = shortcutAudioDriver;
-      }
-    }
+    String effectiveAudioDriver = shortcut != null
+        ? shortcut.getSettingExtra("audioDriver", container.getAudioDriver())
+        : container.getAudioDriver();
     if (DirectAudioDriver.INSTANCE.isSelected(effectiveAudioDriver)) {
       File audioShimDest = ensureImageFsNativeLibrary(context, imageFs, "libwaudio.so");
       if (audioShimDest != null && audioShimDest.exists()) {

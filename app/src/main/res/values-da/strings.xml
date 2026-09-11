@@ -304,6 +304,8 @@
     <string name="shortcuts_properties_exclusive_input">Eksklusivt input</string>
     <string name="shortcuts_properties_custom_game_settings">Brugerdefinerede spilindstillinger</string>
     <string name="shortcuts_properties_use_steam_input">Brug Steam Input</string>
+    <string name="steam_launcher_real_client">Steam Launcher</string>
+    <string name="steam_launcher_real_client_description">Kører spillet gennem Steam Launcher i Wine (anbefales). Slår de andre Steam-starttilstande fra.</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam offlinetilstand</string>
     <string name="shortcuts_properties_reset">Nulstil egenskaber</string>
     <string name="shortcuts_properties_updated_at">Genvej opdateret kl. %1$s</string>
@@ -528,7 +530,7 @@
     <string name="container_graphics_driver">Grafikdriver</string>
     <string name="container_zink_mode">Zink-tilstand</string>
     <string name="container_graphics_transcoder">BCn-transkoder</string>
-    <string name="container_graphics_quality">BCn-kvalitet</string>
+    <string name="container_graphics_astc_transcoding">ASTC-transkodning</string>
     <string name="container_graphics_configuration">Grafikdriver-konfiguration</string>
     <string name="container_graphics_version">Grafikdriver-version</string>
     <string name="container_graphics_available_extensions">Tilgængelige udvidelser</string>
@@ -1346,7 +1348,7 @@ Installeret sti:
     <string name="shortcuts_properties_use_legacy_launcher_description">Ældre Steam-emulering: kører spillet gennem ColdClient-launcheren og fjerner SteamStub DRM fra exe-filen. Brug kun til ældre spil, der ikke virker med Steam Launcher.</string>
     <string name="steam_section_real_client">WinNative ægte Steam-klient</string>
     <string name="steam_section_emulator">Ældre Steam-emulator</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Får den emulerede Steam-klient til at melde sig offline, så spillet ikke forsøger onlineforbindelser. Bruges til spil, der hænger ved Steams netværkstjek.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Spiller uden Steam Cloud, så de gemte spil bliver på denne enhed, og spillet starter også uden forbindelse. Slå fra for at genoptage Steam Cloud; hvis det lokale og skyens gemte spil er forskellige, bliver du spurgt, hvilket du vil beholde.</string>
     <string name="input_controls_select_style">Vælg stil</string>
     <string name="input_controls_style_original">Original</string>
     <string name="input_controls_style_gamehub">Glass</string>
