@@ -528,7 +528,7 @@
     <string name="container_graphics_driver">图形驱动</string>
     <string name="container_zink_mode">Zink 模式</string>
     <string name="container_graphics_transcoder">BCn 转码器</string>
-    <string name="container_graphics_quality">BCn 质量</string>
+    <string name="container_graphics_astc_transcoding">ASTC 转码</string>
     <string name="container_graphics_configuration">图形驱动配置</string>
     <string name="container_graphics_version">图形驱动版本</string>
     <string name="container_graphics_available_extensions">可用扩展</string>

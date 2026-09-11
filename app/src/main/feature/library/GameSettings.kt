@@ -480,8 +480,8 @@ class GameSettingsStateHolder {
     val gfxSelectedBcnEmulationCache = mutableIntStateOf(0)
     val gfxTranscoderEntries = mutableStateOf<List<String>>(emptyList())
     val gfxSelectedTranscoder = mutableIntStateOf(0)
-    val gfxQualityEntries = mutableStateOf<List<String>>(emptyList())
-    val gfxSelectedQuality = mutableIntStateOf(0)
+    val gfxAstcTranscodingEntries = mutableStateOf<List<String>>(emptyList())
+    val gfxSelectedAstcTranscoding = mutableIntStateOf(0)
     val gfxSyncFrame = mutableStateOf(false)
     val gfxDisablePresentWait = mutableStateOf(false)
 
@@ -2246,10 +2246,10 @@ private fun GraphicsDriverConfigCard(
                         }
                         Box(Modifier.weight(1f)) {
                             SettingDropdown(
-                                label = stringResource(R.string.container_graphics_quality),
-                                entries = state.gfxQualityEntries.value,
-                                selectedIndex = state.gfxSelectedQuality.intValue,
-                                onSelected = { state.gfxSelectedQuality.intValue = it }
+                                label = stringResource(R.string.container_graphics_astc_transcoding),
+                                entries = state.gfxAstcTranscodingEntries.value,
+                                selectedIndex = state.gfxSelectedAstcTranscoding.intValue,
+                                onSelected = { state.gfxSelectedAstcTranscoding.intValue = it }
                             )
                         }
                     }

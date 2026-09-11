@@ -528,7 +528,7 @@
     <string name="container_graphics_driver">圖形驅動程式</string>
     <string name="container_zink_mode">Zink 模式</string>
     <string name="container_graphics_transcoder">BCn 轉碼器</string>
-    <string name="container_graphics_quality">BCn 品質</string>
+    <string name="container_graphics_astc_transcoding">ASTC 轉碼</string>
     <string name="container_graphics_configuration">圖形驅動程式設定</string>
     <string name="container_graphics_version">圖形驅動程式版本</string>
     <string name="container_graphics_available_extensions">可用擴充</string>
