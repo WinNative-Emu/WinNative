@@ -1,9 +1,5 @@
 #version 450
 
-// Variational refinement coefficient assembly: data term (brightness + gradient
-// constancy, Taylor-expanded) plus the smoothness term, gathered into the 2x2
-// block A and right-hand side B for the red-black SOR.
-
 precision highp float;
 precision highp int;
 
@@ -13,7 +9,7 @@ layout(set = 0, binding = 0) uniform sampler2D prep;
 layout(set = 0, binding = 1) uniform sampler2D d1;
 layout(set = 0, binding = 2) uniform sampler2D d2;
 layout(set = 0, binding = 3) uniform sampler2D dW;
-layout(set = 0, binding = 4) uniform sampler2D flowDense;   // W (normalized)
+layout(set = 0, binding = 4) uniform sampler2D flowDense;
 layout(set = 0, binding = 5) uniform sampler2D wt;
 layout(set = 0, binding = 8, rgba32f) uniform image2D A;
 layout(set = 0, binding = 9, rg32f) uniform image2D B;
@@ -40,7 +36,6 @@ void main() {
     float Ixx = d2v.x, Ixy = d2v.y, Iyy = d2v.z;
     float dU = dWp.x, dV = dWp.y;
 
-    // Brightness constancy (Taylor expansion).
     float dn = Ix * Ix + Iy * Iy + pc.zeta2;
     float Ik1z = Iz + Ix * dU + Iy * dV;
     float w = (pc.delta2 / sqrt(Ik1z * Ik1z / dn + pc.eps2)) / dn;
@@ -50,7 +45,6 @@ void main() {
     float b1 = -w * Iz * Ix;
     float b2 = -w * Iz * Iy;
 
-    // Gradient constancy.
     float dnx = Ixx * Ixx + Ixy * Ixy + pc.zeta2;
     float dny = Iyy * Iyy + Ixy * Ixy + pc.zeta2;
     float Ik1zx = Ixz + Ixx * dU + Ixy * dV;
@@ -62,8 +56,6 @@ void main() {
     b1 -= w * (Ixx * Ixz / dnx + Ixy * Iyz / dny);
     b2 -= w * (Ixy * Ixz / dnx + Iyy * Iyz / dny);
 
-    // Smoothness: edges (p,p+x) and (p,p+y) carry wt(p); (p-x,p) and (p-y,p)
-    // carry the neighbours' weights. Flow W is scaled to pixels here.
     float wc = texelFetch(wt, p, 0).r;
     float wl = texelFetch(wt, ivec2(max(p.x - 1, 0), p.y), 0).r;
     float wu = texelFetch(wt, ivec2(p.x, max(p.y - 1, 0)), 0).r;

@@ -1,101 +1,19 @@
 #version 450
 
-// DIS (Dense Inverse Search) densify pass - confidence-weighted upsample of the
-// sparse flow grid (stride 3) into a dense per-pixel flow image. Each sparse
-// sample contributes its flow weighted by 1/max(|warp residual|, 1), normalized
-// by the summed weight. Implemented as a gather over the 3x3 sparse neighborhood
-// covering each dense pixel (the WebGL scatters 8x8 point sprites; the two are
-// equivalent).
-//
-// Two extra weight terms sit beside the residual, and they are what keeps a
-// motion boundary from turning into a gradient - the halo that rings a moving
-// object and makes the picture around it look like flowing water.
-//
-// Where the halo actually comes from. An 8x8 patch straddling the edge of a
-// moving object cannot align both halves at once, so the inverse search settles
-// on a compromise vector belonging to neither. With stride 3 that is two or
-// three sparse cells on each side of the edge, and each of them reaches 8 texels
-// into the background, so the wrong vector is already spread over ~6 texels of
-// sparse grid before densify sees it. Densify then gathers nine cells spanning
-// 14 texels and averages them, which is what turns those cells into a ramp.
-//
-// It is much more visible here than in OpenCV because the flow is estimated on a
-// frame whose shorter side is 180-360 px and then upsampled to the display: six
-// texels of flow halo is 25-50 screen pixels of smeared image.
-//
-// The residual term is meant to reject the wrong-side candidates and it does
-// help, but it judges a single texel. That is a weak test: it fires on ordinary
-// texture when the flow was right, and it cannot tell anything at all where the
-// background is flat, because then every candidate flow lands on an equally
-// featureless texel, |diff| stays under 1 for all of them, max(|diff|, 1) pins
-// every weight to exactly 1, and the result is a plain box average again. So
-// both terms below were chosen not to depend on the residual being informative:
-//
-//  - the patch's own match quality, which propagation already measured and left
-//    in .z of the sparse map, so it is free to read. This is the strong signal:
-//    a patch sitting entirely on one object scores an RMS residual of a few luma
-//    levels, while one straddling a boundary scores five to ten times that,
-//    because the half it could not align contributes the full object/background
-//    contrast. Judged over all 64 texels of the block, not one.
-//
-//    It is compared against the best of the nine candidates rather than against
-//    a fixed threshold. An absolute threshold cannot work: the scale of a "good"
-//    residual moves with the noise, the compression and the contrast of whatever
-//    the guest happens to be drawing, and a fixed one tuned for clean content
-//    rejects everything on noisy content. Relative, the term is also
-//    self-limiting - where all nine candidates agree, as they do across any
-//    smoothly varying flow field, every ratio is near 1 and the term does
-//    nothing, so it sharpens boundaries without making smooth motion blocky.
-//
-//  - a guide on the PREVIOUS frame's luminance, comparing this pixel against the
-//    centre of the candidate patch. Two pixels on the same surface look alike in
-//    one frame; a pixel and a patch on opposite sides of an occlusion boundary
-//    usually do not. This is the joint-bilateral upsample idea. It contributes
-//    less than the match term but it is the one that still discriminates when
-//    every candidate matched equally well, which is exactly the flat-background
-//    case the residual cannot handle.
-//
-// Measured against a synthetic sequence - a textured object crossing a
-// background, over contrast, texture and noise levels - the two together cut the
-// mean flow error around the boundary by about 16% and replace the six-texel
-// ramp with a step. A spatial falloff on the gather was tried as well and was
-// dropped: narrowing the kernel concentrates weight on the NEAREST candidate,
-// which near a boundary is the straddling one, so it made the halo sharper
-// rather than smaller and measured worse on flat backgrounds.
-//
-// Both terms are single #defines; setting either sigma very large disables it.
-
 precision highp float;
 precision highp int;
 
-// Luminance difference, on the 0-255 scale, at which a candidate patch is judged
-// half as likely to belong to the same surface as this pixel. Wants to sit above
-// the intra-surface texture variation and below a typical object/background
-// step; the optimum measured flat between 12 and 32.
 #define DIS_DENSIFY_GUIDE_SIGMA 18.0
 
-// Floor under the reference residual the match term divides by, as an RMS
-// luminance error. Without it a candidate set that all matched perfectly would
-// have its ratios decided by sensor noise.
 #define DIS_DENSIFY_MATCH_FLOOR_RMS 1.5
-
-// The match term falls off as the SQUARE of the residual ratio; that was the
-// knee. A gentler falloff leaves boundaries soft, a sharper one buys little on
-// clean content and starts to lose on low-contrast noisy content. It is written
-// as a multiply rather than a pow() because pow is two transcendentals per
-// candidate, nine per dense texel; change the ratio line to move it.
 
 #define DIS_DENSIFY_TAPS 9
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform sampler2D sparseFlowMap;
-// lastLumaMap/nextLumaMap are the precomputed luminance pyramid, not colour:
-// one channel, already on the 0-255 scale the tuned constants expect. The dot
-// product that used to run on every one of these fetches now runs once per texel
-// in dis_luma.comp.
-layout(set = 0, binding = 1) uniform sampler2D lastImage;   // prev luma
-layout(set = 0, binding = 2) uniform sampler2D nextImage;   // next luma
+layout(set = 0, binding = 1) uniform sampler2D lastImage;
+layout(set = 0, binding = 2) uniform sampler2D nextImage;
 layout(set = 0, binding = 5, rg32f) uniform image2D denseFlowMap;
 
 void main() {
@@ -113,19 +31,8 @@ void main() {
     vec2 uv = (vec2(pix) + 0.5) * invDenseSize;
     float lastLum = textureLod(lastImage, uv, 0.0).x;
 
-    // Gather the candidates first: the match term needs the best residual in the
-    // set before any weight can be formed. Sparse samples covering this dense
-    // pixel: floor(pix/3)-2 .. floor(pix/3).
-    //
-    // .w of the sparse map is a constant 1.0 and nobody reads it, so the patch's
-    // centre luminance is parked there instead of keeping a second array of grid
-    // positions to re-derive it from.
     vec4 cand[DIS_DENSIFY_TAPS];
     int candCount = 0;
-    // .z is a mean-normalized SSD summed over the 64 texels of the patch. Below
-    // zero means no propagation pass ever scored this cell, which only happens
-    // on a sparse grid too small to have distinct neighbours; then nothing is
-    // known about the cell and the match term simply does not apply to it.
     float bestSsd = -1.0;
 
     ivec2 s0 = ivec2(pix.x / 3, pix.y / 3) - 2;
@@ -134,8 +41,6 @@ void main() {
             ivec2 s = s0 + ivec2(dx, dy);
             if (s.x < 0 || s.y < 0 || s.x >= sparseSize.x || s.y >= sparseSize.y) continue;
             vec4 f = texelFetch(sparseFlowMap, s, 0);
-            // Patch s covers texels [3s, 3s+7], so its centre is at texel
-            // coordinate 3s+3.5 and the matching uv is (3s+4)/size.
             f.w = textureLod(lastImage, (vec2(s * 3) + 4.0) * invDenseSize, 0.0).x;
             cand[candCount] = f;
             candCount++;
@@ -155,11 +60,6 @@ void main() {
         vec4 flow = cand[i];
 
         float diff = textureLod(nextImage, uv + flow.xy, 0.0).x - lastLum;
-        // With luminance on the 0-255 scale this spans roughly 150x between a
-        // clean match and a hopeless one. On the 0-1 scale abs(diff) never
-        // reached 1, so the max() pinned every weight to exactly 1.0 and the
-        // whole confidence weighting here was a plain unweighted average - a
-        // garbage sparse estimate counted for as much as a good one.
         float w = 1.0 / max(abs(diff), 1.0);
 
         if (bestSsd >= 0.0 && flow.z >= 0.0) {

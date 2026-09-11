@@ -6,4 +6,10 @@
         <item quantity="many">%d plików ZIP</item>
         <item quantity="other">%d plików ZIP</item>
     </plurals>
+    <plurals name="retro_engine_badges">
+        <item quantity="one">%d odznaka</item>
+        <item quantity="few">%d odznaki</item>
+        <item quantity="many">%d odznak</item>
+        <item quantity="other">%d odznak</item>
+    </plurals>
 </resources>

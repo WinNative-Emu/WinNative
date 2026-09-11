@@ -76,7 +76,7 @@ class SystemFrameGenMonitor(
 
         val factor = multiplier
         val requested = delta * factor
-        val output = min(requested, scanoutCeiling(elapsed, requested))
+        val output = min(requested, scanoutCeiling(elapsed, requested)).coerceAtLeast(delta)
         val generated = (output - delta).coerceAtLeast(0L)
         outputFrames.addAndGet(output)
         generatedFrames.addAndGet(generated)

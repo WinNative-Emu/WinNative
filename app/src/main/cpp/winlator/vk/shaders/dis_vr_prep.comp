@@ -1,9 +1,5 @@
 #version 450
 
-// Variational refinement prep: warps the next frame by the current flow and
-// produces the averaged image plus the residual (Iz = I1 - I0). Also clears the
-// dW buffer to zero (folded here to avoid a separate clear pass).
-
 precision highp float;
 precision highp int;
 
@@ -11,16 +7,10 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform sampler2D prevColor;
 layout(set = 0, binding = 1) uniform sampler2D nextColor;
-layout(set = 0, binding = 2) uniform sampler2D flowDense;   // normalized flow
+layout(set = 0, binding = 2) uniform sampler2D flowDense;
 layout(set = 0, binding = 8, rg32f) uniform image2D prep;
 layout(set = 0, binding = 9, rg32f) uniform image2D dW;
 
-// Luminance is returned on the 0-255 scale the reference implementation works
-// on, not the 0-1 the samplers hand back. Every tuned constant downstream - the
-// densify confidence epsilon, the variational refinement's delta/gamma/zeta -
-// came from OpenCV, which feeds this chain 8-bit imagery converted to float
-// without dividing by 255. Feeding it 0-1 instead left those constants
-// mismatched by that same factor.
 float uluminance(vec3 c) {
     return (0.299 * c.x + 0.587 * c.y + 0.114 * c.z) * 255.0;
 }

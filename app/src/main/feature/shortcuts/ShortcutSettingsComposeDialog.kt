@@ -1397,10 +1397,6 @@ class ShortcutSettingsComposeDialog private constructor(
                 if (state.frameGenEnabled.value) "1" else "0",
                 container.getExtra("frameGen", "0"),
             )
-            // Only the Lossless Scaling engine is exposed here, and the two are
-            // mutually exclusive, so enabling it has to switch DIS off as well.
-            // Without this the shortcut keeps inheriting disFrameGen=1 from the
-            // container and the session starts on DIS instead.
             if (state.frameGenEnabled.value) {
                 hasContainerOverride = hasContainerOverride or saveOverride(
                     "disFrameGen",

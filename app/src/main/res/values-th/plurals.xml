@@ -4,4 +4,8 @@
         <item quantity="one">%d ZIP ไฟล์</item>
         <item quantity="other">%d ZIP ไฟล์</item>
     </plurals>
+    <plurals name="retro_engine_badges">
+        <item quantity="one">%d เหรียญตรา</item>
+        <item quantity="other">%d เหรียญตรา</item>
+    </plurals>
 </resources>

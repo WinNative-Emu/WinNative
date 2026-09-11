@@ -115,24 +115,36 @@ object SystemFrameGenDetector {
         fallback: () -> Map<String, String>,
     ): SystemFrameGenState {
         val inserted = parseNumber(interpRate)
-        if (inserted != null) {
+        val enable = parseNumber(frcEnable)
+        val enableMultiplier = enable?.let { (it and 0xF).coerceIn(1, MAX_MULTIPLIER) } ?: 1
+
+        if (inserted != null && inserted > 0) {
             val multiplier = (inserted + 1).coerceIn(1, MAX_MULTIPLIER)
             return SystemFrameGenState(
                 vendorSupported = true,
-                active = multiplier > 1,
+                active = true,
                 signal = "$KEY_INTERP_RATE=$interpRate",
                 multiplier = multiplier,
             )
         }
 
-        val enable = parseNumber(frcEnable)
-        if (enable != null) {
-            val multiplier = (enable and 0xF).coerceIn(1, MAX_MULTIPLIER)
+        if (enable != null && enableMultiplier > 1) {
             return SystemFrameGenState(
                 vendorSupported = true,
-                active = multiplier > 1,
+                active = true,
                 signal = "$KEY_FRC_ENABLE=$frcEnable",
-                multiplier = multiplier,
+                multiplier = enableMultiplier,
+            )
+        }
+
+        if (inserted != null || enable != null) {
+            val signal =
+                if (inserted != null) "$KEY_INTERP_RATE=$interpRate" else "$KEY_FRC_ENABLE=$frcEnable"
+            return SystemFrameGenState(
+                vendorSupported = true,
+                active = false,
+                signal = signal,
+                multiplier = 1,
             )
         }
 

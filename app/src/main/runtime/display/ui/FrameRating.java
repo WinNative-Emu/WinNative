@@ -137,7 +137,15 @@ public class FrameRating extends LinearLayout implements Runnable {
   }
 
   public void setOutputFrameSource(OutputFrameSource source) {
+    if (this.outputFrameSource == source) {
+      return;
+    }
     this.outputFrameSource = source;
+    synchronized (this) {
+      this.outputSamplesCount = 0;
+      this.outputFPS = 0.0f;
+      this.outputGenerating = false;
+    }
   }
 
   public void setFrameGenerationActive(boolean active) {
