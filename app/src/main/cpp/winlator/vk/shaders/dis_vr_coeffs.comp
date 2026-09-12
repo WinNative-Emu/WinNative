@@ -1,0 +1,104 @@
+#version 450
+#extension GL_EXT_samplerless_texture_functions : require
+
+// ComputeDataTerm + both ComputeSmoothnessTerm passes as a gather (FS_VR_COEF). The second
+// derivatives (FS_VR_D2) and Iz are derived inline so no d2 / prep buffers are needed.
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform texture2D u_d1;
+layout(set = 0, binding = 1) uniform texture2D u_dW;
+layout(set = 0, binding = 2) uniform texture2D u_W;
+layout(set = 0, binding = 3) uniform texture2D u_wt;
+layout(set = 0, binding = 4) uniform texture2D u_I0;
+layout(set = 0, binding = 5) uniform texture2D u_I1;
+layout(set = 0, binding = 6, rgba32f) uniform image2D o_A;
+layout(set = 0, binding = 7, rg32f) uniform image2D o_B;
+
+layout(push_constant) uniform PC {
+    vec2 u_size;
+    float u_delta2;
+    float u_gamma2;
+    float u_zeta2;
+    float u_eps2;
+} pc;
+
+float sampleI1(vec2 pos) {
+    ivec2 sz = textureSize(u_I1, 0);
+    vec2 mx = vec2(sz - ivec2(1));
+    vec2 q = clamp(pos, vec2(0.0), mx);
+    vec2 b = floor(q);
+    vec2 f = q - b;
+    ivec2 i0 = ivec2(b);
+    float a = texelFetch(u_I1, i0, 0).r;
+    float bb = texelFetch(u_I1, min(i0 + ivec2(1, 0), sz - 1), 0).r;
+    float c = texelFetch(u_I1, min(i0 + ivec2(0, 1), sz - 1), 0).r;
+    float d = texelFetch(u_I1, min(i0 + ivec2(1, 1), sz - 1), 0).r;
+    return mix(mix(a, bb, f.x), mix(c, d, f.x), f.y);
+}
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz = imageSize(o_A);
+    if (p.x >= sz.x || p.y >= sz.y) return;
+    ivec2 mx = sz - 1;
+
+    vec4 d1 = texelFetch(u_d1, p, 0);
+    vec2 f = texelFetch(u_W, p, 0).rg;
+    float Iz = sampleI1(vec2(p) + f) - texelFetch(u_I0, p, 0).r;
+
+    vec4 xp = texelFetch(u_d1, min(p + ivec2(1, 0), mx), 0);
+    vec4 xm = texelFetch(u_d1, max(p - ivec2(1, 0), ivec2(0)), 0);
+    vec4 yp = texelFetch(u_d1, min(p + ivec2(0, 1), mx), 0);
+    vec4 ym = texelFetch(u_d1, max(p - ivec2(0, 1), ivec2(0)), 0);
+    float Ixx = xp.x - xm.x;
+    float Ixy = yp.x - ym.x;
+    float Iyy = yp.y - ym.y;
+
+    vec2 dW = texelFetch(u_dW, p, 0).rg;
+    float Ix = d1.x, Iy = d1.y, Ixz = d1.z, Iyz = d1.w;
+    float dU = dW.x, dV = dW.y;
+
+    // Brightness constancy (Taylor expansion).
+    float dn = Ix * Ix + Iy * Iy + pc.u_zeta2;
+    float Ik1z = Iz + Ix * dU + Iy * dV;
+    float w = (pc.u_delta2 / sqrt(Ik1z * Ik1z / dn + pc.u_eps2)) / dn;
+    float a11 = w * Ix * Ix + pc.u_zeta2;
+    float a12 = w * Ix * Iy;
+    float a22 = w * Iy * Iy + pc.u_zeta2;
+    float b1 = -w * Iz * Ix;
+    float b2 = -w * Iz * Iy;
+
+    // Gradient constancy.
+    float dnx = Ixx * Ixx + Ixy * Ixy + pc.u_zeta2;
+    float dny = Iyy * Iyy + Ixy * Ixy + pc.u_zeta2;
+    float Ik1zx = Ixz + Ixx * dU + Ixy * dV;
+    float Ik1zy = Iyz + Ixy * dU + Iyy * dV;
+    w = pc.u_gamma2 / sqrt(Ik1zx * Ik1zx / dnx + Ik1zy * Ik1zy / dny + pc.u_eps2);
+    a11 += w * (Ixx * Ixx / dnx + Ixy * Ixy / dny);
+    a12 += w * (Ixx * Ixy / dnx + Ixy * Iyy / dny);
+    a22 += w * (Ixy * Ixy / dnx + Iyy * Iyy / dny);
+    b1 -= w * (Ixx * Ixz / dnx + Ixy * Iyz / dny);
+    b2 -= w * (Ixy * Ixz / dnx + Iyy * Iyz / dny);
+
+    // Smoothness: edges (p, p+x) and (p, p+y) carry wt(p), edges (p-x, p) and (p-y, p) carry
+    // the neighbours' weights.
+    float wc = texelFetch(u_wt, p, 0).r;
+    float wl = texelFetch(u_wt, ivec2(max(p.x - 1, 0), p.y), 0).r;
+    float wu = texelFetch(u_wt, ivec2(p.x, max(p.y - 1, 0)), 0).r;
+    vec2 W = texelFetch(u_W, p, 0).rg;
+    vec2 Wr = texelFetch(u_W, ivec2(min(p.x + 1, mx.x), p.y), 0).rg;
+    vec2 Wl = texelFetch(u_W, ivec2(max(p.x - 1, 0), p.y), 0).rg;
+    vec2 Wd = texelFetch(u_W, ivec2(p.x, min(p.y + 1, mx.y)), 0).rg;
+    vec2 Wu = texelFetch(u_W, ivec2(p.x, max(p.y - 1, 0)), 0).rg;
+
+    float addA = 0.0;
+    vec2 addB = vec2(0.0);
+    if (p.x < mx.x) { addA += wc; addB += wc * (Wr - W); }
+    if (p.x > 0) { addA += wl; addB -= wl * (W - Wl); }
+    if (p.y < mx.y) { addA += wc; addB += wc * (Wd - W); }
+    if (p.y > 0) { addA += wu; addB -= wu * (W - Wu); }
+
+    imageStore(o_A, p, vec4(a11 + addA, a12, a22 + addA, 0.0));
+    imageStore(o_B, p, vec4(b1 + addB.x, b2 + addB.y, 0.0, 0.0));
+}

@@ -1,49 +1,50 @@
 #version 450
+#extension GL_EXT_samplerless_texture_functions : require
 
-precision highp float;
-precision highp int;
+// Red-black SOR (FS_VR_SOR). The edge weight is zeroed when the neighbour is missing, matching
+// the four conditions used while assembling A, so diagonal dominance holds at the borders.
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform sampler2D A;
-layout(set = 0, binding = 1) uniform sampler2D B;
-layout(set = 0, binding = 2) uniform sampler2D wt;
-layout(set = 0, binding = 3) uniform sampler2D dWin;
-layout(set = 0, binding = 8, rg32f) uniform image2D dWout;
+layout(set = 0, binding = 0) uniform texture2D u_A;
+layout(set = 0, binding = 1) uniform texture2D u_B;
+layout(set = 0, binding = 2) uniform texture2D u_wt;
+layout(set = 0, binding = 3) uniform texture2D u_dW;
+layout(set = 0, binding = 4, rg32f) uniform image2D o_dW;
 
 layout(push_constant) uniform PC {
-    float omega;
-    int parity;
+    float u_omega;
+    int u_parity;
 } pc;
 
 void main() {
     ivec2 p = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 sz = imageSize(dWout);
+    ivec2 sz = imageSize(o_dW);
     if (p.x >= sz.x || p.y >= sz.y) return;
     ivec2 mx = sz - 1;
 
-    vec2 d = texelFetch(dWin, p, 0).xy;
-    if (((p.x + p.y) & 1) != pc.parity) {
-        imageStore(dWout, p, vec4(d, 0.0, 0.0));
+    vec2 d = texelFetch(u_dW, p, 0).rg;
+    if (((p.x + p.y) & 1) != pc.u_parity) {
+        imageStore(o_dW, p, vec4(d, 0.0, 0.0));
         return;
     }
 
-    float wc = texelFetch(wt, p, 0).r;
-    float wl = p.x > 0    ? texelFetch(wt, ivec2(p.x - 1, p.y), 0).r : 0.0;
-    float wu = p.y > 0    ? texelFetch(wt, ivec2(p.x, p.y - 1), 0).r : 0.0;
+    float wc = texelFetch(u_wt, p, 0).r;
+    float wl = p.x > 0 ? texelFetch(u_wt, ivec2(p.x - 1, p.y), 0).r : 0.0;
+    float wu = p.y > 0 ? texelFetch(u_wt, ivec2(p.x, p.y - 1), 0).r : 0.0;
     float wr = p.x < mx.x ? wc : 0.0;
     float wd = p.y < mx.y ? wc : 0.0;
 
-    vec2 dl = texelFetch(dWin, ivec2(max(p.x - 1, 0), p.y), 0).xy;
-    vec2 dr = texelFetch(dWin, ivec2(min(p.x + 1, mx.x), p.y), 0).xy;
-    vec2 du = texelFetch(dWin, ivec2(p.x, max(p.y - 1, 0)), 0).xy;
-    vec2 dd = texelFetch(dWin, ivec2(p.x, min(p.y + 1, mx.y)), 0).xy;
+    vec2 dl = texelFetch(u_dW, ivec2(max(p.x - 1, 0), p.y), 0).rg;
+    vec2 dr = texelFetch(u_dW, ivec2(min(p.x + 1, mx.x), p.y), 0).rg;
+    vec2 du = texelFetch(u_dW, ivec2(p.x, max(p.y - 1, 0)), 0).rg;
+    vec2 dd = texelFetch(u_dW, ivec2(p.x, min(p.y + 1, mx.y)), 0).rg;
 
     vec2 sigma = wl * dl + wr * dr + wu * du + wd * dd;
-    vec4 A = texelFetch(A, p, 0);
-    vec2 Bv = texelFetch(B, p, 0).xy;
+    vec4 A = texelFetch(u_A, p, 0);
+    vec2 B = texelFetch(u_B, p, 0).rg;
 
-    float nu = d.x + pc.omega * ((sigma.x + Bv.x - d.y * A.y) / A.x - d.x);
-    float nv = d.y + pc.omega * ((sigma.y + Bv.y - nu * A.y) / A.z - d.y);
-    imageStore(dWout, p, vec4(nu, nv, 0.0, 0.0));
+    float nu = d.x + pc.u_omega * ((sigma.x + B.x - d.y * A.y) / A.x - d.x);
+    float nv = d.y + pc.u_omega * ((sigma.y + B.y - nu * A.y) / A.z - d.y);
+    imageStore(o_dW, p, vec4(nu, nv, 0.0, 0.0));
 }
