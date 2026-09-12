@@ -135,7 +135,6 @@ typedef struct VkDispatch {
     PFN_vkCmdCopyBufferToImage CmdCopyBufferToImage;
     PFN_vkCmdBlitImage CmdBlitImage;
     PFN_vkCmdCopyImage CmdCopyImage;
-    PFN_vkCmdClearColorImage CmdClearColorImage;
     PFN_vkCmdDispatch CmdDispatch;
 
     // Queue

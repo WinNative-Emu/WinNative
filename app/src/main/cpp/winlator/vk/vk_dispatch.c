@@ -159,7 +159,6 @@ bool vkd_load_instance(VkInstance instance) {
     LOAD(CmdCopyBufferToImage);
     LOAD(CmdBlitImage);
     LOAD(CmdCopyImage);
-    LOAD(CmdClearColorImage);
     LOAD(CmdDispatch);
 
     // Queue
