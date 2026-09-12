@@ -186,6 +186,7 @@
     <string name="library_games_install_path">Install Path</string>
     <string name="library_games_store_change">Change Store</string>
     <string name="library_games_store_switch_label">Store</string>
+    <string name="library_games_store_none_owned">No store libraries match this game</string>
     <string name="library_games_store_switched">Now using %1$s for this game</string>
     <string name="library_games_not_enough_space">Need %1$s more space</string>
     <string name="library_games_download_slash_install">Download / Install</string>

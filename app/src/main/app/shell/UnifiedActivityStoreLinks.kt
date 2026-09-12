@@ -75,6 +75,18 @@ internal fun computeLibraryStoreLinks(
             }
         }
 
+    customByPath.forEach { (pathKey, rows) ->
+        if (pathKey.isEmpty() || itchByPath.containsKey(pathKey)) return@forEach
+        val owner = InstallOwnership.ownerOf(rows.first().installPath) ?: return@forEach
+        if (owner == InstallStore.ITCH) return@forEach
+        val ownerHasInstall =
+            installedRows.any {
+                it.store == owner && LibraryStoreLinks.pathKey(it.installPath) == pathKey
+            }
+        if (ownerHasInstall) rows.forEach { hidden += it.libraryId }
+    }
+
+    val installedRowIds = installedRows.map { it.libraryId }.toSet()
     val installedPathByRow =
         installedRows.associate { it.libraryId to LibraryStoreLinks.pathKey(it.installPath) }
 
@@ -88,14 +100,15 @@ internal fun computeLibraryStoreLinks(
                     if (customLibraryId != null) itch.copy(libraryId = customLibraryId) else null
                 }?.takeIf { pathKey.isNotEmpty() }
             val owned = ownedByTitle[LibraryStoreLinks.titleKey(itchRow?.title ?: row.title)].orEmpty()
+            val self = if (row.libraryId in installedRowIds) listOf(row) else emptyList()
             val options =
-                (listOfNotNull(itchRow) + owned)
+                (listOfNotNull(itchRow) + owned + self)
                     .distinctBy { it.store }
                     .filter { option ->
                         val installedAt = installedPathByRow[option.libraryId]
                         installedAt.isNullOrEmpty() || installedAt == pathKey
                     }.sortedBy { option -> STORE_MENU_ORDER.indexOf(option.store) }
-            row.libraryId to if (options.size > 1) options else emptyList()
+            row.libraryId to options
         }
 
     return LibraryStoreLinkResult(

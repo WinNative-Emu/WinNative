@@ -940,8 +940,6 @@ private fun SourceTag(
     var menuOpen by remember { mutableStateOf(false) }
     var storeMenuOpen by remember { mutableStateOf(false) }
     var anchorHeightPx by remember { mutableStateOf(0) }
-    val showStoreSwitch = storeOptions.size > 1
-    val menuInteractive = menuEnabled || showAchievements || showCheats || showStoreSwitch
     Box {
         Surface(
             color = Color.White.copy(alpha = 0.1f),
@@ -950,7 +948,7 @@ private fun SourceTag(
             modifier =
                 Modifier
                     .onSizeChanged { anchorHeightPx = it.height }
-                    .then(if (menuInteractive) Modifier.clickable { menuOpen = true } else Modifier),
+                    .clickable { menuOpen = true },
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -971,87 +969,88 @@ private fun SourceTag(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (menuInteractive) {
-                    Icon(
-                        Icons.Outlined.ArrowDropDown,
-                        contentDescription = stringResource(R.string.store_game_steam_options),
-                        tint = LaunchTextPrimary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+                Icon(
+                    Icons.Outlined.ArrowDropDown,
+                    contentDescription = stringResource(R.string.store_game_steam_options),
+                    tint = LaunchTextPrimary,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
-        if (menuInteractive) {
-            val gapPx = with(LocalDensity.current) { 6.dp.roundToPx() }
-            LaunchSourceActionPopup(
-                expanded = menuOpen,
-                onDismissRequest = { menuOpen = false },
-                offset = IntOffset(0, anchorHeightPx + gapPx),
-            ) {
-                if (showStoreSwitch) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.Outlined.Storefront,
-                        label = stringResource(R.string.library_games_store_change),
-                    ) { menuOpen = false; storeMenuOpen = true }
-                    if (menuEnabled || showAchievements || showCheats) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(Color.White.copy(alpha = 0.14f)),
-                        )
-                    }
-                }
-                if (menuEnabled && showVerifyFiles) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.AutoMirrored.Outlined.FactCheck,
-                        label = stringResource(R.string.store_game_verify_files),
-                        enabled = areSteamActionsEnabled,
-                    ) { menuOpen = false; onVerifyFiles() }
-                }
-                if (menuEnabled && showCheckForUpdate) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.Outlined.Refresh,
-                        label = stringResource(R.string.store_game_check_for_update),
-                        enabled = areSteamActionsEnabled,
-                    ) { menuOpen = false; onCheckForUpdate() }
-                }
-                if (menuEnabled && showWorkshop) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.Outlined.Construction,
-                        label = stringResource(R.string.store_game_workshop),
-                        enabled = areSteamActionsEnabled,
-                    ) { menuOpen = false; onWorkshop() }
-                }
-                if (showAchievements) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.Outlined.EmojiEvents,
-                        label = stringResource(R.string.steam_achievements_title),
-                    ) { menuOpen = false; onAchievements() }
-                }
-                if (showCheats) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.Outlined.Bolt,
-                        label = stringResource(R.string.retro_cheats_title),
-                        enabled = cheatsEnabled,
-                    ) { menuOpen = false; onCheats() }
-                }
+        val gapPx = with(LocalDensity.current) { 6.dp.roundToPx() }
+        LaunchSourceActionPopup(
+            expanded = menuOpen,
+            onDismissRequest = { menuOpen = false },
+            offset = IntOffset(0, anchorHeightPx + gapPx),
+        ) {
+            LaunchSourceMenuItem(
+                icon = Icons.Outlined.Storefront,
+                label = stringResource(R.string.library_games_store_change),
+            ) { menuOpen = false; storeMenuOpen = true }
+            if (menuEnabled || showAchievements || showCheats) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(Color.White.copy(alpha = 0.14f)),
+                )
             }
+            if (menuEnabled && showVerifyFiles) {
+                LaunchSourceMenuItem(
+                    icon = Icons.AutoMirrored.Outlined.FactCheck,
+                    label = stringResource(R.string.store_game_verify_files),
+                    enabled = areSteamActionsEnabled,
+                ) { menuOpen = false; onVerifyFiles() }
+            }
+            if (menuEnabled && showCheckForUpdate) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.Refresh,
+                    label = stringResource(R.string.store_game_check_for_update),
+                    enabled = areSteamActionsEnabled,
+                ) { menuOpen = false; onCheckForUpdate() }
+            }
+            if (menuEnabled && showWorkshop) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.Construction,
+                    label = stringResource(R.string.store_game_workshop),
+                    enabled = areSteamActionsEnabled,
+                ) { menuOpen = false; onWorkshop() }
+            }
+            if (showAchievements) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.EmojiEvents,
+                    label = stringResource(R.string.steam_achievements_title),
+                ) { menuOpen = false; onAchievements() }
+            }
+            if (showCheats) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.Bolt,
+                    label = stringResource(R.string.retro_cheats_title),
+                    enabled = cheatsEnabled,
+                ) { menuOpen = false; onCheats() }
+            }
+        }
 
-            LaunchSourceActionPopup(
-                expanded = storeMenuOpen,
-                onDismissRequest = { storeMenuOpen = false },
-                offset = IntOffset(0, anchorHeightPx + gapPx),
-            ) {
-                LaunchSourceMenuHeader(stringResource(R.string.library_games_store_switch_label))
-                storeOptions.forEach { option ->
-                    LaunchStoreMenuItem(
-                        label = option.label,
-                        selected = option.id == selectedStoreId,
-                    ) {
-                        storeMenuOpen = false
-                        if (option.id != selectedStoreId) onSelectStore(option.id)
-                    }
+        LaunchSourceActionPopup(
+            expanded = storeMenuOpen,
+            onDismissRequest = { storeMenuOpen = false },
+            offset = IntOffset(0, anchorHeightPx + gapPx),
+        ) {
+            LaunchSourceMenuHeader(stringResource(R.string.library_games_store_switch_label))
+            if (storeOptions.isEmpty()) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.Storefront,
+                    label = stringResource(R.string.library_games_store_none_owned),
+                    enabled = false,
+                ) {}
+            }
+            storeOptions.forEach { option ->
+                LaunchStoreMenuItem(
+                    label = option.label,
+                    selected = option.id == selectedStoreId,
+                ) {
+                    storeMenuOpen = false
+                    if (option.id != selectedStoreId) onSelectStore(option.id)
                 }
             }
         }

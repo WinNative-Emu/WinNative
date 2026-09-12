@@ -111,13 +111,30 @@ class LibraryGameLaunchStoreTagTest {
     }
 
     @Test
-    fun aGameOwnedOnOneStoreHasNoStoreMenu() {
+    fun aGameOwnedOnOneStoreStillHasTheStoreMenu() {
         setScreen("Steam", stores.take(1), "STEAM")
 
         composeRule.onNodeWithText("STEAM", useUnmergedTree = true).performClick()
         composeRule.waitForIdle()
+        composeRule.onNodeWithText("Change Store", useUnmergedTree = true).performClick()
+        composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Change Store", useUnmergedTree = true).assertDoesNotExist()
+        composeRule.onNodeWithText("Steam", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Epic Games", useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun aGameOwnedNowhereShowsTheEmptyStoreList() {
+        setScreen("Custom", emptyList(), "")
+
+        composeRule.onNodeWithText("CUSTOM", useUnmergedTree = true).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Change Store", useUnmergedTree = true).performClick()
+        composeRule.waitForIdle()
+
+        composeRule
+            .onNodeWithText("No store libraries match this game", useUnmergedTree = true)
+            .assertIsDisplayed()
     }
 
     private fun openStorePicker() {

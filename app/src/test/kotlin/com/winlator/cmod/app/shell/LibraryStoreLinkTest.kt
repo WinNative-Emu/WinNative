@@ -169,12 +169,18 @@ class LibraryStoreLinkTest {
             )
 
         assertTrue(result.hiddenLibraryIds.isEmpty())
-        assertTrue(result.optionsByLibraryId[10].orEmpty().isEmpty())
-        assertTrue(result.optionsByLibraryId[2000000004].orEmpty().isEmpty())
+        assertEquals(
+            listOf(InstallStore.STEAM),
+            result.optionsByLibraryId[10]?.map { it.store },
+        )
+        assertEquals(
+            listOf(InstallStore.EPIC),
+            result.optionsByLibraryId[2000000004]?.map { it.store },
+        )
     }
 
     @Test
-    fun aGameOwnedOnOneStoreOffersNoSwitcher() {
+    fun aGameOwnedOnOneStoreStillListsThatStore() {
         val path = dir("Game").absolutePath
 
         val result =
@@ -185,7 +191,97 @@ class LibraryStoreLinkTest {
                 itchInstalls = emptyList(),
             )
 
-        assertTrue(result.optionsByLibraryId[10].orEmpty().isEmpty())
+        assertEquals(
+            listOf(InstallStore.STEAM),
+            result.optionsByLibraryId[10]?.map { it.store },
+        )
+    }
+
+    @Test
+    fun anInstalledRowAlwaysOffersItsOwnStoreEvenWithoutAnOwnedEntry() {
+        val path = dir("Game").absolutePath
+
+        val result =
+            computeLibraryStoreLinks(
+                installedRows = listOf(gog("g1", 1500000001, "Game", path)),
+                customRows = emptyList(),
+                ownedEntries = emptyList(),
+                itchInstalls = emptyList(),
+            )
+
+        assertEquals(
+            listOf(InstallStore.GOG),
+            result.optionsByLibraryId[1500000001]?.map { it.store },
+        )
+    }
+
+    @Test
+    fun aCustomGameOffersEveryStoreThatOwnsTheTitle() {
+        val path = dir("CustomGame").absolutePath
+
+        val result =
+            computeLibraryStoreLinks(
+                installedRows = emptyList(),
+                customRows = listOf(custom(-3, "DOOM™", path)),
+                ownedEntries = listOf(steam(10, "DOOM"), gog("g9", 1500000009, "Doom")),
+                itchInstalls = emptyList(),
+            )
+
+        assertTrue(result.hiddenLibraryIds.isEmpty())
+        assertEquals(
+            listOf(InstallStore.STEAM, InstallStore.GOG),
+            result.optionsByLibraryId[-3]?.map { it.store },
+        )
+    }
+
+    @Test
+    fun aCustomGameOwnedNowhereOffersNoStores() {
+        val path = dir("CustomGame").absolutePath
+
+        val result =
+            computeLibraryStoreLinks(
+                installedRows = emptyList(),
+                customRows = listOf(custom(-3, "Homebrew Thing", path)),
+                ownedEntries = listOf(steam(10, "Something Else")),
+                itchInstalls = emptyList(),
+            )
+
+        assertTrue(result.optionsByLibraryId[-3].orEmpty().isEmpty())
+    }
+
+    @Test
+    fun aCustomGameSwitchedToAStoreIsReplacedByThatStoresRow() {
+        val path = dir("CustomGame").absolutePath
+        InstallOwnership.claim(path, InstallStore.STEAM)
+
+        val result =
+            computeLibraryStoreLinks(
+                installedRows = listOf(steam(10, "DOOM", path)),
+                customRows = listOf(custom(-3, "DOOM", path)),
+                ownedEntries = listOf(steam(10, "DOOM")),
+                itchInstalls = emptyList(),
+            )
+
+        assertEquals(setOf(-3), result.hiddenLibraryIds)
+        assertEquals(
+            listOf(InstallStore.STEAM),
+            result.optionsByLibraryId[10]?.map { it.store },
+        )
+    }
+
+    @Test
+    fun aCustomGameSharingAFolderWithAnUnclaimedStoreInstallIsKept() {
+        val path = dir("CustomGame").absolutePath
+
+        val result =
+            computeLibraryStoreLinks(
+                installedRows = listOf(steam(10, "DOOM", path)),
+                customRows = listOf(custom(-3, "DOOM", path)),
+                ownedEntries = listOf(steam(10, "DOOM")),
+                itchInstalls = emptyList(),
+            )
+
+        assertTrue(result.hiddenLibraryIds.isEmpty())
     }
 
     @Test
