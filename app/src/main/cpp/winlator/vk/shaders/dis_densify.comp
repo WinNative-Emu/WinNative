@@ -1,79 +1,65 @@
 #version 450
+#extension GL_EXT_samplerless_texture_functions : require
 
-precision highp float;
-precision highp int;
-
-#define DIS_DENSIFY_GUIDE_SIGMA 18.0
-
-#define DIS_DENSIFY_MATCH_FLOOR_RMS 1.5
-
-#define DIS_DENSIFY_TAPS 9
+// Densification (FS_DENSIFY): weighted average of the overlapping patch flows at every pixel.
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform sampler2D sparseFlowMap;
-layout(set = 0, binding = 1) uniform sampler2D lastImage;
-layout(set = 0, binding = 2) uniform sampler2D nextImage;
-layout(set = 0, binding = 5, rg32f) uniform image2D denseFlowMap;
+#define PSZ 8
+
+layout(set = 0, binding = 0) uniform texture2D u_S;
+layout(set = 0, binding = 1) uniform texture2D u_I0;
+layout(set = 0, binding = 2) uniform texture2D u_I1;
+layout(set = 0, binding = 3, rg32f) uniform image2D o_U;
+
+layout(push_constant) uniform PC {
+    vec2 u_size;
+    ivec2 u_sparse;
+    int u_stride;
+} pc;
+
+float sampleI1(vec2 pos) {
+    ivec2 sz = textureSize(u_I1, 0);
+    vec2 mx = vec2(sz - ivec2(1));
+    vec2 q = clamp(pos, vec2(0.0), mx);
+    vec2 b = floor(q);
+    vec2 f = q - b;
+    ivec2 i0 = ivec2(b);
+    float a = texelFetch(u_I1, i0, 0).r;
+    float bb = texelFetch(u_I1, min(i0 + ivec2(1, 0), sz - 1), 0).r;
+    float c = texelFetch(u_I1, min(i0 + ivec2(0, 1), sz - 1), 0).r;
+    float d = texelFetch(u_I1, min(i0 + ivec2(1, 1), sz - 1), 0).r;
+    return mix(mix(a, bb, f.x), mix(c, d, f.x), f.y);
+}
+
+int lo(int c) {
+    int a = c - PSZ + 1;
+    return a <= 0 ? 0 : (a + pc.u_stride - 1) / pc.u_stride;
+}
 
 void main() {
-    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 denseSize = imageSize(denseFlowMap);
-    if (pix.x >= denseSize.x || pix.y >= denseSize.y) return;
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz = imageSize(o_U);
+    if (p.x >= sz.x || p.y >= sz.y) return;
 
-    ivec2 sparseSize = textureSize(sparseFlowMap, 0);
-    if (sparseSize.x <= 0 || sparseSize.y <= 0) {
-        imageStore(denseFlowMap, pix, vec4(0.0, 0.0, 0.0, 1.0));
-        return;
-    }
+    float i0 = texelFetch(u_I0, p, 0).r;
 
-    vec2 invDenseSize = 1.0 / vec2(denseSize);
-    vec2 uv = (vec2(pix) + 0.5) * invDenseSize;
-    float lastLum = textureLod(lastImage, uv, 0.0).x;
+    int is1 = clamp(p.y / pc.u_stride, 0, pc.u_sparse.y - 1);
+    int js1 = clamp(p.x / pc.u_stride, 0, pc.u_sparse.x - 1);
+    int is0 = min(lo(p.y), is1);
+    int js0 = min(lo(p.x), js1);
 
-    vec4 cand[DIS_DENSIFY_TAPS];
-    int candCount = 0;
-    float bestSsd = -1.0;
-
-    ivec2 s0 = ivec2(pix.x / 3, pix.y / 3) - 2;
-    for (int dy = 0; dy <= 2; dy++) {
-        for (int dx = 0; dx <= 2; dx++) {
-            ivec2 s = s0 + ivec2(dx, dy);
-            if (s.x < 0 || s.y < 0 || s.x >= sparseSize.x || s.y >= sparseSize.y) continue;
-            vec4 f = texelFetch(sparseFlowMap, s, 0);
-            f.w = textureLod(lastImage, (vec2(s * 3) + 4.0) * invDenseSize, 0.0).x;
-            cand[candCount] = f;
-            candCount++;
-            if (f.z >= 0.0 && (bestSsd < 0.0 || f.z < bestSsd)) bestSsd = f.z;
+    vec2 sum = vec2(0.0);
+    float sumC = 0.0;
+    for (int is = is0; is <= is1; is++) {
+        for (int js = js0; js <= js1; js++) {
+            vec2 S = texelFetch(u_S, ivec2(js, is), 0).rg;
+            vec2 pos = clamp(vec2(p) + S, vec2(0.0), pc.u_size - 1.0 - 1e-3);
+            float diff = sampleI1(pos) - i0;
+            float coef = 1.0 / max(1.0, abs(diff));
+            sum += coef * S;
+            sumC += coef;
         }
     }
-
-    const float floorSsd =
-        64.0 * DIS_DENSIFY_MATCH_FLOOR_RMS * DIS_DENSIFY_MATCH_FLOOR_RMS;
-    const float invGuide2 = 1.0 / (DIS_DENSIFY_GUIDE_SIGMA * DIS_DENSIFY_GUIDE_SIGMA);
-    float refSsd = max(bestSsd, floorSsd);
-
-    vec2 acc = vec2(0.0);
-    float accW = 0.0;
-
-    for (int i = 0; i < candCount; i++) {
-        vec4 flow = cand[i];
-
-        float diff = textureLod(nextImage, uv + flow.xy, 0.0).x - lastLum;
-        float w = 1.0 / max(abs(diff), 1.0);
-
-        if (bestSsd >= 0.0 && flow.z >= 0.0) {
-            float r = flow.z / refSsd;
-            w /= 1.0 + r * r;
-        }
-
-        float dl = flow.w - lastLum;
-        w /= 1.0 + dl * dl * invGuide2;
-
-        acc += flow.xy * w;
-        accW += w;
-    }
-
-    vec2 denseFlow = accW > 0.0 ? acc / accW : vec2(0.0);
-    imageStore(denseFlowMap, pix, vec4(denseFlow, 0.0, 1.0));
+    imageStore(o_U, p, vec4(sumC > 0.0 ? sum / sumC : vec2(0.0), 0.0, 0.0));
 }
