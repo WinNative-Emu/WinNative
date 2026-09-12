@@ -93,8 +93,8 @@
                 "NONE"
             ],
             "scale": 1.15,
-            "x": 0.8625,
-            "y": 0.393817,
+            "x": 0.866667,
+            "y": 0.500672,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -109,8 +109,8 @@
                 "NONE"
             ],
             "scale": 1.15,
-            "x": 0.79,
-            "y": 0.510753,
+            "x": 0.798333,
+            "y": 0.574597,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -126,7 +126,7 @@
             ],
             "scale": 1.15,
             "x": 0.935,
-            "y": 0.510753,
+            "y": 0.574597,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -141,8 +141,8 @@
                 "NONE"
             ],
             "scale": 1.15,
-            "x": 0.8625,
-            "y": 0.627688,
+            "x": 0.866667,
+            "y": 0.648522,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
