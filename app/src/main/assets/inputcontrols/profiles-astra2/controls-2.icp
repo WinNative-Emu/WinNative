@@ -76,9 +76,9 @@
                 "KEY_S",
                 "KEY_A"
             ],
-            "scale": 1.05,
-            "x": 0.145833,
-            "y": 0.672043,
+            "scale": 1.0,
+            "x": 0.191667,
+            "y": 0.772849,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -93,8 +93,8 @@
                 "NONE"
             ],
             "scale": 1.0,
-            "x": 0.866667,
-            "y": 0.420027,
+            "x": 0.874583,
+            "y": 0.372984,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -109,8 +109,8 @@
                 "NONE"
             ],
             "scale": 1.0,
-            "x": 0.797917,
-            "y": 0.530914,
+            "x": 0.81,
+            "y": 0.477151,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -125,8 +125,8 @@
                 "NONE"
             ],
             "scale": 1.0,
-            "x": 0.935417,
-            "y": 0.530914,
+            "x": 0.939167,
+            "y": 0.477151,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -141,8 +141,8 @@
                 "NONE"
             ],
             "scale": 1.0,
-            "x": 0.866667,
-            "y": 0.641801,
+            "x": 0.874583,
+            "y": 0.581317,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -157,8 +157,8 @@
                 "NONE"
             ],
             "scale": 1.0,
-            "x": 0.902083,
-            "y": 0.840054,
+            "x": 0.066667,
+            "y": 0.880376,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -173,8 +173,8 @@
                 "NONE"
             ],
             "scale": 1.0,
-            "x": 0.275,
-            "y": 0.840054,
+            "x": 0.933333,
+            "y": 0.880376,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -189,8 +189,8 @@
                 "NONE"
             ],
             "scale": 0.95,
-            "x": 0.427083,
-            "y": 0.893817,
+            "x": 0.4375,
+            "y": 0.900538,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -205,8 +205,8 @@
                 "NONE"
             ],
             "scale": 0.95,
-            "x": 0.572917,
-            "y": 0.893817,
+            "x": 0.5625,
+            "y": 0.900538,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
