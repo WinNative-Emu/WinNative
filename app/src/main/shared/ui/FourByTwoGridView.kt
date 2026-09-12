@@ -46,8 +46,18 @@ fun defaultGridColumns(): Int =
     )
 
 @Composable
-fun defaultGridCardHeightFactor(): Float =
-    DeviceProfileSettings.libraryCardHeightFactor(LocalContext.current, isPortraitLayout())
+fun defaultGridImageAspect(): Float? = DeviceProfileSettings.libraryImageAspect(LocalContext.current)
+
+fun gridRowHeightFor(
+    columnWidth: Dp,
+    imageAspect: Float?,
+    titleStripDp: Float,
+): Dp =
+    if (imageAspect == null || imageAspect <= 0f) {
+        columnWidth * DeviceProfileSettings.STOCK_LIBRARY_CARD_FACTOR
+    } else {
+        columnWidth / imageAspect + titleStripDp.dp
+    }
 
 /**
  * Unified grid layout used by store tabs
@@ -67,7 +77,7 @@ fun <T> FourByTwoGridView(
     items: List<T>,
     modifier: Modifier = Modifier,
     columns: Int = defaultGridColumns(),
-    cardHeightFactor: Float = defaultGridCardHeightFactor(),
+    imageAspect: Float? = defaultGridImageAspect(),
     spacing: Dp = 12.dp,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     gridState: LazyGridState = rememberLazyGridState(),
@@ -100,7 +110,11 @@ fun <T> FourByTwoGridView(
                 val availableColumnWidth =
                     ((maxWidth - horizontalInset - spacing * (effectiveColumns - 1).toFloat()) / effectiveColumns.toFloat())
                         .coerceAtLeast(1.dp)
-                val targetRowHeight = minOf(availableRowHeight, availableColumnWidth * cardHeightFactor)
+                val targetRowHeight =
+                    minOf(
+                        availableRowHeight,
+                        gridRowHeightFor(availableColumnWidth, imageAspect, DeviceProfileSettings.libraryTitleStripDp()),
+                    )
                 val rowHeight by animateDpAsState(
                     targetValue = targetRowHeight,
                     animationSpec =

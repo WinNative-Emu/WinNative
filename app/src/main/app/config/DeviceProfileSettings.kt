@@ -39,6 +39,9 @@ enum class DeviceProfileFeature(
 object DeviceProfileSettings {
     const val KEY_PROFILE = "device_profile"
     const val KEY_DETECTED = "device_profile_detected"
+    const val STEAM_HEADER_ASPECT = 460f / 215f
+    const val LIBRARY_TITLE_STRIP_DP = 24f
+    const val STOCK_LIBRARY_CARD_FACTOR = 1.25f
 
     @Volatile
     private var cached: DeviceProfile? = null
@@ -99,10 +102,10 @@ object DeviceProfileSettings {
     fun preferWideArtwork(context: Context): Boolean = preferWideArtwork(current(context))
 
     @JvmStatic
-    fun libraryCardHeightFactor(
-        context: Context,
-        portrait: Boolean,
-    ): Float = libraryCardHeightFactor(current(context), portrait)
+    fun libraryImageAspect(context: Context): Float? = libraryImageAspect(current(context))
+
+    @JvmStatic
+    fun libraryTitleStripDp(): Float = LIBRARY_TITLE_STRIP_DP
 
     @JvmStatic
     fun libraryColumns(
@@ -116,13 +119,10 @@ object DeviceProfileSettings {
 
     internal fun preferWideArtwork(profile: DeviceProfile): Boolean = profile == DeviceProfile.ASTRA_2
 
-    internal fun libraryCardHeightFactor(
-        profile: DeviceProfile,
-        portrait: Boolean,
-    ): Float =
+    internal fun libraryImageAspect(profile: DeviceProfile): Float? =
         when (profile) {
-            DeviceProfile.ASTRA_2 -> 0.67f
-            DeviceProfile.DEFAULT -> 1.25f
+            DeviceProfile.ASTRA_2 -> STEAM_HEADER_ASPECT
+            DeviceProfile.DEFAULT -> null
         }
 
     internal fun libraryColumns(
@@ -131,7 +131,7 @@ object DeviceProfileSettings {
         portrait: Boolean,
     ): Int =
         when (profile) {
-            DeviceProfile.ASTRA_2 -> if (portrait) 2 else 3
+            DeviceProfile.ASTRA_2 -> if (portrait) 2 else 4
             DeviceProfile.DEFAULT -> stockLibraryColumns(widthDp)
         }
 

@@ -88,15 +88,14 @@ class DeviceProfileTest {
     }
 
     @Test
-    fun astra2LibraryCardsAreWideAndDefaultStaysPortrait() {
-        assertEquals(0.67f, DeviceProfileSettings.libraryCardHeightFactor(DeviceProfile.ASTRA_2, portrait = false))
-        assertEquals(0.67f, DeviceProfileSettings.libraryCardHeightFactor(DeviceProfile.ASTRA_2, portrait = true))
-        assertEquals(1.25f, DeviceProfileSettings.libraryCardHeightFactor(DeviceProfile.DEFAULT, portrait = false))
+    fun astra2LibraryImagesMatchTheSteamHeaderAndDefaultIsStock() {
+        assertEquals(460f / 215f, DeviceProfileSettings.libraryImageAspect(DeviceProfile.ASTRA_2)!!, 0.001f)
+        assertEquals(null, DeviceProfileSettings.libraryImageAspect(DeviceProfile.DEFAULT))
     }
 
     @Test
     fun astra2LibraryColumnsFollowOrientation() {
-        assertEquals(3, DeviceProfileSettings.libraryColumns(DeviceProfile.ASTRA_2, 1067, portrait = false))
+        assertEquals(4, DeviceProfileSettings.libraryColumns(DeviceProfile.ASTRA_2, 1067, portrait = false))
         assertEquals(2, DeviceProfileSettings.libraryColumns(DeviceProfile.ASTRA_2, 668, portrait = true))
     }
 
