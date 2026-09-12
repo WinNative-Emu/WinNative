@@ -628,6 +628,73 @@ public abstract class ProcessHelper {
     return affinityMask;
   }
 
+  private static final int EFFICIENCY_CORE_PERCENT = 70;
+  private static volatile int[] cpuCapacities = null;
+
+  private static int readCpuInt(String path) {
+    try (BufferedReader reader = new BufferedReader(new java.io.FileReader(path))) {
+      String line = reader.readLine();
+      return line != null ? Integer.parseInt(line.trim()) : 0;
+    } catch (Exception e) {
+      return 0;
+    }
+  }
+
+  private static int[] getCpuCapacities() {
+    int[] cached = cpuCapacities;
+    if (cached != null) return cached;
+    int count = Math.min(Runtime.getRuntime().availableProcessors(), Integer.SIZE);
+    int[] values = new int[count];
+    boolean any = false;
+    for (int i = 0; i < count; i++) {
+      int value = readCpuInt("/sys/devices/system/cpu/cpu" + i + "/cpufreq/cpuinfo_max_freq");
+      if (value <= 0) value = readCpuInt("/sys/devices/system/cpu/cpu" + i + "/cpu_capacity");
+      values[i] = value;
+      if (value > 0) any = true;
+    }
+    if (!any) values = new int[0];
+    cpuCapacities = values;
+    return values;
+  }
+
+  public static boolean[] getPerformanceCores() {
+    int count = Math.min(Runtime.getRuntime().availableProcessors(), Integer.SIZE);
+    boolean[] cores = new boolean[count];
+    Arrays.fill(cores, true);
+    int[] capacities = getCpuCapacities();
+    if (capacities.length != count) return cores;
+
+    int peak = 0;
+    for (int capacity : capacities) peak = Math.max(peak, capacity);
+    if (peak <= 0) return cores;
+
+    int kept = 0;
+    for (int i = 0; i < count; i++) {
+      cores[i] = capacities[i] <= 0 || capacities[i] * 100L >= (long) peak * EFFICIENCY_CORE_PERCENT;
+      if (cores[i]) kept++;
+    }
+    if (kept == 0) Arrays.fill(cores, true);
+    return cores;
+  }
+
+  public static String getPerformanceCPUList() {
+    boolean[] cores = getPerformanceCores();
+    StringBuilder cpuList = new StringBuilder();
+    for (int i = 0; i < cores.length; i++) {
+      if (!cores[i]) continue;
+      if (cpuList.length() > 0) cpuList.append(',');
+      cpuList.append(i);
+    }
+    return cpuList.toString();
+  }
+
+  public static int getEfficiencyCoreMask() {
+    boolean[] cores = getPerformanceCores();
+    int mask = 0;
+    for (int i = 0; i < cores.length; i++) if (!cores[i]) mask |= 1 << i;
+    return mask;
+  }
+
   public static ArrayList<String> listRunningWineProcesses() {
     File proc = new File("/proc");
     String[] allPids;

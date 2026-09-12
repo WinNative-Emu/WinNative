@@ -1,5 +1,6 @@
 package com.winlator.cmod.runtime.container;
 
+import com.winlator.cmod.runtime.system.ProcessHelper;
 import android.os.Environment;
 
 import com.winlator.cmod.runtime.compat.box64.Box64Preset;
@@ -654,6 +655,13 @@ public class Container {
                 }
             }
 
+            if (data.has("cpuListWoW64")) {
+                String savedWoW64 = data.getString("cpuListWoW64");
+                if (savedWoW64.equals(legacyUpperHalfCPUList()) && !savedWoW64.equals(getFallbackCPUListWoW64())) {
+                    data.remove("cpuListWoW64");
+                }
+            }
+
             if (data.has("graphicsDriver")) {
                 String graphicsDriver = data.getString("graphicsDriver");
                 if (graphicsDriver.equals("turnip-zink") || graphicsDriver.equals("turnip")) {
@@ -704,11 +712,16 @@ public class Container {
         return cpuList;
     }
 
-    public static String getFallbackCPUListWoW64() {
+    private static String legacyUpperHalfCPUList() {
         String cpuList = "";
         int numProcessors = Runtime.getRuntime().availableProcessors();
         for (int i = numProcessors / 2; i < numProcessors; i++) cpuList += (!cpuList.isEmpty() ? "," : "")+i;
         return cpuList;
+    }
+
+    public static String getFallbackCPUListWoW64() {
+        String cpuList = ProcessHelper.getPerformanceCPUList();
+        return !cpuList.isEmpty() ? cpuList : getFallbackCPUList();
     }
 
     // Check if a specific environment variable exists
