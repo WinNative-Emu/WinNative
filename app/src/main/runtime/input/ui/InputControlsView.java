@@ -960,23 +960,6 @@ public class InputControlsView extends View {
                 if (handedOff) continue;
 
                 if (activeElement.handleTouchMove(movePointerId, x, y)) pointerHandled = true;
-
-                if (swipeAllowed
-                    && activeElement.getType() == ControlElement.Type.BUTTON
-                    && activeElement.isSwipeTarget()
-                    && !activeElement.containsPoint(x, y)) {
-                  for (ControlElement element : profile.getElements()) {
-                    if (element == activeElement) continue;
-                    if (capturesFor(movePointerId).contains(element)) continue;
-                    if (element.isSwipeTarget() && element.handleTouchDown(movePointerId, x, y)) {
-                      addCapture(movePointerId, element);
-                      pointerHandled = true;
-                      capturesChanged = true;
-                      if (hapticsEnabled) triggerTouchHaptic();
-                      break;
-                    }
-                  }
-                }
               }
 
               if (!pointerHandled && snapshot.length == 0) {
