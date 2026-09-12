@@ -285,6 +285,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
       for (int i = 0; i < elementsJSONArray.length(); i++) {
         JSONObject elementJSONObject = elementsJSONArray.getJSONObject(i);
         ControlElement element = new ControlElement(inputControlsView);
+        try {
         element.setType(ControlElement.Type.valueOf(elementJSONObject.getString("type")));
         element.setShape(ControlElement.Shape.valueOf(elementJSONObject.getString("shape")));
         element.setToggleSwitch(elementJSONObject.getBoolean("toggleSwitch"));
@@ -316,6 +317,11 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
         if (!tempVirtualGamepad && hasGamepadBinding) tempVirtualGamepad = true;
         tempElements.add(element);
+        } catch (Exception e) {
+          android.util.Log.w(
+              "ControlsProfile",
+              "Skipping element " + i + " of profile " + id + ": " + e.getMessage());
+        }
       }
 
       synchronized (this) {

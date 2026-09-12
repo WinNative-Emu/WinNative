@@ -502,29 +502,34 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         val themeInfo = WineThemeManager.ThemeInfo(desktopThemeValue)
         state.desktopBackgroundColor.value = String.format("#%06X", themeInfo.backgroundColor and 0x00FFFFFF)
 
-        // Mouse warp override lives in .wine/user.reg, not on the container.
-        var mouseWarp = "disable"
-        val rootDir = c?.getRootDir()
-        if (rootDir != null) {
-            val userRegFile = File(rootDir, ".wine/user.reg")
-            if (userRegFile.exists()) {
-                try {
-                    WineRegistryEditor(userRegFile).use { reg ->
-                        mouseWarp = reg.getStringValue(
-                            "Software\\Wine\\DirectInput",
-                            "MouseWarpOverride",
-                            "disable"
-                        )
-                    }
-                } catch (e: Throwable) {
-                    Log.w(TAG, "Error reading MouseWarpOverride", e)
-                }
-            }
-        }
-        pendingMouseWarpValue = mouseWarp.lowercase()
     }
 
     private var pendingMouseWarpValue = "disable"
+
+    private fun readMouseWarpOverride(): String {
+        val rootDir = container?.getRootDir() ?: return "disable"
+        val userRegFile = File(rootDir, ".wine/user.reg")
+        if (!userRegFile.exists()) return "disable"
+        val value =
+            try {
+                WineRegistryEditor(userRegFile).use { reg ->
+                    reg.getStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", "disable")
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "Error reading MouseWarpOverride", e)
+                "disable"
+            }
+        return value.lowercase()
+    }
+
+    private fun applyMouseWarpOverride(value: String) {
+        pendingMouseWarpValue = value
+        state.selectedMouseWarpOverride.intValue = when (value) {
+            "enable" -> 1
+            "force" -> 2
+            else -> 0
+        }
+    }
 
     private fun loadResourceArrays() {
         val c = container
@@ -694,10 +699,12 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
 
     private fun loadContentsAsync() {
         Executors.newSingleThreadExecutor().execute {
+            val mouseWarp = readMouseWarpOverride()
             try {
                 contentsManager.syncContents()
                 activity.runOnUiThread {
                     try {
+                        applyMouseWarpOverride(mouseWarp)
                         populateContentsDependentData()
                     } finally {
                         state.isLoaded.value = true
@@ -1304,68 +1311,48 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         state.graphicsDriverVersion.value = config.get("version") ?: ""
     }
 
-    private fun loadGraphicsDriverVersions() {
-        val versions = mutableListOf<String>()
-        try {
-            val defaults = context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries)
-            for (ver in defaults) {
-                try {
-                    if (com.winlator.cmod.runtime.system.GPUInformation.isDriverSupported(ver, context))
-                        versions.add(ver)
-                } catch (e: Throwable) {
-                    Log.w(TAG, "Driver support check failed: $ver", e)
-                }
-            }
-            try {
-                val adreno = com.winlator.cmod.runtime.content.AdrenotoolsManager(context)
-                val installed = adreno.enumarateInstalledDrivers()
-                if (installed != null) versions.addAll(installed)
-            } catch (e: Throwable) {
-                Log.w(TAG, "Error loading Adrenotools drivers", e)
-            }
-        } catch (e: Throwable) {
-            Log.e(TAG, "Error loading wrapper versions", e)
-        }
-        if (versions.isEmpty()) versions.add("System")
-        state.gfxDriverVersionEntries.value = versions
+    private var extensionsRequest = 0
 
-        val configStr2 = container?.getGraphicsDriverConfig() ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG
-        val config = GraphicsDriverConfigUtils.parseGraphicsDriverConfig(configStr2)
-        val initialVersion = config.get("version") ?: ""
-        if (initialVersion.isNotEmpty()) {
-            val idx = versions.indexOfFirst { it.equals(initialVersion, ignoreCase = true) }
-            if (idx >= 0) state.gfxSelectedDriverVersion.intValue = idx
+    private fun savedGraphicsDriverConfig() =
+        GraphicsDriverConfigUtils.parseGraphicsDriverConfig(
+            container?.getGraphicsDriverConfig() ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG,
+        )
+
+    private fun loadGraphicsDriverVersions() {
+        val savedVersion = savedGraphicsDriverConfig().get("version") ?: ""
+        state.gfxDriverVersionEntries.value = listOf(if (savedVersion.isNotEmpty()) savedVersion else "System")
+        state.gfxSelectedDriverVersion.intValue = 0
+        scope.launch {
+            val versions = withContext(Dispatchers.IO) {
+                com.winlator.cmod.runtime.system.GraphicsDriverCatalog.supportedVersions(context)
+            }
+            state.gfxDriverVersionEntries.value = versions
+            val idx = versions.indexOfFirst { it.equals(savedVersion, ignoreCase = true) }
+            state.gfxSelectedDriverVersion.intValue = if (idx >= 0) idx else 0
+            loadExtensionsForVersion(state.gfxSelectedDriverVersion.intValue)
         }
-        loadExtensionsForVersion(state.gfxSelectedDriverVersion.intValue)
     }
 
     private fun loadExtensionsForVersion(versionIndex: Int) {
-        val versions = state.gfxDriverVersionEntries.value
-        val version = versions.getOrElse(versionIndex) { return }
-        try {
-            val extensions = com.winlator.cmod.runtime.system.GPUInformation.enumerateExtensions(version, context)
-            if (extensions != null) {
-                state.gfxAvailableExtensions.value = extensions.toList()
-                val configStr = container?.getGraphicsDriverConfig() ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG
-                val config = GraphicsDriverConfigUtils.parseGraphicsDriverConfig(configStr)
-                val savedVersion = config.get("version") ?: ""
-                if (version == savedVersion) {
-                    val bl = config.get("blacklistedExtensions") ?: ""
-                    state.gfxBlacklistedExtensions.value =
-                        if (bl.isNotEmpty()) bl.split(",").toSet() else emptySet()
-                } else {
-                    state.gfxBlacklistedExtensions.value = emptySet()
-                }
-            } else {
-                state.gfxAvailableExtensions.value = emptyList()
-                state.gfxBlacklistedExtensions.value = emptySet()
+        val version = state.gfxDriverVersionEntries.value.getOrElse(versionIndex) { return }
+        val request = ++extensionsRequest
+        scope.launch {
+            val extensions = withContext(Dispatchers.IO) {
+                com.winlator.cmod.runtime.system.GraphicsDriverCatalog.extensions(context, version)
             }
-        } catch (e: Throwable) {
-            Log.e(TAG, "Error loading extensions for $version", e)
-            state.gfxAvailableExtensions.value = emptyList()
-            state.gfxBlacklistedExtensions.value = emptySet()
+            if (request != extensionsRequest) return@launch
+            state.gfxAvailableExtensions.value = extensions
+            val config = savedGraphicsDriverConfig()
+            state.gfxBlacklistedExtensions.value =
+                if (version == (config.get("version") ?: "")) {
+                    val bl = config.get("blacklistedExtensions") ?: ""
+                    if (bl.isNotEmpty()) bl.split(",").toSet() else emptySet()
+                } else {
+                    emptySet()
+                }
         }
     }
+
 
     private fun initialDxWrapperConfig(): String =
         container?.getDXWrapperConfig()

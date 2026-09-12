@@ -35,7 +35,7 @@
             "toggleSwitch": false,
             "text": "",
             "iconId": 0,
-            "range": "FROM_1_TO_12"
+            "range": "FROM_0_TO_9"
         },
         {
             "type": "RADIAL_MENU",
