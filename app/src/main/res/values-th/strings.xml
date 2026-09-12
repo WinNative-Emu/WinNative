@@ -1176,6 +1176,8 @@
     <string name="settings_debug_no_logs_available">ไม่มีบันทึกดีบัก เปิดใช้ตัวเลือกการดีบักก่อนแล้วเปิดเกม</string>
     <string name="settings_debug_capture_failed">ไม่สามารถบันทึกได้: %1$s</string>
     <string name="settings_debug_log_to_file_desc">บันทึกข้อผิดพลาด คำเตือน และการขัดข้องของกระบวนการ WinNative ลงไฟล์</string>
+    <string name="settings_filtered_logs_to_file_title">บันทึกดีบั๊กที่กรองแล้ว</string>
+    <string name="settings_filtered_logs_to_file_desc">บันทึกบันทึกของแอปลงในไฟล์ โดยกรองตามการตั้งค่าในตัวกรองแท็ก</string>
     <string name="settings_debug_section_emulation">การจำลอง</string>
     <string name="settings_debug_section_subsystems">ระบบย่อย</string>
     <string name="settings_debug_section_tools">เครื่องมือ</string>
@@ -1673,6 +1675,53 @@
     <string name="file_manager_create_folder_failed">สร้างโฟลเดอร์ล้มเหลว</string>
 
     <string name="settings_content_refresh">รีเฟรช</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">การบันทึกล็อกแอป</string>
+    <string name="settings_debug_application_logging_subtitle">เปิดการบันทึกล็อกและแสดงตัวเลือกการบันทึกล็อก</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">บันทึกสาเหตุการปิด</string>
+    <string name="settings_debug_exit_reason_log_subtitle">บันทึกว่าทำไมโปรเซสของแอปจึงถูกปิดครั้งล่าสุด</string>
+    <string name="settings_debug_crash_log_title">บันทึกการแครช</string>
+    <string name="settings_debug_crash_log_subtitle">บันทึกร่องรอย tombstone ของการแครชแบบเนทีฟ</string>
+    <string name="settings_debug_event_watch_log_title">บันทึกเฝ้าดูเหตุการณ์</string>
+    <string name="settings_debug_event_watch_log_subtitle">เก็บบันทึกระบบเฉพาะช่วงเหตุการณ์หยุดชั่วคราว/ทำต่อ</string>
+    <string name="settings_debug_log_tag_filter_channel">ตัวกรองแท็กบันทึก</string>
+    <string name="settings_debug_tags_selected_suffix">แท็กที่เลือก</string>
+    <string name="settings_debug_manual_text_filter_hint">กรองบรรทัดบันทึกตามข้อความ…</string>
+    <string name="settings_debug_tag_filter_mode">โหมด</string>
+    <string name="settings_debug_tag_filter_all">ทั้งหมด</string>
+    <string name="settings_debug_tag_filter_include">รวม</string>
+    <string name="settings_debug_tag_filter_exclude">ยกเว้น</string>
+    <string name="settings_debug_add_custom_tag_hint">เพิ่มแท็กกำหนดเอง…</string>
+    <string name="settings_debug_no_tags_selected">ไม่ได้เลือกแท็ก</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">การป้องกันเบื้องหลัง</string>
+    <string name="settings_other_background_subtitle">คงเซสชันให้ทำงานเมื่ออยู่เบื้องหลัง</string>
+    <string name="settings_other_bg_pause_mode_title">โหมดหยุดชั่วคราวเบื้องหลัง</string>
+    <string name="settings_other_bg_pause_all_title">หยุดทุกโปรเซสชั่วคราว</string>
+    <string name="settings_other_bg_pause_all_subtitle">ระงับทุกโปรเซส — ประหยัดแบตเตอรี่สูงสุด (อาจทำให้เกิดปัญหา)</string>
+    <string name="settings_other_bg_pause_game_only_title">หยุดเฉพาะเกมชั่วคราว</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">ระงับเฉพาะโปรเซสของเกมที่ทำงานอยู่ ส่วนโปรเซสและบริการอื่นยังทำงานต่อ</string>
+    <string name="settings_other_bg_pause_all_except_game_title">หยุดทุกอย่างชั่วคราวยกเว้นเกม</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">ระงับทุกโปรเซสและบริการ แต่ยังให้โปรเซสของเกมทำงานต่อ</string>
+    <string name="settings_other_bg_auto_pause_title">หยุดเซสชันชั่วคราวอัตโนมัติ</string>
+    <string name="settings_other_bg_auto_pause_subtitle">หยุดเซสชันชั่วคราวโดยอัตโนมัติเมื่อแอปอยู่เบื้องหลังหรืออุปกรณ์ถูกล็อก</string>
+    <string name="settings_other_bg_wakelock_title">เปิดใช้ CPU wake lock เพื่อเสริมการป้องกันเบื้องหลัง</string>
+    <string name="settings_other_bg_wakelock_subtitle">ป้องกันไม่ให้ CPU เข้าสู่โหมดหลับลึกขณะเซสชันถูกหยุดชั่วคราว เพิ่มการใช้แบตเตอรี่ แต่อาจช่วยเพิ่มความต่อเนื่องและความเสถียรบนอุปกรณ์ที่จัดการแบตเตอรี่แบบเข้มงวด</string>
+    <string name="settings_other_bg_heartbeat_title">ความถี่ heartbeat (วินาที)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">อาจช่วยเพิ่มการป้องกันแอปเบื้องหลัง ค่า 0 จะปิดฟีเจอร์นี้ ยิ่งค่าต่ำ ยิ่งอาจใช้แบตเตอรี่มากขึ้น</string>
+    <string name="settings_other_bg_heartbeat_disabled">ปิด heartbeat แล้ว</string>
+    <string name="settings_other_bg_heartbeat_minimum">ค่าต่ำสุดคือ 5 วินาที — จะถูกปรับเมื่อบันทึก</string>
+    <string name="settings_other_bg_heartbeat_effective">ทำงานทุก %1$d วินาที</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">เซสชันคอนเทนเนอร์ถูกหยุดชั่วคราว</string>
+    <string name="fg_keep_alive_notification_content_container_running">มีเซสชันคอนเทนเนอร์กำลังทำงาน</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">กำลังดาวน์โหลดและติดตั้งส่วนประกอบ</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">แชท Steam กำลังทำงานเบื้องหลัง</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: บริการกำลังทำงาน</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: บริการกำลังทำงาน</string>
+    <string name="general_and">และ</string>
     <string name="settings_retro_title">เรโทร</string>
     <string name="retro_save_transfer_title">ถ่ายโอนเซฟ</string>
     <string name="retro_save_transfer_message">นำเข้าไฟล์เซฟในเครื่องสำหรับเกมนี้ หรือส่งออกเซฟปัจจุบันของเกม</string>

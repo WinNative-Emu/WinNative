@@ -1176,6 +1176,8 @@ E.g. <b>META</b> için <i>META tuşu</i>, \n
     <string name="settings_debug_no_logs_available">Kullanılabilir hata ayıklama günlüğü yok. Önce hata ayıklama seçeneklerini etkinleştirin ve bir oyun başlatın.</string>
     <string name="settings_debug_capture_failed">Günlükler yakalanamadı: %1$s</string>
     <string name="settings_debug_log_to_file_desc">WinNative işlem hatalarını, uyarılarını ve çökmelerini dosyaya kaydet</string>
+    <string name="settings_filtered_logs_to_file_title">Filtrelenmiş Hata Ayıklama Günlüğü</string>
+    <string name="settings_filtered_logs_to_file_desc">Uygulamanın günlüklerini, etiket filtresinde ayarlananlara göre filtreleyerek bir dosyaya kaydet.</string>
     <string name="settings_debug_section_emulation">Öykünme</string>
     <string name="settings_debug_section_subsystems">Alt Sistemler</string>
     <string name="settings_debug_section_tools">Araçlar</string>
@@ -1673,6 +1675,53 @@ Yüklü konum:
     <string name="file_manager_create_folder_failed">Klasör oluşturma başarısız oldu</string>
 
     <string name="settings_content_refresh">Yenile</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Uygulama günlüğü</string>
+    <string name="settings_debug_application_logging_subtitle">Günlük kaydını açar ve günlük seçeneklerini gösterir</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Çıkış nedeni günlüğü</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Uygulama işleminin son kapanma nedenini kaydeder</string>
+    <string name="settings_debug_crash_log_title">Çökme günlüğü</string>
+    <string name="settings_debug_crash_log_subtitle">Yerel çökme (tombstone) izlerini kaydet</string>
+    <string name="settings_debug_event_watch_log_title">Olay izleme günlüğü</string>
+    <string name="settings_debug_event_watch_log_subtitle">Duraklatma/devam etme olayları çevresinde odaklanmış bir sistem günlüğü yakalar</string>
+    <string name="settings_debug_log_tag_filter_channel">Günlük etiketi filtresi</string>
+    <string name="settings_debug_tags_selected_suffix">etiket seçildi</string>
+    <string name="settings_debug_manual_text_filter_hint">Günlük satırlarını metne göre filtrele…</string>
+    <string name="settings_debug_tag_filter_mode">Mod</string>
+    <string name="settings_debug_tag_filter_all">Tümü</string>
+    <string name="settings_debug_tag_filter_include">Dahil et</string>
+    <string name="settings_debug_tag_filter_exclude">Hariç tut</string>
+    <string name="settings_debug_add_custom_tag_hint">Özel etiket ekle…</string>
+    <string name="settings_debug_no_tags_selected">Etiket seçilmedi</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Arka Plan Koruması</string>
+    <string name="settings_other_background_subtitle">Arka plandayken oturumu canlı tut</string>
+    <string name="settings_other_bg_pause_mode_title">Arka plan duraklatma modu</string>
+    <string name="settings_other_bg_pause_all_title">Tüm işlemleri duraklat</string>
+    <string name="settings_other_bg_pause_all_subtitle">Tüm işlemleri askıya alır — maksimum pil tasarrufu (sorunlara yol açabilir).</string>
+    <string name="settings_other_bg_pause_game_only_title">Yalnızca oyunu duraklat</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Yalnızca etkin oyun işlemini askıya alır; diğer işlemler ve hizmetler çalışmaya devam eder.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Oyun dışında her şeyi duraklat</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Tüm işlemleri ve hizmetleri askıya alır, ancak oyun işlemini etkin tutar.</string>
+    <string name="settings_other_bg_auto_pause_title">Oturumu otomatik duraklat</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Uygulama arka plana geçtiğinde veya cihaz kilitlendiğinde oturumu otomatik olarak duraklatır.</string>
+    <string name="settings_other_bg_wakelock_title">Arka plan korumasını güçlendirmek için CPU uyanık kilidini etkinleştir</string>
+    <string name="settings_other_bg_wakelock_subtitle">Oturum duraklatılmışken CPU\'nun derin uykuya geçmesini önler. Pil kullanımını artırır, ancak agresif pil yönetimi olan cihazlarda kalıcılığı ve kararlılığı iyileştirebilir.</string>
+    <string name="settings_other_bg_heartbeat_title">Kalp atışı sıklığı (saniye)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Arka planda uygulama korumasını iyileştirebilir. 0 değeri özelliği devre dışı bırakır. Değer ne kadar düşükse olası pil tüketimi o kadar yüksek olur.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Kalp atışı devre dışı</string>
+    <string name="settings_other_bg_heartbeat_minimum">En düşük değer 5 sn — kaydederken düzeltilecek</string>
+    <string name="settings_other_bg_heartbeat_effective">Her %1$d saniyede bir çalışır</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Konteyner oturumu duraklatıldı</string>
+    <string name="fg_keep_alive_notification_content_container_running">Çalışan bir konteyner oturumu var</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Bileşenler indiriliyor ve kuruluyor</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Steam sohbeti arka planda çalışıyor</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: hizmet etkin</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: hizmetler etkin</string>
+    <string name="general_and">ve</string>
     <string name="settings_retro_title">Retro</string>
     <string name="retro_save_transfer_title">Kaydı aktar</string>
     <string name="retro_save_transfer_message">Bu oyuna yerel bir kayıt içe aktarın veya oyunun mevcut kaydını dışa aktarın.</string>

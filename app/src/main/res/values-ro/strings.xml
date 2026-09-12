@@ -887,6 +887,8 @@ De ex. <b>META</b> pentru <i>tasta META</i>, \n
     <string name="settings_debug_no_logs_available">Nu sunt disponibile jurnale de depanare. Activează mai întâi opțiunile de depanare și lansează un joc.</string>
     <string name="settings_debug_capture_failed">Capturarea jurnalelor a eșuat: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Înregistrează erorile, avertismentele și blocările procesului WinNative în fișier</string>
+    <string name="settings_filtered_logs_to_file_title">Jurnal de depanare filtrat</string>
+    <string name="settings_filtered_logs_to_file_desc">Salvaţi jurnalele aplicaţiei într-un fişier, filtrate conform configurării din filtrul de etichete.</string>
     <string name="settings_debug_section_emulation">Emulare</string>
     <string name="settings_debug_section_subsystems">Subsisteme</string>
     <string name="settings_debug_section_tools">Instrumente</string>
@@ -1673,6 +1675,53 @@ Cale instalata:
     <string name="steam_chat_setting_stay_running">Rulează în fundal</string>
     <string name="steam_chat_setting_stay_running_desc">Menține chatul activ după ce ieși din WinNative</string>
     <string name="settings_content_refresh">Reîmprospătează</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Jurnalizare aplicatie</string>
+    <string name="settings_debug_application_logging_subtitle">Activeaza jurnalizarea si afiseaza optiunile de jurnalizare</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Jurnal motiv de închidere</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Înregistrează de ce s-a încheiat ultima dată procesul aplicației</string>
+    <string name="settings_debug_crash_log_title">Jurnal de blocări</string>
+    <string name="settings_debug_crash_log_subtitle">Salvează urmele native ale blocărilor (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Jurnal de monitorizare a evenimentelor</string>
+    <string name="settings_debug_event_watch_log_subtitle">Capturează un jurnal de sistem concentrat pe evenimentele de pauză/reluare</string>
+    <string name="settings_debug_log_tag_filter_channel">Filtru de etichete de jurnal</string>
+    <string name="settings_debug_tags_selected_suffix">etichete selectate</string>
+    <string name="settings_debug_manual_text_filter_hint">Filtrează liniile de jurnal după text…</string>
+    <string name="settings_debug_tag_filter_mode">Mod</string>
+    <string name="settings_debug_tag_filter_all">Toate</string>
+    <string name="settings_debug_tag_filter_include">Include</string>
+    <string name="settings_debug_tag_filter_exclude">Exclude</string>
+    <string name="settings_debug_add_custom_tag_hint">Adaugă etichetă personalizată…</string>
+    <string name="settings_debug_no_tags_selected">Nicio etichetă selectată</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Protecție în fundal</string>
+    <string name="settings_other_background_subtitle">Menține sesiunea activă în fundal</string>
+    <string name="settings_other_bg_pause_mode_title">Mod de pauză în fundal</string>
+    <string name="settings_other_bg_pause_all_title">Pune pauză tuturor proceselor</string>
+    <string name="settings_other_bg_pause_all_subtitle">Suspendă toate procesele — economie maximă de baterie (poate cauza probleme).</string>
+    <string name="settings_other_bg_pause_game_only_title">Pune pauză doar jocului</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Suspendă doar procesul jocului activ; celelalte procese și servicii continuă să ruleze.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Pune pauză la tot, cu excepția jocului</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Suspendă toate procesele și serviciile, dar menține procesul jocului activ.</string>
+    <string name="settings_other_bg_auto_pause_title">Pauză automată a sesiunii</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Pune automat sesiunea pe pauză când aplicația trece în fundal sau dispozitivul este blocat.</string>
+    <string name="settings_other_bg_wakelock_title">Activează un wake lock CPU pentru a întări protecția în fundal</string>
+    <string name="settings_other_bg_wakelock_subtitle">Împiedică CPU-ul să intre în somn profund cât timp sesiunea este pe pauză. Crește consumul de baterie, dar poate îmbunătăți persistența și stabilitatea pe dispozitivele cu gestionare agresivă a bateriei.</string>
+    <string name="settings_other_bg_heartbeat_title">Frecvența heartbeat (secunde)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Poate îmbunătăți protecția aplicației în fundal. Valoarea 0 dezactivează funcția. Cu cât valoarea este mai mică, cu atât consumul potențial de baterie este mai mare.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat dezactivat</string>
+    <string name="settings_other_bg_heartbeat_minimum">Minimul este 5 s — va fi corectat la salvare</string>
+    <string name="settings_other_bg_heartbeat_effective">Rulează la fiecare %1$d s</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Sesiunea containerului este pe pauză</string>
+    <string name="fg_keep_alive_notification_content_container_running">O sesiune de container rulează</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Se descarcă și se instalează componente</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Chatul Steam rulează în fundal</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: serviciu activ</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: servicii active</string>
+    <string name="general_and">și</string>
     <string name="settings_retro_title">Retro</string>
     <string name="retro_save_transfer_title">Transferă salvarea</string>
     <string name="retro_save_transfer_message">Importă o salvare locală în acest joc sau exportă salvarea curentă.</string>

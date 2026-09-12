@@ -1,10 +1,13 @@
 package com.winlator.cmod.feature.stores.steam.events
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.reflect.KClass
 
 sealed interface Event<T>
 
 class EventDispatcher {
-    val listeners = mutableMapOf<KClass<out Event<*>>, MutableList<Pair<String, EventListener<Event<*>, *>>>>()
+    // Use ConcurrentHashMap and CopyOnWriteArrayList for thread safety across Main and IO threads
+    val listeners = ConcurrentHashMap<KClass<out Event<*>>, MutableList<Pair<String, EventListener<Event<*>, *>>>>()
 
     open class EventListener<E : Event<T>, T>(
         val listener: (E) -> T,
@@ -36,7 +39,9 @@ class EventDispatcher {
                     listener(event as E)
                 }, once),
             )
-        listeners.getOrPut(eventClass) { mutableListOf() }.add(typedListener as Pair<String, EventListener<Event<*>, *>>)
+        // computeIfAbsent is atomic in ConcurrentHashMap
+        listeners.computeIfAbsent(eventClass) { CopyOnWriteArrayList() }
+            .add(typedListener as Pair<String, EventListener<Event<*>, *>>)
     }
 
     inline fun <reified E : Event<T>, T> off(noinline listener: (E) -> T) {
@@ -47,11 +52,10 @@ class EventDispatcher {
     }
 
     inline fun <reified E : Event<*>> clearAllListenersOf() {
-        val currentKeys = listeners.keys.toList()
-        for (key in currentKeys) {
-            if (key is E) {
-                listeners.remove(key)
-            }
+        val targetClass = E::class
+        // Correctly identify keys that are subclasses of the target event class
+        listeners.keys.removeIf { key ->
+            targetClass.java.isAssignableFrom(key.java)
         }
     }
 
@@ -70,7 +74,8 @@ class EventDispatcher {
                 null
             }, false)
         val typedListener = Pair(listener.toString(), eventListener as EventListener<Event<*>, *>)
-        listeners.getOrPut(eventClass) { mutableListOf() }.add(typedListener)
+        listeners.computeIfAbsent(eventClass) { CopyOnWriteArrayList() }
+            .add(typedListener)
     }
 
     fun offJava(
@@ -89,9 +94,9 @@ class EventDispatcher {
     ): T? {
         val eventClass = E::class
         return listeners[eventClass]?.let { eventListeners ->
+            // CopyOnWriteArrayList iterator is safe for concurrent modification
             val results =
                 eventListeners
-                    .toList()
                     .map { eventListener ->
                         val result = eventListener.second.listener(event)
                         if (result == null && Unit is T) Unit as T else result as T
@@ -107,7 +112,6 @@ class EventDispatcher {
         return listeners[eventClass]?.let { eventListeners ->
             val results =
                 eventListeners
-                    .toList()
                     .map { eventListener ->
                         eventListener.second.listener(event)
                     }.toTypedArray()

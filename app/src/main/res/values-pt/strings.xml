@@ -1176,6 +1176,8 @@ Por ex. <b>META</b> para <i>tecla META</i>, \n
     <string name="settings_debug_no_logs_available">Não há registos de depuração disponíveis. Ative primeiro as opções de depuração e inicie um jogo.</string>
     <string name="settings_debug_capture_failed">Falha ao capturar os registos: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Registar erros, avisos e falhas do processo do WinNative num ficheiro</string>
+    <string name="settings_filtered_logs_to_file_title">Log de Depuração Filtrado</string>
+    <string name="settings_filtered_logs_to_file_desc">Salvar os logs do aplicativo em um arquivo, filtrados de acordo com o que está configurado no filtro de tags.</string>
     <string name="settings_debug_section_emulation">Emulação</string>
     <string name="settings_debug_section_subsystems">Subsistemas</string>
     <string name="settings_debug_section_tools">Ferramentas</string>
@@ -1673,6 +1675,53 @@ Caminho instalado:
     <string name="file_manager_create_folder_failed">A criação da pasta falhou</string>
 
     <string name="settings_content_refresh">Atualizar</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Registo da aplicação</string>
+    <string name="settings_debug_application_logging_subtitle">Ativar o registo e mostrar as opções de registo</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Registo do motivo de encerramento</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Regista porque é que o processo da aplicação terminou da última vez</string>
+    <string name="settings_debug_crash_log_title">Registo de falhas</string>
+    <string name="settings_debug_crash_log_subtitle">Guardar registos de falhas nativas (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Registo de observação de eventos</string>
+    <string name="settings_debug_event_watch_log_subtitle">Captura um registo do sistema centrado nos eventos de pausa/retoma</string>
+    <string name="settings_debug_log_tag_filter_channel">Filtro de etiquetas de registo</string>
+    <string name="settings_debug_tags_selected_suffix">etiquetas selecionadas</string>
+    <string name="settings_debug_manual_text_filter_hint">Filtrar linhas do registo por texto…</string>
+    <string name="settings_debug_tag_filter_mode">Modo</string>
+    <string name="settings_debug_tag_filter_all">Todas</string>
+    <string name="settings_debug_tag_filter_include">Incluir</string>
+    <string name="settings_debug_tag_filter_exclude">Excluir</string>
+    <string name="settings_debug_add_custom_tag_hint">Adicionar etiqueta personalizada…</string>
+    <string name="settings_debug_no_tags_selected">Nenhuma etiqueta selecionada</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Proteção em segundo plano</string>
+    <string name="settings_other_background_subtitle">Manter a sessão ativa em segundo plano</string>
+    <string name="settings_other_bg_pause_mode_title">Modo de pausa em segundo plano</string>
+    <string name="settings_other_bg_pause_all_title">Pausar todos os processos</string>
+    <string name="settings_other_bg_pause_all_subtitle">Suspende todos os processos — máxima poupança de bateria (pode causar problemas).</string>
+    <string name="settings_other_bg_pause_game_only_title">Pausar apenas o jogo</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Suspende apenas o processo do jogo ativo; os restantes processos e serviços continuam em execução.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Pausar tudo exceto o jogo</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Suspende todos os processos e serviços, mas mantém o processo do jogo ativo.</string>
+    <string name="settings_other_bg_auto_pause_title">Pausar sessão automaticamente</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Pausa automaticamente a sessão quando a aplicação passa para segundo plano ou o dispositivo é bloqueado.</string>
+    <string name="settings_other_bg_wakelock_title">Ativar um wake lock da CPU para reforçar a proteção em segundo plano</string>
+    <string name="settings_other_bg_wakelock_subtitle">Impede que a CPU entre em suspensão profunda enquanto a sessão está em pausa. Aumenta o consumo de bateria, mas pode melhorar a persistência e a estabilidade em dispositivos com gestão agressiva de bateria.</string>
+    <string name="settings_other_bg_heartbeat_title">Frequência do heartbeat (segundos)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Pode melhorar a proteção da aplicação em segundo plano. Um valor de 0 desativa a funcionalidade. Quanto menor o valor, maior o potencial consumo de bateria.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat desativado</string>
+    <string name="settings_other_bg_heartbeat_minimum">O mínimo é 5 s — será ajustado ao guardar</string>
+    <string name="settings_other_bg_heartbeat_effective">Executa a cada %1$d s</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">A sessão do contentor está em pausa</string>
+    <string name="fg_keep_alive_notification_content_container_running">Há uma sessão de contentor em execução</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">A transferir e instalar componentes</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Chat do Steam em execução em segundo plano</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: serviço ativo</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: serviços ativos</string>
+    <string name="general_and">e</string>
     <string name="settings_retro_title">Retro</string>
     <string name="retro_save_transfer_title">Transferir save</string>
     <string name="retro_save_transfer_message">Importe um save local para este jogo ou exporte o save atual.</string>

@@ -1287,20 +1287,24 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <!-- Settings > Debug -->
     <string name="settings_debug_wine_debug_channel">Wine Debug Channel</string>
     <string name="settings_debug_title">Debug</string>
-    <string name="settings_retro_title">Retro</string>
-    <string name="retro_save_transfer_title">Transfer Save</string>
-    <string name="retro_save_transfer_message">Import a local save file to this game, or export this game\'s current save.</string>
-    <string name="retro_save_transfer_import">Import Save</string>
-    <string name="retro_save_transfer_export">Export Save</string>
-    <string name="retro_save_transfer_import_ok">Save imported</string>
-    <string name="retro_save_transfer_import_failed">Could not import save</string>
-    <string name="retro_save_transfer_export_ok">Save exported</string>
-    <string name="retro_save_transfer_export_failed">Could not export save</string>
-    <string name="retro_save_transfer_none">No save exists yet for this game</string>
-    <string name="retro_cheats_title">Cheats</string>
-    <string name="retro_cheats_hardcore_blocked">Cheats are disabled in Hardcore mode</string>
-    <string name="retro_ps2_coming_soon">PlayStation 2 support is coming soon</string>
-    <string name="retro_rom_missing">Game file not found</string>
+    <string name="settings_debug_application_logging_title">Application logging</string>
+    <string name="settings_debug_application_logging_subtitle">Turn on logging and show the logging options</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Exit reason log</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Record why the app process last terminated</string>
+    <string name="settings_debug_crash_log_title">Crash log</string>
+    <string name="settings_debug_crash_log_subtitle">Save native crash tombstone traces</string>
+    <string name="settings_debug_event_watch_log_title">Event watch log</string>
+    <string name="settings_debug_event_watch_log_subtitle">Capture a focused system log around pause/resume events</string>
+    <string name="settings_debug_log_tag_filter_channel">Log tag filter</string>
+    <string name="settings_debug_tags_selected_suffix">tags selected</string>
+    <string name="settings_debug_manual_text_filter_hint">Filter log lines by text…</string>
+    <string name="settings_debug_tag_filter_mode">Mode</string>
+    <string name="settings_debug_tag_filter_all">All</string>
+    <string name="settings_debug_tag_filter_include">Include</string>
+    <string name="settings_debug_tag_filter_exclude">Exclude</string>
+    <string name="settings_debug_add_custom_tag_hint">Add custom tag…</string>
+    <string name="settings_debug_no_tags_selected">No tags selected</string>
     <string name="settings_debug_wine_logs_title">Enable Wine Debug Logs</string>
     <string name="settings_debug_wine_logs_subtitle">Write Wine debug output to file</string>
     <string name="settings_debug_box_logs_title">Enable Box86/64 Logs</string>
@@ -1338,6 +1342,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_debug_no_logs_available">No debug logs available. Enable debugging options first and launch a game.</string>
     <string name="settings_debug_capture_failed">Failed to capture logs: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Log WinNative process errors, warnings and crashes to file</string>
+    <string name="settings_filtered_logs_to_file_title">Filtered Debug Log</string>
+    <string name="settings_filtered_logs_to_file_desc">Save the app’s logs to a file, filtered according to what is configured in the tag filter.</string>
     <string name="settings_debug_section_emulation">Emulation</string>
     <string name="settings_debug_section_subsystems">Subsystems</string>
     <string name="settings_debug_section_tools">Tools</string>
@@ -1345,6 +1351,20 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_debug_no_channels_available">No channels available</string>
     <string name="settings_debug_channel_toggle_hint">Tap to toggle channels. Enabled channels are included in Wine debug output.</string>
     <string name="settings_debug_remove_channel_desc">Remove %1$s</string>
+    <string name="settings_retro_title">Retro</string>
+    <string name="retro_save_transfer_title">Transfer Save</string>
+    <string name="retro_save_transfer_message">Import a local save file to this game, or export this game\'s current save.</string>
+    <string name="retro_save_transfer_import">Import Save</string>
+    <string name="retro_save_transfer_export">Export Save</string>
+    <string name="retro_save_transfer_import_ok">Save imported</string>
+    <string name="retro_save_transfer_import_failed">Could not import save</string>
+    <string name="retro_save_transfer_export_ok">Save exported</string>
+    <string name="retro_save_transfer_export_failed">Could not export save</string>
+    <string name="retro_save_transfer_none">No save exists yet for this game</string>
+    <string name="retro_cheats_title">Cheats</string>
+    <string name="retro_cheats_hardcore_blocked">Cheats are disabled in Hardcore mode</string>
+    <string name="retro_ps2_coming_soon">PlayStation 2 support is coming soon</string>
+    <string name="retro_rom_missing">Game file not found</string>
 
     <string name="settings_other_language_title">Language</string>
     <string name="settings_other_language_summary">Choose the display language</string>
@@ -1359,6 +1379,25 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_other_update_check_cooldown">Please wait %1$ds before checking again</string>
     <string name="settings_other_persistable_permission_failed">Unable to take persistable permissions: %1$s</string>
     <string name="settings_other_keep_app_open">Please keep the app open while this finishes.</string>
+
+    <string name="settings_other_section_background">Background Protection</string>
+    <string name="settings_other_background_subtitle">Keep session alive while in background</string>
+    <string name="settings_other_bg_pause_mode_title">Background pause mode</string>
+    <string name="settings_other_bg_pause_all_title">Pause all processes</string>
+    <string name="settings_other_bg_pause_all_subtitle">Suspends all processes — Maximum battery saving (May cause issues).</string>
+    <string name="settings_other_bg_pause_game_only_title">Pause only the game</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Suspends only the active game process; other processes and services stay running.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Pause all except the game</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Suspends all processes and services but keeps the game process active.</string>
+    <string name="settings_other_bg_auto_pause_title">Auto pause session</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Auto pause the session when the app is in the background or the device is locked.</string>
+    <string name="settings_other_bg_wakelock_title">Enable a CPU wake lock to enhance background protection</string>
+    <string name="settings_other_bg_wakelock_subtitle">Prevents the CPU from deep-sleeping while the session is paused. Increases battery usage but may improve persistence and stability on aggressive OEMs.</string>
+    <string name="settings_other_bg_heartbeat_title">Heartbeat frequency (seconds)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">It can improve background app protection. A value of 0 disables the feature. The lower the value, the higher the potential battery consumption.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat disabled</string>
+    <string name="settings_other_bg_heartbeat_minimum">Minimum is 5 s — will be clamped on save</string>
+    <string name="settings_other_bg_heartbeat_effective">Runs every %1$d s</string>
 
     <!-- Settings > Content Packages -->
     <string name="settings_content_install">Install Content</string>
@@ -1840,6 +1879,14 @@ Installed path:
     <string name="file_manager_rename_failed">Rename failed</string>
     <string name="file_manager_create_folder_failed">Create folder failed</string>
     <string name="settings_content_refresh">Refresh</string>
+    <!-- Notifications -->
+    <string name="fg_keep_alive_notification_content_container_paused">Container session is paused</string>
+    <string name="fg_keep_alive_notification_content_container_running">There is a container session running</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Downloading and installing components</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Steam chat running in background</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">": service is active"</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">": services are active"</string>
+    <string name="general_and">and</string>
 
     <!-- ===== Retro console menus (auto-externalized) ===== -->
     <!-- PS2 in-game overlay menu -->

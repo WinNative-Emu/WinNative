@@ -959,6 +959,8 @@
     <string name="settings_debug_no_logs_available">Журналы отладки отсутствуют. Сначала включите параметры отладки и запустите игру.</string>
     <string name="settings_debug_capture_failed">Не удалось записать журналы: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Записывать ошибки процесса WinNative, предупреждения и сбои в файл.</string>
+    <string name="settings_filtered_logs_to_file_title">Отфильтрованный журнал отладки</string>
+    <string name="settings_filtered_logs_to_file_desc">Сохранить журналы приложения в файл, отфильтрованные согласно настройкам фильтра тегов.</string>
     <string name="settings_debug_section_emulation">Эмуляция</string>
     <string name="settings_debug_section_subsystems">Подсистемы</string>
     <string name="settings_debug_section_tools">Инструменты</string>
@@ -1580,6 +1582,53 @@
     <string name="steam_chat_setting_stay_running">Работать в фоне</string>
     <string name="steam_chat_setting_stay_running_desc">Оставлять чат активным после выхода из WinNative</string>
     <string name="settings_content_refresh">Обновить</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Журналирование приложения</string>
+    <string name="settings_debug_application_logging_subtitle">Включить журналирование и показать параметры журналирования</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Журнал причин завершения</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Записывать причину последнего завершения процесса приложения</string>
+    <string name="settings_debug_crash_log_title">Журнал сбоев</string>
+    <string name="settings_debug_crash_log_subtitle">Сохранять трассировки нативных сбоев (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Журнал наблюдения за событиями</string>
+    <string name="settings_debug_event_watch_log_subtitle">Записывать системный журнал вокруг событий паузы/возобновления</string>
+    <string name="settings_debug_log_tag_filter_channel">Фильтр тегов журнала</string>
+    <string name="settings_debug_tags_selected_suffix">тегов выбрано</string>
+    <string name="settings_debug_manual_text_filter_hint">Фильтровать строки журнала по тексту…</string>
+    <string name="settings_debug_tag_filter_mode">Режим</string>
+    <string name="settings_debug_tag_filter_all">Все</string>
+    <string name="settings_debug_tag_filter_include">Включать</string>
+    <string name="settings_debug_tag_filter_exclude">Исключать</string>
+    <string name="settings_debug_add_custom_tag_hint">Добавить свой тег…</string>
+    <string name="settings_debug_no_tags_selected">Теги не выбраны</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Защита в фоновом режиме</string>
+    <string name="settings_other_background_subtitle">Сохранять сессию активной в фоновом режиме</string>
+    <string name="settings_other_bg_pause_mode_title">Режим паузы в фоне</string>
+    <string name="settings_other_bg_pause_all_title">Приостанавливать все процессы</string>
+    <string name="settings_other_bg_pause_all_subtitle">Приостанавливает все процессы — максимальная экономия батареи (возможны проблемы).</string>
+    <string name="settings_other_bg_pause_game_only_title">Приостанавливать только игру</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Приостанавливает только процесс активной игры; остальные процессы и службы продолжают работать.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Приостанавливать всё, кроме игры</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Приостанавливает все процессы и службы, но оставляет процесс игры активным.</string>
+    <string name="settings_other_bg_auto_pause_title">Автопауза сессии</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Автоматически приостанавливать сессию, когда приложение уходит в фон или устройство заблокировано.</string>
+    <string name="settings_other_bg_wakelock_title">Включить wake lock ЦП для усиления защиты в фоне</string>
+    <string name="settings_other_bg_wakelock_subtitle">Не даёт ЦП уходить в глубокий сон, пока сессия на паузе. Увеличивает расход батареи, но может улучшить персистентность и стабильность на устройствах с агрессивной оптимизацией батареи.</string>
+    <string name="settings_other_bg_heartbeat_title">Частота heartbeat (секунды)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Может улучшить защиту приложения в фоне. Значение 0 отключает функцию. Чем меньше значение, тем выше возможный расход батареи.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat отключён</string>
+    <string name="settings_other_bg_heartbeat_minimum">Минимум — 5 с; будет исправлено при сохранении</string>
+    <string name="settings_other_bg_heartbeat_effective">Выполняется каждые %1$d с</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Сессия контейнера приостановлена</string>
+    <string name="fg_keep_alive_notification_content_container_running">Выполняется сессия контейнера</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Загрузка и установка компонентов</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Чат Steam работает в фоновом режиме</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: служба активна</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: службы активны</string>
+    <string name="general_and">и</string>
     <string name="settings_retro_title">Ретро</string>
     <string name="retro_save_transfer_title">Перенос сохранения</string>
     <string name="retro_save_transfer_message">Импортируйте локальное сохранение для этой игры или экспортируйте текущее сохранение.</string>

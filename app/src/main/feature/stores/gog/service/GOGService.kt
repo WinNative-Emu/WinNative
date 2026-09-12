@@ -24,7 +24,6 @@ import com.winlator.cmod.feature.sync.google.GameSaveBackupManager.BackupResult
 import com.winlator.cmod.runtime.container.Container
 import com.winlator.cmod.runtime.system.SessionKeepAliveService
 import com.winlator.cmod.shared.android.AppTerminationHelper
-import com.winlator.cmod.shared.android.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -36,9 +35,41 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.zip.ZipOutputStream
 import javax.inject.Inject
 
-// Foreground service facade for GOG auth, library sync, downloads, and cloud saves.
+// Service facade for GOG auth, library sync, downloads, and cloud saves.
 @AndroidEntryPoint
 class GOGService : Service() {
+
+    /*private lateinit var notificationHelper: NotificationHelper
+    var notificationID = 1*/
+
+    @Inject
+    lateinit var gogManager: GOGManager
+
+    @Inject
+    lateinit var gogDownloadManager: GOGDownloadManager
+
+    @Inject
+    lateinit var gogVerifyManager: GOGVerifyManager
+
+    @Inject
+    lateinit var gogUpdateManager: GOGUpdateManager
+
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private val activeDownloads = ConcurrentHashMap<String, DownloadInfo>()
+
+    // Download parameters per gameId so resume can restore container language and
+    // install path instead of falling back to defaults.
+    data class DownloadParams(
+        val dlcGameIds: List<Int>,
+        val containerLanguage: String,
+        val installPath: String,
+    )
+
+    private val downloadParams = ConcurrentHashMap<String, DownloadParams>()
+
+    private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = { stop() }
+
     companion object {
         private const val ACTION_SYNC_LIBRARY = "com.winlator.cmod.GOG_SYNC_LIBRARY"
         private const val ACTION_MANUAL_SYNC = "com.winlator.cmod.GOG_MANUAL_SYNC"
@@ -64,7 +95,8 @@ class GOGService : Service() {
                 Timber.i("[GOGService] First-time start - starting service with initial sync")
                 val intent = Intent(context, GOGService::class.java)
                 intent.action = ACTION_SYNC_LIBRARY
-                context.startForegroundService(intent)
+
+                startGOGService(context, intent)
                 return
             }
 
@@ -79,24 +111,35 @@ class GOGService : Service() {
                 val remainingMinutes = (SYNC_THROTTLE_MILLIS - timeSinceLastSync) / 1000 / 60
                 Timber.d("[GOGService] Starting service without sync - throttled (${remainingMinutes}min remaining)")
             }
-            context.startForegroundService(intent)
+
+            startGOGService(context, intent)
         }
 
         fun triggerLibrarySync(context: Context) {
             Timber.i("[GOGService] Triggering manual library sync (bypasses throttle)")
             val intent = Intent(context, GOGService::class.java)
             intent.action = ACTION_MANUAL_SYNC
-            context.startForegroundService(intent)
+            startGOGService(context, intent)
+        }
+
+        fun startGOGService(context: Context, intent: Intent) {
+            try {
+                // Just start as a normal service. KeepAliveService should protect this.
+                context.startService(intent)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to start GOGService")
+            }
         }
 
         fun stop() {
             instance?.let { service ->
                 runCatching {
-                    service.stopForeground(Service.STOP_FOREGROUND_REMOVE)
+                    SessionKeepAliveService.stopComponent(service, SessionKeepAliveService.COMPONENT_GOG)
                 }.onFailure { Timber.w(it, "Failed to remove GOGService foreground state during shutdown") }
-                runCatching {
-                    service.notificationHelper.cancel()
-                }.onFailure { Timber.w(it, "Failed to cancel GOGService notification during shutdown") }
+                /*runCatching {
+                    if (service::notificationHelper.isInitialized)
+                        service.notificationHelper.cancel(service.notificationID)
+                }.onFailure { Timber.w(it, "Failed to cancel GOGService notification during shutdown") }*/
                 service.stopSelf()
             }
         }
@@ -1449,36 +1492,6 @@ class GOGService : Service() {
             }
     }
 
-    private lateinit var notificationHelper: NotificationHelper
-
-    @Inject
-    lateinit var gogManager: GOGManager
-
-    @Inject
-    lateinit var gogDownloadManager: GOGDownloadManager
-
-    @Inject
-    lateinit var gogVerifyManager: GOGVerifyManager
-
-    @Inject
-    lateinit var gogUpdateManager: GOGUpdateManager
-
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
-    private val activeDownloads = ConcurrentHashMap<String, DownloadInfo>()
-
-    // Download parameters per gameId so resume can restore container language and
-    // install path instead of falling back to defaults.
-    data class DownloadParams(
-        val dlcGameIds: List<Int>,
-        val containerLanguage: String,
-        val installPath: String,
-    )
-
-    private val downloadParams = ConcurrentHashMap<String, DownloadParams>()
-
-    private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = { stop() }
-
     private val coordinatorDispatcher =
         object : DownloadCoordinator.Dispatcher {
             override fun startQueued(record: DownloadRecord) {
@@ -1584,7 +1597,7 @@ class GOGService : Service() {
         super.onCreate()
         instance = this
 
-        notificationHelper = NotificationHelper(applicationContext)
+//        notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
         DownloadCoordinator.registerDispatcher(DownloadRecord.STORE_GOG, coordinatorDispatcher)
@@ -1597,8 +1610,7 @@ class GOGService : Service() {
     ): Int {
         Timber.d("[GOGService] onStartCommand() - action: ${intent?.action}")
 
-        val notification = notificationHelper.createForegroundNotification("Connected")
-        startForeground(1, notification)
+        SessionKeepAliveService.startComponent(this, SessionKeepAliveService.COMPONENT_GOG, "Connected")
 
         val shouldSync =
             when (intent?.action) {
@@ -1673,14 +1685,14 @@ class GOGService : Service() {
         setSyncInProgress(false)
 
         scope.cancel()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        notificationHelper.cancel()
+        SessionKeepAliveService.stopComponent(this, SessionKeepAliveService.COMPONENT_GOG)
         instance = null
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         Timber.i("[GOGService] Task removed; stopping managed app services")
+        SessionKeepAliveService.stopComponent(this, SessionKeepAliveService.COMPONENT_GOG)
         AppTerminationHelper.stopManagedServices(applicationContext, "gog_task_removed")
     }
 

@@ -1176,6 +1176,8 @@ T.ex. <b>META</b> för <i>META-tangent</i>, \n
     <string name="settings_debug_no_logs_available">Inga felsökningsloggar tillgängliga. Aktivera felsökningsalternativ först och starta ett spel.</string>
     <string name="settings_debug_capture_failed">Det gick inte att fånga loggar: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Logga WinNative-processfel, varningar och krascher till fil</string>
+    <string name="settings_filtered_logs_to_file_title">Filtrerad felsökningslogg</string>
+    <string name="settings_filtered_logs_to_file_desc">Spara appens loggar till en fil, filtrerade enligt vad som är konfigurerat i taggfiltren.</string>
     <string name="settings_debug_section_emulation">Emulering</string>
     <string name="settings_debug_section_subsystems">Delsystem</string>
     <string name="settings_debug_section_tools">Verktyg</string>
@@ -1673,6 +1675,53 @@ Installerad sökväg:
     <string name="file_manager_create_folder_failed">Det gick inte att skapa mappen</string>
 
     <string name="settings_content_refresh">Uppdatera</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Applikationsloggning</string>
+    <string name="settings_debug_application_logging_subtitle">Slå på loggning och visa loggalternativen</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Logg över avslutsorsak</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Registrerar varför appens process senast avslutades</string>
+    <string name="settings_debug_crash_log_title">Kraschlogg</string>
+    <string name="settings_debug_crash_log_subtitle">Spara native krasch-spår (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Händelseövervakningslogg</string>
+    <string name="settings_debug_event_watch_log_subtitle">Fångar en fokuserad systemlogg kring paus/återuppta-händelser</string>
+    <string name="settings_debug_log_tag_filter_channel">Loggtaggfilter</string>
+    <string name="settings_debug_tags_selected_suffix">taggar valda</string>
+    <string name="settings_debug_manual_text_filter_hint">Filtrera loggrader efter text…</string>
+    <string name="settings_debug_tag_filter_mode">Läge</string>
+    <string name="settings_debug_tag_filter_all">Alla</string>
+    <string name="settings_debug_tag_filter_include">Inkludera</string>
+    <string name="settings_debug_tag_filter_exclude">Exkludera</string>
+    <string name="settings_debug_add_custom_tag_hint">Lägg till egen tagg…</string>
+    <string name="settings_debug_no_tags_selected">Inga taggar valda</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Bakgrundsskydd</string>
+    <string name="settings_other_background_subtitle">Håll sessionen vid liv i bakgrunden</string>
+    <string name="settings_other_bg_pause_mode_title">Pausläge i bakgrunden</string>
+    <string name="settings_other_bg_pause_all_title">Pausa alla processer</string>
+    <string name="settings_other_bg_pause_all_subtitle">Suspenderar alla processer — maximal batteribesparing (kan orsaka problem).</string>
+    <string name="settings_other_bg_pause_game_only_title">Pausa endast spelet</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Suspenderar endast den aktiva spelprocessen; övriga processer och tjänster fortsätter köras.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Pausa allt utom spelet</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Suspenderar alla processer och tjänster men håller spelprocessen aktiv.</string>
+    <string name="settings_other_bg_auto_pause_title">Pausa sessionen automatiskt</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Pausar sessionen automatiskt när appen hamnar i bakgrunden eller enheten låses.</string>
+    <string name="settings_other_bg_wakelock_title">Aktivera ett CPU-wakelock för att stärka bakgrundsskyddet</string>
+    <string name="settings_other_bg_wakelock_subtitle">Hindrar processorn från djupsömn medan sessionen är pausad. Ökar batteriförbrukningen men kan förbättra persistensen och stabiliteten på enheter med aggressiv batterihantering.</string>
+    <string name="settings_other_bg_heartbeat_title">Heartbeat-frekvens (sekunder)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Kan förbättra skyddet av appen i bakgrunden. Värdet 0 inaktiverar funktionen. Ju lägre värde, desto högre potentiell batteriförbrukning.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat inaktiverat</string>
+    <string name="settings_other_bg_heartbeat_minimum">Minimum är 5 s — justeras vid sparande</string>
+    <string name="settings_other_bg_heartbeat_effective">Körs var %1$d:e sekund</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Behållarsessionen är pausad</string>
+    <string name="fg_keep_alive_notification_content_container_running">En behållarsession körs</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Laddar ner och installerar komponenter</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Steam-chatt körs i bakgrunden</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: tjänst aktiv</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: tjänster aktiva</string>
+    <string name="general_and">och</string>
     <string name="settings_retro_title">Retro</string>
     <string name="retro_save_transfer_title">Överför sparfil</string>
     <string name="retro_save_transfer_message">Importera en lokal sparfil till det här spelet eller exportera spelets nuvarande sparfil.</string>

@@ -16,7 +16,7 @@ public final class LogFileUtils {
   }
 
   public static File getLogFile(Context context) {
-    File logsDir = LogManager.getLogsDir(context);
+    File logsDir = LogManager.getLogsDir(context, false);
     String logFile =
         fileName.replaceAll("[^a-zA-Z0-9\\-_]", "_").toLowerCase(Locale.ROOT)
             + "_"

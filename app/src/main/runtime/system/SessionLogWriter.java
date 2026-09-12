@@ -40,7 +40,7 @@ public final class SessionLogWriter {
       boolean fexActive) {
     SessionLogWriter writer = new SessionLogWriter();
     try {
-      File logsDir = LogManager.getLogsDir(context);
+      File logsDir = LogManager.getLogsDir(context, false);
       String exe = sanitize(executable);
       String stamp = DateFormat.format("yyyy-MM-dd_HH-mm-ss", new Date()).toString();
 

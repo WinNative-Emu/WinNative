@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #define printf(...)                                                            \
   __android_log_print(ANDROID_LOG_DEBUG, "System.out", __VA_ARGS__);
@@ -74,6 +75,10 @@ Java_com_winlator_cmod_runtime_display_connector_XConnectorEpoll_doEpollIndefini
     if (events[i].data.fd == serverFd) {
       int clientFd = accept(serverFd, NULL, NULL);
       if (clientFd >= 0) {
+        // Set a write timeout to avoid hanging the XServer if a client is stopped (SIGSTOP)
+        struct timeval tv = {.tv_sec = 2, .tv_usec = 0};
+        setsockopt(clientFd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+
         if (addClientToEpoll) {
           struct epoll_event event;
           event.data.fd = clientFd;
