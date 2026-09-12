@@ -1,0 +1,48 @@
+#version 450
+#extension GL_EXT_samplerless_texture_functions : require
+
+// FS_VR_ADD + FS_RESIZE merged: the refined flow (W + dW) is bilinearly resampled straight into
+// the next finer level's U (value scale 2) or into flow_full (value scale 2^finest). A bad
+// cell is rejected back to W so it cannot spread through the pyramid.
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform texture2D u_W;
+layout(set = 0, binding = 1) uniform texture2D u_dW;
+layout(set = 0, binding = 2, rg32f) uniform image2D o_dst;
+
+layout(push_constant) uniform PC {
+    float u_scale;
+} pc;
+
+vec2 bilerp(texture2D t, vec2 pos) {
+    ivec2 sz = textureSize(t, 0);
+    vec2 mx = vec2(sz - ivec2(1));
+    vec2 q = clamp(pos, vec2(0.0), mx);
+    vec2 b = floor(q);
+    vec2 f = q - b;
+    ivec2 i0 = ivec2(b);
+    vec2 a = texelFetch(t, i0, 0).rg;
+    vec2 bb = texelFetch(t, min(i0 + ivec2(1, 0), sz - 1), 0).rg;
+    vec2 c = texelFetch(t, min(i0 + ivec2(0, 1), sz - 1), 0).rg;
+    vec2 d = texelFetch(t, min(i0 + ivec2(1, 1), sz - 1), 0).rg;
+    return mix(mix(a, bb, f.x), mix(c, d, f.x), f.y);
+}
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 dstSize = imageSize(o_dst);
+    if (p.x >= dstSize.x || p.y >= dstSize.y) return;
+
+    ivec2 srcSize = textureSize(u_W, 0);
+    vec2 src = (vec2(p) + 0.5) * (vec2(srcSize) / vec2(dstSize)) - 0.5;
+
+    vec2 W = bilerp(u_W, src);
+    vec2 dW = bilerp(u_dW, src);
+    vec2 f = W + dW;
+
+    float lim = 4.0 * float(srcSize.x);
+    bvec2 ok = lessThan(abs(f), vec2(lim));
+    vec2 r = vec2(ok.x ? f.x : W.x, ok.y ? f.y : W.y);
+    imageStore(o_dst, p, vec4(r * pc.u_scale, 0.0, 0.0));
+}

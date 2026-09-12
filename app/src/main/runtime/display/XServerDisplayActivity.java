@@ -462,11 +462,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private boolean hudCardExpanded = false;
     private boolean screenEffectsCardExpanded = false;
     private boolean frameGenEnabled = false;
-    private int frameGenMultiplier = 2;
     private int frameGenTargetRate = 0;
+    private int frameGenMultiplier = 0;
     private int frameGenFlowScale = 70;
     private String frameGenCachePath = null;
     private float frameGenRefreshRate = 0f;
+    private int frameGenDebugMode = 0;
     private boolean sgsrEnabled = false;
     private boolean sgsrRuntimeEnabled = false;
     private int sgsrUpscaleMode = 1;
@@ -774,57 +775,49 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (renderer == null) return;
 
         String containerValue = container != null ? container.getExtra("frameGen", "0") : "0";
-        String containerMultiplier = container != null ? container.getExtra("frameGenMultiplier", "2") : "2";
         String containerTargetRate = container != null ? container.getExtra("frameGenTargetRate", "0") : "0";
+        String containerMultiplier = container != null ? container.getExtra("frameGenMultiplier", "0") : "0";
         String containerFlowScale = container != null ? container.getExtra("frameGenFlowScale", "70") : "70";
 
         frameGenEnabled = "1".equals(getFrameGenSetting("frameGen", containerValue));
-        frameGenMultiplier = clampFrameGenMultiplier(
-                parseSettingInt(getFrameGenSetting("frameGenMultiplier", containerMultiplier), 2));
         frameGenTargetRate = Math.max(0,
                 parseSettingInt(getFrameGenSetting("frameGenTargetRate", containerTargetRate), 0));
+        frameGenMultiplier = clampFrameGenMultiplier(
+                parseSettingInt(getFrameGenSetting("frameGenMultiplier", containerMultiplier), 0));
         frameGenFlowScale = clampFrameGenFlowScale(
                 parseSettingInt(getFrameGenSetting("frameGenFlowScale", containerFlowScale), 70));
 
-        if (frameGenEnabled
-                || !com.winlator.cmod.runtime.display.lsfg.LosslessScaling.isInstalled(this)) {
-            int result = com.winlator.cmod.feature.library.LosslessAutoImport.INSTANCE.sync(this).getResult();
-            if (result != com.winlator.cmod.feature.library.LosslessAutoImport.RESULT_READY) {
-                Log.i("XServerDisplayActivity", "Lossless shader sync at launch: result=" + result);
-            }
-        }
-
-        java.io.File cache = com.winlator.cmod.runtime.display.lsfg.LosslessScaling
-                .resolveCacheFile(this, true);
-        frameGenCachePath = cache != null ? cache.getAbsolutePath() : null;
-        if (frameGenCachePath == null) {
-            if (frameGenEnabled) {
-                Log.w("XServerDisplayActivity", "frameGen requested but no Lossless shader cache");
-            }
-            frameGenEnabled = false;
-        }
+        // DIS frame generation is self-contained: shaders are compiled into the native library,
+        // so no Lossless Scaling shader cache is required.
+        frameGenCachePath = "";
 
         applyFrameGeneration(renderer);
+    }
+
+    private int frameGenTargetRateResolved() {
+        if (frameGenTargetRate > 0) return frameGenTargetRate;
+        int max = RefreshRateUtils.getMaxSupportedRefreshRate(this);
+        return max > 0 ? max : 120;
     }
 
     private void applyFrameGeneration(VulkanRenderer renderer) {
         if (renderer == null) return;
 
-        if (!frameGenEnabled || frameGenCachePath == null) {
+        if (!frameGenEnabled) {
             renderer.setFrameGenerationEnabled(false);
             syncFrameGenerationHud();
             return;
         }
 
-        renderer.setFrameGenerationShaders(frameGenCachePath);
         float refreshRate = applyFrameGenerationDisplayMode();
-        renderer.setFrameGenerationMode(frameGenMultiplier, frameGenTargetRate, frameGenFlowScale);
+        renderer.setFrameGenerationMode(frameGenTargetRateResolved(), frameGenFlowScale);
+        renderer.setFrameGenerationMultiplier(frameGenMultiplier);
         frameGenRefreshRate = refreshRate;
         renderer.setFrameGenerationRefreshRate(refreshRate);
         renderer.setFrameGenerationEnabled(true);
         syncFrameGenerationHud();
-        Log.i("XServerDisplayActivity", "Frame generation on: multiplier=" + frameGenMultiplier
-                + " targetRate=" + frameGenTargetRate + " flowScale=" + frameGenFlowScale
+        Log.i("XServerDisplayActivity", "Frame generation on: targetRate=" + frameGenTargetRate
+                + " (resolved " + frameGenTargetRateResolved() + ") flowScale=" + frameGenFlowScale
                 + " refreshRate=" + refreshRate);
     }
 
@@ -873,14 +866,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (display == null) return 0f;
 
         android.view.Display.Mode active = display.getMode();
-        int wanted;
-        if (frameGenTargetRate > 0) {
-            wanted = frameGenTargetRate;
-        } else if (runtimeFpsLimit > 0) {
-            wanted = frameGenMultiplier * runtimeFpsLimit;
-        } else {
-            wanted = Integer.MAX_VALUE;
-        }
+        int wanted = frameGenTargetRateResolved();
 
         android.view.Display.Mode best = null;
         for (android.view.Display.Mode mode : display.getSupportedModes()) {
@@ -944,25 +930,25 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private void saveFrameGenerationSettings() {
         if (shortcut != null) {
             boolean overridden = saveFrameGenOverride("frameGen", frameGenEnabled ? "1" : "0", "0");
-            overridden |= saveFrameGenOverride("frameGenMultiplier",
-                    String.valueOf(frameGenMultiplier), "2");
             overridden |= saveFrameGenOverride("frameGenTargetRate",
                     String.valueOf(frameGenTargetRate), "0");
+            overridden |= saveFrameGenOverride("frameGenMultiplier",
+                    String.valueOf(frameGenMultiplier), "0");
             overridden |= saveFrameGenOverride("frameGenFlowScale",
                     String.valueOf(frameGenFlowScale), "70");
             if (overridden) shortcut.putExtra("use_container_defaults", "0");
             shortcut.saveData();
         } else if (container != null) {
             container.putExtra("frameGen", frameGenEnabled ? "1" : "0");
-            container.putExtra("frameGenMultiplier", String.valueOf(frameGenMultiplier));
             container.putExtra("frameGenTargetRate", String.valueOf(frameGenTargetRate));
+            container.putExtra("frameGenMultiplier", String.valueOf(frameGenMultiplier));
             container.putExtra("frameGenFlowScale", String.valueOf(frameGenFlowScale));
             container.saveData();
         }
     }
 
     private static int clampFrameGenMultiplier(int value) {
-        return Math.max(2, Math.min(4, value));
+        return value >= 2 ? Math.min(value, 4) : 0;
     }
 
     private static int clampFrameGenFlowScale(int value) {
@@ -4836,9 +4822,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 state,
                 frameGenCachePath != null,
                 frameGenEnabled,
-                frameGenMultiplier,
                 frameGenTargetRate,
+                frameGenMultiplier,
                 frameGenFlowScale,
+                frameGenDebugMode,
                 getString(R.string.session_drawer_frame_generation));
 
         // Always-present "Output" tab (live controls while swapped, otherwise a Cast entry point).
@@ -5221,14 +5208,17 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     }
 
                     @Override
-                    public void onFrameGenMultiplierSelected(int multiplier) {
-                        frameGenMultiplier = clampFrameGenMultiplier(multiplier);
+                    public void onFrameGenTargetRateSelected(int rate) {
+                        frameGenTargetRate = Math.max(0, rate);
+                        // An explicit target rate is derived from the source rate; the manual
+                        // multiplier only applies in auto mode, mirroring the chip visibility.
+                        if (frameGenTargetRate > 0) frameGenMultiplier = 0;
                         applyFrameGenerationLive();
                     }
 
                     @Override
-                    public void onFrameGenTargetRateSelected(int rate) {
-                        frameGenTargetRate = Math.max(0, rate);
+                    public void onFrameGenMultiplierSelected(int multiplier) {
+                        frameGenMultiplier = clampFrameGenMultiplier(multiplier);
                         applyFrameGenerationLive();
                     }
 
@@ -5238,6 +5228,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         applyFrameGenerationLive();
                     }
 
+                    @Override
+                    public void onFrameGenDebugModeChanged(int mode) {
+                        frameGenDebugMode = mode;
+                        VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
+                        if (renderer != null) renderer.setFrameGenerationDebug(mode);
+                    }
 
                     @Override
                     public void onSGSREnabledChanged(boolean enabled) {

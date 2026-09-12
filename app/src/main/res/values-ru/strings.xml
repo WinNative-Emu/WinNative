@@ -2435,7 +2435,8 @@
     <string name="session_drawer_frame_generation_note">Интерполирует между отрисованными кадрами с помощью Lossless Scaling. Движение плавнее, но задержка ввода увеличивается на один кадр.</string>
     <string name="session_drawer_frame_generation_target_note">Повышается к цели только пока это даёт измеримый выигрыш, вместо удержания фиксированного множителя.</string>
     <string name="session_drawer_frame_generation_missing">Установите Lossless Scaling в настройках контейнера, чтобы использовать генерацию кадров.</string>
-    <string name="frame_generation_preset">Пресет качества</string>
+    <string name="frame_generation_flow_scale">Масштаб потока</string>
+    <string name="frame_generation_target_auto">Авто</string>
     <string name="frame_generation_preset_ultra_performance">Ультрапроизводительность</string>
     <string name="frame_generation_preset_performance">Производительность</string>
     <string name="frame_generation_preset_balanced">Сбалансированный</string>

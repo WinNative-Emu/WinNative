@@ -14,7 +14,7 @@
 // All vk* calls route through the dispatch table — vk_dispatch.h is the Vulkan header for
 // this translation unit (do not include <vulkan/vulkan.h> directly).
 #include "vk_dispatch.h"
-#include "lsfg/vkr_lsfg.h"
+#include "dis/vkr_dis.h"
 
 #define VK_LOG_TAG "VkRenderer"
 #define VK_LOGI(...) __android_log_print(ANDROID_LOG_INFO,  VK_LOG_TAG, __VA_ARGS__)
@@ -201,7 +201,7 @@ typedef struct VkPipelineSet {
 
 typedef struct VkFrame {
     VkSemaphore image_available;
-    VkSemaphore image_available_gen[VKR_LSFG_MAX_GENERATIONS];
+    VkSemaphore image_available_gen[VKR_DIS_MAX_GENERATIONS];
     VkFence     in_flight;
     VkCommandBuffer cmd;
 } VkFrame;
@@ -417,13 +417,14 @@ typedef struct VkRenderer {
     bool              composite_built;
     bool              framegen_supported;
     bool              framegen_requested;
+    bool              framegen_features_ok;
     bool              swapchain_transfer_dst;
     bool              swapchain_storage;
     uint64_t          framegen_present_failures;
-    struct VkrLsfg*   lsfg;
-    char*             lsfg_cache_path;
-    uint32_t          framegen_multiplier;
+    struct VkrDis*    dis;
     uint32_t          framegen_target_rate;
+    uint32_t          framegen_multiplier;
+    uint32_t          framegen_debug_mode;
     float             framegen_flow_scale;
     float             framegen_refresh_rate;
     int32_t           framegen_refresh_mhz;

@@ -840,7 +840,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_frame_generation_target">Adaptive Target</string>
     <string name="session_drawer_frame_generation_target_off">Fixed</string>
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
-    <string name="frame_generation_preset">Quality Preset</string>
+    <string name="frame_generation_flow_scale">Flow scale</string>
+    <string name="frame_generation_target_auto">Auto</string>
     <string name="frame_generation_preset_ultra_performance">Ultra Performance</string>
     <string name="frame_generation_preset_performance">Performance</string>
     <string name="frame_generation_preset_balanced">Balanced</string>

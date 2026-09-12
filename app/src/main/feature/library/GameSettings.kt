@@ -151,7 +151,6 @@ import com.winlator.cmod.runtime.reshade.ReshadeDownloader
 import com.winlator.cmod.runtime.reshade.ReshadeLoadout
 import com.winlator.cmod.runtime.reshade.ReshadeManager
 import com.winlator.cmod.shared.util.StringUtils
-import com.winlator.cmod.shared.framegen.FrameGenPreset
 import com.winlator.cmod.shared.theme.GameSettingsStyle
 import com.winlator.cmod.runtime.wine.WineThemeManager
 import com.winlator.cmod.runtime.display.environment.ImageFs
@@ -1917,51 +1916,29 @@ private fun FrameGenerationCard(state: GameSettingsStateHolder) {
         if (enabled) {
             Spacer(Modifier.height(SettingItemGap))
 
-            SettingPairRow {
-                Box(Modifier.weight(1f)) {
-                    SettingDropdown(
-                        label = stringResource(R.string.session_drawer_frame_generation_target),
-                        entries =
-                            FrameGenTargetOptions.map { rate ->
-                                if (rate == 0) {
-                                    stringResource(R.string.session_drawer_frame_generation_target_off)
-                                } else {
-                                    stringResource(R.string.session_drawer_frame_generation_target_value, rate)
-                                }
-                            },
-                        selectedIndex = FrameGenTargetOptions.indexOf(targetRate).coerceAtLeast(0),
-                        onSelected = { state.frameGenTargetRate.intValue = FrameGenTargetOptions[it] },
-                    )
-                }
-                Box(Modifier.weight(1f)) {
-                    SettingDropdown(
-                        label = stringResource(R.string.session_drawer_frame_generation_multiplier),
-                        entries =
-                            FrameGenMultiplierOptions.map { multiplier ->
-                                stringResource(
-                                    R.string.session_drawer_frame_generation_multiplier_value,
-                                    multiplier,
-                                )
-                            },
-                        selectedIndex =
-                            FrameGenMultiplierOptions
-                                .indexOf(state.frameGenMultiplier.intValue)
-                                .coerceAtLeast(0),
-                        onSelected = {
-                            state.frameGenMultiplier.intValue = FrameGenMultiplierOptions[it]
-                        },
-                        enabled = targetRate == 0,
-                    )
-                }
-            }
+            SettingDropdown(
+                label = stringResource(R.string.session_drawer_frame_generation_target),
+                entries =
+                    FrameGenTargetOptions.map { rate ->
+                        if (rate == 0) {
+                            stringResource(R.string.frame_generation_target_auto)
+                        } else {
+                            stringResource(R.string.session_drawer_frame_generation_target_value, rate)
+                        }
+                    },
+                selectedIndex = FrameGenTargetOptions.indexOf(targetRate).coerceAtLeast(0),
+                onSelected = { state.frameGenTargetRate.intValue = FrameGenTargetOptions[it] },
+            )
 
             Spacer(Modifier.height(SettingItemGap))
 
-            FrameGenPresetSlider(
-                selected = FrameGenPreset.fromFlowScale(state.frameGenFlowScale.intValue),
-                onSelected = { state.frameGenFlowScale.intValue = it.flowScale },
+            SettingSlider(
+                label = stringResource(R.string.frame_generation_flow_scale),
+                value = state.frameGenFlowScale.intValue,
+                range = 25..100,
+                valueText = "%.2f".format(java.util.Locale.ROOT, state.frameGenFlowScale.intValue / 100f),
+                onValueChange = { state.frameGenFlowScale.intValue = it },
             )
-
             Spacer(Modifier.height(SettingItemGap))
 
             Text(
@@ -5993,97 +5970,6 @@ private fun SettingSwitch(
                 accentColor = AccentBlue,
                 textSecondaryColor = TextSecondary
             )
-        )
-    }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun FrameGenPresetSlider(
-    selected: FrameGenPreset,
-    onSelected: (FrameGenPreset) -> Unit,
-) {
-    val presets = FrameGenPreset.values()
-    val index = presets.indexOf(selected).coerceAtLeast(0)
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.frame_generation_preset),
-                color = TextSecondary,
-                fontSize = SettingLabelSize,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.3.sp,
-            )
-            Spacer(Modifier.weight(1f))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(AccentBlue.copy(alpha = 0.1f))
-                    .padding(horizontal = 7.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    stringResource(selected.labelRes),
-                    color = AccentBlue,
-                    fontSize = SettingLabelSize,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
-
-        Spacer(Modifier.height(SettingTightGap))
-
-        Slider(
-            value = index.toFloat(),
-            onValueChange = { onSelected(FrameGenPreset.atIndex(it.roundToInt())) },
-            valueRange = 0f..(presets.size - 1).toFloat(),
-            steps = presets.size - 2,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(SettingSliderHeight)
-                .controllerSliderEscape()
-                .paneNavItem(
-                    cornerRadius = 8.dp,
-                    onAdjust = { d -> onSelected(FrameGenPreset.atIndex(index + d)) },
-                    highlightColor = NavHighlight,
-                ),
-            colors = settingSliderColors(),
-            track = { SettingSliderTrack(it) },
-            thumb = {
-                Box(
-                    modifier = Modifier
-                        .size(SettingSliderThumbSize)
-                        .clip(RoundedCornerShape(50))
-                        .background(AccentBlue)
-                        .border(2.dp, CardSurface, RoundedCornerShape(50))
-                )
-            }
-        )
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            presets.forEachIndexed { i, preset ->
-                Text(
-                    text = stringResource(preset.shortLabelRes),
-                    color = if (i == index) AccentBlue else TextSecondary,
-                    fontSize = SettingLabelSize * 0.9f,
-                    fontWeight = if (i == index) FontWeight.SemiBold else FontWeight.Normal,
-                    textAlign = when (i) {
-                        0 -> TextAlign.Start
-                        presets.size - 1 -> TextAlign.End
-                        else -> TextAlign.Center
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
-        Spacer(Modifier.height(SettingTightGap))
-
-        Text(
-            text = stringResource(selected.descriptionRes),
-            color = TextSecondary,
-            fontSize = SettingLabelSize,
-            lineHeight = SettingLabelSize * 1.4f,
         )
     }
 }

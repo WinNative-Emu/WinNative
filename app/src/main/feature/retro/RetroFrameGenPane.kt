@@ -84,6 +84,7 @@ object RetroFrameGenPane {
                         flowScale = flowScale,
                         maxRefreshRate = maxRefreshRate,
                         paneScale = paneScale,
+                        showMultiplier = true,
                         onEnabledChanged = { value ->
                             persist(shortcut, FrameGenOptions.KEY_ENABLED, if (value) "1" else "0")
                             pending = current.copy(enabled = value)
@@ -120,6 +121,7 @@ object RetroFrameGenPane {
                             FrameGen.reconfigure(multiplier, targetRate, value)
                             revision++
                         },
+                        onDebugModeChanged = { },
                     )
                 }
             }

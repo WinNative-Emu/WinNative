@@ -1,0 +1,22 @@
+#version 450
+#extension GL_EXT_samplerless_texture_functions : require
+
+// spatialGradient: Sobel 3x3, ksize=3, no normalization, BORDER_REPLICATE.
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform texture2D src;
+layout(set = 0, binding = 1, rg16f) uniform image2D dst;
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz = imageSize(dst);
+    if (p.x >= sz.x || p.y >= sz.y) return;
+
+    ivec2 mx = textureSize(src, 0) - 1;
+#define S(dx, dy) texelFetch(src, clamp(p + ivec2(dx, dy), ivec2(0), mx), 0).r
+    float ix = (S(1, -1) + 2.0 * S(1, 0) + S(1, 1)) - (S(-1, -1) + 2.0 * S(-1, 0) + S(-1, 1));
+    float iy = (S(-1, 1) + 2.0 * S(0, 1) + S(1, 1)) - (S(-1, -1) + 2.0 * S(0, -1) + S(1, -1));
+#undef S
+    imageStore(dst, p, vec4(ix, iy, 0.0, 0.0));
+}

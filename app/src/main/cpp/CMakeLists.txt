@@ -102,6 +102,19 @@ set(SHADER_LIST
     "effect_colorblind:frag:effect_colorblind_frag"
     "effect_pixelate:frag:effect_pixelate_frag"
     "sgsr1:frag:sgsr1_frag"
+    "dis_gray:comp:dis_gray_comp"
+    "dis_downsample:comp:dis_downsample_comp"
+    "dis_sobel:comp:dis_sobel_comp"
+    "dis_structure:comp:dis_structure_comp"
+    "dis_propagate:comp:dis_propagate_comp"
+    "dis_descent:comp:dis_descent_comp"
+    "dis_densify:comp:dis_densify_comp"
+    "dis_vr_prepare:comp:dis_vr_prepare_comp"
+    "dis_vr_weights:comp:dis_vr_weights_comp"
+    "dis_vr_coeffs:comp:dis_vr_coeffs_comp"
+    "dis_vr_sor:comp:dis_vr_sor_comp"
+    "dis_vr_add_resize:comp:dis_vr_add_resize_comp"
+    "dis_interp:comp:dis_interp_comp"
 )
 
 set(SHADER_HEADERS "")
@@ -163,6 +176,9 @@ add_library(winlator SHARED
         winlator/vk/lsfg/vkr_lsfg.cpp
         winlator/vk/lsfg/lsfg_probe.c
         winlator/vk/lsfg/lsfg_jni.c
+        winlator/vk/dis/dis.cpp
+        winlator/vk/dis/dis_chain.cpp
+        winlator/vk/dis/vkr_dis.cpp
         winlator/vk/framegen/fg_present.c
         winlator/vk/framegen/fg_jni.c
 )

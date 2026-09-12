@@ -287,8 +287,9 @@ public class VulkanRenderer
                 if (frameGenerationShaderCache != null) {
                     nativeSetFrameGenerationShaders(nativeHandle, frameGenerationShaderCache);
                 }
-                nativeSetFrameGenerationMode(nativeHandle, frameGenerationMultiplier,
-                        frameGenerationTargetRate, frameGenerationFlowScale);
+                nativeSetFrameGenerationMode(nativeHandle, frameGenerationTargetRate,
+                        frameGenerationFlowScale);
+                nativeSetFrameGenerationMultiplier(nativeHandle, frameGenerationMultiplier);
                 nativeSetFrameGenerationRefreshRate(nativeHandle, frameGenerationRefreshRate);
                 if (frameGenerationRequested) {
                     nativeSetFrameGenerationEnabled(nativeHandle, true);
@@ -970,8 +971,8 @@ public class VulkanRenderer
 
     private boolean frameGenerationRequested = false;
     private String frameGenerationShaderCache = null;
-    private int frameGenerationMultiplier = 2;
     private int frameGenerationTargetRate = 0;
+    private int frameGenerationMultiplier = 0;
     private int frameGenerationFlowScale = 70;
     private float frameGenerationRefreshRate = 0f;
 
@@ -986,21 +987,29 @@ public class VulkanRenderer
         if (nativeHandle != 0) nativeSetFrameGenerationShaders(nativeHandle, cachePath);
     }
 
-    public void setFrameGenerationMode(int multiplier, int targetRate, int flowScalePercent) {
-        int wantMultiplier = Math.max(2, multiplier);
+    public void setFrameGenerationMode(int targetRate, int flowScalePercent) {
         int wantTargetRate = Math.max(0, targetRate);
         int wantFlowScale = flowScalePercent <= 0 ? 70 : flowScalePercent;
-        if (wantMultiplier == frameGenerationMultiplier
-                && wantTargetRate == frameGenerationTargetRate
+        if (wantTargetRate == frameGenerationTargetRate
                 && wantFlowScale == frameGenerationFlowScale) {
             return;
         }
-        frameGenerationMultiplier = wantMultiplier;
         frameGenerationTargetRate = wantTargetRate;
         frameGenerationFlowScale = wantFlowScale;
         if (nativeHandle != 0) {
-            nativeSetFrameGenerationMode(nativeHandle, frameGenerationMultiplier,
-                    frameGenerationTargetRate, frameGenerationFlowScale);
+            nativeSetFrameGenerationMode(nativeHandle, frameGenerationTargetRate,
+                    frameGenerationFlowScale);
+        }
+    }
+
+    public void setFrameGenerationMultiplier(int multiplier) {
+        int want = multiplier >= 2 ? Math.min(multiplier, 4) : 0;
+        if (want == frameGenerationMultiplier) {
+            return;
+        }
+        frameGenerationMultiplier = want;
+        if (nativeHandle != 0) {
+            nativeSetFrameGenerationMultiplier(nativeHandle, frameGenerationMultiplier);
         }
     }
 
@@ -1013,6 +1022,12 @@ public class VulkanRenderer
 
     public boolean isFrameGenerationRequested() {
         return frameGenerationRequested;
+    }
+
+    public void setFrameGenerationDebug(int mode) {
+        if (nativeHandle != 0) {
+            nativeSetFrameGenerationDebug(nativeHandle, mode);
+        }
     }
 
     public boolean isFrameGenerationSupported() {
@@ -1085,9 +1100,10 @@ public class VulkanRenderer
     private static native void nativeSetFrameGenerationShaders(long handle, String cachePath);
     private static native void nativeSetSourceFrameCount(long handle, long count);
     private static native void nativeSetFrameGenerationRefreshRate(long handle, float hz);
-    private static native void nativeSetFrameGenerationMode(long handle, int multiplier,
-                                                            int targetRate,
+    private static native void nativeSetFrameGenerationMode(long handle, int targetRate,
                                                             int flowScalePercent);
+    private static native void nativeSetFrameGenerationMultiplier(long handle, int multiplier);
+    private static native void nativeSetFrameGenerationDebug(long handle, int mode);
     private static native long nativeGetGeneratedFrameCount(long handle);
     private static native long nativeGetPresentedFrameCount(long handle);
 }

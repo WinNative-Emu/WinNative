@@ -68,7 +68,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.winlator.cmod.shared.ui.layout.isPortraitLayout
 import com.winlator.cmod.R
 import com.winlator.cmod.shared.framegen.FrameGenOptions
-import com.winlator.cmod.shared.framegen.FrameGenPreset
 import com.winlator.cmod.shared.theme.GameSettingsStyle
 import com.winlator.cmod.shared.ui.settings.SharedGroupTitle
 import com.winlator.cmod.shared.ui.settings.SharedInfoRow
@@ -1473,14 +1472,27 @@ private fun RetroFrameGenerationGroup(state: RetroSettingsState) {
                     onSelected = { state.frameGenMultiplier = FrameGenOptions.MULTIPLIER_OPTIONS[it] },
                 )
             }
-            RetroSettingDropdown(
-                label = stringResource(R.string.frame_generation_preset),
-                entries = FrameGenPreset.values().map { stringResource(it.labelRes) },
-                selectedIndex = FrameGenPreset.fromFlowScale(state.frameGenFlowScale).ordinal,
-                onSelected = { state.frameGenFlowScale = FrameGenPreset.atIndex(it).flowScale },
-            )
-            RetroSettingNote(
-                stringResource(FrameGenPreset.fromFlowScale(state.frameGenFlowScale).descriptionRes),
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = TightGap),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.frame_generation_flow_scale),
+                    color = TextPrimary,
+                    fontSize = ValueSize,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    "%.2f".format(java.util.Locale.ROOT, state.frameGenFlowScale / 100f),
+                    color = TextSecondary,
+                    fontSize = ValueSize,
+                )
+            }
+            androidx.compose.material3.Slider(
+                value = state.frameGenFlowScale.toFloat(),
+                onValueChange = { state.frameGenFlowScale = Math.round(it).toInt() },
+                valueRange = 25f..100f,
+                modifier = Modifier.fillMaxWidth().height(26.dp),
             )
             RetroSettingNote(stringResource(R.string.session_drawer_frame_generation_note))
         }

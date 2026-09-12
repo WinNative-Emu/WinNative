@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,11 +28,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.cmod.R
-import com.winlator.cmod.shared.framegen.FrameGenPreset
 import kotlin.math.roundToInt
 
 @Composable
@@ -114,10 +111,13 @@ private fun FrameGenerationSection(
         flowScale = state.frameGenFlowScale,
         maxRefreshRate = state.maxRefreshRate,
         paneScale = paneScale,
+        debugMode = state.frameGenDebugMode,
+        showMultiplier = true,
         onEnabledChanged = listener::onFrameGenEnabledChanged,
         onTargetRateSelected = listener::onFrameGenTargetRateSelected,
         onMultiplierSelected = listener::onFrameGenMultiplierSelected,
         onFlowScaleChanged = listener::onFrameGenFlowScaleChanged,
+        onDebugModeChanged = listener::onFrameGenDebugModeChanged,
     )
 }
 
@@ -126,14 +126,17 @@ internal fun FrameGenerationSection(
     available: Boolean,
     enabled: Boolean,
     targetRate: Int,
-    multiplier: Int,
     flowScale: Int,
     maxRefreshRate: Int,
     paneScale: Float,
     onEnabledChanged: (Boolean) -> Unit,
     onTargetRateSelected: (Int) -> Unit,
-    onMultiplierSelected: (Int) -> Unit,
     onFlowScaleChanged: (Int) -> Unit,
+    onDebugModeChanged: (Int) -> Unit,
+    debugMode: Int = 0,
+    showMultiplier: Boolean = false,
+    multiplier: Int = 2,
+    onMultiplierSelected: (Int) -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy((8f * paneScale).dp)) {
         PaneSectionLabel(stringResource(R.string.session_drawer_frame_generation))
@@ -180,7 +183,14 @@ internal fun FrameGenerationSection(
 
                     ChipFlow {
                         HUDToggleChip(
-                            label = stringResource(R.string.session_drawer_frame_generation_target_off),
+                            label =
+                                stringResource(
+                                    if (showMultiplier) {
+                                        R.string.session_drawer_frame_generation_target_off
+                                    } else {
+                                        R.string.frame_generation_target_auto
+                                    },
+                                ),
                             checked = targetRate == 0,
                             onClick = { onTargetRateSelected(0) },
                             modifier = Modifier.paneNavItem(
@@ -204,7 +214,7 @@ internal fun FrameGenerationSection(
                         }
                     }
 
-                    if (targetRate == 0) {
+                    if (showMultiplier && targetRate == 0) {
                         FrameGenFieldLabel(
                             stringResource(R.string.session_drawer_frame_generation_multiplier),
                             paneScale,
@@ -225,62 +235,34 @@ internal fun FrameGenerationSection(
                                 )
                             }
                         }
-                    } else {
-                        FrameGenNote(
-                            stringResource(R.string.session_drawer_frame_generation_target_note),
-                            paneScale,
-                        )
                     }
 
-                    FrameGenPresetRow(
-                        selected = FrameGenPreset.fromFlowScale(flowScale),
-                        onSelected = { onFlowScaleChanged(it.flowScale) },
-                        paneScale = paneScale,
+                    NavSliderRow(
+                        label = stringResource(R.string.frame_generation_flow_scale),
+                        valueText = "%.2f".format(java.util.Locale.ROOT, flowScale / 100f),
+                        value = flowScale.toFloat(),
+                        valueRange = FrameGenFlowScaleMin.toFloat()..FrameGenFlowScaleMax.toFloat(),
+                        steps = 0,
+                        adjustStep = 5f,
+                        onValueChange = { onFlowScaleChanged(it.roundToInt()) },
                     )
+
+                    FrameGenFieldLabel("Debug: optical flow", paneScale)
+                    ChipFlow {
+                        HUDToggleChip(
+                            label = "Off",
+                            checked = debugMode == 0,
+                            onClick = { onDebugModeChanged(0) },
+                        )
+                        HUDToggleChip(
+                            label = "Flow",
+                            checked = debugMode == 1,
+                            onClick = { onDebugModeChanged(1) },
+                        )
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun FrameGenPresetRow(
-    selected: FrameGenPreset,
-    onSelected: (FrameGenPreset) -> Unit,
-    paneScale: Float,
-) {
-    val presets = FrameGenPreset.values()
-    val index = presets.indexOf(selected).coerceAtLeast(0)
-
-    Column(verticalArrangement = Arrangement.spacedBy((4f * paneScale).dp)) {
-        NavSliderRow(
-            label = stringResource(R.string.frame_generation_preset),
-            valueText = stringResource(selected.labelRes),
-            value = index.toFloat(),
-            valueRange = 0f..(presets.size - 1).toFloat(),
-            steps = presets.size - 2,
-            adjustStep = 1f,
-            onValueChange = { onSelected(FrameGenPreset.atIndex(it.roundToInt())) },
-        )
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            presets.forEachIndexed { i, preset ->
-                Text(
-                    text = stringResource(preset.shortLabelRes),
-                    color = if (i == index) DrawerAccent else DrawerTextSecondary,
-                    fontSize = (10f * paneScale).sp,
-                    fontWeight = if (i == index) FontWeight.SemiBold else FontWeight.Normal,
-                    textAlign = when (i) {
-                        0 -> TextAlign.Start
-                        presets.size - 1 -> TextAlign.End
-                        else -> TextAlign.Center
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
-        FrameGenNote(stringResource(selected.descriptionRes), paneScale)
     }
 }
 
