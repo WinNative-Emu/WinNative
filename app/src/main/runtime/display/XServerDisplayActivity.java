@@ -5157,11 +5157,15 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         List<String> gestureProfileNames = new ArrayList<>();
         int gestureSelectedIndex = 0;
-        try {
-            gestureProfileNames = gestureProfileManager.getProfileNames();
-            gestureSelectedIndex = Math.max(0, gestureProfileManager.indexOfProfile(selectedGestureProfileId()));
-        } catch (Throwable t) {
-            android.util.Log.e("XServerDisplayActivity", "gesture drawer names failed", t);
+        // gestureProfileManager is created later in onCreate than the first renderDrawerMenu()
+        // call; guard against the null so early renders don't spam an NPE stack trace.
+        if (gestureProfileManager != null) {
+            try {
+                gestureProfileNames = gestureProfileManager.getProfileNames();
+                gestureSelectedIndex = Math.max(0, gestureProfileManager.indexOfProfile(selectedGestureProfileId()));
+            } catch (Throwable t) {
+                android.util.Log.e("XServerDisplayActivity", "gesture drawer names failed", t);
+            }
         }
 
         XServerDrawerState state = XServerDrawerMenuKt.buildXServerDrawerState(
@@ -6814,7 +6818,19 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 renderDrawerMenu();
                 break;
             case R.id.main_menu_pip_mode:
-                enterPictureInPictureMode(new android.app.PictureInPictureParams.Builder().build());
+                // OEM builds can throw when entering PiP; guard so the button never crashes the session.
+                try {
+                    android.graphics.Point pipSize = new android.graphics.Point();
+                    getWindowManager().getDefaultDisplay().getSize(pipSize);
+                    float pipRatio = Math.max(1.0f / 2.39f, Math.min((float) pipSize.x / pipSize.y, 2.39f));
+                    android.app.PictureInPictureParams pipParams =
+                            new android.app.PictureInPictureParams.Builder()
+                                    .setAspectRatio(new android.util.Rational((int) (pipRatio * 1000), 1000))
+                                    .build();
+                    enterPictureInPictureMode(pipParams);
+                } catch (Throwable t) {
+                    Log.w("XServerDisplayActivity", "Failed to enter PiP mode", t);
+                }
                 closeDrawerMenu();
                 break;
             case R.id.main_menu_magnifier:
@@ -10352,7 +10368,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     dir = "F:\\";
                 }
 
-                File nativeDir = com.winlator.cmod.runtime.wine.WineUtils.getNativePath(imageFs, dir);
+                File nativeDir = com.winlator.cmod.runtime.wine.WineUtils.getNativePath(this.container, imageFs, dir);
                 if (nativeDir != null && nativeDir.exists()) {
                     launcherComponent.setWorkingDir(nativeDir);
                     Log.d("XServerDisplayActivity", "Set native working dir for store process: " + nativeDir.getPath());
@@ -10374,9 +10390,39 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 } else if (path != null) {
                     String nativeDirPath = getActiveGameDirectoryPath();
                     if (nativeDirPath != null) {
-                        File nativeDir = new File(nativeDirPath);
-                        launcherComponent.setWorkingDir(nativeDir);
-                        Log.d("XServerDisplayActivity", "Set native working dir for Custom process: " + nativeDir.getPath());
+                        File nativeDir = null;
+                        // Round-trip host -> Wine -> host to re-resolve through this container's dosdevices symlinks.
+                        String winDir =
+                                com.winlator.cmod.runtime.wine.WineUtils
+                                        .hostPathToRootWinePath(container, nativeDirPath);
+                        if (winDir != null && !winDir.isEmpty()) {
+                            nativeDir =
+                                    com.winlator.cmod.runtime.wine.WineUtils
+                                            .getNativePath(container, imageFs, winDir);
+                        }
+                        String exeName = null;
+                        int lastSlash = path.lastIndexOf("\\");
+                        if (lastSlash > 0 && lastSlash + 1 < path.length()) exeName = path.substring(lastSlash + 1);
+                        if (nativeDir == null || !nativeDir.isDirectory()
+                                || (exeName != null && !new File(nativeDir, exeName).isFile())) {
+                            File exeDir = null;
+                            if (lastSlash > 0) {
+                                exeDir =
+                                        com.winlator.cmod.runtime.wine.WineUtils
+                                                .getNativePath(container, imageFs, path.substring(0, lastSlash));
+                            }
+                            if (exeDir != null && exeDir.isDirectory()) {
+                                nativeDir = exeDir;
+                            } else if (new File(nativeDirPath).isDirectory()) {
+                                nativeDir = new File(nativeDirPath);
+                            } else {
+                                nativeDir = null;
+                            }
+                        }
+                        if (nativeDir != null && nativeDir.isDirectory()) {
+                            launcherComponent.setWorkingDir(nativeDir);
+                            Log.d("XServerDisplayActivity", "Set native working dir for Custom process: " + nativeDir.getPath());
+                        }
                     } else {
                         int lastBackslash = path.lastIndexOf("\\");
                         if (lastBackslash >= 0) {
