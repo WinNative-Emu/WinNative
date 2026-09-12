@@ -836,6 +836,10 @@
     <string name="device_profile_info_board">Плата</string>
     <string name="device_profile_info_manufacturer">Виробник</string>
     <string name="device_profile_info_screen">Екран</string>
+    <string name="device_profile_library_wide">Широкі картки 3:2 для горизонтальних обкладинок</string>
+    <string name="device_profile_library_stock">Стандартна сітка</string>
+    <string name="device_profile_session_square">Квадратні кнопки дій</string>
+    <string name="device_profile_session_stock">Стандартні розміри</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Швидкість курсора</string>

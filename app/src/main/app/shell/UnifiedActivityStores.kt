@@ -144,6 +144,7 @@ import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
+import com.winlator.cmod.app.config.DeviceProfileSettings
 import com.winlator.cmod.BuildConfig
 import com.winlator.cmod.R
 import com.winlator.cmod.app.PluviaApp
@@ -435,11 +436,12 @@ internal fun UnifiedActivity.GameCapsule(
                 }
             }
         } else {
+            val preferWide = !useLibraryCapsule && !listMode && DeviceProfileSettings.preferWideArtwork(context)
             val imageModel =
-                remember(app.id, gogGame, epicGame, useLibraryCapsule, listMode, artworkCacheRefreshKey) {
+                remember(app.id, gogGame, epicGame, useLibraryCapsule, listMode, preferWide, artworkCacheRefreshKey) {
                     StoreArtworkCache.imageModel(
                         context,
-                        StoreArtworkCache.primaryRef(app, gogGame, epicGame, useLibraryCapsule, listMode),
+                        StoreArtworkCache.primaryRef(app, gogGame, epicGame, useLibraryCapsule, listMode, preferWide),
                     )
                 }
             AsyncImage(

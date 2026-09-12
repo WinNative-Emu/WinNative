@@ -22,12 +22,12 @@ enum class DeviceProfileFeature(
     LIBRARY_ICONS(
         R.string.device_profile_feature_library_icons,
         R.string.device_profile_feature_library_icons_summary,
-        false,
+        true,
     ),
     SESSION_MENU_SIZES(
         R.string.device_profile_feature_session_menu,
         R.string.device_profile_feature_session_menu_summary,
-        false,
+        true,
     ),
     SHORTCUT_RECOMMENDATIONS(
         R.string.device_profile_feature_shortcut_defaults,
@@ -94,4 +94,72 @@ object DeviceProfileSettings {
 
     @JvmStatic
     fun adaptiveJoysticksDefaultExtra(context: Context): String = if (adaptiveJoysticksDefault(context)) "1" else "0"
+
+    @JvmStatic
+    fun preferWideArtwork(context: Context): Boolean = preferWideArtwork(current(context))
+
+    @JvmStatic
+    fun libraryCardHeightFactor(
+        context: Context,
+        portrait: Boolean,
+    ): Float = libraryCardHeightFactor(current(context), portrait)
+
+    @JvmStatic
+    fun libraryColumns(
+        context: Context,
+        widthDp: Int,
+        portrait: Boolean,
+    ): Int = libraryColumns(current(context), widthDp, portrait)
+
+    @JvmStatic
+    fun sessionActionCardMaxAspect(context: Context): Float = sessionActionCardMaxAspect(current(context))
+
+    internal fun preferWideArtwork(profile: DeviceProfile): Boolean = profile == DeviceProfile.ASTRA_2
+
+    internal fun libraryCardHeightFactor(
+        profile: DeviceProfile,
+        portrait: Boolean,
+    ): Float =
+        when (profile) {
+            DeviceProfile.ASTRA_2 -> 0.67f
+            DeviceProfile.DEFAULT -> 1.25f
+        }
+
+    internal fun libraryColumns(
+        profile: DeviceProfile,
+        widthDp: Int,
+        portrait: Boolean,
+    ): Int =
+        when (profile) {
+            DeviceProfile.ASTRA_2 -> if (portrait) 2 else 3
+            DeviceProfile.DEFAULT -> stockLibraryColumns(widthDp)
+        }
+
+    internal fun stockLibraryColumns(widthDp: Int): Int =
+        when {
+            widthDp <= 0 -> 4
+            widthDp < 480 -> 2
+            widthDp < 700 -> 3
+            else -> 4
+        }
+
+    internal fun sessionActionCardMaxAspect(profile: DeviceProfile): Float =
+        when (profile) {
+            DeviceProfile.ASTRA_2 -> 1.0f
+            DeviceProfile.DEFAULT -> Float.MAX_VALUE
+        }
+
+    internal fun actionCardRowHeight(
+        availableHeight: Float,
+        cardWidth: Float,
+        rows: Int,
+        spacing: Float,
+        minHeight: Float,
+        maxAspect: Float,
+    ): Float {
+        val safeRows = rows.coerceAtLeast(1)
+        val fill = (availableHeight - spacing * (safeRows - 1)) / safeRows
+        val capped = if (maxAspect == Float.MAX_VALUE) fill else minOf(fill, cardWidth * maxAspect)
+        return maxOf(capped, minHeight)
+    }
 }

@@ -830,6 +830,10 @@ F.eks. <b>META</b> for <i>META-tast</i>, \n
     <string name="device_profile_info_board">Hardwarekort</string>
     <string name="device_profile_info_manufacturer">Producent</string>
     <string name="device_profile_info_screen">Skærm</string>
+    <string name="device_profile_library_wide">Brede 3:2-kort til liggende grafik</string>
+    <string name="device_profile_library_stock">Standardgitter</string>
+    <string name="device_profile_session_square">Kvadratiske handlingsknapper</string>
+    <string name="device_profile_session_stock">Standardstørrelser</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Markørhastighed</string>

@@ -830,6 +830,10 @@
     <string name="device_profile_info_board">보드</string>
     <string name="device_profile_info_manufacturer">제조사</string>
     <string name="device_profile_info_screen">화면</string>
+    <string name="device_profile_library_wide">가로 아트워크용 3:2 와이드 카드</string>
+    <string name="device_profile_library_stock">기본 그리드</string>
+    <string name="device_profile_session_square">정사각형 동작 버튼</string>
+    <string name="device_profile_session_stock">기본 크기</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">커서 속도</string>

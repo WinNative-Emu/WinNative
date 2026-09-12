@@ -830,6 +830,10 @@ Par ex. <b>META</b> pour la <i>touche META</i>, \n
     <string name="device_profile_info_board">Carte</string>
     <string name="device_profile_info_manufacturer">Fabricant</string>
     <string name="device_profile_info_screen">Écran</string>
+    <string name="device_profile_library_wide">Cartes larges 3:2 pour les visuels en paysage</string>
+    <string name="device_profile_library_stock">Grille standard</string>
+    <string name="device_profile_session_square">Boutons d\'action carrés</string>
+    <string name="device_profile_session_stock">Tailles standard</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Vitesse du curseur</string>

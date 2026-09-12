@@ -1117,6 +1117,10 @@ Por ejemplo, <b>META</b> para la <i>tecla META</i>, \n
     <string name="device_profile_info_board">Placa</string>
     <string name="device_profile_info_manufacturer">Fabricante</string>
     <string name="device_profile_info_screen">Pantalla</string>
+    <string name="device_profile_library_wide">Tarjetas anchas 3:2 para arte horizontal</string>
+    <string name="device_profile_library_stock">Cuadrícula estándar</string>
+    <string name="device_profile_session_square">Botones de acción cuadrados</string>
+    <string name="device_profile_session_stock">Tamaños estándar</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Velocidad del cursor</string>

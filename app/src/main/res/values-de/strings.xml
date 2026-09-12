@@ -830,6 +830,10 @@ Z. B. <b>META</b> für <i>Meta-Taste</i>, \n
     <string name="device_profile_info_board">Platine</string>
     <string name="device_profile_info_manufacturer">Hersteller</string>
     <string name="device_profile_info_screen">Bildschirm</string>
+    <string name="device_profile_library_wide">Breite 3:2-Karten für Querformat-Artwork</string>
+    <string name="device_profile_library_stock">Standardraster</string>
+    <string name="device_profile_session_square">Quadratische Aktionstasten</string>
+    <string name="device_profile_session_stock">Standardgrößen</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Zeigergeschwindigkeit</string>

@@ -830,6 +830,10 @@
     <string name="device_profile_info_board">主板</string>
     <string name="device_profile_info_manufacturer">製造商</string>
     <string name="device_profile_info_screen">螢幕</string>
+    <string name="device_profile_library_wide">適合橫向封面的 3:2 寬卡片</string>
+    <string name="device_profile_library_stock">預設格線</string>
+    <string name="device_profile_session_square">方形操作按鈕</string>
+    <string name="device_profile_session_stock">預設尺寸</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">游標速度</string>

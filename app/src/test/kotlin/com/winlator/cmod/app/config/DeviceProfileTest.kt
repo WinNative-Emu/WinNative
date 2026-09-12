@@ -80,4 +80,58 @@ class DeviceProfileTest {
         assertEquals("", DeviceProfile.DEFAULT.assetToken)
         assertEquals("astra2", DeviceProfile.ASTRA_2.assetToken)
     }
+
+    @Test
+    fun astra2PrefersWideArtworkAndDefaultDoesNot() {
+        assertEquals(true, DeviceProfileSettings.preferWideArtwork(DeviceProfile.ASTRA_2))
+        assertEquals(false, DeviceProfileSettings.preferWideArtwork(DeviceProfile.DEFAULT))
+    }
+
+    @Test
+    fun astra2LibraryCardsAreWideAndDefaultStaysPortrait() {
+        assertEquals(0.67f, DeviceProfileSettings.libraryCardHeightFactor(DeviceProfile.ASTRA_2, portrait = false))
+        assertEquals(0.67f, DeviceProfileSettings.libraryCardHeightFactor(DeviceProfile.ASTRA_2, portrait = true))
+        assertEquals(1.25f, DeviceProfileSettings.libraryCardHeightFactor(DeviceProfile.DEFAULT, portrait = false))
+    }
+
+    @Test
+    fun astra2LibraryColumnsFollowOrientation() {
+        assertEquals(3, DeviceProfileSettings.libraryColumns(DeviceProfile.ASTRA_2, 1067, portrait = false))
+        assertEquals(2, DeviceProfileSettings.libraryColumns(DeviceProfile.ASTRA_2, 668, portrait = true))
+    }
+
+    @Test
+    fun defaultLibraryColumnsKeepTheStockLadder() {
+        assertEquals(2, DeviceProfileSettings.libraryColumns(DeviceProfile.DEFAULT, 400, portrait = true))
+        assertEquals(3, DeviceProfileSettings.libraryColumns(DeviceProfile.DEFAULT, 600, portrait = false))
+        assertEquals(4, DeviceProfileSettings.libraryColumns(DeviceProfile.DEFAULT, 914, portrait = false))
+    }
+
+    @Test
+    fun astra2ActionCardsAreSquareOnTheTallDrawer() {
+        val cardWidth = (300f - 20f - 16f) / 3f
+        val tall = DeviceProfileSettings.actionCardRowHeight(
+            availableHeight = 450f, cardWidth = cardWidth, rows = 2, spacing = 8f, minHeight = 72f,
+            maxAspect = DeviceProfileSettings.sessionActionCardMaxAspect(DeviceProfile.ASTRA_2),
+        )
+        assertEquals(cardWidth, tall, 0.01f)
+    }
+
+    @Test
+    fun defaultActionCardsStillFillTheDrawer() {
+        val cardWidth = (300f - 20f - 16f) / 3f
+        val fill = DeviceProfileSettings.actionCardRowHeight(
+            availableHeight = 450f, cardWidth = cardWidth, rows = 2, spacing = 8f, minHeight = 72f,
+            maxAspect = DeviceProfileSettings.sessionActionCardMaxAspect(DeviceProfile.DEFAULT),
+        )
+        assertEquals((450f - 8f) / 2f, fill, 0.01f)
+    }
+
+    @Test
+    fun actionCardsNeverDropBelowTheMinimumHeight() {
+        val h = DeviceProfileSettings.actionCardRowHeight(
+            availableHeight = 100f, cardWidth = 40f, rows = 3, spacing = 8f, minHeight = 72f, maxAspect = 1.0f,
+        )
+        assertEquals(72f, h, 0.01f)
+    }
 }

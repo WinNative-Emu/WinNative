@@ -1265,6 +1265,10 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="device_profile_info_board">Board</string>
     <string name="device_profile_info_manufacturer">Manufacturer</string>
     <string name="device_profile_info_screen">Screen</string>
+    <string name="device_profile_library_wide">Wide 3:2 cards for landscape artwork</string>
+    <string name="device_profile_library_stock">Stock grid</string>
+    <string name="device_profile_session_square">Square action buttons</string>
+    <string name="device_profile_session_stock">Stock sizes</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Cursor Speed</string>

@@ -2712,4 +2712,8 @@
     <string name="device_profile_info_board">बोर्ड</string>
     <string name="device_profile_info_manufacturer">निर्माता</string>
     <string name="device_profile_info_screen">स्क्रीन</string>
+    <string name="device_profile_library_wide">लैंडस्केप आर्टवर्क के लिए चौड़े 3:2 कार्ड</string>
+    <string name="device_profile_library_stock">स्टॉक ग्रिड</string>
+    <string name="device_profile_session_square">वर्गाकार एक्शन बटन</string>
+    <string name="device_profile_session_stock">स्टॉक आकार</string>
 </resources>

@@ -1117,6 +1117,10 @@
     <string name="device_profile_info_board">ボード</string>
     <string name="device_profile_info_manufacturer">メーカー</string>
     <string name="device_profile_info_screen">画面</string>
+    <string name="device_profile_library_wide">横長アートワーク向けの3:2ワイドカード</string>
+    <string name="device_profile_library_stock">標準グリッド</string>
+    <string name="device_profile_session_square">正方形のアクションボタン</string>
+    <string name="device_profile_session_stock">標準サイズ</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">カーソル速度</string>

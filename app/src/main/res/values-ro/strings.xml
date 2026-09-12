@@ -830,6 +830,10 @@ De ex. <b>META</b> pentru <i>tasta META</i>, \n
     <string name="device_profile_info_board">Placă</string>
     <string name="device_profile_info_manufacturer">Producător</string>
     <string name="device_profile_info_screen">Ecran</string>
+    <string name="device_profile_library_wide">Carduri late 3:2 pentru grafică orizontală</string>
+    <string name="device_profile_library_stock">Grilă standard</string>
+    <string name="device_profile_session_square">Butoane de acțiune pătrate</string>
+    <string name="device_profile_session_stock">Dimensiuni standard</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Viteza cursorului</string>

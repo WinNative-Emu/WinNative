@@ -1117,6 +1117,10 @@ T.ex. <b>META</b> för <i>META-tangent</i>, \n
     <string name="device_profile_info_board">Kretskort</string>
     <string name="device_profile_info_manufacturer">Tillverkare</string>
     <string name="device_profile_info_screen">Skärm</string>
+    <string name="device_profile_library_wide">Breda 3:2-kort för liggande grafik</string>
+    <string name="device_profile_library_stock">Standardrutnät</string>
+    <string name="device_profile_session_square">Kvadratiska åtgärdsknappar</string>
+    <string name="device_profile_session_stock">Standardstorlekar</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Markörhastighet</string>

@@ -1117,6 +1117,10 @@
     <string name="device_profile_info_board">บอร์ด</string>
     <string name="device_profile_info_manufacturer">ผู้ผลิต</string>
     <string name="device_profile_info_screen">หน้าจอ</string>
+    <string name="device_profile_library_wide">การ์ดกว้าง 3:2 สำหรับภาพแนวนอน</string>
+    <string name="device_profile_library_stock">ตารางมาตรฐาน</string>
+    <string name="device_profile_session_square">ปุ่มการทำงานทรงสี่เหลี่ยมจัตุรัส</string>
+    <string name="device_profile_session_stock">ขนาดมาตรฐาน</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">ความเร็วเคอร์เซอร์</string>

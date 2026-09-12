@@ -830,6 +830,10 @@ Ad es. <b>META</b> per il <i>tasto META</i>, \n
     <string name="device_profile_info_board">Scheda</string>
     <string name="device_profile_info_manufacturer">Produttore</string>
     <string name="device_profile_info_screen">Schermo</string>
+    <string name="device_profile_library_wide">Schede larghe 3:2 per artwork orizzontali</string>
+    <string name="device_profile_library_stock">Griglia standard</string>
+    <string name="device_profile_session_square">Pulsanti di azione quadrati</string>
+    <string name="device_profile_session_stock">Dimensioni standard</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Velocità cursore</string>

@@ -836,6 +836,10 @@ Np. <b>META</b> dla <i>klawisza META</i>, \n
     <string name="device_profile_info_board">Płyta</string>
     <string name="device_profile_info_manufacturer">Producent</string>
     <string name="device_profile_info_screen">Ekran</string>
+    <string name="device_profile_library_wide">Szerokie karty 3:2 dla grafik poziomych</string>
+    <string name="device_profile_library_stock">Siatka standardowa</string>
+    <string name="device_profile_session_square">Kwadratowe przyciski akcji</string>
+    <string name="device_profile_session_stock">Rozmiary standardowe</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Prędkość kursora</string>

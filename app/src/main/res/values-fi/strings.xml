@@ -1117,6 +1117,10 @@ E.g. <b>META</b> for <i>META-näppäin</i>, \n
     <string name="device_profile_info_board">Piirilevy</string>
     <string name="device_profile_info_manufacturer">Valmistaja</string>
     <string name="device_profile_info_screen">Näyttö</string>
+    <string name="device_profile_library_wide">Leveät 3:2-kortit vaakakuville</string>
+    <string name="device_profile_library_stock">Vakioruudukko</string>
+    <string name="device_profile_session_square">Neliömäiset toimintopainikkeet</string>
+    <string name="device_profile_session_stock">Vakiokoot</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Osoittimen nopeus</string>

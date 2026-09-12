@@ -1117,6 +1117,10 @@ E.g. <b>META</b> için <i>META tuşu</i>, \n
     <string name="device_profile_info_board">Kart</string>
     <string name="device_profile_info_manufacturer">Üretici</string>
     <string name="device_profile_info_screen">Ekran</string>
+    <string name="device_profile_library_wide">Yatay görseller için geniş 3:2 kartlar</string>
+    <string name="device_profile_library_stock">Standart ızgara</string>
+    <string name="device_profile_session_square">Kare eylem düğmeleri</string>
+    <string name="device_profile_session_stock">Standart boyutlar</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">İmleç Hızı</string>

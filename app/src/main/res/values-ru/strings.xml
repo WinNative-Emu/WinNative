@@ -902,6 +902,10 @@
     <string name="device_profile_info_board">Плата</string>
     <string name="device_profile_info_manufacturer">Производитель</string>
     <string name="device_profile_info_screen">Экран</string>
+    <string name="device_profile_library_wide">Широкие карточки 3:2 для горизонтальных обложек</string>
+    <string name="device_profile_library_stock">Стандартная сетка</string>
+    <string name="device_profile_session_square">Квадратные кнопки действий</string>
+    <string name="device_profile_session_stock">Стандартные размеры</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Скорость курсора</string>

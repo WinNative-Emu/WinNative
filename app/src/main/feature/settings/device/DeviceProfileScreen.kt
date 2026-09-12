@@ -392,6 +392,22 @@ fun DeviceProfileScreen(bridge: SettingsNavBridge? = null) {
                 R.string.device_profile_layouts_tuned
             },
         )
+    val libraryStatus =
+        stringResource(
+            if (DeviceProfileSettings.preferWideArtwork(context)) {
+                R.string.device_profile_library_wide
+            } else {
+                R.string.device_profile_library_stock
+            },
+        )
+    val sessionStatus =
+        stringResource(
+            if (DeviceProfileSettings.sessionActionCardMaxAspect(context) == Float.MAX_VALUE) {
+                R.string.device_profile_session_stock
+            } else {
+                R.string.device_profile_session_square
+            },
+        )
 
     CompositionLocalProvider(LocalPaneNav provides contentNav) {
         Column(
@@ -441,6 +457,8 @@ fun DeviceProfileScreen(bridge: SettingsNavBridge? = null) {
                         when (feature) {
                             DeviceProfileFeature.INPUT_CONTROL_LAYOUTS -> layoutStatus
                             DeviceProfileFeature.ADAPTIVE_JOYSTICKS -> adaptiveStatus
+                            DeviceProfileFeature.LIBRARY_ICONS -> libraryStatus
+                            DeviceProfileFeature.SESSION_MENU_SIZES -> sessionStatus
                             else -> null
                         },
                     portrait = portrait,
