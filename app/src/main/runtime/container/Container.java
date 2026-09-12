@@ -308,7 +308,7 @@ public class Container {
         this.rootDir = rootDir;
     }
 
-    public void setExtraData(JSONObject extraData) {
+    public synchronized void setExtraData(JSONObject extraData) {
         this.extraData = extraData;
     }
 
@@ -320,7 +320,7 @@ public class Container {
         return getExtra(key, "");
     }
 
-    public String getExtra(String name, String fallback) {
+    public synchronized String getExtra(String name, String fallback) {
         try {
             return extraData != null && extraData.has(name) ? extraData.getString(name) : fallback;
         }
@@ -329,7 +329,7 @@ public class Container {
         }
     }
 
-    public void putExtra(String name, Object value) {
+    public synchronized void putExtra(String name, Object value) {
         if (extraData == null) extraData = new JSONObject();
         try {
             if (value != null) {
@@ -420,7 +420,17 @@ public class Container {
         };
     }
 
+    private final Object saveLock = new Object();
+
     public void saveData() {
+        synchronized (saveLock) {
+            String serialized = serializeData();
+            if (serialized == null) return;
+            FileUtils.writeStringAtomic(getConfigFile(), serialized);
+        }
+    }
+
+    private synchronized String serializeData() {
         try {
             JSONObject data = new JSONObject();
             data.put("id", id);
@@ -450,7 +460,7 @@ public class Container {
             data.put("fexcoreVersion", fexcoreVersion);
             data.put("box64Preset", box64Preset);
             data.put("desktopTheme", desktopTheme);
-            data.put("extraData", extraData);
+            data.put("extraData", snapshotExtraData());
             data.put("midiSoundFont", midiSoundFont);
             data.put("lc_all", lc_all);
             data.put("launchBionicSteam", launchBionicSteam);
@@ -463,9 +473,25 @@ public class Container {
             data.put("runtimePatcher", runtimePatcher);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
-            FileUtils.writeString(getConfigFile(), data.toString());
+            return data.toString();
         }
-        catch (JSONException e) {}
+        catch (Exception e) {
+            android.util.Log.e("Container", "Failed to serialize container " + id, e);
+            return null;
+        }
+    }
+
+    private JSONObject snapshotExtraData() {
+        JSONObject copy = new JSONObject();
+        if (extraData == null) return copy;
+        for (Iterator<String> it = extraData.keys(); it.hasNext(); ) {
+            String key = it.next();
+            try {
+                copy.put(key, extraData.get(key));
+            }
+            catch (JSONException e) {}
+        }
+        return copy;
     }
 
 

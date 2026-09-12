@@ -212,6 +212,11 @@ public class SessionKeepAliveService extends Service {
         activeXServer = xServer;
     }
 
+    public static void clearActiveSession() {
+        activeEnvironment = null;
+        activeXServer = null;
+    }
+
     public static void setPipMode(boolean inPip) {
         appInPipMode.set(inPip);
         if (instance != null) {
@@ -758,6 +763,7 @@ public class SessionKeepAliveService extends Service {
 
     private static void resetLocalState() {
         sessionActive.set(false);
+        clearActiveSession();
         isContainerPaused = false;
         synchronized (activeDownloads) { activeDownloads.clear(); }
         activeComponents.clear();

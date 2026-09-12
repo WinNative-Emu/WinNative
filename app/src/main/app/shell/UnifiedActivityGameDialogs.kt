@@ -2019,31 +2019,22 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
             else -> "Steam"
         }
 
-    // Install path
-    val installPath =
-        remember(app, gogGame) {
+    val installPath by produceState("", app, gogGame, epicGame) {
+        value =
             when {
-                isGog -> {
-                    gogGame!!.installPath
-                }
-
-                isEpic -> {
-                    epicGame?.installPath ?: ""
-                }
-
-                isCustom -> {
-                    app.gameDir
-                }
-
-                else -> {
-                    try {
-                        SteamService.getAppDirPath(app.id)
-                    } catch (_: Exception) {
-                        ""
+                isGog -> gogGame!!.installPath
+                isEpic -> epicGame?.installPath ?: ""
+                isCustom -> app.gameDir
+                else ->
+                    withContext(Dispatchers.IO) {
+                        try {
+                            SteamService.getAppDirPath(app.id)
+                        } catch (_: Exception) {
+                            ""
+                        }
                     }
-                }
             }
-        }
+    }
 
     // Install size (computed async)
     val installSizeText by produceState<String?>(initialValue = null, key1 = installPath) {

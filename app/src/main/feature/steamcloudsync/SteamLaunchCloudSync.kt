@@ -84,6 +84,7 @@ object SteamLaunchCloudSync {
         initialSync: PostSyncInfo,
     ) {
         val dialogLatch = CountDownLatch(1)
+        var answered = false
         var useCloud = false
         var keepBackup = false
         val timestamps = SteamCloudSyncHelper.timestampsFromSyncInfo(activity, shortcut, initialSync)
@@ -100,22 +101,47 @@ object SteamLaunchCloudSync {
                 }
             }
 
-        activity.runOnUiThread {
-            lifecycle?.addObserver(cancelObserver)
-            SteamCloudConflictDialog.show(
-                activity,
-                timestamps,
-                onUseCloud = { keep ->
-                    useCloud = true
-                    keepBackup = keep
-                    dialogLatch.countDown()
-                },
-                onUseLocal = { keep ->
-                    useCloud = false
-                    keepBackup = keep
-                    dialogLatch.countDown()
-                },
+        if (activity.isFinishing || activity.isDestroyed ||
+            lifecycle?.currentState == Lifecycle.State.DESTROYED
+        ) {
+            Timber.tag("SteamLaunchCloudSync").w(
+                "Activity is already gone; not prompting for the cloud conflict and keeping the " +
+                    "local save so the launch is never held behind a dialog nobody can answer",
             )
+            statusSink.show(activity.getString(R.string.preloader_initializing))
+            return
+        }
+
+        activity.runOnUiThread {
+            if (activity.isFinishing || activity.isDestroyed) {
+                dialogLatch.countDown()
+                return@runOnUiThread
+            }
+            lifecycle?.addObserver(cancelObserver)
+            try {
+                SteamCloudConflictDialog.show(
+                    activity,
+                    timestamps,
+                    onUseCloud = { keep ->
+                        answered = true
+                        useCloud = true
+                        keepBackup = keep
+                        dialogLatch.countDown()
+                    },
+                    onUseLocal = { keep ->
+                        answered = true
+                        useCloud = false
+                        keepBackup = keep
+                        dialogLatch.countDown()
+                    },
+                )
+            } catch (t: Throwable) {
+                Timber.tag("SteamLaunchCloudSync").w(
+                    t,
+                    "Could not show the cloud-conflict dialog; keeping the local save",
+                )
+                dialogLatch.countDown()
+            }
         }
 
         try {
@@ -132,6 +158,15 @@ object SteamLaunchCloudSync {
         }
 
         activity.runOnUiThread { lifecycle?.removeObserver(cancelObserver) }
+
+        if (!answered) {
+            Timber.tag("SteamLaunchCloudSync").w(
+                "Cloud conflict was never answered; leaving both saves untouched rather than " +
+                    "pushing the local one over the cloud",
+            )
+            statusSink.show(activity.getString(R.string.preloader_initializing))
+            return
+        }
 
         if (keepBackup && useCloud) {
             // "Use Cloud" overwrites the LOCAL save — snapshot it first.

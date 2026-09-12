@@ -2,6 +2,7 @@ package com.winlator.cmod.app
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import android.os.Looper
 import android.util.Log
 import com.winlator.cmod.app.db.PluviaDatabase
 import com.winlator.cmod.app.update.UpdateService
@@ -44,8 +45,13 @@ class PluviaApp : Application() {
         super.onCreate()
         instance = this
 
+        val platformUncaughtHandler = Thread.getDefaultUncaughtExceptionHandler()
+        val mainThread = Looper.getMainLooper().thread
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("PluviaApp", "CRASH in thread ${thread.name}", throwable)
+            if (thread === mainThread) {
+                platformUncaughtHandler?.uncaughtException(thread, throwable)
+            }
         }
 
         // Initialize Timber in debug builds for app wide logging.
