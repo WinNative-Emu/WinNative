@@ -13,7 +13,7 @@
                 "NONE"
             ],
             "scale": 1.2,
-            "x": 0.158333,
+            "x": 0.095833,
             "y": 0.091398,
             "toggleSwitch": false,
             "text": "",
@@ -29,7 +29,7 @@
                 "NONE"
             ],
             "scale": 1.2,
-            "x": 0.841667,
+            "x": 0.904167,
             "y": 0.091398,
             "toggleSwitch": false,
             "text": "",
@@ -45,7 +45,7 @@
                 "NONE"
             ],
             "scale": 1.2,
-            "x": 0.158333,
+            "x": 0.095833,
             "y": 0.212366,
             "toggleSwitch": false,
             "text": "",
@@ -61,7 +61,7 @@
                 "NONE"
             ],
             "scale": 1.2,
-            "x": 0.841667,
+            "x": 0.904167,
             "y": 0.212366,
             "toggleSwitch": false,
             "text": "",
