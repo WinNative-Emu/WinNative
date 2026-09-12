@@ -30,6 +30,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import com.winlator.cmod.app.config.DeviceProfileSettings
 import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings
+import com.winlator.cmod.runtime.wine.WineThemeManager
 import com.winlator.cmod.BuildConfig
 import com.winlator.cmod.R
 import com.winlator.cmod.app.PluviaApp
@@ -727,10 +728,9 @@ class ShortcutSettingsComposeDialog private constructor(
         state.desktopThemeEntries.value = desktopThemeArr
         // Desktop theme is stored as compound "THEME,TYPE,COLOR" — extract theme name
         val savedDesktopTheme = getShortcutSetting("desktopTheme", container.getDesktopTheme())
-        val themePart = savedDesktopTheme.split(",").firstOrNull()?.trim() ?: ""
-        // Match case-insensitively: enum is "LIGHT"/"DARK", entries are "Light"/"Dark"
-        val themeIdx = desktopThemeArr.indexOfFirst { it.equals(themePart, ignoreCase = true) }
-        state.selectedDesktopTheme.intValue = if (themeIdx >= 0) themeIdx else 0
+        state.selectedDesktopTheme.intValue =
+            WineThemeManager.ThemeInfo(savedDesktopTheme).theme.ordinal
+                .coerceIn(0, (desktopThemeArr.size - 1).coerceAtLeast(0))
 
         // Show Box64/FEXCore frames based on saved emulator selection immediately,
         // before the async content sync runs
@@ -1457,8 +1457,12 @@ class ShortcutSettingsComposeDialog private constructor(
             if (state.desktopThemeEntries.value.isNotEmpty()) {
                 val desktopThemeEntries = state.desktopThemeEntries.value
                 val dtIdx = state.selectedDesktopTheme.intValue
-                val selectedLabel = if (dtIdx in desktopThemeEntries.indices) desktopThemeEntries[dtIdx] else ""
-                val themeName = selectedLabel.uppercase()
+                val themeName =
+                    if (dtIdx in desktopThemeEntries.indices) {
+                        WineThemeManager.Theme.values().getOrNull(dtIdx)?.name ?: "LIGHT"
+                    } else {
+                        "LIGHT"
+                    }
                 // Preserve existing compound value, only replace the theme portion
                 val existing = getShortcutSetting("desktopTheme", container.getDesktopTheme())
                 val parts = existing.split(",").toMutableList()
@@ -2419,9 +2423,9 @@ class ShortcutSettingsComposeDialog private constructor(
         // Desktop theme is stored as compound "THEME,TYPE,COLOR".
         val desktopThemeArr = state.desktopThemeEntries.value
         if (desktopThemeArr.isNotEmpty()) {
-            val themePart = container.getDesktopTheme().split(",").firstOrNull()?.trim() ?: ""
-            val themeIdx = desktopThemeArr.indexOfFirst { it.equals(themePart, ignoreCase = true) }
-            state.selectedDesktopTheme.intValue = if (themeIdx >= 0) themeIdx else 0
+            state.selectedDesktopTheme.intValue =
+                WineThemeManager.ThemeInfo(container.getDesktopTheme()).theme.ordinal
+                    .coerceIn(0, desktopThemeArr.size - 1)
         }
 
         val directX = mutableListOf<WinComponentItem>()

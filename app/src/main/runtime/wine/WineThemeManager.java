@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.util.Log;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -15,6 +16,7 @@ import com.winlator.cmod.runtime.display.xserver.ScreenInfo;
 import java.io.File;
 
 public abstract class WineThemeManager {
+  private static final String TAG = "WineThemeManager";
   public enum Theme {
     LIGHT,
     DARK
@@ -35,14 +37,40 @@ public abstract class WineThemeManager {
     public final int backgroundColor;
 
     public ThemeInfo(String value) {
-      String[] values = value.split(",");
-      theme = Theme.valueOf(values[0]);
+      String[] values = value != null ? value.split(",") : new String[0];
+      theme = parseTheme(values.length > 0 ? values[0] : null);
       if (values.length < 3) {
-        backgroundColor = Color.parseColor(values[1]);
+        backgroundColor = parseColor(values.length > 1 ? values[1] : null);
         backgroundType = BackgroundType.IMAGE;
       } else {
-        backgroundType = BackgroundType.valueOf(values[1]);
-        backgroundColor = Color.parseColor(values[2]);
+        backgroundType = parseBackgroundType(values[1]);
+        backgroundColor = parseColor(values[2]);
+      }
+    }
+
+    public static Theme parseTheme(String name) {
+      if (name == null) return Theme.LIGHT;
+      String normalized = name.trim().toUpperCase(java.util.Locale.ROOT);
+      for (Theme theme : Theme.values()) if (theme.name().equals(normalized)) return theme;
+      Log.w(TAG, "Unknown desktop theme '" + name + "', using LIGHT");
+      return Theme.LIGHT;
+    }
+
+    private static BackgroundType parseBackgroundType(String name) {
+      if (name != null) {
+        String normalized = name.trim().toUpperCase(java.util.Locale.ROOT);
+        for (BackgroundType type : BackgroundType.values()) {
+          if (type.name().equals(normalized)) return type;
+        }
+      }
+      return BackgroundType.IMAGE;
+    }
+
+    private static int parseColor(String value) {
+      try {
+        return Color.parseColor(value.trim());
+      } catch (RuntimeException e) {
+        return Color.parseColor("#0277bd");
       }
     }
   }
