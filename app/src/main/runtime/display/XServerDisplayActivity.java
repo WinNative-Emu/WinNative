@@ -12894,14 +12894,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
     }
 
-    // Background service processes have no windows and never pass through
-    // assignTaskAffinity. One complete pass over the guest process list at the
-    // first window map pins every matching instance BY PID (by-name requests
-    // can't address duplicates like the two winedevice hosts). Children spawned
-    // afterwards inherit their parent's mask, so a single early pass keeps the
-    // policy without ever re-sending — manual task manager changes stick.
-    // Services go to the efficiency cores (lower half), shell/UI to the 64-bit
-    // list, winhandler to all cores.
     private void pinServiceAffinity() {
         if (serviceAffinityStarted || winHandler == null) return;
         serviceAffinityStarted = true;
@@ -12909,8 +12901,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             final WinHandler wh = winHandler;
             if (wh == null) return;
             int coreCount = Runtime.getRuntime().availableProcessors();
-            final int littleMask = ProcessHelper.getAffinityMask(0, coreCount / 2);
             final int fullMask = ProcessHelper.getAffinityMask(0, coreCount);
+            final int efficiencyMask = ProcessHelper.getEfficiencyCoreMask();
+            final int littleMask = efficiencyMask != 0 ? efficiencyMask : fullMask;
             final CountDownLatch latch = new CountDownLatch(1);
             final OnGetProcessInfoListener previous = wh.getOnGetProcessInfoListener();
             final OnGetProcessInfoListener pinner = (index, numProcesses, processInfo) -> {
@@ -12949,9 +12942,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return 0;
     }
 
-    // _NET_WM_WOW64 can be absent on 32-bit guest windows, so when the two masks
-    // differ, resolve the wow64 flag from the guest process list and apply once.
-    // The window property is only the fallback if the guest doesn't answer.
     private void applyGuestResolvedAffinity(final int pid, final boolean windowSaysWoW64) {
         synchronized (guestAffinityCheckedPids) {
             if (!guestAffinityCheckedPids.add(pid)) return;
