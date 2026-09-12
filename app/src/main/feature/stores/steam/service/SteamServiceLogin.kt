@@ -162,6 +162,8 @@ import javax.inject.Inject
 import kotlin.io.path.pathString
 import kotlin.time.Duration.Companion.seconds
 
+private const val WN_CM_CONNECT_TIMEOUT_MS = 25_000L
+
 // Login token/session bring-up + update-check helpers, split out of SteamService.kt (behavior-identical).
 
 /** Persist native-client auth credentials for cold-start auto-logon. */
@@ -401,17 +403,28 @@ internal suspend fun SteamService.Companion.bringUpWnSession(svc: SteamService):
     var ok = false
     try {
         session.setCaBundlePath(caPath)
-        val connected = suspendCancellableCoroutine<Boolean> { cont ->
-            session.setStateObserver(object : WnSteamStateObserver {
-                override fun onStateChanged(state: Int) {
-                    if (!cont.isActive) return
-                    if (state == 2) cont.resume(true)
-                    else if (state == 0) cont.resume(false)
-                }
-                override fun onClientMessage(emsg: Int, eresult: Int, body: ByteArray) {}
-            })
-            if (!session.connect(cmUrl)) cont.resume(false)
-            cont.invokeOnCancellation { session.disconnect() }
+        val connected = kotlinx.coroutines.withTimeoutOrNull(WN_CM_CONNECT_TIMEOUT_MS) {
+            suspendCancellableCoroutine<Boolean> { cont ->
+                session.setStateObserver(object : WnSteamStateObserver {
+                    override fun onStateChanged(state: Int) {
+                        if (!cont.isActive) return
+                        if (state == 2) cont.resume(true)
+                        else if (state == 0) cont.resume(false)
+                    }
+                    override fun onClientMessage(emsg: Int, eresult: Int, body: ByteArray) {}
+                })
+                if (!session.connect(cmUrl)) cont.resume(false)
+                cont.invokeOnCancellation { session.disconnect() }
+            }
+        }
+        if (connected == null) {
+            Timber.e(
+                "WnSteam channel did not reach Connected state within %dms; a network that " +
+                    "accepts the TCP connection but never completes the WebSocket handshake " +
+                    "would otherwise hold this session, and every caller behind it, for good",
+                WN_CM_CONNECT_TIMEOUT_MS,
+            )
+            return null
         }
         if (!connected) {
             Timber.e("WnSteam channel did not reach Connected state")

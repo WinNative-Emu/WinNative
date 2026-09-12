@@ -76,23 +76,46 @@ object EpicLaunchCloudSync {
                 }
             }
 
-        activity.runOnUiThread {
-            lifecycle?.addObserver(cancelObserver)
-            EpicCloudConflictDialog.show(
-                activity = activity,
-                timestamps = timestamps,
-                onUseCloud = { keep ->
-                    useCloud = true
-                    keepBackup = keep
-                    dialogLatch.countDown()
-                },
-                onUseLocal = { keep ->
-                    useCloud = false
-                    useLocal = true
-                    keepBackup = keep
-                    dialogLatch.countDown()
-                },
+        if (activity.isFinishing || activity.isDestroyed ||
+            lifecycle?.currentState == Lifecycle.State.DESTROYED
+        ) {
+            Timber.tag("EpicLaunchCloudSync").w(
+                "Activity is already gone; not prompting for the cloud conflict and keeping the " +
+                    "local save so the launch is never held behind a dialog nobody can answer",
             )
+            statusSink.show(activity.getString(R.string.preloader_initializing))
+            return
+        }
+
+        activity.runOnUiThread {
+            if (activity.isFinishing || activity.isDestroyed) {
+                dialogLatch.countDown()
+                return@runOnUiThread
+            }
+            lifecycle?.addObserver(cancelObserver)
+            try {
+                EpicCloudConflictDialog.show(
+                    activity = activity,
+                    timestamps = timestamps,
+                    onUseCloud = { keep ->
+                        useCloud = true
+                        keepBackup = keep
+                        dialogLatch.countDown()
+                    },
+                    onUseLocal = { keep ->
+                        useCloud = false
+                        useLocal = true
+                        keepBackup = keep
+                        dialogLatch.countDown()
+                    },
+                )
+            } catch (t: Throwable) {
+                Timber.tag("EpicLaunchCloudSync").w(
+                    t,
+                    "Could not show the Epic cloud-conflict dialog; keeping the local save",
+                )
+                dialogLatch.countDown()
+            }
         }
 
         try {

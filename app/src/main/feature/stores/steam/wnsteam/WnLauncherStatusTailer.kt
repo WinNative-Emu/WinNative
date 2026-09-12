@@ -30,11 +30,15 @@ class WnLauncherStatusTailer(
     @Volatile private var launchCompleteSignaled: Boolean = false
     @Volatile private var directExeMode: Boolean = false
     @Volatile private var insecureSignaled: Boolean = false
+    @Volatile private var sawAnyLauncherLine: Boolean = false
+    @Volatile private var startedAt: Long = 0L
 
     fun start() {
         if (!running.compareAndSet(false, true)) return
         fileExistedAtStart = logFile.exists()
         launchCompleteSignaled = false
+        sawAnyLauncherLine = false
+        startedAt = System.currentTimeMillis()
         android.util.Log.i(TAG, "start: path=" + logFile.absolutePath
                 + " exists=" + fileExistedAtStart
                 + " size=" + (if (fileExistedAtStart) logFile.length() else -1L)
@@ -64,6 +68,7 @@ class WnLauncherStatusTailer(
                     if (iter % 25 == 1) {
                         android.util.Log.i(TAG, "tailLoop iter=$iter: file does not yet exist at ${logFile.absolutePath}")
                     }
+                    watchdogTick()
                     Thread.sleep(pollIntervalMs)
                     continue
                 }
@@ -114,6 +119,7 @@ class WnLauncherStatusTailer(
 
     private fun consumeLine(line: String) {
         if (!line.contains("[wn-launcher]")) return
+        sawAnyLauncherLine = true
         if (line.contains("BLOCKED: kind=")) {
             val kind = field(line, "kind=") ?: return
             val blocking = field(line, "blocking=")?.toIntOrNull() ?: 0
@@ -184,6 +190,19 @@ class WnLauncherStatusTailer(
     }
 
     private fun watchdogTick() {
+        if (!sawAnyLauncherLine && !launchCompleteSignaled && startedAt != 0L &&
+            System.currentTimeMillis() - startedAt > LAUNCHER_SILENT_MS
+        ) {
+            android.util.Log.w(
+                TAG,
+                "watchdog: no [wn-launcher] line in ${LAUNCHER_SILENT_MS}ms — no Steam launcher is " +
+                    "running for this session, so the preloader is handed back to the first " +
+                    "application window instead of covering the session for good",
+            )
+            launchCompleteSignaled = true
+            main.post { onLaunchComplete?.invoke() }
+            return
+        }
         val dispatchedAt = launchAppDispatchedAt
         if (dispatchedAt == 0L) return  // disarmed on spawn / fallback
         if (System.currentTimeMillis() - dispatchedAt > LAUNCH_APP_WATCHDOG_MS) {
@@ -269,6 +288,7 @@ class WnLauncherStatusTailer(
     companion object {
         private const val TAG = "WnLauncherTailer"
         private const val LAUNCH_APP_WATCHDOG_MS = 35_000L
+        private const val LAUNCHER_SILENT_MS = 240_000L
         private val INSTALLER_NAME = Regex("""^(.+?)\.(?:cmd|bat|exe|msi)\b""", RegexOption.IGNORE_CASE)
     }
 }
