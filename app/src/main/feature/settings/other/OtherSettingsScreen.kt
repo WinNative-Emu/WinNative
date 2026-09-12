@@ -1,9 +1,15 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.winlator.cmod.feature.settings
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,14 +30,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowCircleDown
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Monitor
@@ -41,11 +51,16 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SliderState
@@ -61,11 +76,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,6 +92,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.winlator.cmod.shared.ui.layout.isPortraitLayout
 import com.winlator.cmod.R
+import com.winlator.cmod.runtime.system.ProcessHelper
 import com.winlator.cmod.shared.ui.dialog.PopupDialog
 import com.winlator.cmod.shared.ui.focus.rememberSettingsContentNav
 import com.winlator.cmod.shared.ui.nav.DialogPaneNav
@@ -95,6 +115,7 @@ private val TextPrimary = Color(0xFFF0F4FF)
 private val TextSecondary = Color(0xFF7A8FA8)
 private val SettingsSliderHeight = 24.dp
 private const val SettingsSliderTrackScaleY = 0.72f
+private val Error = Color(0xFFFF4444)
 
 // State
 data class OtherSettingsState(
@@ -114,6 +135,10 @@ data class OtherSettingsState(
     val openInBrowser: Boolean = false,
     val shareClipboard: Boolean = false,
     val enableBackgroundSession: Boolean = false,
+    val enableAutoPause: Boolean = false,
+    val useBackgroundWakelock: Boolean = false,
+    val heartbeatFrequency: Int = 0,
+    val backgroundPauseMode: ProcessHelper.BackgroundPauseMode = ProcessHelper.BackgroundPauseMode.GAME_ONLY,
     val externalDisplayOutput: Boolean = false,
     val imagefsInstallProgress: Int? = null,
 )
@@ -159,6 +184,10 @@ fun OtherSettingsScreen(
     onOpenInBrowserChanged: (Boolean) -> Unit,
     onShareClipboardChanged: (Boolean) -> Unit,
     onEnableBackgroundSessionChanged: (Boolean) -> Unit,
+    onEnableAutoPauseChanged: (Boolean) -> Unit,
+    onUseBackgroundWakelockChanged: (Boolean) -> Unit,
+    onHeartbeatFrequencyChanged: (Int) -> Unit,
+    onBackgroundPauseModeChanged: (ProcessHelper.BackgroundPauseMode) -> Unit,
     onExternalDisplayOutputChanged: (Boolean) -> Unit,
     onRunSetupWizard: () -> Unit,
     onReinstallImagefs: () -> Unit,
@@ -279,6 +308,56 @@ fun OtherSettingsScreen(
                 onCheckedChange = onXinputDisabledChanged,
             )
 
+            SectionLabel(stringResource(R.string.settings_other_section_background), modifier = Modifier.padding(top = 8.dp))
+
+            SettingsToggleCard(
+                title = stringResource(R.string.settings_general_background),
+                subtitle = stringResource(R.string.settings_other_background_subtitle),
+                icon = Icons.Outlined.Visibility,
+                checked = state.enableBackgroundSession,
+                onCheckedChange = onEnableBackgroundSessionChanged,
+            )
+
+            SettingsToggleCard(
+                title = stringResource(R.string.settings_other_bg_auto_pause_title),
+                subtitle = stringResource(R.string.settings_other_bg_auto_pause_subtitle),
+                icon = Icons.Outlined.Visibility,
+                checked = state.enableAutoPause,
+                onCheckedChange = onEnableAutoPauseChanged,
+            )
+
+            AnimatedVisibility(
+                visible = state.enableBackgroundSession,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                SettingsToggleCard(
+                    title = stringResource(R.string.settings_other_bg_wakelock_title),
+                    subtitle = stringResource(R.string.settings_other_bg_wakelock_subtitle),
+                    icon = Icons.Outlined.BatteryAlert,
+                    checked = state.useBackgroundWakelock,
+                    onCheckedChange = onUseBackgroundWakelockChanged,
+                )
+            }
+
+            AnimatedVisibility(
+                visible = state.enableBackgroundSession && state.useBackgroundWakelock,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                HeartbeatFrequencyCard(
+                    currentFrequency = state.heartbeatFrequency,
+                    onFrequencyChanged = onHeartbeatFrequencyChanged,
+                )
+            }
+
+            BackgroundPauseModeCard(
+                currentMode = state.backgroundPauseMode,
+                onModeChanged = onBackgroundPauseModeChanged,
+            )
+
+            SectionLabel(stringResource(R.string.settings_other_section_integration), modifier = Modifier.padding(top = 8.dp))
+
             SettingsToggleCard(
                 title = stringResource(R.string.session_drawer_output_to_display),
                 subtitle = stringResource(R.string.settings_external_display_output_summary),
@@ -287,15 +366,6 @@ fun OtherSettingsScreen(
                 onCheckedChange = onExternalDisplayOutputChanged,
             )
 
-            SectionLabel(stringResource(R.string.settings_other_section_integration), modifier = Modifier.padding(top = 8.dp))
-
-            SettingsToggleCard(
-                title = stringResource(R.string.settings_general_background),
-                subtitle = "Keep session alive while in background",
-                icon = Icons.Outlined.Visibility,
-                checked = state.enableBackgroundSession,
-                onCheckedChange = onEnableBackgroundSessionChanged,
-            )
             SettingsToggleCard(
                 title = stringResource(R.string.settings_general_enable_auto_scraping),
                 subtitle = stringResource(R.string.settings_general_auto_scraping_summary),
@@ -1107,5 +1177,308 @@ private fun SmallActionButton(
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
         )
+    }
+}
+
+@Composable
+private fun BackgroundPauseModeCard(
+    currentMode: ProcessHelper.BackgroundPauseMode,
+    onModeChanged: (ProcessHelper.BackgroundPauseMode) -> Unit,
+) {
+    // Tracks if the card is expanded. False = collapsed by default.
+    var expanded by remember { mutableStateOf(false) }
+
+    // Each entry: mode, title string res, subtitle string res.
+    val options = listOf(
+        Triple(ProcessHelper.BackgroundPauseMode.ALL,            R.string.settings_other_bg_pause_all_title,            R.string.settings_other_bg_pause_all_subtitle),
+        Triple(ProcessHelper.BackgroundPauseMode.GAME_ONLY,      R.string.settings_other_bg_pause_game_only_title,      R.string.settings_other_bg_pause_game_only_subtitle),
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(CardDark)
+            .border(1.dp, CardBorder, RoundedCornerShape(12.dp)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            // Header Row - Clicking this toggles expansion
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .paneNavItem(
+                        cornerRadius = 8.dp,
+                        onActivate = { expanded = !expanded },
+                        highlightColor = NavHighlight,
+                        tapToSelect = true,
+                    )
+                    .padding(vertical = 4.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(IconBoxBg),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Tune,
+                        contentDescription = null,
+                        tint = Accent,
+                        modifier = Modifier.size(17.dp),
+                    )
+                }
+                Spacer(Modifier.width(13.dp))
+                Text(
+                    text = stringResource(R.string.settings_other_bg_pause_mode_title),
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                // Chevron icon indicating state
+                Icon(
+                    imageVector = if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // Options list - Only visible when expanded
+            if (expanded) Spacer(Modifier.height(10.dp))
+            options.forEach { (mode, titleRes, subtitleRes) ->
+                AnimatedVisibility(
+                    visible = expanded,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(8.dp))
+                            .paneNavItem(
+                                cornerRadius = 8.dp,
+                                onActivate = { onModeChanged(mode) },
+                                highlightColor = NavHighlight,
+                                tapToSelect = true,
+                            )
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = currentMode == mode,
+                            onClick = { onModeChanged(mode) },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = Accent,
+                                unselectedColor = TextSecondary,
+                            ),
+                            // Let the Row handle the focus
+                            modifier = Modifier.focusProperties { canFocus = false }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(titleRes),
+                                color = TextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                text = stringResource(subtitleRes),
+                                color = TextSecondary,
+                                fontSize = 11.sp,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeartbeatFrequencyCard(
+    currentFrequency: Int,
+    onFrequencyChanged: (Int) -> Unit,
+) {
+    // Tracks expansion. False = collapsed by default.
+    var expanded by remember { mutableStateOf(false) }
+    // Raw text while the user is typing; committed as Int on Done/focus-loss.
+    var rawText by remember(currentFrequency) { mutableStateOf(currentFrequency.toString()) }
+    val focusManager = LocalFocusManager.current
+
+    // Tracks internal focus to prevent redundant commit on initial composition/attach
+    var isFocused by remember { mutableStateOf(false) }
+
+    // Derive the effective value and whether the current input is in error,
+    // so we can give the user immediate feedback without committing bad state.
+    // Use Long to handle Int overflow detection correctly
+    val parsedLong = rawText.trim().toLongOrNull()
+    val isOverflow = rawText.isNotEmpty() && (parsedLong == null || parsedLong > Int.MAX_VALUE)
+    val isTooSmall = parsedLong != null && parsedLong != 0L && parsedLong < 5
+    val isError = isOverflow || isTooSmall
+
+    val effectiveLabel = when {
+        rawText.isEmpty() || parsedLong == 0L -> stringResource(R.string.settings_other_bg_heartbeat_disabled)
+        isOverflow -> stringResource(R.string.settings_other_bg_heartbeat_effective, Int.MAX_VALUE)
+        isTooSmall -> stringResource(R.string.settings_other_bg_heartbeat_minimum)
+        else -> stringResource(R.string.settings_other_bg_heartbeat_effective, parsedLong!!.toInt())
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(CardDark)
+            .border(1.dp, CardBorder, RoundedCornerShape(12.dp)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .paneNavItem(
+                        cornerRadius = 8.dp,
+                        onActivate = { expanded = !expanded },
+                        highlightColor = NavHighlight,
+                        tapToSelect = true,
+                    )
+                    .padding(vertical = 4.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(IconBoxBg),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Timer,
+                        contentDescription = null,
+                        tint = Accent,
+                        modifier = Modifier.size(17.dp),
+                    )
+                }
+                Spacer(Modifier.width(13.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.settings_other_bg_heartbeat_title),
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_other_bg_heartbeat_subtitle),
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
+                // Chevron icon
+                Icon(
+                    imageVector = if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            // Collapsible content (Input + Supporting Text)
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Column {
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = rawText,
+                        onValueChange = { rawText = it.filter { c -> c.isDigit() } },
+                        singleLine = true,
+                        isError = isError,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done,
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                focusManager.clearFocus()
+                            },
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .paneNavItem(
+                                cornerRadius = 8.dp,
+                                // onAdjust allows changing the value with D-pad
+                                onAdjust = { dir ->
+                                    // Calculate the next value using a step of 5
+                                    val next = when {
+                                        currentFrequency == 5 && dir < 0 -> 0   // If at 5 and pressing Left, jump to 0 (Disabled)
+                                        currentFrequency == 0 && dir > 0 -> 5   // If at 0 and pressing Right, jump to 5 (Minimum)
+                                        else -> (currentFrequency + dir * 5).coerceAtLeast(0)   // Standard increment/decrement
+                                    }
+                                    onFrequencyChanged(next)
+                                },
+                                highlightColor = NavHighlight,
+                            )
+                            .onFocusChanged { focus ->
+                                // Commit and clamp when the user leaves the field,
+                                // so tapping elsewhere still saves the value.
+                                if (isFocused && !focus.isFocused) {
+                                    commitFrequency(rawText, currentFrequency, onFrequencyChanged)
+                                }
+                                isFocused = focus.isFocused
+                            },
+                        suffix = { Text("s", color = TextSecondary, fontSize = 13.sp) },
+                        supportingText = effectiveLabel.let { label ->
+                            {
+                                Text(
+                                    text = label,
+                                    color = if (isError) Error else TextSecondary,
+                                    fontSize = 11.sp,
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Extracted so both Done-action and focus-loss share identical clamping logic.
+private fun commitFrequency(raw: String, current: Int, onFrequencyChanged: (Int) -> Unit) {
+    val trimmed = raw.trim()
+    if (trimmed.isEmpty()) {
+        if (current != 0) onFrequencyChanged(0)
+        return
+    }
+
+    val parsedLong = trimmed.toLongOrNull()
+    val committed = when {
+        parsedLong == null || parsedLong > Int.MAX_VALUE -> Int.MAX_VALUE // Overflow -> clamp to Int.MAX
+        parsedLong == 0L -> 0   // revert to default on empty / non-numeric -> disabled
+        parsedLong < 5 -> 5     // clamp to minimum
+        else -> parsedLong.toInt()
+    }
+
+    if (committed != current) {
+        onFrequencyChanged(committed)
     }
 }

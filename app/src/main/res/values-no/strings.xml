@@ -1173,6 +1173,8 @@ F.eks. <b>META</b> for <i>META-tast</i>, \n
     <string name="settings_debug_no_logs_available">Ingen feilsøkingslogger tilgjengelig. Aktiver feilsøkingsalternativer først og start et spill.</string>
     <string name="settings_debug_capture_failed">Kunne ikke fange logger: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Logg WinNative-prosessfeil, advarsler og krasj til fil</string>
+    <string name="settings_filtered_logs_to_file_title">Filtrert feilsøkingslogg</string>
+    <string name="settings_filtered_logs_to_file_desc">Lagre appens logger til en fil, filtrert i henhold til hva som er konfigurert i merkelappfilteret.</string>
     <string name="settings_debug_section_emulation">Emulering</string>
     <string name="settings_debug_section_subsystems">Delsystemer</string>
     <string name="settings_debug_section_tools">Verktøy</string>
@@ -1670,6 +1672,53 @@ Installert bane:
     <string name="file_manager_create_folder_failed">Oppretting av mappe mislyktes</string>
 
     <string name="settings_content_refresh">Oppdater</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Applogging</string>
+    <string name="settings_debug_application_logging_subtitle">Slå på logging og vis loggalternativene</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Logg over avslutningsårsak</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Registrerer hvorfor appens prosess sist ble avsluttet</string>
+    <string name="settings_debug_crash_log_title">Krasjlogg</string>
+    <string name="settings_debug_crash_log_subtitle">Lagre native krasj-spor (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Hendelsesovervåkingslogg</string>
+    <string name="settings_debug_event_watch_log_subtitle">Fanger en fokusert systemlogg rundt pause/gjenoppta-hendelser</string>
+    <string name="settings_debug_log_tag_filter_channel">Loggtagg-filter</string>
+    <string name="settings_debug_tags_selected_suffix">tagger valgt</string>
+    <string name="settings_debug_manual_text_filter_hint">Filtrer logglinjer etter tekst…</string>
+    <string name="settings_debug_tag_filter_mode">Modus</string>
+    <string name="settings_debug_tag_filter_all">Alle</string>
+    <string name="settings_debug_tag_filter_include">Inkluder</string>
+    <string name="settings_debug_tag_filter_exclude">Ekskluder</string>
+    <string name="settings_debug_add_custom_tag_hint">Legg til egendefinert tagg…</string>
+    <string name="settings_debug_no_tags_selected">Ingen tagger valgt</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Bakgrunnsbeskyttelse</string>
+    <string name="settings_other_background_subtitle">Hold økten i live i bakgrunnen</string>
+    <string name="settings_other_bg_pause_mode_title">Pausemodus i bakgrunnen</string>
+    <string name="settings_other_bg_pause_all_title">Sett alle prosesser på pause</string>
+    <string name="settings_other_bg_pause_all_subtitle">Suspenderer alle prosesser — maksimal batterisparing (kan gi problemer).</string>
+    <string name="settings_other_bg_pause_game_only_title">Sett bare spillet på pause</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Suspenderer bare den aktive spillprosessen; andre prosesser og tjenester fortsetter å kjøre.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Sett alt unntatt spillet på pause</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Suspenderer alle prosesser og tjenester, men holder spillprosessen aktiv.</string>
+    <string name="settings_other_bg_auto_pause_title">Automatisk pause av økten</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Setter økten automatisk på pause når appen går i bakgrunnen eller enheten låses.</string>
+    <string name="settings_other_bg_wakelock_title">Aktiver en CPU-wakelock for å styrke bakgrunnsbeskyttelsen</string>
+    <string name="settings_other_bg_wakelock_subtitle">Hindrer CPU-en i å gå i dyp dvale mens økten er på pause. Øker batteriforbruket, men kan forbedre persistensen og stabiliteten på enheter med aggressiv batteristyring.</string>
+    <string name="settings_other_bg_heartbeat_title">Heartbeat-frekvens (sekunder)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Kan forbedre beskyttelsen av appen i bakgrunnen. Verdien 0 deaktiverer funksjonen. Jo lavere verdi, desto høyere potensielt batteriforbruk.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat deaktivert</string>
+    <string name="settings_other_bg_heartbeat_effective">Kjører hver %1$d s</string>
+    <string name="settings_other_bg_heartbeat_minimum">Minimum er 5 s — justeres ved lagring</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Containerøkten er satt på pause</string>
+    <string name="fg_keep_alive_notification_content_container_running">En containerøkt kjører</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Laster ned og installerer komponenter</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Steam-chat kjører i bakgrunnen</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: tjeneste aktiv</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: tjenester aktive</string>
+    <string name="general_and">og</string>
     <string name="settings_retro_title">Retro</string>
     <string name="retro_save_transfer_title">Overfør lagret spill</string>
     <string name="retro_save_transfer_message">Importer et lokalt lagret spill til dette spillet, eller eksporter det gjeldende lagrede spillet.</string>

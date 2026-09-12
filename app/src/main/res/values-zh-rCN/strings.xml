@@ -884,6 +884,8 @@
     <string name="settings_debug_no_logs_available">没有可用的调试日志。请先启用调试选项并启动游戏。</string>
     <string name="settings_debug_capture_failed">无法捕获日志：%1$s</string>
     <string name="settings_debug_log_to_file_desc">将 WinNative 进程错误、警告和崩溃记录到文件</string>
+    <string name="settings_filtered_logs_to_file_title">已筛选调试日志</string>
+    <string name="settings_filtered_logs_to_file_desc">将应用的日志保存到文件中，按标签过滤器的配置进行过滤。</string>
     <string name="settings_debug_section_emulation">模拟</string>
     <string name="settings_debug_section_subsystems">子系统</string>
     <string name="settings_debug_section_tools">工具</string>
@@ -1671,6 +1673,53 @@
     <string name="steam_chat_setting_stay_running">在后台运行</string>
     <string name="steam_chat_setting_stay_running_desc">退出 WinNative 后保持聊天运行</string>
     <string name="settings_content_refresh">刷新</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">应用日志记录</string>
+    <string name="settings_debug_application_logging_subtitle">开启日志记录并显示日志选项</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">退出原因日志</string>
+    <string name="settings_debug_exit_reason_log_subtitle">记录应用进程上次终止的原因</string>
+    <string name="settings_debug_crash_log_title">崩溃日志</string>
+    <string name="settings_debug_crash_log_subtitle">保存原生崩溃 tombstone 跟踪</string>
+    <string name="settings_debug_event_watch_log_title">事件监视日志</string>
+    <string name="settings_debug_event_watch_log_subtitle">记录暂停/恢复事件前后的系统日志</string>
+    <string name="settings_debug_log_tag_filter_channel">日志标签过滤器</string>
+    <string name="settings_debug_tags_selected_suffix">个标签已选择</string>
+    <string name="settings_debug_manual_text_filter_hint">按文本过滤日志行…</string>
+    <string name="settings_debug_tag_filter_mode">模式</string>
+    <string name="settings_debug_tag_filter_all">全部</string>
+    <string name="settings_debug_tag_filter_include">包含</string>
+    <string name="settings_debug_tag_filter_exclude">排除</string>
+    <string name="settings_debug_add_custom_tag_hint">添加自定义标签…</string>
+    <string name="settings_debug_no_tags_selected">未选择标签</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">后台保护</string>
+    <string name="settings_other_background_subtitle">在后台保持会话运行</string>
+    <string name="settings_other_bg_pause_mode_title">后台暂停模式</string>
+    <string name="settings_other_bg_pause_all_title">暂停所有进程</string>
+    <string name="settings_other_bg_pause_all_subtitle">挂起所有进程 — 最大程度省电（可能导致问题）。</string>
+    <string name="settings_other_bg_pause_game_only_title">仅暂停游戏</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">仅挂起当前游戏进程；其他进程和服务继续运行。</string>
+    <string name="settings_other_bg_pause_all_except_game_title">暂停除游戏外的所有进程</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">挂起所有进程和服务，但保持游戏进程运行。</string>
+    <string name="settings_other_bg_auto_pause_title">自动暂停会话</string>
+    <string name="settings_other_bg_auto_pause_subtitle">当应用进入后台或设备锁定时自动暂停会话。</string>
+    <string name="settings_other_bg_wakelock_title">启用 CPU 唤醒锁以增强后台保护</string>
+    <string name="settings_other_bg_wakelock_subtitle">在会话暂停期间阻止 CPU 进入深度睡眠。会增加电量消耗，但可能提高在激进电池管理设备上的持续性和稳定性。</string>
+    <string name="settings_other_bg_heartbeat_title">心跳频率（秒）</string>
+    <string name="settings_other_bg_heartbeat_subtitle">可以改善应用的后台保护。0 表示禁用此功能。值越小，潜在耗电越高。</string>
+    <string name="settings_other_bg_heartbeat_disabled">心跳已禁用</string>
+    <string name="settings_other_bg_heartbeat_minimum">最小值为 5 秒 — 保存时将自动修正</string>
+    <string name="settings_other_bg_heartbeat_effective">每 %1$d 秒运行一次</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">容器会话已暂停</string>
+    <string name="fg_keep_alive_notification_content_container_running">有一个容器会话正在运行</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">正在下载并安装组件</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Steam 聊天正在后台运行</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">：服务运行中</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">：服务运行中</string>
+    <string name="general_and">和</string>
     <string name="settings_retro_title">复古</string>
     <string name="retro_save_transfer_title">传输存档</string>
     <string name="retro_save_transfer_message">为此游戏导入本地存档，或导出当前存档。</string>

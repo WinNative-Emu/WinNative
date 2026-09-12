@@ -1173,6 +1173,8 @@ E.g. <b>META</b> for <i>META-näppäin</i>, \n
     <string name="settings_debug_no_logs_available">Virheenkorjauslokeja ei ole saatavilla. Ota ensin virheenkorjausasetukset käyttöön ja käynnistä peli.</string>
     <string name="settings_debug_capture_failed">Lokien kaappaus epäonnistui: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Kirjaa WinNative-prosessin virheet, varoitukset ja kaatumiset tiedostoon</string>
+    <string name="settings_filtered_logs_to_file_title">Suodatettu vianmääritysloki</string>
+    <string name="settings_filtered_logs_to_file_desc">Tallenna sovelluksen lokit tiedostoon, suodatettuna tunnistesuodattimen määritysten mukaisesti.</string>
     <string name="settings_debug_section_emulation">Emulointi</string>
     <string name="settings_debug_section_subsystems">Alijärjestelmät</string>
     <string name="settings_debug_section_tools">Työkalut</string>
@@ -1670,6 +1672,53 @@ Asennuspolku:
     <string name="file_manager_create_folder_failed">Kansion luonti epäonnistui</string>
 
     <string name="settings_content_refresh">Päivitä</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Sovelluslokitus</string>
+    <string name="settings_debug_application_logging_subtitle">Ota lokitus käyttöön ja näytä lokitusasetukset</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Sulkeutumissyyloki</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Tallentaa syyn, miksi sovelluksen prosessi viimeksi päättyi</string>
+    <string name="settings_debug_crash_log_title">Kaatumisloki</string>
+    <string name="settings_debug_crash_log_subtitle">Tallenna natiivien kaatumisten jäljet (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Tapahtumien valvontaloki</string>
+    <string name="settings_debug_event_watch_log_subtitle">Tallentaa kohdennetun järjestelmälokin keskeytys-/jatkamistapahtumien ympäriltä</string>
+    <string name="settings_debug_log_tag_filter_channel">Lokitunnisteiden suodatin</string>
+    <string name="settings_debug_tags_selected_suffix">tunnistetta valittu</string>
+    <string name="settings_debug_manual_text_filter_hint">Suodata lokirivejä tekstillä…</string>
+    <string name="settings_debug_tag_filter_mode">Tila</string>
+    <string name="settings_debug_tag_filter_all">Kaikki</string>
+    <string name="settings_debug_tag_filter_include">Sisällytä</string>
+    <string name="settings_debug_tag_filter_exclude">Jätä pois</string>
+    <string name="settings_debug_add_custom_tag_hint">Lisää oma tunniste…</string>
+    <string name="settings_debug_no_tags_selected">Ei valittuja tunnisteita</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Taustasuojaus</string>
+    <string name="settings_other_background_subtitle">Pidä istunto käynnissä taustalla</string>
+    <string name="settings_other_bg_pause_mode_title">Taustan keskeytystila</string>
+    <string name="settings_other_bg_pause_all_title">Keskeytä kaikki prosessit</string>
+    <string name="settings_other_bg_pause_all_subtitle">Pysäyttää kaikki prosessit — suurin virransäästö (voi aiheuttaa ongelmia).</string>
+    <string name="settings_other_bg_pause_game_only_title">Keskeytä vain peli</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Pysäyttää vain aktiivisen pelin prosessin; muut prosessit ja palvelut jatkavat toimintaansa.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Keskeytä kaikki paitsi peli</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Pysäyttää kaikki prosessit ja palvelut, mutta pitää pelin prosessin aktiivisena.</string>
+    <string name="settings_other_bg_auto_pause_title">Keskeytä istunto automaattisesti</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Keskeyttää istunnon automaattisesti, kun sovellus siirtyy taustalle tai laite lukitaan.</string>
+    <string name="settings_other_bg_wakelock_title">Ota käyttöön suorittimen wake lock taustasuojauksen parantamiseksi</string>
+    <string name="settings_other_bg_wakelock_subtitle">Estää suoritinta siirtymästä syväuneen istunnon ollessa keskeytettynä. Lisää akun kulutusta, mutta voi parantaa pysyvyyttä ja vakautta laitteissa, joissa on aggressiivinen akunhallinta.</string>
+    <string name="settings_other_bg_heartbeat_title">Heartbeat-taajuus (sekuntia)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Voi parantaa sovelluksen taustasuojausta. Arvo 0 poistaa ominaisuuden käytöstä. Mitä pienempi arvo, sitä suurempi mahdollinen akun kulutus.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat pois käytöstä</string>
+    <string name="settings_other_bg_heartbeat_minimum">Vähimmäisarvo on 5 s — korjataan tallennettaessa</string>
+    <string name="settings_other_bg_heartbeat_effective">Suoritetaan %1$d sekunnin välein</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Säiliöistunto on keskeytetty</string>
+    <string name="fg_keep_alive_notification_content_container_running">Säiliöistunto on käynnissä</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Ladataan ja asennetaan komponentteja</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Steam-chat käynnissä taustalla</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: palvelu käynnissä</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: palvelut käynnissä</string>
+    <string name="general_and">ja</string>
     <string name="settings_retro_title">Retro</string>
     <string name="retro_save_transfer_title">Siirrä tallennus</string>
     <string name="retro_save_transfer_message">Tuo peliin paikallinen tallennus tai vie pelin nykyinen tallennus.</string>

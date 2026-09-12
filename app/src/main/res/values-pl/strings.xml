@@ -890,6 +890,8 @@ Np. <b>META</b> dla <i>klawisza META</i>, \n
     <string name="settings_debug_no_logs_available">Brak dostępnych logów debugowania. Najpierw włącz opcje debugowania i uruchom grę.</string>
     <string name="settings_debug_capture_failed">Nie udało się przechwycić logów: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Zapisuj błędy, ostrzeżenia i awarie procesu WinNative do pliku</string>
+    <string name="settings_filtered_logs_to_file_title">Filtrowany dziennik debugowania</string>
+    <string name="settings_filtered_logs_to_file_desc">Zapisz dzienniki aplikacji do pliku, przefiltrowane zgodnie z konfiguracją filtra tagów.</string>
     <string name="settings_debug_section_emulation">Emulacja</string>
     <string name="settings_debug_section_subsystems">Podsystemy</string>
     <string name="settings_debug_section_tools">Narzędzia</string>
@@ -1677,6 +1679,53 @@ Zainstalowana ścieżka:
     <string name="steam_chat_setting_stay_running">Uruchom w tle</string>
     <string name="steam_chat_setting_stay_running_desc">Pozostaw czat aktywny po zamknięciu WinNative</string>
     <string name="settings_content_refresh">Odśwież</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Rejestrowanie aplikacji</string>
+    <string name="settings_debug_application_logging_subtitle">Włącz rejestrowanie i pokaż opcje rejestrowania</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Log przyczyny zamknięcia</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Zapisuje, dlaczego proces aplikacji został ostatnio zakończony</string>
+    <string name="settings_debug_crash_log_title">Log awarii</string>
+    <string name="settings_debug_crash_log_subtitle">Zapisuj ślady natywnych awarii (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Log obserwacji zdarzeń</string>
+    <string name="settings_debug_event_watch_log_subtitle">Rejestruje log systemowy wokół zdarzeń pauzy/wznowienia</string>
+    <string name="settings_debug_log_tag_filter_channel">Filtr tagów logu</string>
+    <string name="settings_debug_tags_selected_suffix">wybranych tagów</string>
+    <string name="settings_debug_manual_text_filter_hint">Filtruj linie logu po tekście…</string>
+    <string name="settings_debug_tag_filter_mode">Tryb</string>
+    <string name="settings_debug_tag_filter_all">Wszystkie</string>
+    <string name="settings_debug_tag_filter_include">Uwzględnij</string>
+    <string name="settings_debug_tag_filter_exclude">Wyklucz</string>
+    <string name="settings_debug_add_custom_tag_hint">Dodaj własny tag…</string>
+    <string name="settings_debug_no_tags_selected">Nie wybrano tagów</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Ochrona w tle</string>
+    <string name="settings_other_background_subtitle">Utrzymuj sesję aktywną w tle</string>
+    <string name="settings_other_bg_pause_mode_title">Tryb pauzy w tle</string>
+    <string name="settings_other_bg_pause_all_title">Wstrzymaj wszystkie procesy</string>
+    <string name="settings_other_bg_pause_all_subtitle">Wstrzymuje wszystkie procesy — maksymalna oszczędność baterii (może powodować problemy).</string>
+    <string name="settings_other_bg_pause_game_only_title">Wstrzymaj tylko grę</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Wstrzymuje tylko proces aktywnej gry; pozostałe procesy i usługi działają dalej.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Wstrzymaj wszystko oprócz gry</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Wstrzymuje wszystkie procesy i usługi, ale pozostawia proces gry aktywny.</string>
+    <string name="settings_other_bg_auto_pause_title">Automatyczna pauza sesji</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Automatycznie wstrzymuje sesję, gdy aplikacja przechodzi w tło lub urządzenie jest zablokowane.</string>
+    <string name="settings_other_bg_wakelock_title">Włącz wake lock CPU, aby wzmocnić ochronę w tle</string>
+    <string name="settings_other_bg_wakelock_subtitle">Zapobiega przechodzeniu procesora w głęboki sen, gdy sesja jest wstrzymana. Zwiększa zużycie baterii, ale może poprawić trwałość i stabilność na urządzeniach z agresywnym zarządzaniem baterią.</string>
+    <string name="settings_other_bg_heartbeat_title">Częstotliwość heartbeat (sekundy)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Może poprawić ochronę aplikacji w tle. Wartość 0 wyłącza funkcję. Im niższa wartość, tym większe potencjalne zużycie baterii.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat wyłączony</string>
+    <string name="settings_other_bg_heartbeat_minimum">Minimum to 5 s — zostanie skorygowane przy zapisie</string>
+    <string name="settings_other_bg_heartbeat_effective">Wykonuje się co %1$d s</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Sesja kontenera jest wstrzymana</string>
+    <string name="fg_keep_alive_notification_content_container_running">Trwa sesja kontenera</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Pobieranie i instalowanie komponentów</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Czat Steam działa w tle</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: usługa aktywna</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: usługi aktywne</string>
+    <string name="general_and">i</string>
     <string name="settings_retro_title">Retro</string>
     <string name="retro_save_transfer_title">Przenieś zapis</string>
     <string name="retro_save_transfer_message">Zaimportuj lokalny zapis do tej gry lub wyeksportuj bieżący zapis.</string>

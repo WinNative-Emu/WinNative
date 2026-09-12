@@ -1173,6 +1173,8 @@
     <string name="settings_debug_no_logs_available">利用可能なデバッグログがありません。先にデバッグオプションを有効にしてゲームを起動してください。</string>
     <string name="settings_debug_capture_failed">ログの取得に失敗しました: %1$s</string>
     <string name="settings_debug_log_to_file_desc">WinNative プロセスのエラー、警告、クラッシュをファイルに記録します</string>
+    <string name="settings_filtered_logs_to_file_title">フィルタされたデバッグログ</string>
+    <string name="settings_filtered_logs_to_file_desc">タグフィルタで設定された内容に従って、アプリのログをフィルタリングし、ファイルに保存します。</string>
     <string name="settings_debug_section_emulation">エミュレーション</string>
     <string name="settings_debug_section_subsystems">サブシステム</string>
     <string name="settings_debug_section_tools">ツール</string>
@@ -1670,6 +1672,53 @@
     <string name="file_manager_create_folder_failed">フォルダの作成に失敗しました</string>
 
     <string name="settings_content_refresh">更新</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">アプリのログ記録</string>
+    <string name="settings_debug_application_logging_subtitle">ログ記録を有効にしてログオプションを表示します</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">終了理由ログ</string>
+    <string name="settings_debug_exit_reason_log_subtitle">アプリのプロセスが前回終了した理由を記録します</string>
+    <string name="settings_debug_crash_log_title">クラッシュログ</string>
+    <string name="settings_debug_crash_log_subtitle">ネイティブクラッシュの tombstone トレースを保存します</string>
+    <string name="settings_debug_event_watch_log_title">イベント監視ログ</string>
+    <string name="settings_debug_event_watch_log_subtitle">一時停止/再開イベント前後のシステムログを記録します</string>
+    <string name="settings_debug_log_tag_filter_channel">ログタグフィルター</string>
+    <string name="settings_debug_tags_selected_suffix">個のタグを選択中</string>
+    <string name="settings_debug_manual_text_filter_hint">テキストでログ行をフィルター…</string>
+    <string name="settings_debug_tag_filter_mode">モード</string>
+    <string name="settings_debug_tag_filter_all">すべて</string>
+    <string name="settings_debug_tag_filter_include">含める</string>
+    <string name="settings_debug_tag_filter_exclude">除外</string>
+    <string name="settings_debug_add_custom_tag_hint">カスタムタグを追加…</string>
+    <string name="settings_debug_no_tags_selected">タグが選択されていません</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">バックグラウンド保護</string>
+    <string name="settings_other_background_subtitle">バックグラウンドでセッションを維持します</string>
+    <string name="settings_other_bg_pause_mode_title">バックグラウンド一時停止モード</string>
+    <string name="settings_other_bg_pause_all_title">すべてのプロセスを一時停止</string>
+    <string name="settings_other_bg_pause_all_subtitle">すべてのプロセスを停止します — 最大限のバッテリー節約（問題が発生する可能性があります）。</string>
+    <string name="settings_other_bg_pause_game_only_title">ゲームのみ一時停止</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">実行中のゲームプロセスのみ停止し、他のプロセスやサービスは動作し続けます。</string>
+    <string name="settings_other_bg_pause_all_except_game_title">ゲーム以外をすべて一時停止</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">すべてのプロセスとサービスを停止しますが、ゲームプロセスは動作し続けます。</string>
+    <string name="settings_other_bg_auto_pause_title">セッションの自動一時停止</string>
+    <string name="settings_other_bg_auto_pause_subtitle">アプリがバックグラウンドに移行するか端末がロックされたとき、セッションを自動的に一時停止します。</string>
+    <string name="settings_other_bg_wakelock_title">CPU ウェイクロックを有効にしてバックグラウンド保護を強化</string>
+    <string name="settings_other_bg_wakelock_subtitle">セッションの一時停止中に CPU のディープスリープを防ぎます。バッテリー消費は増えますが、電池管理が厳しい端末での持続性と安定性が向上する場合があります。</string>
+    <string name="settings_other_bg_heartbeat_title">ハートビート頻度（秒）</string>
+    <string name="settings_other_bg_heartbeat_subtitle">バックグラウンドでのアプリ保護を改善できます。0 を設定すると無効になります。値が小さいほどバッテリー消費が増える可能性があります。</string>
+    <string name="settings_other_bg_heartbeat_disabled">ハートビート無効</string>
+    <string name="settings_other_bg_heartbeat_minimum">最小値は 5 秒です — 保存時に補正されます</string>
+    <string name="settings_other_bg_heartbeat_effective">%1$d 秒ごとに実行</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">コンテナセッションは一時停止中です</string>
+    <string name="fg_keep_alive_notification_content_container_running">コンテナセッションが実行中です</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">コンポーネントをダウンロードしてインストール中</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Steam チャットがバックグラウンドで実行中</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: サービス実行中</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: サービス実行中</string>
+    <string name="general_and">と</string>
     <string name="settings_retro_title">レトロ</string>
     <string name="retro_save_transfer_title">セーブの転送</string>
     <string name="retro_save_transfer_message">このゲームにローカルのセーブをインポートするか、現在のセーブをエクスポートします。</string>

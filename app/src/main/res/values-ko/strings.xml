@@ -884,6 +884,8 @@
     <string name="settings_debug_no_logs_available">사용 가능한 디버그 로그가 없습니다. 먼저 디버그 옵션을 활성화하고 게임을 실행하세요.</string>
     <string name="settings_debug_capture_failed">로그 캡처 실패: %1$s</string>
     <string name="settings_debug_log_to_file_desc">WinNative 프로세스 오류, 경고 및 충돌을 파일에 기록</string>
+    <string name="settings_filtered_logs_to_file_title">필터링된 디버그 로그</string>
+    <string name="settings_filtered_logs_to_file_desc">앱의 로그를 파일에 저장합니다. 태그 필터에 설정된 대로 필터링됩니다.</string>
     <string name="settings_debug_section_emulation">에뮬레이션</string>
     <string name="settings_debug_section_subsystems">하위 시스템</string>
     <string name="settings_debug_section_tools">도구</string>
@@ -1672,6 +1674,53 @@
     <string name="steam_chat_setting_stay_running">백그라운드에서 실행</string>
     <string name="steam_chat_setting_stay_running_desc">WinNative를 종료한 후에도 채팅 유지</string>
     <string name="settings_content_refresh">새로고침</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">애플리케이션 로깅</string>
+    <string name="settings_debug_application_logging_subtitle">로깅을 켜고 로깅 옵션을 표시합니다</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">종료 원인 로그</string>
+    <string name="settings_debug_exit_reason_log_subtitle">앱 프로세스가 마지막으로 종료된 이유를 기록합니다</string>
+    <string name="settings_debug_crash_log_title">충돌 로그</string>
+    <string name="settings_debug_crash_log_subtitle">네이티브 충돌 tombstone 트레이스를 저장합니다</string>
+    <string name="settings_debug_event_watch_log_title">이벤트 감시 로그</string>
+    <string name="settings_debug_event_watch_log_subtitle">일시정지/재개 이벤트 전후의 시스템 로그를 기록합니다</string>
+    <string name="settings_debug_log_tag_filter_channel">로그 태그 필터</string>
+    <string name="settings_debug_tags_selected_suffix">개 태그 선택됨</string>
+    <string name="settings_debug_manual_text_filter_hint">텍스트로 로그 줄 필터링…</string>
+    <string name="settings_debug_tag_filter_mode">모드</string>
+    <string name="settings_debug_tag_filter_all">전체</string>
+    <string name="settings_debug_tag_filter_include">포함</string>
+    <string name="settings_debug_tag_filter_exclude">제외</string>
+    <string name="settings_debug_add_custom_tag_hint">사용자 지정 태그 추가…</string>
+    <string name="settings_debug_no_tags_selected">선택된 태그 없음</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">백그라운드 보호</string>
+    <string name="settings_other_background_subtitle">백그라운드에서 세션 유지</string>
+    <string name="settings_other_bg_pause_mode_title">백그라운드 일시정지 모드</string>
+    <string name="settings_other_bg_pause_all_title">모든 프로세스 일시정지</string>
+    <string name="settings_other_bg_pause_all_subtitle">모든 프로세스를 정지합니다 — 최대 배터리 절약 (문제가 발생할 수 있음).</string>
+    <string name="settings_other_bg_pause_game_only_title">게임만 일시정지</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">실행 중인 게임 프로세스만 정지하고, 다른 프로세스와 서비스는 계속 실행됩니다.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">게임 제외 모두 일시정지</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">모든 프로세스와 서비스를 정지하지만 게임 프로세스는 계속 실행됩니다.</string>
+    <string name="settings_other_bg_auto_pause_title">세션 자동 일시정지</string>
+    <string name="settings_other_bg_auto_pause_subtitle">앱이 백그라운드로 전환되거나 기기가 잠기면 세션을 자동으로 일시정지합니다.</string>
+    <string name="settings_other_bg_wakelock_title">CPU 웨이크락을 활성화하여 백그라운드 보호 강화</string>
+    <string name="settings_other_bg_wakelock_subtitle">세션이 일시정지된 동안 CPU의 딥슬립을 방지합니다. 배터리 사용량이 늘어나지만, 배터리 관리가 공격적인 기기에서 지속성과 안정성이 향상될 수 있습니다.</string>
+    <string name="settings_other_bg_heartbeat_title">하트비트 주기(초)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">백그라운드 앱 보호를 개선할 수 있습니다. 값이 0이면 기능이 비활성화됩니다. 값이 낮을수록 배터리 소모가 커질 수 있습니다.</string>
+    <string name="settings_other_bg_heartbeat_disabled">하트비트 비활성화됨</string>
+    <string name="settings_other_bg_heartbeat_minimum">최솟값은 5초이며 저장 시 자동 조정됩니다</string>
+    <string name="settings_other_bg_heartbeat_effective">%1$d초마다 실행</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">컨테이너 세션이 일시정지됨</string>
+    <string name="fg_keep_alive_notification_content_container_running">컨테이너 세션이 실행 중입니다</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">구성 요소 다운로드 및 설치 중</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Steam 채팅이 백그라운드에서 실행 중</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: 서비스 실행 중</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: 서비스 실행 중</string>
+    <string name="general_and">및</string>
     <string name="settings_retro_title">레트로</string>
     <string name="retro_save_transfer_title">세이브 전송</string>
     <string name="retro_save_transfer_message">이 게임에 로컬 세이브 파일을 가져오거나 현재 세이브를 내보냅니다.</string>

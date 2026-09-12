@@ -884,6 +884,8 @@ F.eks. <b>META</b> for <i>META-tast</i>, \n
     <string name="settings_debug_no_logs_available">Ingen fejlfindingslogfiler tilgængelige. Aktiver fejlfindingsindstillinger først og start et spil.</string>
     <string name="settings_debug_capture_failed">Kunne ikke indfange logfiler: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Log WinNative-procesfejl, advarsler og nedbrud til fil</string>
+    <string name="settings_filtered_logs_to_file_title">Filtreret fejlfindingslog</string>
+    <string name="settings_filtered_logs_to_file_desc">Gem appens logfiler i en fil, filtreret i henhold til det, der er konfigureret i tag-filteret.</string>
     <string name="settings_debug_section_emulation">Emulering</string>
     <string name="settings_debug_section_subsystems">Undersystemer</string>
     <string name="settings_debug_section_tools">Værktøjer</string>
@@ -1683,6 +1685,53 @@ Installeret sti:
     <string name="steam_chat_setting_stay_running">Kør i baggrunden</string>
     <string name="steam_chat_setting_stay_running_desc">Hold chatten kørende, efter du afslutter WinNative</string>
     <string name="settings_content_refresh">Opdater</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">App-logning</string>
+    <string name="settings_debug_application_logging_subtitle">Slå logning til, og vis logindstillingerne</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Log over lukningsårsag</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Registrerer, hvorfor appens proces sidst blev afsluttet</string>
+    <string name="settings_debug_crash_log_title">Nedbrudslog</string>
+    <string name="settings_debug_crash_log_subtitle">Gem native nedbruds-spor (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Hændelsesovervågningslog</string>
+    <string name="settings_debug_event_watch_log_subtitle">Optager en fokuseret systemlog omkring pause/genoptag-hændelser</string>
+    <string name="settings_debug_log_tag_filter_channel">Logtag-filter</string>
+    <string name="settings_debug_tags_selected_suffix">tags valgt</string>
+    <string name="settings_debug_manual_text_filter_hint">Filtrer loglinjer efter tekst…</string>
+    <string name="settings_debug_tag_filter_mode">Tilstand</string>
+    <string name="settings_debug_tag_filter_all">Alle</string>
+    <string name="settings_debug_tag_filter_include">Inkluder</string>
+    <string name="settings_debug_tag_filter_exclude">Ekskluder</string>
+    <string name="settings_debug_add_custom_tag_hint">Tilføj brugerdefineret tag…</string>
+    <string name="settings_debug_no_tags_selected">Ingen tags valgt</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Baggrundsbeskyttelse</string>
+    <string name="settings_other_background_subtitle">Hold sessionen i live i baggrunden</string>
+    <string name="settings_other_bg_pause_mode_title">Pausetilstand i baggrunden</string>
+    <string name="settings_other_bg_pause_all_title">Sæt alle processer på pause</string>
+    <string name="settings_other_bg_pause_all_subtitle">Suspenderer alle processer — maksimal batteribesparelse (kan give problemer).</string>
+    <string name="settings_other_bg_pause_game_only_title">Sæt kun spillet på pause</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Suspenderer kun den aktive spilproces; andre processer og tjenester kører videre.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Sæt alt undtagen spillet på pause</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Suspenderer alle processer og tjenester, men holder spilprocessen aktiv.</string>
+    <string name="settings_other_bg_auto_pause_title">Automatisk pause af session</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Sætter automatisk sessionen på pause, når appen er i baggrunden, eller enheden er låst.</string>
+    <string name="settings_other_bg_wakelock_title">Aktivér en CPU-wakelock for at forbedre baggrundsbeskyttelsen</string>
+    <string name="settings_other_bg_wakelock_subtitle">Forhindrer CPU\'en i at gå i dyb dvale, mens sessionen er på pause. Øger batteriforbruget, men kan forbedre persistensen og stabiliteten på enheder med aggressiv batteristyring.</string>
+    <string name="settings_other_bg_heartbeat_title">Heartbeat-frekvens (sekunder)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Kan forbedre beskyttelsen af appen i baggrunden. Værdien 0 deaktiverer funktionen. Jo lavere værdi, desto højere potentielt batteriforbrug.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat deaktiveret</string>
+    <string name="settings_other_bg_heartbeat_minimum">Minimum er 5 s — justeres ved gemning</string>
+    <string name="settings_other_bg_heartbeat_effective">Kører hver %1$d s</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Containersessionen er på pause</string>
+    <string name="fg_keep_alive_notification_content_container_running">En containersession kører</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Downloader og installerer komponenter</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Steam-chat kører i baggrunden</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: tjeneste aktiv</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: tjenester aktive</string>
+    <string name="general_and">og</string>
     <string name="settings_retro_title">Retro</string>
     <string name="retro_save_transfer_title">Overfør gemt spil</string>
     <string name="retro_save_transfer_message">Importer et lokalt gemt spil til dette spil, eller eksporter det aktuelle gemte spil.</string>

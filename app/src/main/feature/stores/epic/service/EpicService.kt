@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import com.winlator.cmod.BuildConfig
-import com.winlator.cmod.R
 import com.winlator.cmod.app.PluviaApp
 import com.winlator.cmod.app.db.download.DownloadRecord
 import com.winlator.cmod.app.service.DownloadService
@@ -17,7 +16,6 @@ import com.winlator.cmod.feature.stores.epic.data.EpicGameToken
 import com.winlator.cmod.feature.stores.epic.ui.util.SnackbarManager
 import com.winlator.cmod.feature.stores.common.StoreInstallPathSafety
 import com.winlator.cmod.feature.stores.steam.data.DownloadInfo
-import com.winlator.cmod.feature.stores.steam.data.LaunchInfo
 import com.winlator.cmod.feature.stores.steam.enums.DownloadPhase
 import com.winlator.cmod.feature.stores.steam.enums.Marker
 import com.winlator.cmod.feature.stores.steam.events.AndroidEvent
@@ -26,7 +24,6 @@ import com.winlator.cmod.feature.stores.steam.utils.MarkerUtils
 import com.winlator.cmod.feature.stores.steam.utils.PrefManager
 import com.winlator.cmod.runtime.system.SessionKeepAliveService
 import com.winlator.cmod.shared.android.AppTerminationHelper
-import com.winlator.cmod.shared.android.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -35,9 +32,31 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 
-// Foreground service facade for Epic auth, library sync, downloads, and cloud saves.
+// Service facade for Epic auth, library sync, downloads, and cloud saves.
 @AndroidEntryPoint
 class EpicService : Service() {
+    /*private lateinit var notificationHelper: NotificationHelper
+    var notificationID = 1*/
+
+    @Inject
+    lateinit var epicManager: EpicManager
+
+    @Inject
+    lateinit var epicDownloadManager: EpicDownloadManager
+
+    @Inject
+    lateinit var epicVerifyManager: EpicVerifyManager
+
+    @Inject
+    lateinit var epicUpdateManager: EpicUpdateManager
+
+    @Inject
+    lateinit var epicOverlayManager: EpicOverlayManager
+
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private val activeDownloads = ConcurrentHashMap<Int, DownloadInfo>()
+
     companion object {
         private var instance: EpicService? = null
 
@@ -54,6 +73,7 @@ class EpicService : Service() {
         val isRunning: Boolean
             get() = instance != null
 
+
         fun start(context: Context) {
             Timber.tag("EPIC").d("Starting service...")
             if (isRunning) {
@@ -65,7 +85,8 @@ class EpicService : Service() {
                 Timber.tag("EPIC").i("[EpicService] First-time start - starting service with initial sync")
                 val intent = Intent(context, EpicService::class.java)
                 intent.action = ACTION_SYNC_LIBRARY
-                context.startForegroundService(intent)
+
+                startEpicService(context, intent)
                 return
             }
 
@@ -80,24 +101,35 @@ class EpicService : Service() {
                 val remainingMinutes = (SYNC_THROTTLE_MILLIS - timeSinceLastSync) / 1000 / 60
                 Timber.tag("EPIC").i("Starting service without sync - throttled (${remainingMinutes}min remaining)")
             }
-            context.startForegroundService(intent)
+
+            startEpicService(context, intent)
         }
 
         fun triggerLibrarySync(context: Context) {
             Timber.tag("EPIC").i("Triggering manual library sync (bypasses throttle)")
             val intent = Intent(context, EpicService::class.java)
             intent.action = ACTION_MANUAL_SYNC
-            context.startForegroundService(intent)
+            startEpicService(context, intent)
+        }
+
+        fun startEpicService(context: Context, intent: Intent) {
+            try {
+                // Just start as a normal service. KeepAliveService should protect this.
+                context.startService(intent)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to start EpicService")
+            }
         }
 
         fun stop() {
             instance?.let { service ->
                 runCatching {
-                    service.stopForeground(Service.STOP_FOREGROUND_REMOVE)
+                    SessionKeepAliveService.stopComponent(service, SessionKeepAliveService.COMPONENT_EPIC)
                 }.onFailure { Timber.w(it, "Failed to remove EpicService foreground state during shutdown") }
-                runCatching {
-                    service.notificationHelper.cancel()
-                }.onFailure { Timber.w(it, "Failed to cancel EpicService notification during shutdown") }
+                /*runCatching {
+                    if (service::notificationHelper.isInitialized)
+                        service.notificationHelper.cancel(service.notificationID)
+                }.onFailure { Timber.w(it, "Failed to cancel EpicService notification during shutdown") }*/
                 service.stopSelf()
             }
         }
@@ -1126,27 +1158,6 @@ class EpicService : Service() {
         }
     }
 
-    private lateinit var notificationHelper: NotificationHelper
-
-    @Inject
-    lateinit var epicManager: EpicManager
-
-    @Inject
-    lateinit var epicDownloadManager: EpicDownloadManager
-
-    @Inject
-    lateinit var epicVerifyManager: EpicVerifyManager
-
-    @Inject
-    lateinit var epicUpdateManager: EpicUpdateManager
-
-    @Inject
-    lateinit var epicOverlayManager: EpicOverlayManager
-
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
-    private val activeDownloads = ConcurrentHashMap<Int, DownloadInfo>()
-
     // Original download parameters per appId so resume can restore DLC selection,
     // language, and install path instead of falling back to defaults.
     data class DownloadParams(
@@ -1259,7 +1270,7 @@ class EpicService : Service() {
         instance = this
         Timber.tag("Epic").i("[EpicService] Service created")
 
-        notificationHelper = NotificationHelper(applicationContext)
+//        notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
         DownloadCoordinator.registerDispatcher(DownloadRecord.STORE_EPIC, coordinatorDispatcher)
@@ -1272,9 +1283,7 @@ class EpicService : Service() {
     ): Int {
         Timber.tag("EPIC").d("onStartCommand() - action: ${intent?.action}")
 
-        val instance = getInstance()
-        val notification = notificationHelper.createForegroundNotification("Connected")
-        startForeground(1, notification)
+        SessionKeepAliveService.startComponent(this, SessionKeepAliveService.COMPONENT_EPIC, "Connected")
 
         val shouldSync =
             when (intent?.action) {
@@ -1417,14 +1426,14 @@ class EpicService : Service() {
         }
 
         scope.cancel()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        notificationHelper.cancel()
+        SessionKeepAliveService.stopComponent(this, SessionKeepAliveService.COMPONENT_EPIC)
         instance = null
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         Timber.tag("EPIC").i("Task removed; stopping managed app services")
+        SessionKeepAliveService.stopComponent(this, SessionKeepAliveService.COMPONENT_EPIC)
         AppTerminationHelper.stopManagedServices(applicationContext, "epic_task_removed")
     }
 
