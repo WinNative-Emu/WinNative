@@ -418,6 +418,7 @@ typedef struct VkRenderer {
     bool              composite_built;
     bool              framegen_supported;
     bool              framegen_requested;
+    bool              framegen_features_ok;
     bool              swapchain_transfer_dst;
     bool              swapchain_storage;
     uint64_t          framegen_present_failures;

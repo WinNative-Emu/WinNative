@@ -396,6 +396,17 @@ static bool create_device(VkRenderer* r) {
     if (has_cubic) enable[enable_n++] = VK_EXT_FILTER_CUBIC_EXTENSION_NAME;
     (void)has_extmem_caps;
 
+    // DIS frame generation needs storage-image writes (untyped interp target) and the extended
+    // storage formats (R16F/RG16F/RG32F work images). Probe and enable them.
+    VkPhysicalDeviceFeatures2 feature_probe2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    vkGetPhysicalDeviceFeatures2(r->physical_device, &feature_probe2);
+    VkPhysicalDeviceFeatures feature_probe = feature_probe2.features;
+    r->framegen_features_ok = feature_probe.shaderStorageImageWriteWithoutFormat &&
+                              feature_probe.shaderStorageImageExtendedFormats;
+    VK_LOGI("DIS features: storage_write_without_format=%d extended_formats=%d",
+            (int)feature_probe.shaderStorageImageWriteWithoutFormat,
+            (int)feature_probe.shaderStorageImageExtendedFormats);
+
     VkPhysicalDeviceShaderFloat16Int8FeaturesKHR f16_feat = {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR
     };
@@ -452,6 +463,13 @@ static bool create_device(VkRenderer* r) {
     dci.pQueueCreateInfos = &qci;
     dci.enabledExtensionCount = enable_n;
     dci.ppEnabledExtensionNames = enable;
+
+    VkPhysicalDeviceFeatures enabled_features = {0};
+    enabled_features.shaderStorageImageWriteWithoutFormat =
+        feature_probe.shaderStorageImageWriteWithoutFormat;
+    enabled_features.shaderStorageImageExtendedFormats =
+        feature_probe.shaderStorageImageExtendedFormats;
+    dci.pEnabledFeatures = &enabled_features;
 
     if (vkCreateDevice(r->physical_device, &dci, NULL, &r->device) != VK_SUCCESS) {
         VK_LOGE("vkCreateDevice failed");
@@ -1931,17 +1949,33 @@ static void destroy_dis(VkRenderer* r) {
     r->framegen_timed_frames = 0;
 }
 
+// The DIS presets pick the flow pyramid's minimum side (180/252/360 px) relative to 720p. The
+// reworked chain scales a fixed fraction of the guest extent instead, so convert with 720p as
+// the reference resolution.
+static float dis_flow_scale(uint32_t min_side) {
+    if (min_side == 0) min_side = 180u;
+    float scale = (float)min_side / 720.0f;
+    if (scale < 0.25f) scale = 0.25f;
+    if (scale > 1.0f) scale = 1.0f;
+    return scale;
+}
+
 static void create_dis(VkRenderer* r) {
     if (r->dis || !r->device || !r->physical_device) return;
+
+    if (!r->framegen_features_ok) {
+        VK_LOGW("DIS frame generation requires storage write-without-format and extended formats");
+        return;
+    }
 
     r->dis = vkr_dis_create(r->device, r->physical_device);
     if (!r->dis) {
         VK_LOGW("DIS shaders unavailable; frame generation stays off");
         return;
     }
-    vkr_dis_configure(r->dis, r->dis_scale ? r->dis_scale : 180u, r->dis_target_fps,
-                      r->framegen_refresh_rate);
-    vkr_dis_set_debug_flow(r->dis, r->dis_debug_flow);
+    vkr_dis_configure(r->dis, r->dis_target_fps, dis_flow_scale(r->dis_scale),
+                      r->framegen_refresh_rate, 0.0f);
+    vkr_dis_set_debug_mode(r->dis, r->dis_debug_flow ? 1u : 0u);
 }
 
 static uint32_t framegen_extra_images(const VkRenderer* r) {
@@ -2245,20 +2279,24 @@ static void compose_xform_for_window(float out[6], const float scene_xform[6],
     out[5] = a[4]*scene_xform[1] + a[5]*scene_xform[3] + scene_xform[5];
 }
 
-static VkrDisContentRect compute_dis_content_rect(VkRenderer* r, const VkScene* s,
-                                                  uint32_t composite_w, uint32_t composite_h) {
-    VkrDisContentRect full = {0, 0, composite_w, composite_h};
+// Content rectangle (letterboxed viewport) in swapchain pixels. Frame generation must only
+// read, compute flow for and interpolate inside it: the black bars neither belong to the game
+// image (they would pollute the pyramid and the temporal prior) nor should they be overwritten.
+static VkRect2D compute_dis_content_rect(VkRenderer* r, const VkScene* s) {
+    VkRect2D full = {{0, 0}, {r->swapchain_extent.width, r->swapchain_extent.height}};
     if (!s->viewport_set || s->viewport_w <= 0 || s->viewport_h <= 0) return full;
 
     VkPreRotatedRect vr = transform_rect_for_pretransform(
         s->viewport_x, s->viewport_y, s->viewport_w, s->viewport_h,
         r->swapchain_extent.width, r->swapchain_extent.height, r->swapchain_transform);
-    vr = scale_rect_from_swapchain(r, vr, composite_w, composite_h);
-    vr = clamp_rect_to_extent(vr, composite_w, composite_h);
+    vr = clamp_rect_to_extent(vr, r->swapchain_extent.width, r->swapchain_extent.height);
     if (vr.w <= 0 || vr.h <= 0) return full;
 
-    VkrDisContentRect out = {vr.x, vr.y, (uint32_t)vr.w, (uint32_t)vr.h};
-    return out;
+    full.offset.x = vr.x;
+    full.offset.y = vr.y;
+    full.extent.width = (uint32_t)vr.w;
+    full.extent.height = (uint32_t)vr.h;
+    return full;
 }
 
 static void set_viewport_scissor(VkCommandBuffer cmd, VkRenderer* r, const VkScene* s,
@@ -2448,39 +2486,6 @@ static VkExtent2D compute_sgsr1_source_extent(VkRenderer* r, const VkScene* s) {
     return source;
 }
 
-static VkExtent2D compute_container_extent(VkRenderer* r, const VkScene* s) {
-    VkExtent2D out = r->swapchain_extent;
-    if (out.width == 0 || out.height == 0 || s->screen_width == 0 || s->screen_height == 0) {
-        return out;
-    }
-
-    uint32_t w = s->screen_width;
-    uint32_t h = s->screen_height;
-    transformed_view_size(&w, &h, r->swapchain_transform);
-    if (w == 0 || h == 0) return out;
-
-    if (s->viewport_set && s->viewport_w > 0 && s->viewport_h > 0
-        && r->swapchain_extent.width > 0 && r->swapchain_extent.height > 0) {
-        VkPreRotatedRect vr = transform_rect_for_pretransform(
-            s->viewport_x, s->viewport_y, s->viewport_w, s->viewport_h,
-            r->swapchain_extent.width, r->swapchain_extent.height, r->swapchain_transform);
-        if (vr.w > 0 && vr.h > 0) {
-            const double fx = (double)vr.w / (double)r->swapchain_extent.width;
-            const double fy = (double)vr.h / (double)r->swapchain_extent.height;
-            if (fx > 0.0 && fx < 1.0) w = (uint32_t)((double)w / fx + 0.5);
-            if (fy > 0.0 && fy < 1.0) h = (uint32_t)((double)h / fy + 0.5);
-        }
-    }
-
-    VkExtent2D e = {
-        w < out.width ? w : out.width,
-        h < out.height ? h : out.height,
-    };
-    if (e.width < 1) e.width = 1;
-    if (e.height < 1) e.height = 1;
-    return e;
-}
-
 static uint64_t vkr_monotonic_ns(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -2616,6 +2621,9 @@ static bool record_and_submit_frame(VkRenderer* r) {
     bool via_composite = framegen_on && r->framegen_supported
                       && r->swapchain_transfer_dst;
 
+    VkRect2D dis_content = {{0, 0}, {r->swapchain_extent.width, r->swapchain_extent.height}};
+    const uint32_t dis_debug_scratch = (use_dis && r->dis_debug_flow) ? 1u : 0u;
+
     VkExtent2D composite_extent = r->swapchain_extent;
     if (via_composite) {
         if (r->lsfg) {
@@ -2624,10 +2632,10 @@ static bool record_and_submit_frame(VkRenderer* r) {
         } else if (use_dis) {
             if (snap.screen_width == 0 || snap.screen_height == 0) {
                 via_composite = false;
-            } else if (wants_sgsr1) {
-                composite_extent = r->swapchain_extent;
             } else {
-                composite_extent = compute_container_extent(r, &snap);
+                dis_content = compute_dis_content_rect(r, &snap);
+                vkr_dis_set_guest_extent(r->dis, dis_content.extent.width,
+                                         dis_content.extent.height);
             }
         }
     }
@@ -2635,28 +2643,31 @@ static bool record_and_submit_frame(VkRenderer* r) {
     uint32_t framegen_capacity = 0;
     if (via_composite && (r->lsfg || r->dis) && r->swapchain_image_count > 2) {
         framegen_capacity = r->swapchain_image_count - 2;
-        if (framegen_capacity > VKR_LSFG_MAX_GENERATIONS) {
-            framegen_capacity = VKR_LSFG_MAX_GENERATIONS;
+        const uint32_t max_generations =
+            use_dis ? VKR_DIS_MAX_GENERATIONS : VKR_LSFG_MAX_GENERATIONS;
+        if (framegen_capacity > max_generations) {
+            framegen_capacity = max_generations;
         }
-        if (VK_FRAMES_IN_FLIGHT + framegen_capacity > VK_MAX_COMPOSITE_TARGETS) {
-            framegen_capacity = VK_MAX_COMPOSITE_TARGETS - VK_FRAMES_IN_FLIGHT;
+        // One extra target is reserved for the real-frame debug visualization when the flow
+        // overlay is active.
+        if (VK_FRAMES_IN_FLIGHT + framegen_capacity + dis_debug_scratch
+                > VK_MAX_COMPOSITE_TARGETS) {
+            framegen_capacity = VK_MAX_COMPOSITE_TARGETS - VK_FRAMES_IN_FLIGHT
+                              - dis_debug_scratch;
         }
     }
 
     if (via_composite) {
-        uint32_t composite_needed = VK_FRAMES_IN_FLIGHT + framegen_capacity;
+        uint32_t composite_needed = VK_FRAMES_IN_FLIGHT + framegen_capacity + dis_debug_scratch;
         bool composite_stale = !r->composite_built
             || r->composite_count != composite_needed
             || r->composite[0].width != composite_extent.width
             || r->composite[0].height != composite_extent.height;
-        VkrDisContentRect dis_content = compute_dis_content_rect(
-            r, &snap, composite_extent.width, composite_extent.height);
         bool chain_stale =
             (r->lsfg && vkr_lsfg_needs_rebuild(r->lsfg, r->swapchain_extent.width,
                                                r->swapchain_extent.height, r->swapchain_format))
             || (r->dis && vkr_dis_needs_rebuild(r->dis, composite_extent.width,
-                                                composite_extent.height, r->swapchain_format,
-                                                dis_content));
+                                                composite_extent.height, r->swapchain_format));
         if (composite_stale || chain_stale) {
             if (r->dis) {
                 vkDeviceWaitIdle(r->device);
@@ -2678,8 +2689,7 @@ static bool record_and_submit_frame(VkRenderer* r) {
             } else if (r->dis) {
                 vkr_dis_forget_targets(r->dis);
                 if (!vkr_dis_prepare(r->dis, composite_extent.width,
-                                     composite_extent.height, r->swapchain_format,
-                                     dis_content)) {
+                                     composite_extent.height, r->swapchain_format)) {
                     framegen_capacity = 0;
                 }
             }
@@ -2699,7 +2709,8 @@ static bool record_and_submit_frame(VkRenderer* r) {
                                              __atomic_load_n(&r->framegen_source_frames,
                                                              __ATOMIC_RELAXED));
         } else if (r->dis) {
-            vkr_dis_configure(r->dis, r->dis_scale, r->dis_target_fps, r->framegen_refresh_rate);
+            vkr_dis_configure(r->dis, r->dis_target_fps, dis_flow_scale(r->dis_scale),
+                              r->framegen_refresh_rate, 0.0f);
             framegen_planned = vkr_dis_plan(r->dis, framegen_capacity,
                                             __atomic_load_n(&r->framegen_source_frames,
                                                             __ATOMIC_RELAXED));
@@ -2886,7 +2897,11 @@ static bool record_and_submit_frame(VkRenderer* r) {
         if ((use_dis || r->lsfg) && framegen_capacity > 0) {
             if (use_dis) {
                 vkr_dis_process(r->dis, f->cmd, composite->image,
-                                composite->width, composite->height, gen_count);
+                                composite->view,
+                                r->composite[(r->frame_index + VK_FRAMES_IN_FLIGHT - 1)
+                                             % VK_FRAMES_IN_FLIGHT].view,
+                                composite->width, composite->height,
+                                dis_content, framegen_planned);
             } else {
                 vkr_lsfg_process(r->lsfg, f->cmd, composite->image,
                                  r->swapchain_extent.width, r->swapchain_extent.height, gen_count);
@@ -2899,8 +2914,7 @@ static bool record_and_submit_frame(VkRenderer* r) {
                         vkr_dis_generate_into(r->dis, f->cmd, g, idx,
                                               r->swapchain_images[idx], r->swapchain_views[idx],
                                               r->swapchain_extent.width,
-                                              r->swapchain_extent.height,
-                                              composite->image);
+                                              r->swapchain_extent.height);
                     } else {
                         vkr_lsfg_generate_into(r->lsfg, f->cmd, g, idx,
                                                r->swapchain_images[idx], r->swapchain_views[idx],
@@ -2918,8 +2932,7 @@ static bool record_and_submit_frame(VkRenderer* r) {
                     if (use_dis) {
                         vkr_dis_generate_into(r->dis, f->cmd, g, VK_FRAMES_IN_FLIGHT + g,
                                               gt->image, gt->view,
-                                              gt->width, gt->height,
-                                              composite->image);
+                                              gt->width, gt->height);
                     } else {
                         vkr_lsfg_generate_into(r->lsfg, f->cmd, g, VK_FRAMES_IN_FLIGHT + g,
                                                gt->image, gt->view,
@@ -2955,14 +2968,37 @@ static bool record_and_submit_frame(VkRenderer* r) {
             }
         }
 
-        if (use_dis && r->dis_debug_flow) {
-            vkr_dis_debug_into(r->dis, f->cmd, r->swapchain_images[image_index],
-                               r->swapchain_extent.width, r->swapchain_extent.height);
-            vkr_image_barrier(f->cmd, r->swapchain_images[image_index],
-                              VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                              VK_PIPELINE_STAGE_TRANSFER_BIT,
-                              VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                              VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+        // The generated frames run through dis_interp (which draws the flow overlay), but the
+        // real frame is blitted straight from the composite, so with the debug view active it
+        // would blink between overlay and normal picture every other frame. Route the real
+        // frame through the same interp/debug pass so every presented frame shows the overlay.
+        const bool debug_present = use_dis && r->dis_debug_flow
+                                   && vkr_dis_debug_ready(r->dis)
+                                   && (r->swapchain_storage
+                                       || (r->composite_built
+                                           && VK_FRAMES_IN_FLIGHT + framegen_capacity
+                                                  < r->composite_count));
+        if (debug_present) {
+            const uint32_t debug_generation = VKR_DIS_MAX_TARGETS - 1;
+            if (r->swapchain_storage) {
+                vkr_dis_generate_into(r->dis, f->cmd, debug_generation, image_index,
+                                      r->swapchain_images[image_index],
+                                      r->swapchain_views[image_index],
+                                      r->swapchain_extent.width, r->swapchain_extent.height);
+                vkr_image_barrier(f->cmd, r->swapchain_images[image_index],
+                                  VK_IMAGE_LAYOUT_GENERAL,
+                                  VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                  VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                  VK_ACCESS_SHADER_WRITE_BIT, 0);
+            } else {
+                VkCompositeTarget* dt = &r->composite[VK_FRAMES_IN_FLIGHT + framegen_capacity];
+                vkr_dis_generate_into(r->dis, f->cmd, debug_generation,
+                                      VK_FRAMES_IN_FLIGHT + framegen_capacity,
+                                      dt->image, dt->view,
+                                      r->swapchain_extent.width, r->swapchain_extent.height);
+                blit_composite_to_swapchain(r, f->cmd, dt, r->swapchain_images[image_index]);
+            }
         } else {
             blit_composite_to_swapchain(r, f->cmd, composite, r->swapchain_images[image_index]);
         }
@@ -3045,7 +3081,8 @@ static bool record_and_submit_frame(VkRenderer* r) {
 
     wait_sems[wait_count] = f->image_available;
     wait_stages[wait_count] =
-        composite ? (VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT)
+        composite ? (VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT
+                     | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)
                   : VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     wait_count++;
     signal_sems[signal_count++] = render_finished;
@@ -3955,7 +3992,8 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetDisFrameGenerationScale)(JNIEnv* env, jcl
     int side = scalePercent > 0 && scalePercent <= 100 ? scalePercent * 720 / 100 : scalePercent;
     r->dis_scale = side < 64 ? 64u : (uint32_t)(side > 1080 ? 1080 : side);
     if (r->dis) {
-        vkr_dis_configure(r->dis, r->dis_scale, r->dis_target_fps, r->framegen_refresh_rate);
+        vkr_dis_configure(r->dis, r->dis_target_fps, dis_flow_scale(r->dis_scale),
+                          r->framegen_refresh_rate, 0.0f);
     }
     pthread_mutex_unlock(&r->render_mutex);
 }
@@ -3969,7 +4007,8 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetDisFrameGenerationTargetFps)(JNIEnv* env,
     pthread_mutex_lock(&r->render_mutex);
     r->dis_target_fps = targetFps < 0 ? 0u : (uint32_t)targetFps;
     if (r->dis) {
-        vkr_dis_configure(r->dis, r->dis_scale, r->dis_target_fps, r->framegen_refresh_rate);
+        vkr_dis_configure(r->dis, r->dis_target_fps, dis_flow_scale(r->dis_scale),
+                          r->framegen_refresh_rate, 0.0f);
     }
     pthread_mutex_unlock(&r->render_mutex);
 }
@@ -3982,7 +4021,7 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetDisDebugFlow)(JNIEnv* env, jclass clazz,
 
     pthread_mutex_lock(&r->render_mutex);
     r->dis_debug_flow = (debugFlow == JNI_TRUE);
-    if (r->dis) vkr_dis_set_debug_flow(r->dis, r->dis_debug_flow);
+    if (r->dis) vkr_dis_set_debug_mode(r->dis, r->dis_debug_flow ? 1u : 0u);
     pthread_mutex_unlock(&r->render_mutex);
 }
 

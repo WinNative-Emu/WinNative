@@ -1,0 +1,28 @@
+#version 450
+#extension GL_EXT_samplerless_texture_functions : require
+
+// Luminance pass: current composited frame (content rectangle) -> R16F level 0, in the same
+// 0..255 scale the reference uses (CV_8U equivalent).
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform texture2D srcColor;
+layout(set = 0, binding = 1) uniform sampler samp;
+layout(set = 0, binding = 2, r16f) uniform image2D dstGray;
+
+layout(push_constant) uniform PC {
+    vec2 dstSize;
+    vec2 rectOffset;
+    vec2 rectScale;
+} pc;
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (p.x >= int(pc.dstSize.x) || p.y >= int(pc.dstSize.y)) return;
+
+    vec2 local = (vec2(p) + 0.5) / pc.dstSize;
+    vec2 uv = pc.rectOffset + local * pc.rectScale;
+    vec3 c = textureLod(sampler2D(srcColor, samp), uv, 0.0).rgb;
+    float g = dot(c, vec3(0.299, 0.587, 0.114)) * 255.0;
+    imageStore(dstGray, p, vec4(g, 0.0, 0.0, 0.0));
+}

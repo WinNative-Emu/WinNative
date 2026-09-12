@@ -1,0 +1,32 @@
+#version 450
+#extension GL_EXT_samplerless_texture_functions : require
+
+// Smoothness weights: alpha/2 / sqrt(|grad(W + dW)|^2 + eps^2) (FS_VR_W).
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform texture2D u_W;
+layout(set = 0, binding = 1) uniform texture2D u_dW;
+layout(set = 0, binding = 2, r32f) uniform image2D o_wt;
+
+layout(push_constant) uniform PC {
+    float u_alpha2;
+    float u_eps2;
+} pc;
+
+vec2 TW(ivec2 q) {
+    return texelFetch(u_W, q, 0).rg + texelFetch(u_dW, q, 0).rg;
+}
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz = imageSize(o_wt);
+    if (p.x >= sz.x || p.y >= sz.y) return;
+
+    ivec2 mx = sz - 1;
+    vec2 c = TW(p);
+    vec2 dx = TW(min(p + ivec2(1, 0), mx)) - c;
+    vec2 dy = TW(min(p + ivec2(0, 1), mx)) - c;
+    float v = pc.u_alpha2 / sqrt(dot(dx, dx) + dot(dy, dy) + pc.u_eps2);
+    imageStore(o_wt, p, vec4(v, 0.0, 0.0, 0.0));
+}
