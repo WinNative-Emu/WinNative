@@ -13,8 +13,8 @@
                 "NONE"
             ],
             "scale": 1.0,
-            "x": 0.141667,
-            "y": 0.094086,
+            "x": 0.175,
+            "y": 0.091398,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0,
@@ -30,8 +30,8 @@
                 "NONE"
             ],
             "scale": 1.0,
-            "x": 0.858333,
-            "y": 0.094086,
+            "x": 0.825,
+            "y": 0.091398,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0,
@@ -47,8 +47,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.104167,
-            "y": 0.376344,
+            "x": 0.125,
+            "y": 0.389785,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -63,8 +63,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.1875,
-            "y": 0.376344,
+            "x": 0.208333,
+            "y": 0.389785,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -79,8 +79,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.104167,
-            "y": 0.504032,
+            "x": 0.125,
+            "y": 0.514113,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -95,8 +95,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.1875,
-            "y": 0.504032,
+            "x": 0.208333,
+            "y": 0.514113,
             "toggleSwitch": false,
             "text": "",
             "iconId": 3
@@ -111,8 +111,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.104167,
-            "y": 0.63172,
+            "x": 0.125,
+            "y": 0.638441,
             "toggleSwitch": false,
             "text": "",
             "iconId": 2
@@ -127,8 +127,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.1875,
-            "y": 0.63172,
+            "x": 0.208333,
+            "y": 0.638441,
             "toggleSwitch": false,
             "text": "",
             "iconId": 4
@@ -143,8 +143,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.104167,
-            "y": 0.759409,
+            "x": 0.125,
+            "y": 0.762769,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -159,8 +159,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.1875,
-            "y": 0.759409,
+            "x": 0.208333,
+            "y": 0.762769,
             "toggleSwitch": false,
             "text": "",
             "iconId": 5
@@ -175,7 +175,7 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.104167,
+            "x": 0.125,
             "y": 0.887097,
             "toggleSwitch": false,
             "text": "",
@@ -191,7 +191,7 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.1875,
+            "x": 0.208333,
             "y": 0.887097,
             "toggleSwitch": false,
             "text": "",
@@ -207,8 +207,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.816667,
-            "y": 0.658602,
+            "x": 0.825,
+            "y": 0.638441,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -223,8 +223,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.816667,
-            "y": 0.78629,
+            "x": 0.825,
+            "y": 0.766129,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -239,8 +239,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.9,
-            "y": 0.658602,
+            "x": 0.908333,
+            "y": 0.638441,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -255,8 +255,8 @@
                 "NONE"
             ],
             "scale": 1.05,
-            "x": 0.9,
-            "y": 0.78629,
+            "x": 0.908333,
+            "y": 0.766129,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0

@@ -13,8 +13,8 @@
                 "NONE"
             ],
             "scale": 1.2,
-            "x": 0.1,
-            "y": 0.087366,
+            "x": 0.158333,
+            "y": 0.091398,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -29,8 +29,8 @@
                 "NONE"
             ],
             "scale": 1.2,
-            "x": 0.9,
-            "y": 0.087366,
+            "x": 0.841667,
+            "y": 0.091398,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -45,8 +45,8 @@
                 "NONE"
             ],
             "scale": 1.2,
-            "x": 0.1,
-            "y": 0.208333,
+            "x": 0.158333,
+            "y": 0.212366,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -61,24 +61,8 @@
                 "NONE"
             ],
             "scale": 1.2,
-            "x": 0.9,
-            "y": 0.208333,
-            "toggleSwitch": false,
-            "text": "",
-            "iconId": 0
-        },
-        {
-            "type": "STICK",
-            "shape": "CIRCLE",
-            "bindings": [
-                "GAMEPAD_LEFT_THUMB_UP",
-                "GAMEPAD_LEFT_THUMB_RIGHT",
-                "GAMEPAD_LEFT_THUMB_DOWN",
-                "GAMEPAD_LEFT_THUMB_LEFT"
-            ],
-            "scale": 1.0,
-            "x": 0.191667,
-            "y": 0.772849,
+            "x": 0.841667,
+            "y": 0.212366,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -93,8 +77,24 @@
                 "GAMEPAD_DPAD_LEFT"
             ],
             "scale": 0.85,
-            "x": 0.125417,
-            "y": 0.477151,
+            "x": 0.1375,
+            "y": 0.510753,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "STICK",
+            "shape": "CIRCLE",
+            "bindings": [
+                "GAMEPAD_LEFT_THUMB_UP",
+                "GAMEPAD_LEFT_THUMB_RIGHT",
+                "GAMEPAD_LEFT_THUMB_DOWN",
+                "GAMEPAD_LEFT_THUMB_LEFT"
+            ],
+            "scale": 1.0,
+            "x": 0.1375,
+            "y": 0.833333,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -109,8 +109,8 @@
                 "GAMEPAD_RIGHT_THUMB_LEFT"
             ],
             "scale": 1.0,
-            "x": 0.808333,
-            "y": 0.772849,
+            "x": 0.8625,
+            "y": 0.833333,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -124,9 +124,9 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.0,
-            "x": 0.874583,
-            "y": 0.372984,
+            "scale": 1.15,
+            "x": 0.8625,
+            "y": 0.393817,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -140,9 +140,9 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.0,
-            "x": 0.81,
-            "y": 0.477151,
+            "scale": 1.15,
+            "x": 0.79,
+            "y": 0.510753,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -156,9 +156,9 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.0,
-            "x": 0.939167,
-            "y": 0.477151,
+            "scale": 1.15,
+            "x": 0.935,
+            "y": 0.510753,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -172,25 +172,9 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.0,
-            "x": 0.874583,
-            "y": 0.581317,
-            "toggleSwitch": false,
-            "text": "",
-            "iconId": 0
-        },
-        {
-            "type": "BUTTON",
-            "shape": "CIRCLE",
-            "bindings": [
-                "GAMEPAD_BUTTON_L3",
-                "NONE",
-                "NONE",
-                "NONE"
-            ],
-            "scale": 1.0,
-            "x": 0.933333,
-            "y": 0.880376,
+            "scale": 1.15,
+            "x": 0.8625,
+            "y": 0.627688,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -204,9 +188,25 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.0,
-            "x": 0.066667,
-            "y": 0.880376,
+            "scale": 1.15,
+            "x": 0.258333,
+            "y": 0.705645,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "CIRCLE",
+            "bindings": [
+                "GAMEPAD_BUTTON_L3",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.15,
+            "x": 0.741667,
+            "y": 0.705645,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
