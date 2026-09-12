@@ -182,6 +182,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Pobierz grafiki</string>
+    <string name="library_games_store_none_owned">Żadna biblioteka sklepu nie zawiera tej gry</string>
     <string name="library_games_scraping_artwork">Pobieranie</string>
     <string name="library_games_shortcut_created">Skrót utworzony</string>
     <string name="library_games_failed_to_create_shortcut">Nie udało się utworzyć skrótu: %s</string>
@@ -799,6 +800,42 @@ Np. <b>META</b> dla <i>klawisza META</i>, \n
     <string name="session_gyroscope_smoothing_format">Wygładzanie: %1$d%%</string>
     <string name="session_gyroscope_deadzone_format">Martwa strefa: %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">Czułość: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Urządzenie</string>
+    <string name="device_profile_heading">PROFIL URZĄDZENIA</string>
+    <string name="device_profile_desc">Jeden profil na urządzenie, dostosowujący układy i rozmiary do tego ekranu.</string>
+    <string name="device_profile_change">ZMIEŃ</string>
+    <string name="device_profile_source_detected">Wykryto automatycznie</string>
+    <string name="device_profile_source_manual">Wybrano ręcznie</string>
+    <string name="device_profile_default">Domyślny</string>
+    <string name="device_profile_default_summary">Każdy telefon i tablet bez własnego profilu.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Tablet do gier RedMagic Astra 2, każdy model regionalny.</string>
+    <string name="device_profile_controls_heading">CO USTAWIA TEN PROFIL</string>
+    <string name="device_profile_controls_desc">Wartości domyślne stosowane przez profil w całej aplikacji.</string>
+    <string name="device_profile_feature_input_layouts">Układy kontrolek wejścia</string>
+    <string name="device_profile_feature_input_layouts_summary">Dołączone układy dotykowe rozmieszczone dla tego rozmiaru ekranu.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Adaptacyjne drążki</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Domyślne dla kontenerów, w których nigdy tego nie ustawiono.</string>
+    <string name="device_profile_feature_library_icons">Rozmiary i proporcje ikon biblioteki</string>
+    <string name="device_profile_feature_library_icons_summary">Kolumny siatki i kształt okładek w bibliotece.</string>
+    <string name="device_profile_feature_session_menu">Rozmiary przycisków menu w grze</string>
+    <string name="device_profile_feature_session_menu_summary">Rozmiary obszarów dotyku w menu sesji.</string>
+    <string name="device_profile_feature_shortcut_defaults">Zalecane ustawienia gry</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Ustawienia domyślne dla gier sugerowane dla tego urządzenia.</string>
+    <string name="device_profile_recommended_on">Zalecane: Włączone</string>
+    <string name="device_profile_recommended_off">Zalecane: Wyłączone</string>
+    <string name="device_profile_layouts_stock">Układy standardowe</string>
+    <string name="device_profile_layouts_tuned">Dostosowane do tego ekranu</string>
+    <string name="device_profile_reapply">Zastosuj ponownie dołączone układy</string>
+    <string name="device_profile_reapply_desc">Przywraca każdy dołączony układ, którego nie edytowałeś.</string>
+    <string name="device_profile_device_heading">TO URZĄDZENIE</string>
+    <string name="device_profile_device_desc">Do czego dopasowano profil.</string>
+    <string name="device_profile_info_model">Model</string>
+    <string name="device_profile_info_board">Płyta</string>
+    <string name="device_profile_info_manufacturer">Producent</string>
+    <string name="device_profile_info_screen">Ekran</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Prędkość kursora</string>

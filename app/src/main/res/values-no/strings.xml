@@ -179,6 +179,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Hent grafikk</string>
+    <string name="library_games_store_none_owned">Ingen butikkbibliotek passer til dette spillet</string>
     <string name="library_games_scraping_artwork">Henter</string>
     <string name="library_games_shortcut_created">Snarvei opprettet</string>
     <string name="library_games_failed_to_create_shortcut">Kunne ikke opprette snarvei: %s</string>
@@ -1080,6 +1081,42 @@ F.eks. <b>META</b> for <i>META-tast</i>, \n
     <string name="session_gyroscope_sensitivity_format">Følsomhet: %1$d%%</string>
     <string name="session_gyroscope_mouse_scale">Musskala</string>
     <string name="session_gyroscope_mouse_sensitivity_format">Musskala: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Enhet</string>
+    <string name="device_profile_heading">ENHETSPROFIL</string>
+    <string name="device_profile_desc">Én profil per enhet som tilpasser oppsett og størrelser til denne skjermen.</string>
+    <string name="device_profile_change">BYTT</string>
+    <string name="device_profile_source_detected">Oppdaget automatisk</string>
+    <string name="device_profile_source_manual">Valgt manuelt</string>
+    <string name="device_profile_default">Standard</string>
+    <string name="device_profile_default_summary">Alle telefoner og nettbrett uten egen profil.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">RedMagic Astra 2-spillnettbrett, alle regionale modeller.</string>
+    <string name="device_profile_controls_heading">HVA DENNE PROFILEN ANGIR</string>
+    <string name="device_profile_controls_desc">Standardverdiene profilen bruker i hele appen.</string>
+    <string name="device_profile_feature_input_layouts">Kontrolloppsett for inndata</string>
+    <string name="device_profile_feature_input_layouts_summary">Medfølgende berøringsoppsett plassert for denne skjermstørrelsen.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Adaptive styrespaker</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Standard for beholdere som aldri har angitt det.</string>
+    <string name="device_profile_feature_library_icons">Ikonstørrelser og format i biblioteket</string>
+    <string name="device_profile_feature_library_icons_summary">Rutenettkolonner og omslagsform i biblioteket.</string>
+    <string name="device_profile_feature_session_menu">Knappestørrelser i menyen i spillet</string>
+    <string name="device_profile_feature_session_menu_summary">Størrelsen på berøringsmål i menyen i spillet.</string>
+    <string name="device_profile_feature_shortcut_defaults">Anbefalte spillinnstillinger</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Standardverdier per spill som foreslås for denne enheten.</string>
+    <string name="device_profile_recommended_on">Anbefalt: På</string>
+    <string name="device_profile_recommended_off">Anbefalt: Av</string>
+    <string name="device_profile_layouts_stock">Standardoppsett</string>
+    <string name="device_profile_layouts_tuned">Tilpasset denne skjermen</string>
+    <string name="device_profile_reapply">Bruk medfølgende oppsett på nytt</string>
+    <string name="device_profile_reapply_desc">Gjenoppretter alle medfølgende oppsett du ikke har redigert.</string>
+    <string name="device_profile_device_heading">DENNE ENHETEN</string>
+    <string name="device_profile_device_desc">Det profilen ble matchet mot.</string>
+    <string name="device_profile_info_model">Modell</string>
+    <string name="device_profile_info_board">Hovedkort</string>
+    <string name="device_profile_info_manufacturer">Produsent</string>
+    <string name="device_profile_info_screen">Skjerm</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Markørhastighet</string>

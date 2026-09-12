@@ -178,6 +178,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Artwork abrufen</string>
+    <string name="library_games_store_none_owned">Keine Store-Bibliothek passt zu diesem Spiel</string>
     <string name="library_games_scraping_artwork">Wird abgerufen</string>
     <string name="library_games_shortcut_created">Verknüpfung erstellt</string>
     <string name="library_games_failed_to_create_shortcut">Verknüpfung konnte nicht erstellt werden: %s</string>
@@ -793,6 +794,42 @@ Z. B. <b>META</b> für <i>Meta-Taste</i>, \n
     <string name="session_gyroscope_smoothing_format">Glättung: %1$d%%</string>
     <string name="session_gyroscope_deadzone_format">Totzone: %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">Empfindlichkeit: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Gerät</string>
+    <string name="device_profile_heading">GERÄTEPROFIL</string>
+    <string name="device_profile_desc">Ein Profil pro Gerät, das Layouts und Größen auf diesen Bildschirm abstimmt.</string>
+    <string name="device_profile_change">WECHSELN</string>
+    <string name="device_profile_source_detected">Automatisch erkannt</string>
+    <string name="device_profile_source_manual">Manuell gewählt</string>
+    <string name="device_profile_default">Standard</string>
+    <string name="device_profile_default_summary">Jedes Smartphone und Tablet ohne eigenes Profil.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">RedMagic Astra 2 Gaming-Tablet, alle regionalen Modelle.</string>
+    <string name="device_profile_controls_heading">WAS DIESES PROFIL FESTLEGT</string>
+    <string name="device_profile_controls_desc">Standardwerte, die das Profil in der ganzen App anwendet.</string>
+    <string name="device_profile_feature_input_layouts">Layouts der Eingabesteuerung</string>
+    <string name="device_profile_feature_input_layouts_summary">Mitgelieferte Touch-Layouts, passend zu dieser Bildschirmgröße platziert.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Adaptive Joysticks</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Standard für Container, die es noch nie festgelegt haben.</string>
+    <string name="device_profile_feature_library_icons">Symbolgrößen und Seitenverhältnisse der Bibliothek</string>
+    <string name="device_profile_feature_library_icons_summary">Rasterspalten und Coverform in der Bibliothek.</string>
+    <string name="device_profile_feature_session_menu">Tastengrößen im Spielmenü</string>
+    <string name="device_profile_feature_session_menu_summary">Größe der Tippflächen im Sitzungsmenü.</string>
+    <string name="device_profile_feature_shortcut_defaults">Empfohlene Spieleinstellungen</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Spielspezifische Standardwerte, die für dieses Gerät vorgeschlagen werden.</string>
+    <string name="device_profile_recommended_on">Empfohlen: Ein</string>
+    <string name="device_profile_recommended_off">Empfohlen: Aus</string>
+    <string name="device_profile_layouts_stock">Standard-Layouts</string>
+    <string name="device_profile_layouts_tuned">Auf diesen Bildschirm abgestimmt</string>
+    <string name="device_profile_reapply">Mitgelieferte Layouts neu anwenden</string>
+    <string name="device_profile_reapply_desc">Stellt jedes mitgelieferte Layout wieder her, das du nicht bearbeitet hast.</string>
+    <string name="device_profile_device_heading">DIESES GERÄT</string>
+    <string name="device_profile_device_desc">Womit das Profil abgeglichen wurde.</string>
+    <string name="device_profile_info_model">Modell</string>
+    <string name="device_profile_info_board">Platine</string>
+    <string name="device_profile_info_manufacturer">Hersteller</string>
+    <string name="device_profile_info_screen">Bildschirm</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Zeigergeschwindigkeit</string>

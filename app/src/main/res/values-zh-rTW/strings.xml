@@ -178,6 +178,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">擷取美術圖</string>
+    <string name="library_games_store_none_owned">沒有商店遊戲庫符合此遊戲</string>
     <string name="library_games_scraping_artwork">擷取中</string>
     <string name="library_games_shortcut_created">捷徑已建立</string>
     <string name="library_games_failed_to_create_shortcut">無法建立捷徑：%s</string>
@@ -793,6 +794,42 @@
     <string name="session_gyroscope_smoothing_format">平滑化：%1$d%%</string>
     <string name="session_gyroscope_deadzone_format">死區：%1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">靈敏度：%1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">裝置</string>
+    <string name="device_profile_heading">裝置設定檔</string>
+    <string name="device_profile_desc">每部裝置一個設定檔，依此螢幕調整版面配置與尺寸。</string>
+    <string name="device_profile_change">變更</string>
+    <string name="device_profile_source_detected">自動偵測</string>
+    <string name="device_profile_source_manual">手動選擇</string>
+    <string name="device_profile_default">預設</string>
+    <string name="device_profile_default_summary">所有沒有專屬設定檔的手機與平板。</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">RedMagic Astra 2 遊戲平板，涵蓋所有地區型號。</string>
+    <string name="device_profile_controls_heading">此設定檔會設定什麼</string>
+    <string name="device_profile_controls_desc">設定檔在整個應用程式中套用的預設值。</string>
+    <string name="device_profile_feature_input_layouts">輸入控制版面配置</string>
+    <string name="device_profile_feature_input_layouts_summary">依此螢幕尺寸擺放的內建觸控版面配置。</string>
+    <string name="device_profile_feature_adaptive_joysticks">自適應搖桿</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">從未設定過此項的容器所使用的預設值。</string>
+    <string name="device_profile_feature_library_icons">遊戲庫圖示尺寸與比例</string>
+    <string name="device_profile_feature_library_icons_summary">遊戲庫中的格線欄數與封面形狀。</string>
+    <string name="device_profile_feature_session_menu">遊戲內選單按鈕尺寸</string>
+    <string name="device_profile_feature_session_menu_summary">工作階段抽屜中的觸控目標尺寸。</string>
+    <string name="device_profile_feature_shortcut_defaults">建議的遊戲設定</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">為此裝置建議的個別遊戲預設值。</string>
+    <string name="device_profile_recommended_on">建議：開啟</string>
+    <string name="device_profile_recommended_off">建議：關閉</string>
+    <string name="device_profile_layouts_stock">原始版面配置</string>
+    <string name="device_profile_layouts_tuned">已針對此螢幕調整</string>
+    <string name="device_profile_reapply">重新套用內建版面配置</string>
+    <string name="device_profile_reapply_desc">還原你未曾編輯過的所有內建版面配置。</string>
+    <string name="device_profile_device_heading">此裝置</string>
+    <string name="device_profile_device_desc">設定檔比對時所依據的資訊。</string>
+    <string name="device_profile_info_model">型號</string>
+    <string name="device_profile_info_board">主板</string>
+    <string name="device_profile_info_manufacturer">製造商</string>
+    <string name="device_profile_info_screen">螢幕</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">游標速度</string>

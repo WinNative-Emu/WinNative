@@ -178,6 +178,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Récupérer les illustrations</string>
+    <string name="library_games_store_none_owned">Aucune bibliothèque de boutique ne correspond à ce jeu</string>
     <string name="library_games_scraping_artwork">Récupération</string>
     <string name="library_games_shortcut_created">Raccourci créé</string>
     <string name="library_games_failed_to_create_shortcut">Échec de la création du raccourci : %s</string>
@@ -793,6 +794,42 @@ Par ex. <b>META</b> pour la <i>touche META</i>, \n
     <string name="session_gyroscope_smoothing_format">Lissage : %1$d%%</string>
     <string name="session_gyroscope_deadzone_format">Zone morte : %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">Sensibilité : %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Appareil</string>
+    <string name="device_profile_heading">PROFIL D\'APPAREIL</string>
+    <string name="device_profile_desc">Un profil par appareil, adaptant les dispositions et les tailles à cet écran.</string>
+    <string name="device_profile_change">CHANGER</string>
+    <string name="device_profile_source_detected">Détecté automatiquement</string>
+    <string name="device_profile_source_manual">Choisi manuellement</string>
+    <string name="device_profile_default">Par défaut</string>
+    <string name="device_profile_default_summary">Tous les téléphones et tablettes sans profil propre.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Tablette de jeu RedMagic Astra 2, tous les modèles régionaux.</string>
+    <string name="device_profile_controls_heading">CE QUE CE PROFIL DÉFINIT</string>
+    <string name="device_profile_controls_desc">Valeurs par défaut que le profil applique dans toute l\'application.</string>
+    <string name="device_profile_feature_input_layouts">Dispositions des contrôles de saisie</string>
+    <string name="device_profile_feature_input_layouts_summary">Dispositions tactiles intégrées placées pour cette taille d\'écran.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Joysticks adaptatifs</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Valeur par défaut pour les conteneurs qui ne l\'ont jamais définie.</string>
+    <string name="device_profile_feature_library_icons">Tailles et ratios des icônes de la bibliothèque</string>
+    <string name="device_profile_feature_library_icons_summary">Colonnes de la grille et forme des jaquettes dans la bibliothèque.</string>
+    <string name="device_profile_feature_session_menu">Tailles des boutons du menu en jeu</string>
+    <string name="device_profile_feature_session_menu_summary">Tailles des zones tactiles dans le menu de session.</string>
+    <string name="device_profile_feature_shortcut_defaults">Paramètres de jeu recommandés</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Valeurs par défaut par jeu suggérées pour cet appareil.</string>
+    <string name="device_profile_recommended_on">Recommandé : Activé</string>
+    <string name="device_profile_recommended_off">Recommandé : Désactivé</string>
+    <string name="device_profile_layouts_stock">Dispositions d\'origine</string>
+    <string name="device_profile_layouts_tuned">Adaptées à cet écran</string>
+    <string name="device_profile_reapply">Réappliquer les dispositions intégrées</string>
+    <string name="device_profile_reapply_desc">Restaure toutes les dispositions intégrées que vous n\'avez pas modifiées.</string>
+    <string name="device_profile_device_heading">CET APPAREIL</string>
+    <string name="device_profile_device_desc">Les critères utilisés pour associer le profil.</string>
+    <string name="device_profile_info_model">Modèle</string>
+    <string name="device_profile_info_board">Carte</string>
+    <string name="device_profile_info_manufacturer">Fabricant</string>
+    <string name="device_profile_info_screen">Écran</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Vitesse du curseur</string>

@@ -179,6 +179,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Obter arte</string>
+    <string name="library_games_store_none_owned">Nenhuma biblioteca de loja corresponde a este jogo</string>
     <string name="library_games_scraping_artwork">A obter…</string>
     <string name="library_games_shortcut_created">Atalho criado</string>
     <string name="library_games_failed_to_create_shortcut">Falha ao criar atalho: %s</string>
@@ -1080,6 +1081,42 @@ Por ex. <b>META</b> para <i>tecla META</i>, \n
     <string name="session_gyroscope_sensitivity_format">Sensibilidade: %1$d%%</string>
     <string name="session_gyroscope_mouse_scale">Escala do rato</string>
     <string name="session_gyroscope_mouse_sensitivity_format">Escala do rato: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Dispositivo</string>
+    <string name="device_profile_heading">PERFIL DO DISPOSITIVO</string>
+    <string name="device_profile_desc">Um perfil por dispositivo, a ajustar disposições e tamanhos a este ecrã.</string>
+    <string name="device_profile_change">ALTERAR</string>
+    <string name="device_profile_source_detected">Detetado automaticamente</string>
+    <string name="device_profile_source_manual">Escolhido manualmente</string>
+    <string name="device_profile_default">Predefinição</string>
+    <string name="device_profile_default_summary">Todos os telemóveis e tablets sem perfil próprio.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Tablet de jogos RedMagic Astra 2, todos os modelos regionais.</string>
+    <string name="device_profile_controls_heading">O QUE ESTE PERFIL DEFINE</string>
+    <string name="device_profile_controls_desc">Predefinições que o perfil aplica em toda a aplicação.</string>
+    <string name="device_profile_feature_input_layouts">Disposições dos controlos de entrada</string>
+    <string name="device_profile_feature_input_layouts_summary">Disposições táteis incluídas, posicionadas para este tamanho de ecrã.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Analógicos adaptativos</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Predefinição para contentores que nunca a definiram.</string>
+    <string name="device_profile_feature_library_icons">Tamanhos e proporções dos ícones da biblioteca</string>
+    <string name="device_profile_feature_library_icons_summary">Colunas da grelha e forma das capas na biblioteca.</string>
+    <string name="device_profile_feature_session_menu">Tamanhos dos botões do menu no jogo</string>
+    <string name="device_profile_feature_session_menu_summary">Tamanhos das áreas de toque no menu da sessão.</string>
+    <string name="device_profile_feature_shortcut_defaults">Definições de jogo recomendadas</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Predefinições por jogo sugeridas para este dispositivo.</string>
+    <string name="device_profile_recommended_on">Recomendado: Ligado</string>
+    <string name="device_profile_recommended_off">Recomendado: Desligado</string>
+    <string name="device_profile_layouts_stock">Disposições originais</string>
+    <string name="device_profile_layouts_tuned">Ajustadas a este ecrã</string>
+    <string name="device_profile_reapply">Reaplicar disposições incluídas</string>
+    <string name="device_profile_reapply_desc">Restaura todas as disposições incluídas que não editou.</string>
+    <string name="device_profile_device_heading">ESTE DISPOSITIVO</string>
+    <string name="device_profile_device_desc">Aquilo com que o perfil foi comparado.</string>
+    <string name="device_profile_info_model">Modelo</string>
+    <string name="device_profile_info_board">Placa</string>
+    <string name="device_profile_info_manufacturer">Fabricante</string>
+    <string name="device_profile_info_screen">Ecrã</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Velocidade do cursor</string>

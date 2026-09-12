@@ -178,6 +178,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Obține ilustrații</string>
+    <string name="library_games_store_none_owned">Nicio bibliotecă de magazin nu se potrivește cu acest joc</string>
     <string name="library_games_scraping_artwork">Se obțin…</string>
     <string name="library_games_shortcut_created">Comanda rapida creata</string>
     <string name="library_games_failed_to_create_shortcut">Nu s-a putut crea comanda rapida: %s</string>
@@ -793,6 +794,42 @@ De ex. <b>META</b> pentru <i>tasta META</i>, \n
     <string name="session_gyroscope_smoothing_format">Netezire: %1$d%%</string>
     <string name="session_gyroscope_deadzone_format">Zona moarta: %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">Sensibilitate: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Dispozitiv</string>
+    <string name="device_profile_heading">PROFIL DISPOZITIV</string>
+    <string name="device_profile_desc">Un profil pentru fiecare dispozitiv, care adaptează aspectele și dimensiunile la acest ecran.</string>
+    <string name="device_profile_change">SCHIMBĂ</string>
+    <string name="device_profile_source_detected">Detectat automat</string>
+    <string name="device_profile_source_manual">Ales manual</string>
+    <string name="device_profile_default">Implicit</string>
+    <string name="device_profile_default_summary">Toate telefoanele și tabletele fără un profil propriu.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Tableta de gaming RedMagic Astra 2, toate modelele regionale.</string>
+    <string name="device_profile_controls_heading">CE SETEAZĂ ACEST PROFIL</string>
+    <string name="device_profile_controls_desc">Valorile implicite pe care profilul le aplică în toată aplicația.</string>
+    <string name="device_profile_feature_input_layouts">Aspecte ale comenzilor</string>
+    <string name="device_profile_feature_input_layouts_summary">Aspectele tactile incluse, poziționate pentru această dimensiune de ecran.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Joystick-uri adaptive</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Valoarea implicită pentru containerele care nu au setat-o niciodată.</string>
+    <string name="device_profile_feature_library_icons">Dimensiuni și rapoarte ale pictogramelor</string>
+    <string name="device_profile_feature_library_icons_summary">Coloanele grilei și forma copertelor în bibliotecă.</string>
+    <string name="device_profile_feature_session_menu">Dimensiuni ale butoanelor din meniul de joc</string>
+    <string name="device_profile_feature_session_menu_summary">Dimensiunea zonelor tactile din meniul de sesiune.</string>
+    <string name="device_profile_feature_shortcut_defaults">Setări de joc recomandate</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Valori implicite per joc, sugerate pentru acest dispozitiv.</string>
+    <string name="device_profile_recommended_on">Recomandat: Activat</string>
+    <string name="device_profile_recommended_off">Recomandat: Dezactivat</string>
+    <string name="device_profile_layouts_stock">Aspecte standard</string>
+    <string name="device_profile_layouts_tuned">Adaptate pentru acest ecran</string>
+    <string name="device_profile_reapply">Reaplică aspectele incluse</string>
+    <string name="device_profile_reapply_desc">Restaurează fiecare aspect inclus pe care nu l-ai modificat.</string>
+    <string name="device_profile_device_heading">ACEST DISPOZITIV</string>
+    <string name="device_profile_device_desc">Elementele după care a fost potrivit profilul.</string>
+    <string name="device_profile_info_model">Model</string>
+    <string name="device_profile_info_board">Placă</string>
+    <string name="device_profile_info_manufacturer">Producător</string>
+    <string name="device_profile_info_screen">Ecran</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Viteza cursorului</string>

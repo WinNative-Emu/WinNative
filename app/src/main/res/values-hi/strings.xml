@@ -176,6 +176,7 @@
         <item quantity="other">%d फ़ाइलें</item>
     </plurals>
     <string name="library_games_scrape_artwork">आर्टवर्क प्राप्त करें</string>
+    <string name="library_games_store_none_owned">इस गेम से कोई स्टोर लाइब्रेरी मेल नहीं खाती</string>
     <string name="library_games_scraping_artwork">प्राप्त हो रहा है</string>
     <string name="library_games_shortcut_created">शॉर्टकट बनाया गया</string>
     <string name="library_games_failed_to_create_shortcut">शॉर्टकट बनाने में विफल: %s</string>
@@ -2676,4 +2677,39 @@
     <string name="networking_mac_summary">प्राथमिक अडैप्टर के लिए बताया गया हार्डवेयर पता। डिवाइस से स्वतः बने पते के लिए इसे खाली छोड़ें।</string>
     <string name="networking_mac_automatic">स्वतः: %1$s</string>
     <string name="networking_mac_invalid">12 हेक्स अंक दर्ज करें (उदाहरण के लिए 3c:5a:b4:12:34:56)। पहला बाइट यूनिकास्ट और वैश्विक रूप से प्रशासित होना चाहिए, यानी बिट 0 और 1 खाली हों; कई गेम स्थानीय रूप से प्रशासित पतों को अस्वीकार करते हैं, जैसे 02:…।</string>
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">डिवाइस</string>
+    <string name="device_profile_heading">डिवाइस प्रोफ़ाइल</string>
+    <string name="device_profile_desc">हर डिवाइस के लिए एक प्रोफ़ाइल, जो लेआउट और आकार इस स्क्रीन के अनुसार ढालती है।</string>
+    <string name="device_profile_change">बदलें</string>
+    <string name="device_profile_source_detected">स्वतः पहचानी गई</string>
+    <string name="device_profile_source_manual">मैन्युअल रूप से चुनी गई</string>
+    <string name="device_profile_default">डिफ़ॉल्ट</string>
+    <string name="device_profile_default_summary">हर वह फ़ोन और टैबलेट जिसकी अपनी प्रोफ़ाइल नहीं है।</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">RedMagic Astra 2 गेमिंग टैबलेट, हर क्षेत्रीय मॉडल।</string>
+    <string name="device_profile_controls_heading">यह प्रोफ़ाइल क्या सेट करती है</string>
+    <string name="device_profile_controls_desc">प्रोफ़ाइल पूरे ऐप में जो डिफ़ॉल्ट लागू करती है।</string>
+    <string name="device_profile_feature_input_layouts">इनपुट नियंत्रण लेआउट</string>
+    <string name="device_profile_feature_input_layouts_summary">बंडल टच लेआउट, इस स्क्रीन आकार के अनुसार रखे गए।</string>
+    <string name="device_profile_feature_adaptive_joysticks">अनुकूली जॉयस्टिक</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">उन कंटेनरों के लिए डिफ़ॉल्ट जिन्होंने इसे कभी सेट नहीं किया।</string>
+    <string name="device_profile_feature_library_icons">लाइब्रेरी आइकन आकार और अनुपात</string>
+    <string name="device_profile_feature_library_icons_summary">लाइब्रेरी में ग्रिड कॉलम और कवर का आकार।</string>
+    <string name="device_profile_feature_session_menu">इन-गेम मेन्यू बटन आकार</string>
+    <string name="device_profile_feature_session_menu_summary">सेशन ड्रॉअर में टच लक्ष्य के आकार।</string>
+    <string name="device_profile_feature_shortcut_defaults">अनुशंसित गेम सेटिंग्स</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">इस डिवाइस के लिए सुझाए गए प्रति-गेम डिफ़ॉल्ट।</string>
+    <string name="device_profile_recommended_on">अनुशंसित: चालू</string>
+    <string name="device_profile_recommended_off">अनुशंसित: बंद</string>
+    <string name="device_profile_layouts_stock">मूल लेआउट</string>
+    <string name="device_profile_layouts_tuned">इस स्क्रीन के लिए ढाले गए</string>
+    <string name="device_profile_reapply">बंडल लेआउट फिर से लागू करें</string>
+    <string name="device_profile_reapply_desc">हर उस बंडल लेआउट को पुनर्स्थापित करता है जिसे आपने संपादित नहीं किया है।</string>
+    <string name="device_profile_device_heading">यह डिवाइस</string>
+    <string name="device_profile_device_desc">प्रोफ़ाइल किससे मिलान करके चुनी गई।</string>
+    <string name="device_profile_info_model">मॉडल</string>
+    <string name="device_profile_info_board">बोर्ड</string>
+    <string name="device_profile_info_manufacturer">निर्माता</string>
+    <string name="device_profile_info_screen">स्क्रीन</string>
 </resources>

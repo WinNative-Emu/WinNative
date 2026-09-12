@@ -179,6 +179,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Hämta grafik</string>
+    <string name="library_games_store_none_owned">Inga butiksbibliotek matchar det här spelet</string>
     <string name="library_games_scraping_artwork">Hämtar</string>
     <string name="library_games_shortcut_created">Genväg skapad</string>
     <string name="library_games_failed_to_create_shortcut">Det gick inte att skapa genväg: %s</string>
@@ -1080,6 +1081,42 @@ T.ex. <b>META</b> för <i>META-tangent</i>, \n
     <string name="session_gyroscope_sensitivity_format">Känslighet: %1$d%%</string>
     <string name="session_gyroscope_mouse_scale">Musskala</string>
     <string name="session_gyroscope_mouse_sensitivity_format">Musskala: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Enhet</string>
+    <string name="device_profile_heading">ENHETSPROFIL</string>
+    <string name="device_profile_desc">En profil per enhet som anpassar layouter och storlekar till den här skärmen.</string>
+    <string name="device_profile_change">BYT</string>
+    <string name="device_profile_source_detected">Upptäckt automatiskt</string>
+    <string name="device_profile_source_manual">Vald manuellt</string>
+    <string name="device_profile_default">Standard</string>
+    <string name="device_profile_default_summary">Alla telefoner och tabletter utan en egen profil.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Speltabletten RedMagic Astra 2, alla regionala modeller.</string>
+    <string name="device_profile_controls_heading">VAD DEN HÄR PROFILEN STÄLLER IN</string>
+    <string name="device_profile_controls_desc">Standardvärden som profilen tillämpar i hela appen.</string>
+    <string name="device_profile_feature_input_layouts">Layouter för inmatningskontroller</string>
+    <string name="device_profile_feature_input_layouts_summary">Medföljande pekkontrollayouter placerade för den här skärmstorleken.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Adaptiva styrspakar</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Standard för containrar som aldrig ställt in det.</string>
+    <string name="device_profile_feature_library_icons">Ikonstorlekar och proportioner i biblioteket</string>
+    <string name="device_profile_feature_library_icons_summary">Rutnätskolumner och omslagsform i biblioteket.</string>
+    <string name="device_profile_feature_session_menu">Knappstorlekar i spelmenyn</string>
+    <string name="device_profile_feature_session_menu_summary">Storlek på tryckytorna i sessionsmenyn.</string>
+    <string name="device_profile_feature_shortcut_defaults">Rekommenderade spelinställningar</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Standardvärden per spel som föreslås för den här enheten.</string>
+    <string name="device_profile_recommended_on">Rekommenderat: På</string>
+    <string name="device_profile_recommended_off">Rekommenderat: Av</string>
+    <string name="device_profile_layouts_stock">Standardlayouter</string>
+    <string name="device_profile_layouts_tuned">Anpassade för den här skärmen</string>
+    <string name="device_profile_reapply">Tillämpa medföljande layouter igen</string>
+    <string name="device_profile_reapply_desc">Återställer alla medföljande layouter som du inte har redigerat.</string>
+    <string name="device_profile_device_heading">DEN HÄR ENHETEN</string>
+    <string name="device_profile_device_desc">Vad profilen matchades mot.</string>
+    <string name="device_profile_info_model">Modell</string>
+    <string name="device_profile_info_board">Kretskort</string>
+    <string name="device_profile_info_manufacturer">Tillverkare</string>
+    <string name="device_profile_info_screen">Skärm</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Markörhastighet</string>

@@ -178,6 +178,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">아트워크 가져오기</string>
+    <string name="library_games_store_none_owned">이 게임과 일치하는 스토어 라이브러리가 없습니다</string>
     <string name="library_games_scraping_artwork">가져오는 중</string>
     <string name="library_games_shortcut_created">바로가기가 생성되었습니다</string>
     <string name="library_games_failed_to_create_shortcut">바로가기 생성 실패: %s</string>
@@ -793,6 +794,42 @@
     <string name="session_gyroscope_smoothing_format">스무딩: %1$d%%</string>
     <string name="session_gyroscope_deadzone_format">데드존: %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">감도: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">기기</string>
+    <string name="device_profile_heading">기기 프로필</string>
+    <string name="device_profile_desc">기기마다 하나의 프로필로, 레이아웃과 크기를 이 화면에 맞게 조정합니다.</string>
+    <string name="device_profile_change">변경</string>
+    <string name="device_profile_source_detected">자동으로 감지됨</string>
+    <string name="device_profile_source_manual">수동으로 선택됨</string>
+    <string name="device_profile_default">기본값</string>
+    <string name="device_profile_default_summary">전용 프로필이 없는 모든 휴대폰과 태블릿.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">RedMagic Astra 2 게이밍 태블릿, 모든 지역 모델.</string>
+    <string name="device_profile_controls_heading">이 프로필이 설정하는 항목</string>
+    <string name="device_profile_controls_desc">프로필이 앱 전체에 적용하는 기본값입니다.</string>
+    <string name="device_profile_feature_input_layouts">입력 컨트롤 레이아웃</string>
+    <string name="device_profile_feature_input_layouts_summary">이 화면 크기에 맞게 배치된 기본 제공 터치 레이아웃.</string>
+    <string name="device_profile_feature_adaptive_joysticks">적응형 조이스틱</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">한 번도 설정하지 않은 컨테이너의 기본값.</string>
+    <string name="device_profile_feature_library_icons">라이브러리 아이콘 크기 및 비율</string>
+    <string name="device_profile_feature_library_icons_summary">라이브러리의 그리드 열 수와 커버 모양.</string>
+    <string name="device_profile_feature_session_menu">게임 내 메뉴 버튼 크기</string>
+    <string name="device_profile_feature_session_menu_summary">세션 드로어의 터치 영역 크기.</string>
+    <string name="device_profile_feature_shortcut_defaults">권장 게임 설정</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">이 기기에 제안되는 게임별 기본값.</string>
+    <string name="device_profile_recommended_on">권장: 켜기</string>
+    <string name="device_profile_recommended_off">권장: 끄기</string>
+    <string name="device_profile_layouts_stock">기본 레이아웃</string>
+    <string name="device_profile_layouts_tuned">이 화면에 맞게 조정됨</string>
+    <string name="device_profile_reapply">기본 제공 레이아웃 다시 적용</string>
+    <string name="device_profile_reapply_desc">편집하지 않은 모든 기본 제공 레이아웃을 복원합니다.</string>
+    <string name="device_profile_device_heading">이 기기</string>
+    <string name="device_profile_device_desc">프로필이 일치한 기준입니다.</string>
+    <string name="device_profile_info_model">모델</string>
+    <string name="device_profile_info_board">보드</string>
+    <string name="device_profile_info_manufacturer">제조사</string>
+    <string name="device_profile_info_screen">화면</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">커서 속도</string>

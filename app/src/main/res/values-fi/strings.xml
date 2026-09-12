@@ -179,6 +179,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Hae kuvitus</string>
+    <string name="library_games_store_none_owned">Mikään kauppakirjasto ei vastaa tätä peliä</string>
     <string name="library_games_scraping_artwork">Haetaan</string>
     <string name="library_games_shortcut_created">Pikakuvake luotu</string>
     <string name="library_games_failed_to_create_shortcut">Pikakuvakkeen luonti epäonnistui: %s</string>
@@ -1080,6 +1081,42 @@ E.g. <b>META</b> for <i>META-näppäin</i>, \n
     <string name="session_gyroscope_sensitivity_format">Herkkyys: %1$d%%</string>
     <string name="session_gyroscope_mouse_scale">Hiiren skaala</string>
     <string name="session_gyroscope_mouse_sensitivity_format">Hiiren skaala: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Laite</string>
+    <string name="device_profile_heading">LAITEPROFIILI</string>
+    <string name="device_profile_desc">Yksi profiili laitetta kohti: sovittaa asettelut ja koot tälle näytölle.</string>
+    <string name="device_profile_change">VAIHDA</string>
+    <string name="device_profile_source_detected">Tunnistettu automaattisesti</string>
+    <string name="device_profile_source_manual">Valittu itse</string>
+    <string name="device_profile_default">Oletus</string>
+    <string name="device_profile_default_summary">Kaikki puhelimet ja tabletit, joilla ei ole omaa profiilia.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">RedMagic Astra 2 -pelitabletti, kaikki aluemallit.</string>
+    <string name="device_profile_controls_heading">MITÄ TÄMÄ PROFIILI MÄÄRITTÄÄ</string>
+    <string name="device_profile_controls_desc">Oletukset, joita profiili käyttää koko sovelluksessa.</string>
+    <string name="device_profile_feature_input_layouts">Ohjainasettelut</string>
+    <string name="device_profile_feature_input_layouts_summary">Mukana tulevat kosketusasettelut tälle näyttökoolle.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Mukautuvat sauvat</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Oletus säiliöille, joissa sitä ei ole koskaan asetettu.</string>
+    <string name="device_profile_feature_library_icons">Kirjaston kuvakekoot ja -suhteet</string>
+    <string name="device_profile_feature_library_icons_summary">Ruudukon sarakkeet ja kansien muoto kirjastossa.</string>
+    <string name="device_profile_feature_session_menu">Pelinaikaisen valikon painikekoot</string>
+    <string name="device_profile_feature_session_menu_summary">Kosketusalueiden koot istuntovalikossa.</string>
+    <string name="device_profile_feature_shortcut_defaults">Suositellut peliasetukset</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Pelikohtaiset oletukset, joita suositellaan tälle laitteelle.</string>
+    <string name="device_profile_recommended_on">Suositus: Käytössä</string>
+    <string name="device_profile_recommended_off">Suositus: Pois</string>
+    <string name="device_profile_layouts_stock">Vakioasettelut</string>
+    <string name="device_profile_layouts_tuned">Sovitettu tälle näytölle</string>
+    <string name="device_profile_reapply">Palauta vakioasettelut</string>
+    <string name="device_profile_reapply_desc">Palauttaa kaikki mukana tulevat asettelut, joita et ole muokannut.</string>
+    <string name="device_profile_device_heading">TÄMÄ LAITE</string>
+    <string name="device_profile_device_desc">Mihin profiili sovitettiin.</string>
+    <string name="device_profile_info_model">Malli</string>
+    <string name="device_profile_info_board">Piirilevy</string>
+    <string name="device_profile_info_manufacturer">Valmistaja</string>
+    <string name="device_profile_info_screen">Näyttö</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Osoittimen nopeus</string>

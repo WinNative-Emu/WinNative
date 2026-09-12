@@ -182,6 +182,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Завантажити зображення</string>
+    <string name="library_games_store_none_owned">Жодна бібліотека магазину не містить цієї гри</string>
     <string name="library_games_scraping_artwork">Завантаження</string>
     <string name="library_games_shortcut_created">Ярлик створено</string>
     <string name="library_games_failed_to_create_shortcut">Не вдалося створити ярлик: %s</string>
@@ -799,6 +800,42 @@
     <string name="session_gyroscope_smoothing_format">Згладжування: %1$d%%</string>
     <string name="session_gyroscope_deadzone_format">Мертва зона: %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">Чутливість: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Пристрій</string>
+    <string name="device_profile_heading">ПРОФІЛЬ ПРИСТРОЮ</string>
+    <string name="device_profile_desc">Один профіль на пристрій — підлаштовує макети та розміри під цей екран.</string>
+    <string name="device_profile_change">ЗМІНИТИ</string>
+    <string name="device_profile_source_detected">Визначено автоматично</string>
+    <string name="device_profile_source_manual">Вибрано вручну</string>
+    <string name="device_profile_default">Типовий</string>
+    <string name="device_profile_default_summary">Усі телефони та планшети без власного профілю.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Ігровий планшет RedMagic Astra 2, усі регіональні моделі.</string>
+    <string name="device_profile_controls_heading">ЩО ЗАДАЄ ЦЕЙ ПРОФІЛЬ</string>
+    <string name="device_profile_controls_desc">Типові значення, які профіль застосовує в усьому застосунку.</string>
+    <string name="device_profile_feature_input_layouts">Макети керування</string>
+    <string name="device_profile_feature_input_layouts_summary">Вбудовані сенсорні макети, розміщені під цей розмір екрана.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Адаптивні джойстики</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Типове значення для контейнерів, де його ніколи не задавали.</string>
+    <string name="device_profile_feature_library_icons">Розміри та пропорції значків бібліотеки</string>
+    <string name="device_profile_feature_library_icons_summary">Стовпці сітки та форма обкладинок у бібліотеці.</string>
+    <string name="device_profile_feature_session_menu">Розміри кнопок меню в грі</string>
+    <string name="device_profile_feature_session_menu_summary">Розміри зон торкання в меню сесії.</string>
+    <string name="device_profile_feature_shortcut_defaults">Рекомендовані налаштування гри</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Типові значення для кожної гри, запропоновані для цього пристрою.</string>
+    <string name="device_profile_recommended_on">Рекомендовано: увімк.</string>
+    <string name="device_profile_recommended_off">Рекомендовано: вимк.</string>
+    <string name="device_profile_layouts_stock">Стандартні макети</string>
+    <string name="device_profile_layouts_tuned">Підлаштовано під цей екран</string>
+    <string name="device_profile_reapply">Застосувати вбудовані макети знову</string>
+    <string name="device_profile_reapply_desc">Відновлює всі вбудовані макети, які ви не редагували.</string>
+    <string name="device_profile_device_heading">ЦЕЙ ПРИСТРІЙ</string>
+    <string name="device_profile_device_desc">З чим було зіставлено профіль.</string>
+    <string name="device_profile_info_model">Модель</string>
+    <string name="device_profile_info_board">Плата</string>
+    <string name="device_profile_info_manufacturer">Виробник</string>
+    <string name="device_profile_info_screen">Екран</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Швидкість курсора</string>

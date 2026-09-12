@@ -179,6 +179,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">ดึงภาพประกอบ</string>
+    <string name="library_games_store_none_owned">ไม่มีคลังร้านค้าที่ตรงกับเกมนี้</string>
     <string name="library_games_scraping_artwork">กำลังดึง</string>
     <string name="library_games_shortcut_created">สร้างทางลัดแล้ว</string>
     <string name="library_games_failed_to_create_shortcut">สร้างทางลัดไม่สำเร็จ: %s</string>
@@ -1080,6 +1081,42 @@
     <string name="session_gyroscope_sensitivity_format">ความไว: %1$d%%</string>
     <string name="session_gyroscope_mouse_scale">สเกลเมาส์</string>
     <string name="session_gyroscope_mouse_sensitivity_format">สเกลเมาส์: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">อุปกรณ์</string>
+    <string name="device_profile_heading">โปรไฟล์อุปกรณ์</string>
+    <string name="device_profile_desc">หนึ่งโปรไฟล์ต่อหนึ่งอุปกรณ์ ปรับเลย์เอาต์และขนาดให้เข้ากับหน้าจอนี้</string>
+    <string name="device_profile_change">เปลี่ยน</string>
+    <string name="device_profile_source_detected">ตรวจพบอัตโนมัติ</string>
+    <string name="device_profile_source_manual">เลือกด้วยตนเอง</string>
+    <string name="device_profile_default">ค่าเริ่มต้น</string>
+    <string name="device_profile_default_summary">โทรศัพท์และแท็บเล็ตทุกเครื่องที่ไม่มีโปรไฟล์ของตัวเอง</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">แท็บเล็ตเกมมิ่ง RedMagic Astra 2 ทุกรุ่นในทุกภูมิภาค</string>
+    <string name="device_profile_controls_heading">สิ่งที่โปรไฟล์นี้กำหนด</string>
+    <string name="device_profile_controls_desc">ค่าเริ่มต้นที่โปรไฟล์ใช้กับทั้งแอป</string>
+    <string name="device_profile_feature_input_layouts">เลย์เอาต์ปุ่มควบคุมอินพุต</string>
+    <string name="device_profile_feature_input_layouts_summary">เลย์เอาต์สัมผัสในตัว จัดวางให้พอดีกับขนาดหน้าจอนี้</string>
+    <string name="device_profile_feature_adaptive_joysticks">จอยสติกแบบปรับอัตโนมัติ</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">ค่าเริ่มต้นสำหรับคอนเทนเนอร์ที่ยังไม่เคยตั้งค่านี้</string>
+    <string name="device_profile_feature_library_icons">ขนาดและสัดส่วนไอคอนในคลัง</string>
+    <string name="device_profile_feature_library_icons_summary">จำนวนคอลัมน์และรูปทรงภาพปกในคลัง</string>
+    <string name="device_profile_feature_session_menu">ขนาดปุ่มเมนูในเกม</string>
+    <string name="device_profile_feature_session_menu_summary">ขนาดพื้นที่สัมผัสในเมนูในเกม</string>
+    <string name="device_profile_feature_shortcut_defaults">การตั้งค่าเกมที่แนะนำ</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">ค่าเริ่มต้นเฉพาะเกมที่แนะนำสำหรับอุปกรณ์นี้</string>
+    <string name="device_profile_recommended_on">แนะนำ: เปิด</string>
+    <string name="device_profile_recommended_off">แนะนำ: ปิด</string>
+    <string name="device_profile_layouts_stock">เลย์เอาต์ต้นฉบับ</string>
+    <string name="device_profile_layouts_tuned">ปรับให้เข้ากับหน้าจอนี้</string>
+    <string name="device_profile_reapply">ใช้เลย์เอาต์ในตัวอีกครั้ง</string>
+    <string name="device_profile_reapply_desc">คืนค่าเลย์เอาต์ในตัวทุกชุดที่คุณยังไม่ได้แก้ไข</string>
+    <string name="device_profile_device_heading">อุปกรณ์นี้</string>
+    <string name="device_profile_device_desc">ข้อมูลที่ใช้จับคู่กับโปรไฟล์</string>
+    <string name="device_profile_info_model">รุ่น</string>
+    <string name="device_profile_info_board">บอร์ด</string>
+    <string name="device_profile_info_manufacturer">ผู้ผลิต</string>
+    <string name="device_profile_info_screen">หน้าจอ</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">ความเร็วเคอร์เซอร์</string>

@@ -26,8 +26,10 @@ import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import androidx.preference.PreferenceManager;
 import com.winlator.cmod.R;
@@ -87,7 +89,7 @@ public class InputControlsView extends View {
   private Runnable hideControlsRunnable; // Runnable to hide the controls
 
   private SharedPreferences preferences;
-  private final SparseArray<ControlElement> activeTouchElements = new SparseArray<>();
+  private final SparseArray<ArrayList<ControlElement>> activeTouchElements = new SparseArray<>();
 
   private ControlElement stickElement;
 
@@ -416,6 +418,7 @@ public class InputControlsView extends View {
       deselectAllElements();
     } else this.profile = null;
     activeTouchElements.clear();
+    syncCapturedPointers();
     invalidate();
   }
 
@@ -504,20 +507,68 @@ public class InputControlsView extends View {
     createMouseMoveTimer();
   }
 
+  private void addCapture(int pointerId, ControlElement element) {
+    ArrayList<ControlElement> captured = activeTouchElements.get(pointerId);
+    if (captured == null) {
+      captured = new ArrayList<>(2);
+      activeTouchElements.put(pointerId, captured);
+    }
+    if (!captured.contains(element)) captured.add(element);
+  }
+
+  private void replaceCapture(int pointerId, ControlElement from, ControlElement to) {
+    ArrayList<ControlElement> captured = activeTouchElements.get(pointerId);
+    if (captured == null) {
+      addCapture(pointerId, to);
+      return;
+    }
+    int index = captured.indexOf(from);
+    if (index == -1) {
+      if (!captured.contains(to)) captured.add(to);
+      return;
+    }
+    if (captured.contains(to)) captured.remove(index);
+    else captured.set(index, to);
+  }
+
+  private List<ControlElement> capturesFor(int pointerId) {
+    ArrayList<ControlElement> captured = activeTouchElements.get(pointerId);
+    return captured == null ? java.util.Collections.emptyList() : captured;
+  }
+
+  private boolean releaseCaptures(int pointerId, float x, float y, boolean withPosition) {
+    ArrayList<ControlElement> captured = activeTouchElements.get(pointerId);
+    if (captured == null) return false;
+    boolean released = false;
+    for (int i = 0; i < captured.size(); i++) {
+      ControlElement element = captured.get(i);
+      if (element == null) continue;
+      boolean handled =
+          withPosition ? element.handleTouchUp(pointerId, x, y) : element.handleTouchUp(pointerId);
+      released |= handled;
+    }
+    activeTouchElements.remove(pointerId);
+    return released;
+  }
+
   private void releaseActiveTouchElements() {
-    for (int i = 0; i < activeTouchElements.size(); i++) {
-      int activePointerId = activeTouchElements.keyAt(i);
-      ControlElement activeElement = activeTouchElements.valueAt(i);
-      if (activeElement != null) {
-        activeElement.handleTouchUp(activePointerId);
-      }
+    boolean batched = batchingUpdates;
+    batchingUpdates = true;
+    boolean released = false;
+    for (int i = activeTouchElements.size() - 1; i >= 0; i--) {
+      released |= releaseCaptures(activeTouchElements.keyAt(i), 0f, 0f, false);
     }
     activeTouchElements.clear();
+    batchingUpdates = batched;
+    if (released) flushGamepadState();
+    syncCapturedPointers();
   }
 
   // Release captures whose pointer is no longer reported (missed UP/CANCEL).
   private void releaseStaleCaptures(MotionEvent event) {
     boolean removedAny = false;
+    boolean batched = batchingUpdates;
+    batchingUpdates = true;
     for (int i = activeTouchElements.size() - 1; i >= 0; i--) {
       int capturedId = activeTouchElements.keyAt(i);
       boolean stillDown = false;
@@ -528,13 +579,21 @@ public class InputControlsView extends View {
         }
       }
       if (!stillDown) {
-        ControlElement element = activeTouchElements.valueAt(i);
-        if (element != null) element.handleTouchUp(capturedId);
-        activeTouchElements.removeAt(i);
+        releaseCaptures(capturedId, 0f, 0f, false);
         removedAny = true;
       }
     }
-    if (removedAny) syncCapturedPointers();
+    batchingUpdates = batched;
+    if (removedAny) {
+      flushGamepadState();
+      syncCapturedPointers();
+    }
+  }
+
+  private void flushGamepadState() {
+    if (batchingUpdates) return;
+    WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+    if (winHandler != null) winHandler.sendGamepadState();
   }
 
   public void cancelContinuousMouseMove() {
@@ -827,22 +886,30 @@ public class InputControlsView extends View {
             float x = event.getX(actionIndex);
             float y = event.getY(actionIndex);
 
+            batchingUpdates = true;
+
             if (stickElement != null && stickElement.handleTouchDown(pointerId, x, y)) {
               eventHandled = true;
-              activeTouchElements.put(pointerId, stickElement);
+              addCapture(pointerId, stickElement);
             }
 
             if (!eventHandled) {
+              boolean allowCoPress = true;
               for (ControlElement element : profile.getElements()) {
-                if (element.handleTouchDown(pointerId, x, y)) {
+                if (eventHandled
+                    && (!allowCoPress || element.getType() != ControlElement.Type.BUTTON)) continue;
+                if (!element.handleTouchDown(pointerId, x, y)) continue;
+                addCapture(pointerId, element);
+                if (!eventHandled) {
+                  allowCoPress = element.getType() != ControlElement.Type.RADIAL_MENU;
                   eventHandled = true;
-                  activeTouchElements.put(pointerId, element);
-
-                  if (hapticsEnabled) triggerTouchHaptic();
-                  break;
                 }
               }
+              if (eventHandled && hapticsEnabled) triggerTouchHaptic();
             }
+
+            batchingUpdates = false;
+            if (eventHandled) flushGamepadState();
             syncCapturedPointers();
             if (!eventHandled) dispatchUnhandledTouch(event);
             break;
@@ -859,54 +926,62 @@ public class InputControlsView extends View {
               float x = event.getX(i);
               float y = event.getY(i);
 
-              ControlElement activeElement = activeTouchElements.get(movePointerId);
               boolean swipeAllowed =
                   touchpadView == null
                       || touchpadView.getScreenTouchMode() != TouchpadView.MODE_MAP_TO_RIGHT_STICK;
               boolean pointerHandled = false;
 
-              if (swipeAllowed
-                  && activeElement != null
-                  && activeElement.isCapturing(movePointerId)
-                  && (activeElement.getType() == ControlElement.Type.RADIAL_MENU
-                      || activeElement.getType() == ControlElement.Type.D_PAD)
-                  && !activeElement.containsPoint(x, y)) {
-                for (ControlElement element : profile.getElements()) {
-                  if (element.isSwipeTarget() && element.handleTouchDown(movePointerId, x, y)) {
-                    activeElement.handleTouchUp(movePointerId, x, y);
-                    activeTouchElements.put(movePointerId, element);
-                    activeElement = element;
-                    pointerHandled = true;
-                    capturesChanged = true;
-                    if (hapticsEnabled) triggerTouchHaptic();
-                    break;
+              List<ControlElement> captured = capturesFor(movePointerId);
+              ControlElement[] snapshot = captured.toArray(new ControlElement[0]);
+
+              for (ControlElement activeElement : snapshot) {
+                if (activeElement == null) continue;
+
+                boolean handedOff = false;
+                if (swipeAllowed
+                    && activeElement.isCapturing(movePointerId)
+                    && (activeElement.getType() == ControlElement.Type.RADIAL_MENU
+                        || activeElement.getType() == ControlElement.Type.D_PAD)
+                    && !activeElement.containsPoint(x, y)) {
+                  for (ControlElement element : profile.getElements()) {
+                    if (element == activeElement) continue;
+                    if (element.isSwipeTarget() && element.handleTouchDown(movePointerId, x, y)) {
+                      activeElement.handleTouchUp(movePointerId, x, y);
+                      replaceCapture(movePointerId, activeElement, element);
+                      pointerHandled = true;
+                      handedOff = true;
+                      capturesChanged = true;
+                      if (hapticsEnabled) triggerTouchHaptic();
+                      break;
+                    }
+                  }
+                }
+
+                if (handedOff) continue;
+
+                if (activeElement.handleTouchMove(movePointerId, x, y)) pointerHandled = true;
+
+                if (swipeAllowed
+                    && activeElement.getType() == ControlElement.Type.BUTTON
+                    && activeElement.isSwipeTarget()
+                    && !activeElement.containsPoint(x, y)) {
+                  for (ControlElement element : profile.getElements()) {
+                    if (element == activeElement) continue;
+                    if (capturesFor(movePointerId).contains(element)) continue;
+                    if (element.isSwipeTarget() && element.handleTouchDown(movePointerId, x, y)) {
+                      addCapture(movePointerId, element);
+                      pointerHandled = true;
+                      capturesChanged = true;
+                      if (hapticsEnabled) triggerTouchHaptic();
+                      break;
+                    }
                   }
                 }
               }
 
-              if (!pointerHandled) {
-                pointerHandled =
-                    activeElement != null && activeElement.handleTouchMove(movePointerId, x, y);
-              }
-
-              if (swipeAllowed
-                  && activeElement != null
-                  && activeElement.getType() == ControlElement.Type.BUTTON
-                  && !activeElement.isCapturing(movePointerId)) {
-                for (ControlElement element : profile.getElements()) {
-                  if (element.isSwipeTarget() && element.handleTouchDown(movePointerId, x, y)) {
-                    activeTouchElements.put(movePointerId, element);
-                    pointerHandled = true;
-                    capturesChanged = true;
-                    if (hapticsEnabled) triggerTouchHaptic();
-                    break;
-                  }
-                }
-              }
-
-              if (!pointerHandled && activeElement == null) {
+              if (!pointerHandled && snapshot.length == 0) {
                 if (stickElement != null && stickElement.handleTouchMove(movePointerId, x, y)) {
-                  activeTouchElements.put(movePointerId, stickElement);
+                  addCapture(movePointerId, stickElement);
                   pointerHandled = true;
                   capturesChanged = true;
                 }
@@ -914,7 +989,7 @@ public class InputControlsView extends View {
                 if (!pointerHandled) {
                   for (ControlElement element : profile.getElements()) {
                     if (element.handleTouchMove(movePointerId, x, y)) {
-                      activeTouchElements.put(movePointerId, element);
+                      addCapture(movePointerId, element);
                       pointerHandled = true;
                       capturesChanged = true;
                       break;
@@ -939,26 +1014,24 @@ public class InputControlsView extends View {
             }        case MotionEvent.ACTION_UP:
         case MotionEvent.ACTION_POINTER_UP:
           {
-            ControlElement activeElement = activeTouchElements.get(pointerId);
             float x = event.getX(actionIndex);
             float y = event.getY(actionIndex);
-            if (activeElement != null) {
-              eventHandled = activeElement.handleTouchUp(pointerId, x, y);
-              activeTouchElements.remove(pointerId);
+            batchingUpdates = true;
+            if (activeTouchElements.get(pointerId) != null) {
+              eventHandled = releaseCaptures(pointerId, x, y, true);
             } else {
               if (stickElement != null && stickElement.handleTouchUp(pointerId, x, y)) {
                 eventHandled = true;
               }
 
-              if (!eventHandled) {
-                for (ControlElement element : profile.getElements()) {
-                  if (element.handleTouchUp(pointerId, x, y)) {
-                    eventHandled = true;
-                    break;
-                  }
+              for (ControlElement element : profile.getElements()) {
+                if (element.handleTouchUp(pointerId, x, y)) {
+                  eventHandled = true;
                 }
               }
             }
+            batchingUpdates = false;
+            if (eventHandled) flushGamepadState();
             syncCapturedPointers();
             if (!eventHandled) dispatchUnhandledTouch(event);
             break;

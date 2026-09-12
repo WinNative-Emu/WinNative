@@ -178,6 +178,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Recupera immagini</string>
+    <string name="library_games_store_none_owned">Nessuna libreria store corrisponde a questo gioco</string>
     <string name="library_games_scraping_artwork">Recupero</string>
     <string name="library_games_shortcut_created">Scorciatoia creata</string>
     <string name="library_games_failed_to_create_shortcut">Impossibile creare la scorciatoia: %s</string>
@@ -793,6 +794,42 @@ Ad es. <b>META</b> per il <i>tasto META</i>, \n
     <string name="session_gyroscope_smoothing_format">Smussatura: %1$d%%</string>
     <string name="session_gyroscope_deadzone_format">Zona morta: %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">Sensibilità: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Dispositivo</string>
+    <string name="device_profile_heading">PROFILO DISPOSITIVO</string>
+    <string name="device_profile_desc">Un profilo per dispositivo, che adatta layout e dimensioni a questo schermo.</string>
+    <string name="device_profile_change">CAMBIA</string>
+    <string name="device_profile_source_detected">Rilevato automaticamente</string>
+    <string name="device_profile_source_manual">Scelto manualmente</string>
+    <string name="device_profile_default">Predefinito</string>
+    <string name="device_profile_default_summary">Ogni telefono e tablet senza un profilo proprio.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Tablet da gioco RedMagic Astra 2, tutti i modelli regionali.</string>
+    <string name="device_profile_controls_heading">COSA IMPOSTA QUESTO PROFILO</string>
+    <string name="device_profile_controls_desc">Valori predefiniti che il profilo applica in tutta l\'app.</string>
+    <string name="device_profile_feature_input_layouts">Layout dei controlli</string>
+    <string name="device_profile_feature_input_layouts_summary">Layout touch integrati, posizionati per questa dimensione di schermo.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Levette adattive</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Valore predefinito per i contenitori che non l\'hanno mai impostato.</string>
+    <string name="device_profile_feature_library_icons">Dimensioni e proporzioni delle icone</string>
+    <string name="device_profile_feature_library_icons_summary">Colonne della griglia e forma delle copertine nella libreria.</string>
+    <string name="device_profile_feature_session_menu">Dimensioni dei pulsanti in gioco</string>
+    <string name="device_profile_feature_session_menu_summary">Dimensioni delle aree touch nel menu di sessione.</string>
+    <string name="device_profile_feature_shortcut_defaults">Impostazioni di gioco consigliate</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Valori predefiniti per gioco suggeriti per questo dispositivo.</string>
+    <string name="device_profile_recommended_on">Consigliato: attivo</string>
+    <string name="device_profile_recommended_off">Consigliato: disattivo</string>
+    <string name="device_profile_layouts_stock">Layout standard</string>
+    <string name="device_profile_layouts_tuned">Adattati a questo schermo</string>
+    <string name="device_profile_reapply">Riapplica i layout integrati</string>
+    <string name="device_profile_reapply_desc">Ripristina ogni layout integrato che non hai modificato.</string>
+    <string name="device_profile_device_heading">QUESTO DISPOSITIVO</string>
+    <string name="device_profile_device_desc">I dati con cui è stato abbinato il profilo.</string>
+    <string name="device_profile_info_model">Modello</string>
+    <string name="device_profile_info_board">Scheda</string>
+    <string name="device_profile_info_manufacturer">Produttore</string>
+    <string name="device_profile_info_screen">Schermo</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Velocità cursore</string>

@@ -181,6 +181,7 @@
     </plurals>
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Загрузить обложки</string>
+    <string name="library_games_store_none_owned">Этой игре не соответствует ни одна библиотека магазина</string>
     <string name="library_games_scraping_artwork">Загрузка</string>
     <string name="library_games_shortcut_created">Ярлык создан.</string>
     <string name="library_games_failed_to_create_shortcut">Не удалось создать ярлык: %s</string>
@@ -866,6 +867,42 @@
     <string name="session_gyroscope_sensitivity_format">Чувствительность: %1$d%%</string>
     <string name="session_gyroscope_mouse_scale">Масштаб мыши</string>
     <string name="session_gyroscope_mouse_sensitivity_format">Масштаб мыши: %1$d%%</string>
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Устройство</string>
+    <string name="device_profile_heading">ПРОФИЛЬ УСТРОЙСТВА</string>
+    <string name="device_profile_desc">Один профиль на устройство: макеты и размеры подгоняются под этот экран.</string>
+    <string name="device_profile_change">ИЗМЕНИТЬ</string>
+    <string name="device_profile_source_detected">Определено автоматически</string>
+    <string name="device_profile_source_manual">Выбрано вручную</string>
+    <string name="device_profile_default">По умолчанию</string>
+    <string name="device_profile_default_summary">Все телефоны и планшеты без собственного профиля.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Игровой планшет RedMagic Astra 2, все региональные модели.</string>
+    <string name="device_profile_controls_heading">ЧТО ЗАДАЁТ ЭТОТ ПРОФИЛЬ</string>
+    <string name="device_profile_controls_desc">Значения по умолчанию, которые профиль применяет во всём приложении.</string>
+    <string name="device_profile_feature_input_layouts">Макеты элементов управления</string>
+    <string name="device_profile_feature_input_layouts_summary">Встроенные сенсорные макеты, размещённые под этот размер экрана.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Адаптивные стики</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Значение по умолчанию для контейнеров, где оно ещё не задавалось.</string>
+    <string name="device_profile_feature_library_icons">Размеры и пропорции значков библиотеки</string>
+    <string name="device_profile_feature_library_icons_summary">Столбцы сетки и форма обложек в библиотеке.</string>
+    <string name="device_profile_feature_session_menu">Размеры кнопок игрового меню</string>
+    <string name="device_profile_feature_session_menu_summary">Размеры зон касания в игровой панели.</string>
+    <string name="device_profile_feature_shortcut_defaults">Рекомендуемые настройки игр</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Настройки по умолчанию, предлагаемые для этого устройства.</string>
+    <string name="device_profile_recommended_on">Рекомендуется: Вкл.</string>
+    <string name="device_profile_recommended_off">Рекомендуется: Выкл.</string>
+    <string name="device_profile_layouts_stock">Исходные макеты</string>
+    <string name="device_profile_layouts_tuned">Подогнано под этот экран</string>
+    <string name="device_profile_reapply">Применить встроенные макеты заново</string>
+    <string name="device_profile_reapply_desc">Восстанавливает все встроенные макеты, которые вы не изменяли.</string>
+    <string name="device_profile_device_heading">ЭТО УСТРОЙСТВО</string>
+    <string name="device_profile_device_desc">С чем сопоставлялся профиль.</string>
+    <string name="device_profile_info_model">Модель</string>
+    <string name="device_profile_info_board">Плата</string>
+    <string name="device_profile_info_manufacturer">Производитель</string>
+    <string name="device_profile_info_screen">Экран</string>
+
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Скорость курсора</string>
     <string name="settings_general_theme">Тема</string>

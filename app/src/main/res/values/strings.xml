@@ -1230,6 +1230,42 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_gyroscope_mouse_scale">Mouse Scale</string>
     <string name="session_gyroscope_mouse_sensitivity_format">Mouse Scale: %1$d%%</string>
 
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Device</string>
+    <string name="device_profile_heading">DEVICE PROFILE</string>
+    <string name="device_profile_desc">One profile per device, tuning layouts and sizes to this screen.</string>
+    <string name="device_profile_change">CHANGE</string>
+    <string name="device_profile_source_detected">Detected automatically</string>
+    <string name="device_profile_source_manual">Chosen manually</string>
+    <string name="device_profile_default">Default</string>
+    <string name="device_profile_default_summary">Every phone and tablet without a profile of its own.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">RedMagic Astra 2 gaming tablet, every regional model.</string>
+    <string name="device_profile_controls_heading">WHAT THIS PROFILE SETS</string>
+    <string name="device_profile_controls_desc">Defaults the profile applies across the app.</string>
+    <string name="device_profile_feature_input_layouts">Input control layouts</string>
+    <string name="device_profile_feature_input_layouts_summary">Bundled touch layouts placed for this screen size.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Adaptive joysticks</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Default for containers that have never set it.</string>
+    <string name="device_profile_feature_library_icons">Library icon sizes and ratios</string>
+    <string name="device_profile_feature_library_icons_summary">Grid columns and cover shape in the library.</string>
+    <string name="device_profile_feature_session_menu">In-game menu button sizes</string>
+    <string name="device_profile_feature_session_menu_summary">Touch target sizes in the session drawer.</string>
+    <string name="device_profile_feature_shortcut_defaults">Recommended game settings</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Per-game defaults suggested for this device.</string>
+    <string name="device_profile_recommended_on">Recommended: On</string>
+    <string name="device_profile_recommended_off">Recommended: Off</string>
+    <string name="device_profile_layouts_stock">Stock layouts</string>
+    <string name="device_profile_layouts_tuned">Tuned for this screen</string>
+    <string name="device_profile_reapply">Re-apply bundled layouts</string>
+    <string name="device_profile_reapply_desc">Restores every bundled layout you have not edited.</string>
+    <string name="device_profile_device_heading">THIS DEVICE</string>
+    <string name="device_profile_device_desc">What the profile was matched against.</string>
+    <string name="device_profile_info_model">Model</string>
+    <string name="device_profile_info_board">Board</string>
+    <string name="device_profile_info_manufacturer">Manufacturer</string>
+    <string name="device_profile_info_screen">Screen</string>
+
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Cursor Speed</string>
     <string name="settings_general_theme">Theme</string>

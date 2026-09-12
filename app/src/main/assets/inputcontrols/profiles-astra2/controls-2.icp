@@ -1,0 +1,215 @@
+{
+    "id": 2,
+    "name": "Template (12 buttons)",
+    "cursorSpeed": 1,
+    "elements": [
+        {
+            "type": "BUTTON",
+            "shape": "RECT",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.2,
+            "x": 0.1,
+            "y": 0.087366,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "RECT",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.2,
+            "x": 0.9,
+            "y": 0.087366,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "RECT",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.2,
+            "x": 0.1,
+            "y": 0.208333,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "RECT",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.2,
+            "x": 0.9,
+            "y": 0.208333,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "D_PAD",
+            "shape": "CIRCLE",
+            "bindings": [
+                "KEY_W",
+                "KEY_D",
+                "KEY_S",
+                "KEY_A"
+            ],
+            "scale": 1.05,
+            "x": 0.145833,
+            "y": 0.672043,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "CIRCLE",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.0,
+            "x": 0.866667,
+            "y": 0.420027,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "CIRCLE",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.0,
+            "x": 0.797917,
+            "y": 0.530914,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "CIRCLE",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.0,
+            "x": 0.935417,
+            "y": 0.530914,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "CIRCLE",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.0,
+            "x": 0.866667,
+            "y": 0.641801,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "CIRCLE",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.0,
+            "x": 0.902083,
+            "y": 0.840054,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "CIRCLE",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 1.0,
+            "x": 0.275,
+            "y": 0.840054,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "ROUND_RECT",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 0.95,
+            "x": 0.427083,
+            "y": 0.893817,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        },
+        {
+            "type": "BUTTON",
+            "shape": "ROUND_RECT",
+            "bindings": [
+                "NONE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 0.95,
+            "x": 0.572917,
+            "y": 0.893817,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 0
+        }
+    ]
+}

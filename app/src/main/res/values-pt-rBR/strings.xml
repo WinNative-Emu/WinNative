@@ -178,6 +178,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Obter arte</string>
+    <string name="library_games_store_none_owned">Nenhuma biblioteca de loja corresponde a este jogo</string>
     <string name="library_games_scraping_artwork">Obtendo…</string>
     <string name="library_games_shortcut_created">Atalho criado</string>
     <string name="library_games_failed_to_create_shortcut">Falha ao criar atalho: %s</string>
@@ -793,6 +794,42 @@ Ex. <b>META</b> para <i>tecla META</i>, \n
     <string name="session_gyroscope_smoothing_format">Suavizacao: %1$d%%</string>
     <string name="session_gyroscope_deadzone_format">Zona Morta: %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">Sensibilidade: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Dispositivo</string>
+    <string name="device_profile_heading">PERFIL DO DISPOSITIVO</string>
+    <string name="device_profile_desc">Um perfil por dispositivo, ajustando layouts e tamanhos a esta tela.</string>
+    <string name="device_profile_change">MUDAR</string>
+    <string name="device_profile_source_detected">Detectado automaticamente</string>
+    <string name="device_profile_source_manual">Escolhido manualmente</string>
+    <string name="device_profile_default">Padrão</string>
+    <string name="device_profile_default_summary">Todo celular e tablet sem um perfil próprio.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Tablet gamer RedMagic Astra 2, todos os modelos regionais.</string>
+    <string name="device_profile_controls_heading">O QUE ESTE PERFIL DEFINE</string>
+    <string name="device_profile_controls_desc">Padrões que o perfil aplica em todo o aplicativo.</string>
+    <string name="device_profile_feature_input_layouts">Layouts de controles</string>
+    <string name="device_profile_feature_input_layouts_summary">Layouts de toque inclusos, posicionados para este tamanho de tela.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Analógicos adaptáveis</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Padrão para containers que nunca definiram isso.</string>
+    <string name="device_profile_feature_library_icons">Tamanhos e proporções dos ícones da biblioteca</string>
+    <string name="device_profile_feature_library_icons_summary">Colunas da grade e formato das capas na biblioteca.</string>
+    <string name="device_profile_feature_session_menu">Tamanho dos botões do menu no jogo</string>
+    <string name="device_profile_feature_session_menu_summary">Tamanho das áreas de toque na gaveta da sessão.</string>
+    <string name="device_profile_feature_shortcut_defaults">Configurações recomendadas do jogo</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Padrões por jogo sugeridos para este dispositivo.</string>
+    <string name="device_profile_recommended_on">Recomendado: Ativado</string>
+    <string name="device_profile_recommended_off">Recomendado: Desativado</string>
+    <string name="device_profile_layouts_stock">Layouts originais</string>
+    <string name="device_profile_layouts_tuned">Ajustados para esta tela</string>
+    <string name="device_profile_reapply">Reaplicar layouts inclusos</string>
+    <string name="device_profile_reapply_desc">Restaura todo layout incluso que você não editou.</string>
+    <string name="device_profile_device_heading">ESTE DISPOSITIVO</string>
+    <string name="device_profile_device_desc">Com o que o perfil foi comparado.</string>
+    <string name="device_profile_info_model">Modelo</string>
+    <string name="device_profile_info_board">Placa</string>
+    <string name="device_profile_info_manufacturer">Fabricante</string>
+    <string name="device_profile_info_screen">Tela</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Velocidade do Cursor</string>

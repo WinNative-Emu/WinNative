@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
+import com.winlator.cmod.app.config.DeviceProfileSettings
 import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings
 import com.winlator.cmod.BuildConfig
 import com.winlator.cmod.R
@@ -392,7 +393,10 @@ class ShortcutSettingsComposeDialog private constructor(
         state.disableXInput.value = shortcut.getExtra("disableXinput", "0") == "1"
         state.adaptiveJoysticks.value = getShortcutSetting(
             InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
-            container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0")
+            container.getExtra(
+                InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                DeviceProfileSettings.adaptiveJoysticksDefaultExtra(context),
+            ),
         ) == "1"
         state.shortcutExclusiveXInput.value = shortcut.getExtra("exclusiveXInput", "").let {
             if (it.isEmpty()) container.isExclusiveXInput() else it == "1"
@@ -1319,7 +1323,10 @@ class ShortcutSettingsComposeDialog private constructor(
             hasContainerOverride = hasContainerOverride or saveOverride(
                 InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
                 if (state.adaptiveJoysticks.value) "1" else "0",
-                container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0")
+                container.getExtra(
+                    InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                    DeviceProfileSettings.adaptiveJoysticksDefaultExtra(context),
+                ),
             )
 
             // Touchscreen mode
@@ -2473,7 +2480,10 @@ class ShortcutSettingsComposeDialog private constructor(
             if ((inputType and WinHandler.FLAG_DINPUT_MAPPER_STANDARD.toInt()) == WinHandler.FLAG_DINPUT_MAPPER_STANDARD.toInt()) 0 else 1
         state.shortcutExclusiveXInput.value = container.isExclusiveXInput()
         state.adaptiveJoysticks.value =
-            container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") == "1"
+            container.getExtra(
+                InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                DeviceProfileSettings.adaptiveJoysticksDefaultExtra(context),
+            ) == "1"
         if (!state.shortcutExclusiveXInput.value) {
             state.enableXInput.value = true
             state.enableDInput.value = true

@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatDialog
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import com.winlator.cmod.app.config.DeviceProfileSettings
 import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings
 import com.winlator.cmod.shared.ui.nav.PANE_DIR_ACTIVATE
 import com.winlator.cmod.shared.ui.nav.PaneNavWindowHandlers
@@ -440,7 +441,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             state.enableDInput.value = true
         }
         state.adaptiveJoysticks.value =
-            c?.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") == "1"
+            c?.getExtra(
+                InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                DeviceProfileSettings.adaptiveJoysticksDefaultExtra(context),
+            ).let { it ?: DeviceProfileSettings.adaptiveJoysticksDefaultExtra(context) } == "1"
 
         state.fullscreenStretched.value = c?.isFullscreenStretched() ?: false
         state.useUnixLibs.value = c?.isUseUnixLibs() ?: true

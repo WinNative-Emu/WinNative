@@ -103,6 +103,7 @@ public class ControlElement {
   private boolean isRadialBindingCurrentlyHeld = false;
   private boolean wasExpandedOnDown = false;
   private int currentPointerId = -1;
+  private int pressGeneration = 0;
   private boolean adaptiveShifted = false;
   private final Rect boundingBox = new Rect();
   private final Path path = new Path();
@@ -3851,6 +3852,7 @@ return boundingBox;
       currentPointerId = pointerId;
       if (isAdaptiveStick()) shiftAdaptiveOrigin(x, y);
       if (type == Type.BUTTON) {
+        pressGeneration++;
         if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
         if (!toggleSwitch || !selected) {
           dispatchButtonBinding(true);
@@ -3903,9 +3905,6 @@ return boundingBox;
 
   public boolean handleTouchMove(int pointerId, float x, float y) {
     if (pointerId == currentPointerId && type == Type.BUTTON) {
-      if (!containsPoint(x, y)) {
-        handleTouchUp(pointerId, x, y);
-      }
       return true;
     }
 
@@ -4111,8 +4110,10 @@ return boundingBox;
       if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
         long held = System.currentTimeMillis() - (long) touchTime;
         long delay = Math.max(0L, BUTTON_MIN_TIME_TO_KEEP_PRESSED - held);
+        final int generation = ++pressGeneration;
         inputControlsView.postDelayed(
             () -> {
+              if (generation != pressGeneration) return;
               dispatchButtonBinding(false);
               inputControlsView.invalidate();
             },

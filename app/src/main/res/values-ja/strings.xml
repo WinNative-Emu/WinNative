@@ -179,6 +179,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">アートワークを取得</string>
+    <string name="library_games_store_none_owned">このゲームに一致するストアライブラリはありません</string>
     <string name="library_games_scraping_artwork">取得中</string>
     <string name="library_games_shortcut_created">ショートカットを作成しました</string>
     <string name="library_games_failed_to_create_shortcut">ショートカットの作成に失敗しました: %s</string>
@@ -1080,6 +1081,42 @@
     <string name="session_gyroscope_sensitivity_format">感度: %1$d%%</string>
     <string name="session_gyroscope_mouse_scale">マウススケール</string>
     <string name="session_gyroscope_mouse_sensitivity_format">マウススケール: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">デバイス</string>
+    <string name="device_profile_heading">デバイスプロファイル</string>
+    <string name="device_profile_desc">デバイスごとに 1 つのプロファイルで、レイアウトとサイズをこの画面に合わせます。</string>
+    <string name="device_profile_change">変更</string>
+    <string name="device_profile_source_detected">自動的に検出されました</string>
+    <string name="device_profile_source_manual">手動で選択されました</string>
+    <string name="device_profile_default">既定</string>
+    <string name="device_profile_default_summary">専用プロファイルがないすべてのスマートフォンとタブレット。</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">RedMagic Astra 2 ゲーミングタブレット、全地域モデル。</string>
+    <string name="device_profile_controls_heading">このプロファイルが設定する項目</string>
+    <string name="device_profile_controls_desc">プロファイルがアプリ全体に適用する既定値。</string>
+    <string name="device_profile_feature_input_layouts">入力コントロールのレイアウト</string>
+    <string name="device_profile_feature_input_layouts_summary">この画面サイズに合わせて配置された組み込みタッチレイアウト。</string>
+    <string name="device_profile_feature_adaptive_joysticks">アダプティブジョイスティック</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">未設定のコンテナに適用される既定値。</string>
+    <string name="device_profile_feature_library_icons">ライブラリのアイコンサイズと比率</string>
+    <string name="device_profile_feature_library_icons_summary">ライブラリのグリッド列数とカバーの形状。</string>
+    <string name="device_profile_feature_session_menu">ゲーム内メニューボタンのサイズ</string>
+    <string name="device_profile_feature_session_menu_summary">セッションドロワーのタッチ領域のサイズ。</string>
+    <string name="device_profile_feature_shortcut_defaults">推奨のゲーム設定</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">このデバイスに推奨されるゲーム個別の既定値。</string>
+    <string name="device_profile_recommended_on">推奨: オン</string>
+    <string name="device_profile_recommended_off">推奨: オフ</string>
+    <string name="device_profile_layouts_stock">標準レイアウト</string>
+    <string name="device_profile_layouts_tuned">この画面に合わせて調整</string>
+    <string name="device_profile_reapply">組み込みレイアウトを再適用</string>
+    <string name="device_profile_reapply_desc">編集していない組み込みレイアウトをすべて元に戻します。</string>
+    <string name="device_profile_device_heading">このデバイス</string>
+    <string name="device_profile_device_desc">プロファイルの判定に使用された情報。</string>
+    <string name="device_profile_info_model">モデル</string>
+    <string name="device_profile_info_board">ボード</string>
+    <string name="device_profile_info_manufacturer">メーカー</string>
+    <string name="device_profile_info_screen">画面</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">カーソル速度</string>

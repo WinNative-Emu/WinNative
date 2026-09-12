@@ -179,6 +179,7 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Görselleri Getir</string>
+    <string name="library_games_store_none_owned">Bu oyunla eşleşen mağaza kütüphanesi yok</string>
     <string name="library_games_scraping_artwork">Getiriliyor</string>
     <string name="library_games_shortcut_created">Kısayol oluşturuldu</string>
     <string name="library_games_failed_to_create_shortcut">Kısayol oluşturulamadı: %s</string>
@@ -1080,6 +1081,42 @@ E.g. <b>META</b> için <i>META tuşu</i>, \n
     <string name="session_gyroscope_sensitivity_format">Hassasiyet: %1$d%%</string>
     <string name="session_gyroscope_mouse_scale">Fare Ölçeği</string>
     <string name="session_gyroscope_mouse_sensitivity_format">Fare Ölçeği: %1$d%%</string>
+
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Cihaz</string>
+    <string name="device_profile_heading">CİHAZ PROFİLİ</string>
+    <string name="device_profile_desc">Her cihaz için tek profil; düzenleri ve boyutları bu ekrana göre ayarlar.</string>
+    <string name="device_profile_change">DEĞİŞTİR</string>
+    <string name="device_profile_source_detected">Otomatik algılandı</string>
+    <string name="device_profile_source_manual">Elle seçildi</string>
+    <string name="device_profile_default">Varsayılan</string>
+    <string name="device_profile_default_summary">Kendi profili olmayan tüm telefon ve tabletler.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">RedMagic Astra 2 oyun tableti, tüm bölgesel modeller.</string>
+    <string name="device_profile_controls_heading">BU PROFİLİN AYARLADIKLARI</string>
+    <string name="device_profile_controls_desc">Profilin uygulama genelinde uyguladığı varsayılanlar.</string>
+    <string name="device_profile_feature_input_layouts">Giriş kontrol düzenleri</string>
+    <string name="device_profile_feature_input_layouts_summary">Bu ekran boyutuna göre yerleştirilmiş yerleşik dokunmatik düzenler.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Uyarlanabilir analog çubuklar</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Bunu hiç ayarlamamış konteynerler için varsayılan.</string>
+    <string name="device_profile_feature_library_icons">Kütüphane simge boyutları ve oranları</string>
+    <string name="device_profile_feature_library_icons_summary">Kütüphanedeki ızgara sütunları ve kapak şekli.</string>
+    <string name="device_profile_feature_session_menu">Oyun içi menü düğme boyutları</string>
+    <string name="device_profile_feature_session_menu_summary">Oturum çekmecesindeki dokunma hedefi boyutları.</string>
+    <string name="device_profile_feature_shortcut_defaults">Önerilen oyun ayarları</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Bu cihaz için önerilen oyun başına varsayılanlar.</string>
+    <string name="device_profile_recommended_on">Önerilen: Açık</string>
+    <string name="device_profile_recommended_off">Önerilen: Kapalı</string>
+    <string name="device_profile_layouts_stock">Standart düzenler</string>
+    <string name="device_profile_layouts_tuned">Bu ekrana göre ayarlandı</string>
+    <string name="device_profile_reapply">Yerleşik düzenleri yeniden uygula</string>
+    <string name="device_profile_reapply_desc">Düzenlemediğiniz tüm yerleşik düzenleri geri yükler.</string>
+    <string name="device_profile_device_heading">BU CİHAZ</string>
+    <string name="device_profile_device_desc">Profilin eşleştirildiği bilgiler.</string>
+    <string name="device_profile_info_model">Model</string>
+    <string name="device_profile_info_board">Kart</string>
+    <string name="device_profile_info_manufacturer">Üretici</string>
+    <string name="device_profile_info_screen">Ekran</string>
 
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">İmleç Hızı</string>
