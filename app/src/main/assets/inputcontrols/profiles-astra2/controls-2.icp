@@ -76,9 +76,9 @@
                 "KEY_S",
                 "KEY_A"
             ],
-            "scale": 0.85,
-            "x": 0.1375,
-            "y": 0.833333,
+            "scale": 0.95,
+            "x": 0.166667,
+            "y": 0.752688,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -92,9 +92,9 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.15,
-            "x": 0.866667,
-            "y": 0.500672,
+            "scale": 1.05,
+            "x": 0.870833,
+            "y": 0.370968,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -108,9 +108,9 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.15,
-            "x": 0.798333,
-            "y": 0.574597,
+            "scale": 1.05,
+            "x": 0.8075,
+            "y": 0.473118,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -124,9 +124,9 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.15,
-            "x": 0.935,
-            "y": 0.574597,
+            "scale": 1.05,
+            "x": 0.934167,
+            "y": 0.473118,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -140,9 +140,9 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.15,
-            "x": 0.866667,
-            "y": 0.648522,
+            "scale": 1.05,
+            "x": 0.870833,
+            "y": 0.575269,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -156,9 +156,9 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.15,
-            "x": 0.258333,
-            "y": 0.705645,
+            "scale": 1.05,
+            "x": 0.270833,
+            "y": 0.645161,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0
@@ -172,9 +172,9 @@
                 "NONE",
                 "NONE"
             ],
-            "scale": 1.15,
-            "x": 0.741667,
-            "y": 0.705645,
+            "scale": 1.05,
+            "x": 0.729167,
+            "y": 0.645161,
             "toggleSwitch": false,
             "text": "",
             "iconId": 0

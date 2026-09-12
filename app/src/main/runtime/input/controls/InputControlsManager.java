@@ -26,7 +26,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class InputControlsManager {
-  private static final int ASSET_PROFILE_SYNC_REVISION = 10;
+  private static final int ASSET_PROFILE_SYNC_REVISION = 11;
   private static final String ASSET_PROFILES_DIR = "inputcontrols/profiles";
   public static final int LAST_BUILTIN_PROFILE_ID = 8;
   public static final int VIRTUAL_GAMEPAD_BUILTIN_ID = 3;
