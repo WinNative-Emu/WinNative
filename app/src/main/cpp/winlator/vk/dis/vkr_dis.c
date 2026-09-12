@@ -135,14 +135,14 @@ struct VkrDis {
     VkImageView view_sparse_b[DIS_MAX_LEVELS];
     VkImageView view_dense[DIS_MAX_LEVELS];
     VkImageView view_interp_out;
-    VkImageView view_vr_prep;
-    VkImageView view_vr_d1;
-    VkImageView view_vr_d2;
-    VkImageView view_vr_A;
-    VkImageView view_vr_B;
-    VkImageView view_vr_wt;
-    VkImageView view_vr_dw[2];
-    VkImageView view_flow_refined;
+    VkImageView view_vr_prep[DIS_MAX_LEVELS];
+    VkImageView view_vr_d1[DIS_MAX_LEVELS];
+    VkImageView view_vr_d2[DIS_MAX_LEVELS];
+    VkImageView view_vr_A[DIS_MAX_LEVELS];
+    VkImageView view_vr_B[DIS_MAX_LEVELS];
+    VkImageView view_vr_wt[DIS_MAX_LEVELS];
+    VkImageView view_vr_dw[2][DIS_MAX_LEVELS];
+    VkImageView view_flow_refined[DIS_MAX_LEVELS];
 
     VkSampler sampler;
 
@@ -159,14 +159,14 @@ struct VkrDis {
 
     VkDescriptorSetLayout vr_set_layout;
     VkPipelineLayout vr_pipeline_layout;
-    VkDescriptorSet vr_prep_sets[DIS_SLOTS];
-    VkDescriptorSet vr_d1_set;
-    VkDescriptorSet vr_d2_set;
-    VkDescriptorSet vr_w_set;
-    VkDescriptorSet vr_coef_set;
-    VkDescriptorSet vr_sor_ab_set;
-    VkDescriptorSet vr_sor_ba_set;
-    VkDescriptorSet vr_add_set;
+    VkDescriptorSet vr_prep_sets[DIS_SLOTS][DIS_MAX_LEVELS];
+    VkDescriptorSet vr_d1_set[DIS_MAX_LEVELS];
+    VkDescriptorSet vr_d2_set[DIS_MAX_LEVELS];
+    VkDescriptorSet vr_w_set[DIS_MAX_LEVELS];
+    VkDescriptorSet vr_coef_set[DIS_MAX_LEVELS];
+    VkDescriptorSet vr_sor_ab_set[DIS_MAX_LEVELS];
+    VkDescriptorSet vr_sor_ba_set[DIS_MAX_LEVELS];
+    VkDescriptorSet vr_add_set[DIS_MAX_LEVELS];
 
     DisPass pass_luma;
     DisPass pass_gradient;
@@ -509,8 +509,8 @@ static bool dis_create_pipelines(VkrDis* d) {
 
     const uint32_t shared_sets = DIS_SLOTS * DIS_MAX_LEVELS * DIS_SHARED_SETS_PER_LEVEL
                                + DIS_SLOTS;
-    const uint32_t vr_sets = DIS_SLOTS
-                           + DIS_VR_SHARED_SETS;
+    const uint32_t vr_sets = (DIS_SLOTS
+                           + DIS_VR_SHARED_SETS) * DIS_MAX_LEVELS;
     const uint32_t total_sets = shared_sets + vr_sets;
 
     VkDescriptorPoolSize sizes[2];
@@ -663,18 +663,19 @@ typedef struct {
     uint32_t vr_fixed_point;
     uint32_t vr_sor;
     uint32_t prop_floor;
+    uint32_t vr_levels;
 } DisRefine;
 
 static DisRefine dis_refine_for(uint32_t generations) {
     if (generations >= 3u) {
-        const DisRefine r = {2u, 5u, 2u};
+        const DisRefine r = {2u, 5u, 2u, DIS_MAX_LEVELS};
         return r;
     }
     if (generations == 2u) {
-        const DisRefine r = {2u, 4u, 1u};
+        const DisRefine r = {2u, 4u, 1u, DIS_MAX_LEVELS};
         return r;
     }
-    const DisRefine r = {1u, 3u, 1u};
+    const DisRefine r = {1u, 3u, 1u, 1u};
     return r;
 }
 
@@ -742,8 +743,8 @@ static void dis_write_all_descriptors(VkrDis* d) {
             dis_batch_sampled(d, &b, d->inverse_sets[s][l], 1, d->view_flow_luma[next][l], d->sampler);
             dis_batch_sampled(d, &b, d->inverse_sets[s][l], 2, d->view_grad[l], d->sampler);
             dis_batch_sampled(d, &b, d->inverse_sets[s][l], 3,
-                              d->view_dense[l + 1 < L ? l + 1 : coarse], d->sampler);
-            dis_batch_sampled(d, &b, d->inverse_sets[s][l], 4, d->view_dense[coarse], d->sampler);
+                              d->view_flow_refined[l + 1 < L ? l + 1 : coarse], d->sampler);
+            dis_batch_sampled(d, &b, d->inverse_sets[s][l], 4, d->view_flow_refined[coarse], d->sampler);
             dis_batch_storage(d, &b, d->inverse_sets[s][l], 5, d->view_sparse[l]);
 
             dis_batch_sampled(d, &b, d->prop_ab_sets[s][l], 0, d->view_flow_luma[prev][l], d->sampler);
@@ -764,50 +765,54 @@ static void dis_write_all_descriptors(VkrDis* d) {
 
         dis_batch_sampled(d, &b, d->interp_sets[s], 0, d->view_color[prev], d->sampler);
         dis_batch_sampled(d, &b, d->interp_sets[s], 1, d->view_color[next], d->sampler);
-        dis_batch_sampled(d, &b, d->interp_sets[s], 2, d->view_flow_refined, d->sampler);
+        dis_batch_sampled(d, &b, d->interp_sets[s], 2, d->view_flow_refined[0], d->sampler);
         dis_batch_storage(d, &b, d->interp_sets[s], 5, d->view_interp_out);
 
-        dis_batch_sampled(d, &b, d->vr_prep_sets[s], 0, d->view_flow_color[prev][0], d->sampler);
-        dis_batch_sampled(d, &b, d->vr_prep_sets[s], 1, d->view_flow_color[next][0], d->sampler);
-        dis_batch_sampled(d, &b, d->vr_prep_sets[s], 2, d->view_dense[0], d->sampler);
-        dis_batch_storage(d, &b, d->vr_prep_sets[s], DIS_VR_FIRST_STORAGE, d->view_vr_prep);
-        dis_batch_storage(d, &b, d->vr_prep_sets[s], DIS_VR_FIRST_STORAGE + 1, d->view_vr_dw[0]);
+        for (uint32_t l = 0; l < L; l++) {
+            dis_batch_sampled(d, &b, d->vr_prep_sets[s][l], 0, d->view_flow_color[prev][l], d->sampler);
+            dis_batch_sampled(d, &b, d->vr_prep_sets[s][l], 1, d->view_flow_color[next][l], d->sampler);
+            dis_batch_sampled(d, &b, d->vr_prep_sets[s][l], 2, d->view_dense[l], d->sampler);
+            dis_batch_storage(d, &b, d->vr_prep_sets[s][l], DIS_VR_FIRST_STORAGE, d->view_vr_prep[l]);
+            dis_batch_storage(d, &b, d->vr_prep_sets[s][l], DIS_VR_FIRST_STORAGE + 1, d->view_vr_dw[0][l]);
+        }
     }
 
-    dis_batch_sampled(d, &b, d->vr_d1_set, 0, d->view_vr_prep, d->sampler);
-    dis_batch_storage(d, &b, d->vr_d1_set, DIS_VR_FIRST_STORAGE, d->view_vr_d1);
+    for (uint32_t l = 0; l < L; l++) {
+        dis_batch_sampled(d, &b, d->vr_d1_set[l], 0, d->view_vr_prep[l], d->sampler);
+        dis_batch_storage(d, &b, d->vr_d1_set[l], DIS_VR_FIRST_STORAGE, d->view_vr_d1[l]);
 
-    dis_batch_sampled(d, &b, d->vr_d2_set, 0, d->view_vr_d1, d->sampler);
-    dis_batch_storage(d, &b, d->vr_d2_set, DIS_VR_FIRST_STORAGE, d->view_vr_d2);
+        dis_batch_sampled(d, &b, d->vr_d2_set[l], 0, d->view_vr_d1[l], d->sampler);
+        dis_batch_storage(d, &b, d->vr_d2_set[l], DIS_VR_FIRST_STORAGE, d->view_vr_d2[l]);
 
-    dis_batch_sampled(d, &b, d->vr_w_set, 0, d->view_dense[0], d->sampler);
-    dis_batch_sampled(d, &b, d->vr_w_set, 1, d->view_vr_dw[0], d->sampler);
-    dis_batch_storage(d, &b, d->vr_w_set, DIS_VR_FIRST_STORAGE, d->view_vr_wt);
+        dis_batch_sampled(d, &b, d->vr_w_set[l], 0, d->view_dense[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_w_set[l], 1, d->view_vr_dw[0][l], d->sampler);
+        dis_batch_storage(d, &b, d->vr_w_set[l], DIS_VR_FIRST_STORAGE, d->view_vr_wt[l]);
 
-    dis_batch_sampled(d, &b, d->vr_coef_set, 0, d->view_vr_prep, d->sampler);
-    dis_batch_sampled(d, &b, d->vr_coef_set, 1, d->view_vr_d1, d->sampler);
-    dis_batch_sampled(d, &b, d->vr_coef_set, 2, d->view_vr_d2, d->sampler);
-    dis_batch_sampled(d, &b, d->vr_coef_set, 3, d->view_vr_dw[0], d->sampler);
-    dis_batch_sampled(d, &b, d->vr_coef_set, 4, d->view_dense[0], d->sampler);
-    dis_batch_sampled(d, &b, d->vr_coef_set, 5, d->view_vr_wt, d->sampler);
-    dis_batch_storage(d, &b, d->vr_coef_set, DIS_VR_FIRST_STORAGE, d->view_vr_A);
-    dis_batch_storage(d, &b, d->vr_coef_set, DIS_VR_FIRST_STORAGE + 1, d->view_vr_B);
+        dis_batch_sampled(d, &b, d->vr_coef_set[l], 0, d->view_vr_prep[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_coef_set[l], 1, d->view_vr_d1[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_coef_set[l], 2, d->view_vr_d2[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_coef_set[l], 3, d->view_vr_dw[0][l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_coef_set[l], 4, d->view_dense[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_coef_set[l], 5, d->view_vr_wt[l], d->sampler);
+        dis_batch_storage(d, &b, d->vr_coef_set[l], DIS_VR_FIRST_STORAGE, d->view_vr_A[l]);
+        dis_batch_storage(d, &b, d->vr_coef_set[l], DIS_VR_FIRST_STORAGE + 1, d->view_vr_B[l]);
 
-    dis_batch_sampled(d, &b, d->vr_sor_ab_set, 0, d->view_vr_A, d->sampler);
-    dis_batch_sampled(d, &b, d->vr_sor_ab_set, 1, d->view_vr_B, d->sampler);
-    dis_batch_sampled(d, &b, d->vr_sor_ab_set, 2, d->view_vr_wt, d->sampler);
-    dis_batch_sampled(d, &b, d->vr_sor_ab_set, 3, d->view_vr_dw[0], d->sampler);
-    dis_batch_storage(d, &b, d->vr_sor_ab_set, DIS_VR_FIRST_STORAGE, d->view_vr_dw[1]);
+        dis_batch_sampled(d, &b, d->vr_sor_ab_set[l], 0, d->view_vr_A[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_sor_ab_set[l], 1, d->view_vr_B[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_sor_ab_set[l], 2, d->view_vr_wt[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_sor_ab_set[l], 3, d->view_vr_dw[0][l], d->sampler);
+        dis_batch_storage(d, &b, d->vr_sor_ab_set[l], DIS_VR_FIRST_STORAGE, d->view_vr_dw[1][l]);
 
-    dis_batch_sampled(d, &b, d->vr_sor_ba_set, 0, d->view_vr_A, d->sampler);
-    dis_batch_sampled(d, &b, d->vr_sor_ba_set, 1, d->view_vr_B, d->sampler);
-    dis_batch_sampled(d, &b, d->vr_sor_ba_set, 2, d->view_vr_wt, d->sampler);
-    dis_batch_sampled(d, &b, d->vr_sor_ba_set, 3, d->view_vr_dw[1], d->sampler);
-    dis_batch_storage(d, &b, d->vr_sor_ba_set, DIS_VR_FIRST_STORAGE, d->view_vr_dw[0]);
+        dis_batch_sampled(d, &b, d->vr_sor_ba_set[l], 0, d->view_vr_A[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_sor_ba_set[l], 1, d->view_vr_B[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_sor_ba_set[l], 2, d->view_vr_wt[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_sor_ba_set[l], 3, d->view_vr_dw[1][l], d->sampler);
+        dis_batch_storage(d, &b, d->vr_sor_ba_set[l], DIS_VR_FIRST_STORAGE, d->view_vr_dw[0][l]);
 
-    dis_batch_sampled(d, &b, d->vr_add_set, 0, d->view_dense[0], d->sampler);
-    dis_batch_sampled(d, &b, d->vr_add_set, 1, d->view_vr_dw[0], d->sampler);
-    dis_batch_storage(d, &b, d->vr_add_set, DIS_VR_FIRST_STORAGE, d->view_flow_refined);
+        dis_batch_sampled(d, &b, d->vr_add_set[l], 0, d->view_dense[l], d->sampler);
+        dis_batch_sampled(d, &b, d->vr_add_set[l], 1, d->view_vr_dw[0][l], d->sampler);
+        dis_batch_storage(d, &b, d->vr_add_set[l], DIS_VR_FIRST_STORAGE, d->view_flow_refined[l]);
+    }
 
     dis_batch_flush(d, &b);
 }
@@ -815,16 +820,16 @@ static void dis_write_all_descriptors(VkrDis* d) {
 static void dis_destroy_views(VkrDis* d) {
     for (uint32_t s = 0; s < DIS_SLOTS; s++) dis_destroy_view(d, &d->view_color[s]);
     dis_destroy_view(d, &d->view_interp_out);
-    dis_destroy_view(d, &d->view_vr_prep);
-    dis_destroy_view(d, &d->view_vr_d1);
-    dis_destroy_view(d, &d->view_vr_d2);
-    dis_destroy_view(d, &d->view_vr_A);
-    dis_destroy_view(d, &d->view_vr_B);
-    dis_destroy_view(d, &d->view_vr_wt);
-    dis_destroy_view(d, &d->view_vr_dw[0]);
-    dis_destroy_view(d, &d->view_vr_dw[1]);
-    dis_destroy_view(d, &d->view_flow_refined);
     for (uint32_t l = 0; l < DIS_MAX_LEVELS; l++) {
+        dis_destroy_view(d, &d->view_vr_prep[l]);
+        dis_destroy_view(d, &d->view_vr_d1[l]);
+        dis_destroy_view(d, &d->view_vr_d2[l]);
+        dis_destroy_view(d, &d->view_vr_A[l]);
+        dis_destroy_view(d, &d->view_vr_B[l]);
+        dis_destroy_view(d, &d->view_vr_wt[l]);
+        dis_destroy_view(d, &d->view_vr_dw[0][l]);
+        dis_destroy_view(d, &d->view_vr_dw[1][l]);
+        dis_destroy_view(d, &d->view_flow_refined[l]);
         for (uint32_t s = 0; s < DIS_SLOTS; s++) {
             dis_destroy_view(d, &d->view_flow_color[s][l]);
             dis_destroy_view(d, &d->view_flow_luma[s][l]);
@@ -894,23 +899,23 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
         return false;
     }
 
-    if (!dis_create_image(d, &d->vr_prep, w, h, VK_FORMAT_R32G32_SFLOAT, 1,
+    if (!dis_create_image(d, &d->vr_prep, w, h, VK_FORMAT_R32G32_SFLOAT, L,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->vr_d1, w, h, VK_FORMAT_R32G32B32A32_SFLOAT, 1,
+    if (!dis_create_image(d, &d->vr_d1, w, h, VK_FORMAT_R32G32B32A32_SFLOAT, L,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->vr_d2, w, h, VK_FORMAT_R32G32B32A32_SFLOAT, 1,
+    if (!dis_create_image(d, &d->vr_d2, w, h, VK_FORMAT_R32G32B32A32_SFLOAT, L,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->vr_A, w, h, VK_FORMAT_R32G32B32A32_SFLOAT, 1,
+    if (!dis_create_image(d, &d->vr_A, w, h, VK_FORMAT_R32G32B32A32_SFLOAT, L,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->vr_B, w, h, VK_FORMAT_R32G32_SFLOAT, 1,
+    if (!dis_create_image(d, &d->vr_B, w, h, VK_FORMAT_R32G32_SFLOAT, L,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->vr_wt, w, h, VK_FORMAT_R32_SFLOAT, 1,
+    if (!dis_create_image(d, &d->vr_wt, w, h, VK_FORMAT_R32_SFLOAT, L,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->vr_dw[0], w, h, VK_FORMAT_R32G32_SFLOAT, 1,
+    if (!dis_create_image(d, &d->vr_dw[0], w, h, VK_FORMAT_R32G32_SFLOAT, L,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->vr_dw[1], w, h, VK_FORMAT_R32G32_SFLOAT, 1,
+    if (!dis_create_image(d, &d->vr_dw[1], w, h, VK_FORMAT_R32G32_SFLOAT, L,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->flow_refined, w, h, VK_FORMAT_R32G32_SFLOAT, 1,
+    if (!dis_create_image(d, &d->flow_refined, w, h, VK_FORMAT_R32G32_SFLOAT, L,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
 
     for (uint32_t s = 0; s < DIS_SLOTS; s++) {
@@ -927,17 +932,17 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
         if (!dis_create_view(d, d->flow_sparse[l].image, VK_FORMAT_R32G32B32A32_SFLOAT, 0, 1, &d->view_sparse[l])) return false;
         if (!dis_create_view(d, d->flow_sparse_b[l].image, VK_FORMAT_R32G32B32A32_SFLOAT, 0, 1, &d->view_sparse_b[l])) return false;
         if (!dis_create_view(d, d->flow_dense.image, VK_FORMAT_R32G32_SFLOAT, l, 1, &d->view_dense[l])) return false;
+        if (!dis_create_view(d, d->vr_prep.image, VK_FORMAT_R32G32_SFLOAT, l, 1, &d->view_vr_prep[l])) return false;
+        if (!dis_create_view(d, d->vr_d1.image, VK_FORMAT_R32G32B32A32_SFLOAT, l, 1, &d->view_vr_d1[l])) return false;
+        if (!dis_create_view(d, d->vr_d2.image, VK_FORMAT_R32G32B32A32_SFLOAT, l, 1, &d->view_vr_d2[l])) return false;
+        if (!dis_create_view(d, d->vr_A.image, VK_FORMAT_R32G32B32A32_SFLOAT, l, 1, &d->view_vr_A[l])) return false;
+        if (!dis_create_view(d, d->vr_B.image, VK_FORMAT_R32G32_SFLOAT, l, 1, &d->view_vr_B[l])) return false;
+        if (!dis_create_view(d, d->vr_wt.image, VK_FORMAT_R32_SFLOAT, l, 1, &d->view_vr_wt[l])) return false;
+        if (!dis_create_view(d, d->vr_dw[0].image, VK_FORMAT_R32G32_SFLOAT, l, 1, &d->view_vr_dw[0][l])) return false;
+        if (!dis_create_view(d, d->vr_dw[1].image, VK_FORMAT_R32G32_SFLOAT, l, 1, &d->view_vr_dw[1][l])) return false;
+        if (!dis_create_view(d, d->flow_refined.image, VK_FORMAT_R32G32_SFLOAT, l, 1, &d->view_flow_refined[l])) return false;
     }
     if (!dis_create_view(d, d->interp_out.image, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, &d->view_interp_out)) return false;
-    if (!dis_create_view(d, d->vr_prep.image, VK_FORMAT_R32G32_SFLOAT, 0, 1, &d->view_vr_prep)) return false;
-    if (!dis_create_view(d, d->vr_d1.image, VK_FORMAT_R32G32B32A32_SFLOAT, 0, 1, &d->view_vr_d1)) return false;
-    if (!dis_create_view(d, d->vr_d2.image, VK_FORMAT_R32G32B32A32_SFLOAT, 0, 1, &d->view_vr_d2)) return false;
-    if (!dis_create_view(d, d->vr_A.image, VK_FORMAT_R32G32B32A32_SFLOAT, 0, 1, &d->view_vr_A)) return false;
-    if (!dis_create_view(d, d->vr_B.image, VK_FORMAT_R32G32_SFLOAT, 0, 1, &d->view_vr_B)) return false;
-    if (!dis_create_view(d, d->vr_wt.image, VK_FORMAT_R32_SFLOAT, 0, 1, &d->view_vr_wt)) return false;
-    if (!dis_create_view(d, d->vr_dw[0].image, VK_FORMAT_R32G32_SFLOAT, 0, 1, &d->view_vr_dw[0])) return false;
-    if (!dis_create_view(d, d->vr_dw[1].image, VK_FORMAT_R32G32_SFLOAT, 0, 1, &d->view_vr_dw[1])) return false;
-    if (!dis_create_view(d, d->flow_refined.image, VK_FORMAT_R32G32_SFLOAT, 0, 1, &d->view_flow_refined)) return false;
 
     vkr_dis_reset(d);
     dis_write_all_descriptors(d);
@@ -976,18 +981,22 @@ static bool dis_allocate_sets(VkrDis* d) {
             d->luma_sets[s][l] = sets[5];
         }
         if (!dis_alloc(d, d->set_layout, 1, &d->interp_sets[s])) return false;
-        if (!dis_alloc(d, d->vr_set_layout, 1, &d->vr_prep_sets[s])) return false;
+        for (uint32_t l = 0; l < DIS_MAX_LEVELS; l++) {
+            if (!dis_alloc(d, d->vr_set_layout, 1, &d->vr_prep_sets[s][l])) return false;
+        }
     }
 
-    VkDescriptorSet vr_sets[7];
-    if (!dis_alloc(d, d->vr_set_layout, 7, vr_sets)) return false;
-    d->vr_d1_set = vr_sets[0];
-    d->vr_d2_set = vr_sets[1];
-    d->vr_w_set = vr_sets[2];
-    d->vr_coef_set = vr_sets[3];
-    d->vr_sor_ab_set = vr_sets[4];
-    d->vr_sor_ba_set = vr_sets[5];
-    d->vr_add_set = vr_sets[6];
+    for (uint32_t l = 0; l < DIS_MAX_LEVELS; l++) {
+        VkDescriptorSet vr_sets[DIS_VR_SHARED_SETS];
+        if (!dis_alloc(d, d->vr_set_layout, DIS_VR_SHARED_SETS, vr_sets)) return false;
+        d->vr_d1_set[l] = vr_sets[0];
+        d->vr_d2_set[l] = vr_sets[1];
+        d->vr_w_set[l] = vr_sets[2];
+        d->vr_coef_set[l] = vr_sets[3];
+        d->vr_sor_ab_set[l] = vr_sets[4];
+        d->vr_sor_ba_set[l] = vr_sets[5];
+        d->vr_add_set[l] = vr_sets[6];
+    }
     return true;
 }
 
@@ -1421,6 +1430,87 @@ uint32_t vkr_dis_plan(VkrDis* d, uint32_t capacity, uint64_t source_frames) {
     return (uint32_t)d->planned_gen;
 }
 
+static void dis_vr_level(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_t l,
+                         uint32_t lw, uint32_t lh, const DisRefine* refine, bool full) {
+    const uint32_t gw = (lw + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE;
+    const uint32_t gh = (lh + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE;
+
+    vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_prep.pipeline);
+    vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
+                              &d->vr_prep_sets[slot][l], 0, NULL);
+    vkd.CmdDispatch(cmd, gw, gh, 1);
+    dis_compute_barrier(cmd);
+
+    if (full) {
+        vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_d1.pipeline);
+        vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
+                                  &d->vr_d1_set[l], 0, NULL);
+        vkd.CmdDispatch(cmd, gw, gh, 1);
+        dis_compute_barrier(cmd);
+
+        vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_d2.pipeline);
+        vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
+                                  &d->vr_d2_set[l], 0, NULL);
+        vkd.CmdDispatch(cmd, gw, gh, 1);
+        dis_compute_barrier(cmd);
+
+        for (uint32_t k = 0; k < refine->vr_fixed_point; k++) {
+            DisVrWPC wpc;
+            wpc.alpha2 = DIS_VR_ALPHA * 0.5f;
+            wpc.eps2 = DIS_VR_EPS * DIS_VR_EPS;
+            vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_w.pipeline);
+            vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout,
+                                      0, 1, &d->vr_w_set[l], 0, NULL);
+            vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                                 sizeof(wpc), &wpc);
+            vkd.CmdDispatch(cmd, gw, gh, 1);
+            dis_compute_barrier(cmd);
+
+            DisVrCoefPC cpc;
+            cpc.delta2 = DIS_VR_DELTA * 0.5f;
+            cpc.gamma2 = DIS_VR_GAMMA * 0.5f;
+            cpc.zeta2 = DIS_VR_ZETA * DIS_VR_ZETA;
+            cpc.eps2 = DIS_VR_EPS * DIS_VR_EPS;
+            vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_coef.pipeline);
+            vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout,
+                                      0, 1, &d->vr_coef_set[l], 0, NULL);
+            vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                                 sizeof(cpc), &cpc);
+            vkd.CmdDispatch(cmd, gw, gh, 1);
+            dis_compute_barrier(cmd);
+
+            for (uint32_t it = 0; it < refine->vr_sor; it++) {
+                DisVrSorPC spc;
+                spc.omega = DIS_VR_OMEGA;
+                spc.parity = 0;
+                vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_sor.pipeline);
+                vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                                          d->vr_pipeline_layout, 0, 1, &d->vr_sor_ab_set[l], 0,
+                                          NULL);
+                vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                                     sizeof(spc), &spc);
+                vkd.CmdDispatch(cmd, gw, gh, 1);
+                dis_compute_barrier(cmd);
+
+                spc.parity = 1;
+                vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                                          d->vr_pipeline_layout, 0, 1, &d->vr_sor_ba_set[l], 0,
+                                          NULL);
+                vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                                     sizeof(spc), &spc);
+                vkd.CmdDispatch(cmd, gw, gh, 1);
+                dis_compute_barrier(cmd);
+            }
+        }
+    }
+
+    vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_add.pipeline);
+    vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
+                              &d->vr_add_set[l], 0, NULL);
+    vkd.CmdDispatch(cmd, gw, gh, 1);
+    dis_compute_barrier(cmd);
+}
+
 void vkr_dis_process(VkrDis* d, VkCommandBuffer cmd, VkImage source, uint32_t width,
                      uint32_t height, uint32_t generations) {
     if (!d || !d->built || d->unavailable) return;
@@ -1547,82 +1637,10 @@ void vkr_dis_process(VkrDis* d, VkCommandBuffer cmd, VkImage source, uint32_t wi
         dis_dispatch(d, cmd, d->pass_densify.pipeline, d->densify_sets[slot][l], lw, lh);
 
         dis_compute_barrier(cmd);
+
+        dis_vr_level(d, cmd, slot, l, lw, lh, &refine, l < refine.vr_levels);
     }
 
-    const uint32_t gw = (w + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE;
-    const uint32_t gh = (h + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE;
-
-    vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_prep.pipeline);
-    vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
-                              &d->vr_prep_sets[slot], 0, NULL);
-    vkd.CmdDispatch(cmd, gw, gh, 1);
-    dis_compute_barrier(cmd);
-
-    vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_d1.pipeline);
-    vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
-                              &d->vr_d1_set, 0, NULL);
-    vkd.CmdDispatch(cmd, gw, gh, 1);
-    dis_compute_barrier(cmd);
-
-    vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_d2.pipeline);
-    vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
-                              &d->vr_d2_set, 0, NULL);
-    vkd.CmdDispatch(cmd, gw, gh, 1);
-    dis_compute_barrier(cmd);
-
-    for (uint32_t k = 0; k < refine.vr_fixed_point; k++) {
-        DisVrWPC wpc;
-        wpc.alpha2 = DIS_VR_ALPHA * 0.5f;
-        wpc.eps2 = DIS_VR_EPS * DIS_VR_EPS;
-        vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_w.pipeline);
-        vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
-                                  &d->vr_w_set, 0, NULL);
-        vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-                             sizeof(wpc), &wpc);
-        vkd.CmdDispatch(cmd, gw, gh, 1);
-        dis_compute_barrier(cmd);
-
-        DisVrCoefPC cpc;
-        cpc.delta2 = DIS_VR_DELTA * 0.5f;
-        cpc.gamma2 = DIS_VR_GAMMA * 0.5f;
-        cpc.zeta2 = DIS_VR_ZETA * DIS_VR_ZETA;
-        cpc.eps2 = DIS_VR_EPS * DIS_VR_EPS;
-        vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_coef.pipeline);
-        vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
-                                  &d->vr_coef_set, 0, NULL);
-        vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-                             sizeof(cpc), &cpc);
-        vkd.CmdDispatch(cmd, gw, gh, 1);
-        dis_compute_barrier(cmd);
-
-        for (uint32_t s = 0; s < refine.vr_sor; s++) {
-            DisVrSorPC spc;
-            spc.omega = DIS_VR_OMEGA;
-            spc.parity = 0;
-            vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_sor.pipeline);
-            vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0,
-                                      1, &d->vr_sor_ab_set, 0, NULL);
-            vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-                                 sizeof(spc), &spc);
-            vkd.CmdDispatch(cmd, gw, gh, 1);
-            dis_compute_barrier(cmd);
-
-            spc.parity = 1;
-            vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0,
-                                      1, &d->vr_sor_ba_set, 0, NULL);
-            vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-                                 sizeof(spc), &spc);
-            vkd.CmdDispatch(cmd, gw, gh, 1);
-            dis_compute_barrier(cmd);
-        }
-    }
-
-    vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_add.pipeline);
-    vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
-                              &d->vr_add_set, 0, NULL);
-    vkd.CmdDispatch(cmd, gw, gh, 1);
-
-    dis_compute_barrier(cmd);
 }
 
 static void dis_render_into(VkrDis* d, VkCommandBuffer cmd, float t, int debug_mode,
