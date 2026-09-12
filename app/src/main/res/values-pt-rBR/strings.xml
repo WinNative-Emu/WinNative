@@ -182,6 +182,9 @@
     <string name="library_games_shortcut_created">Atalho criado</string>
     <string name="library_games_failed_to_create_shortcut">Falha ao criar atalho: %s</string>
     <string name="library_games_install_path">Caminho de Instalacao</string>
+    <string name="library_games_store_change">Mudar de loja</string>
+    <string name="library_games_store_switch_label">Loja</string>
+    <string name="library_games_store_switched">Agora usando %1$s para este jogo</string>
     <string name="library_games_not_enough_space">Precisa de mais %1$s de espaco</string>
     <string name="library_games_download_slash_install">Baixar / Instalar</string>
     <string name="library_games_save_management">GERENCIAMENTO DE SAVES</string>

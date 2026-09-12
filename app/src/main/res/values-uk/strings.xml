@@ -186,6 +186,9 @@
     <string name="library_games_shortcut_created">Ярлик створено</string>
     <string name="library_games_failed_to_create_shortcut">Не вдалося створити ярлик: %s</string>
     <string name="library_games_install_path">Шлях встановлення</string>
+    <string name="library_games_store_change">Змінити магазин</string>
+    <string name="library_games_store_switch_label">Магазин</string>
+    <string name="library_games_store_switched">Тепер для цієї гри використовується %1$s</string>
     <string name="library_games_not_enough_space">Потрібно ще %1$s місця</string>
     <string name="library_games_download_slash_install">Завантажити / Встановити</string>
     <string name="library_games_save_management">КЕРУВАННЯ ЗБЕРЕЖЕННЯМИ</string>

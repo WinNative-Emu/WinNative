@@ -183,6 +183,9 @@
     <string name="library_games_shortcut_created">สร้างทางลัดแล้ว</string>
     <string name="library_games_failed_to_create_shortcut">สร้างทางลัดไม่สำเร็จ: %s</string>
     <string name="library_games_install_path">เส้นทางติดตั้ง</string>
+    <string name="library_games_store_change">เปลี่ยนร้านค้า</string>
+    <string name="library_games_store_switch_label">ร้านค้า</string>
+    <string name="library_games_store_switched">ตอนนี้ใช้ %1$s สำหรับเกมนี้</string>
     <string name="library_games_not_enough_space">ต้องการพื้นที่เพิ่มอีก %1$s</string>
     <string name="library_games_download_slash_install">ดาวน์โหลด / ติดตั้ง</string>
     <string name="library_games_save_management">การจัดการเซฟ</string>

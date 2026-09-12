@@ -183,6 +183,9 @@
     <string name="library_games_shortcut_created">Pikakuvake luotu</string>
     <string name="library_games_failed_to_create_shortcut">Pikakuvakkeen luonti epäonnistui: %s</string>
     <string name="library_games_install_path">Asennuspolku</string>
+    <string name="library_games_store_change">Vaihda kauppaa</string>
+    <string name="library_games_store_switch_label">Kauppa</string>
+    <string name="library_games_store_switched">Tässä pelissä käytetään nyt palvelua %1$s</string>
     <string name="library_games_not_enough_space">Tarvitaan %1$s lisää tilaa</string>
     <string name="library_games_download_slash_install">Lataa / Asenna</string>
     <string name="library_games_save_management">TALLENNUSTEN HALLINTA</string>

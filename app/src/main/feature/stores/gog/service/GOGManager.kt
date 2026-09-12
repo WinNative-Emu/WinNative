@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.core.net.toUri
 import com.winlator.cmod.app.PluviaApp
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutUtils
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.common.StoreArtworkCache
 import com.winlator.cmod.feature.stores.common.StoreInstallPathSafety
 import com.winlator.cmod.feature.stores.gog.data.GOGCloudSavesLocation
@@ -871,6 +873,7 @@ class GOGManager
                             context,
                             installPath,
                             protectedRoots = listOf(GOGConstants.defaultGOGGamesPath),
+                            owner = InstallStore.GOG,
                         )
                     if (!deleteCheck.allowed) {
                         Timber.e("Refusing to delete GOG install path '$installPath': ${deleteCheck.reason}")
@@ -945,6 +948,10 @@ class GOGManager
                 // Avoids flipping isInstalled=false during verify/update when DOWNLOAD_IN_PROGRESS
                 // is temporarily set on an already-installed game.
                 if (game != null && game.isInstalled && game.installPath.isNotBlank()) {
+                    if (InstallOwnership.isForeign(game.installPath, InstallStore.GOG)) {
+                        runBlocking { gogGameDao.update(game.copy(isInstalled = false, installPath = "")) }
+                        return false
+                    }
                     return File(game.installPath).isDirectory
                 }
 
@@ -952,7 +959,10 @@ class GOGManager
                 val isDownloadComplete = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
                 val isDownloadInProgress = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
-                val isInstalled = isDownloadComplete && !isDownloadInProgress
+                val isInstalled =
+                    isDownloadComplete &&
+                        !isDownloadInProgress &&
+                        !InstallOwnership.isForeign(appDirPath, InstallStore.GOG)
 
                 if (game != null && (isInstalled != game.isInstalled || (isInstalled && game.installPath != appDirPath))) {
                     val installPath = if (isInstalled) appDirPath else ""

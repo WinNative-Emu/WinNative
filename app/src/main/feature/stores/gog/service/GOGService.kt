@@ -6,6 +6,8 @@ import android.os.IBinder
 import com.winlator.cmod.app.PluviaApp
 import com.winlator.cmod.app.db.download.DownloadRecord
 import com.winlator.cmod.app.service.download.DownloadCoordinator
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.epic.ui.util.SnackbarManager
 import com.winlator.cmod.feature.stores.common.StoreInstallPathSafety
 import com.winlator.cmod.feature.stores.gog.data.GOGCredentials
@@ -602,6 +604,12 @@ class GOGService : Service() {
                 // and clear installPath in the DB — making the game vanish from the library.
                 // Mirrors EpicService.isGameInstalled's early-return.
                 if (game.isInstalled && game.installPath.isNotBlank()) {
+                    if (InstallOwnership.isForeign(game.installPath, InstallStore.GOG)) {
+                        getInstance()?.gogManager?.updateGame(
+                            game.copy(isInstalled = false, installPath = ""),
+                        )
+                        return@runBlocking false
+                    }
                     return@runBlocking File(game.installPath).isDirectory
                 }
 
@@ -614,6 +622,7 @@ class GOGService : Service() {
                     candidatePaths.firstOrNull { path ->
                         path.isNotBlank() &&
                             File(path).isDirectory &&
+                            !InstallOwnership.isForeign(path, InstallStore.GOG) &&
                             MarkerUtils.hasMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER) &&
                             !MarkerUtils.hasMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     }
@@ -1566,6 +1575,7 @@ class GOGService : Service() {
                                     applicationContext,
                                     pathToDelete,
                                     protectedRoots = listOf(GOGConstants.defaultGOGGamesPath),
+                                    owner = InstallStore.GOG,
                                 )
                             if (deleteCheck.allowed) {
                                 MarkerUtils.removeMarker(pathToDelete, Marker.DOWNLOAD_IN_PROGRESS_MARKER)

@@ -182,6 +182,9 @@
     <string name="library_games_shortcut_created">快捷方式已创建</string>
     <string name="library_games_failed_to_create_shortcut">创建快捷方式失败：%s</string>
     <string name="library_games_install_path">安装路径</string>
+    <string name="library_games_store_change">切换商店</string>
+    <string name="library_games_store_switch_label">商店</string>
+    <string name="library_games_store_switched">此游戏现在使用 %1$s</string>
     <string name="library_games_not_enough_space">还需要 %1$s 空间</string>
     <string name="library_games_download_slash_install">下载 / 安装</string>
     <string name="library_games_save_management">存档管理</string>
