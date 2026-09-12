@@ -203,6 +203,8 @@ class WnLauncherStatusTailer(
         line.contains("in-process Steam launcher starting") -> appContext.getString(R.string.preloader_starting_steam_launcher)
         line.contains("steamclient64.dll loaded") -> appContext.getString(R.string.preloader_loading_steam_client)
         line.contains("Steam_CreateGlobalUser OK") -> appContext.getString(R.string.preloader_connecting_to_steam)
+        line.contains("Steam Offline Mode is on for this shortcut") -> appContext.getString(R.string.preloader_signing_in_offline)
+        line.contains("LogOnOffline(true) -> EResult=1") -> appContext.getString(R.string.preloader_signing_in_offline)
         line.contains("LogOn(") && line.contains("EResult=1") -> appContext.getString(R.string.preloader_signing_in_to_steam)
         line.contains("callback 101 SteamServersConnected") -> appContext.getString(R.string.preloader_fetching_game_info)
         line.contains("Steam_BLoggedOn=true") -> appContext.getString(R.string.preloader_steam_ready)

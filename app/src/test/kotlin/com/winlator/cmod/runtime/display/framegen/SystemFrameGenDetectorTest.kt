@@ -39,6 +39,21 @@ class SystemFrameGenDetectorTest {
     }
 
     @Test
+    fun aZeroRateDefersToTheEnableNibble() {
+        val state = SystemFrameGenDetector.evaluate("0", "0x22", capable = true, fallback = ::noFallback)
+        assertTrue(state.active)
+        assertEquals(2, state.multiplier)
+        assertEquals("vendor.gpp.frc.enable=0x22", state.signal)
+    }
+
+    @Test
+    fun bothKeysOffStayOff() {
+        val state = SystemFrameGenDetector.evaluate("0", "0x21", capable = true, fallback = ::noFallback)
+        assertFalse(state.active)
+        assertEquals(1, state.multiplier)
+    }
+
+    @Test
     fun twoInsertedFramesReportATripleRate() {
         val state = SystemFrameGenDetector.evaluate("2", "0x23", capable = true, fallback = ::noFallback)
         assertTrue(state.active)

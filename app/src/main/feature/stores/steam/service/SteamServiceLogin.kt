@@ -375,6 +375,14 @@ internal fun SteamService.Companion.installWnLogonObserver(session: WnSteamSessi
 }
 
 internal suspend fun SteamService.Companion.bringUpWnSession(svc: SteamService): WnSteamSession? {
+    if (NetworkMonitor.isOffline(svc)) {
+        Timber.i(
+            "Cannot start WnSteam session: this device has no network. Everything a game needs " +
+                "to launch is already cached locally, so callers fall back to the cache instead " +
+                "of waiting on a connection that cannot be made.",
+        )
+        return null
+    }
     val caPath = CaBundleExtractor.ensureBundle(svc)
     if (caPath.isEmpty()) {
         Timber.e("Cannot start WnSteam session: CA bundle unavailable")

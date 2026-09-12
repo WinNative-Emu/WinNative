@@ -10,4 +10,84 @@
         <item>Якість</item>
         <item>Продуктивність</item>
     </string-array>
+    <string-array name="screen_size_entries">
+        <item>Користувацький</item>
+        <item>640x360 (16:9)</item>
+        <item>780x360 (19.5:9)</item>
+        <item>640x480 (4:3)</item>
+        <item>800x600 (4:3)</item>
+        <item>854x480 (16:9)</item>
+        <item>960x544 (16:9)</item>
+        <item>1024x768 (4:3)</item>
+        <item>1280x720 (16:9)</item>
+        <item>1280x800 (16:10)</item>
+        <item>1280x1024 (5:4)</item>
+        <item>1366x768 (16:9)</item>
+        <item>1440x900 (16:10)</item>
+        <item>1560x720 (19.5:9)</item>
+        <item>1600x900 (16:9)</item>
+        <item>1920x1080 (16:9)</item>
+    </string-array>
+    <string-array name="wrapper_graphics_driver_version_entries">
+        <item>Системна</item>
+    </string-array>
+    <string-array name="binding_type_entries">
+        <item>Клавіатура</item>
+        <item>Миша</item>
+        <item>Геймпад</item>
+    </string-array>
+    <string-array name="ddrawrapper_entries">
+        <item>CnC-DDraw</item>
+        <item>Dd7To9</item>
+        <item>ddraw-4.21</item>
+        <item>ddraw-11.8</item>
+        <item>Немає</item>
+    </string-array>
+    <string-array name="dxvk_version_entries">
+        <item>Немає</item>
+    </string-array>
+    <string-array name="vkd3d_version_entries">
+        <item>Немає</item>
+    </string-array>
+    <string-array name="device_memory_entries">
+        <item>0 (За замовчуванням)</item>
+        <item>512 MB</item>
+        <item>1024 MB</item>
+        <item>2048 MB</item>
+        <item>4096 MB</item>
+        <item>8192 MB</item>
+        <item>12288 MB</item>
+        <item>16384 MB</item>
+    </string-array>
+    <string-array name="wincomponent_entries">
+        <item>Вбудований (Wine)</item>
+        <item>Нативний (Windows)</item>
+    </string-array>
+    <string-array name="desktop_theme_entries">
+        <item>Світла</item>
+        <item>Темна</item>
+    </string-array>
+    <string-array name="startup_selection_entries">
+        <item>Звичайний (завантажувати всі служби)</item>
+        <item>Основний (завантажувати лише основні служби)</item>
+        <item>Агресивний (зупиняти служби під час запуску)</item>
+    </string-array>
+    <string-array name="button_options">
+        <item>A</item>
+        <item>B</item>
+        <item>X</item>
+        <item>Y</item>
+        <item>R1 (Правий бампер)</item>
+        <item>R2 (Правий тригер)</item>
+        <item>L1 (Лівий бампер)</item>
+        <item>L2 (Лівий тригер)</item>
+        <item>Start</item>
+        <item>Select</item>
+        <item>R3 (Кнопка правого стіка)</item>
+        <item>L3 (Кнопка лівого стіка)</item>
+        <item>D-pad вгору</item>
+        <item>D-pad вниз</item>
+        <item>D-pad вліво</item>
+        <item>D-pad вправо</item>
+    </string-array>
 </resources>

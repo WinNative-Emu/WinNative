@@ -1397,10 +1397,6 @@ class ShortcutSettingsComposeDialog private constructor(
                 if (state.frameGenEnabled.value) "1" else "0",
                 container.getExtra("frameGen", "0"),
             )
-            // Only the Lossless Scaling engine is exposed here, and the two are
-            // mutually exclusive, so enabling it has to switch DIS off as well.
-            // Without this the shortcut keeps inheriting disFrameGen=1 from the
-            // container and the session starts on DIS instead.
             if (state.frameGenEnabled.value) {
                 hasContainerOverride = hasContainerOverride or saveOverride(
                     "disFrameGen",
@@ -2491,7 +2487,8 @@ class ShortcutSettingsComposeDialog private constructor(
                 steamLauncherExtra == "1"
             }
             state.useLegacyLauncher.value = container.isUseColdClient || container.isUnpackFiles
-            state.steamOfflineMode.value = container.isSteamOfflineMode
+            state.steamOfflineMode.value = shortcut.getSettingExtra(
+                "steamOfflineMode", if (container.isSteamOfflineMode) "1" else "0") == "1"
             state.runtimePatcher.value = container.isRuntimePatcher
             state.useSteamInput.value = container.getExtra("useSteamInput", "0") == "1"
         }

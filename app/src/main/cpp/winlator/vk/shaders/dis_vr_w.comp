@@ -1,15 +1,12 @@
 #version 450
 
-// Variational refinement smoothness weights: alpha/2 / sqrt(|grad(W+dW)|^2 + eps^2).
-// W is read normalized and scaled to pixels; dW is already in pixels.
-
 precision highp float;
 precision highp int;
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform sampler2D flowDense;   // W (normalized)
-layout(set = 0, binding = 1) uniform sampler2D dW;          // increment (pixels)
+layout(set = 0, binding = 0) uniform sampler2D flowDense;
+layout(set = 0, binding = 1) uniform sampler2D dW;
 layout(set = 0, binding = 8, r32f) uniform image2D wt;
 
 layout(push_constant) uniform PC {

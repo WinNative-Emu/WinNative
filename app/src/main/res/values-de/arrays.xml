@@ -10,4 +10,84 @@
         <item>Qualität</item>
         <item>Leistung</item>
     </string-array>
+    <string-array name="screen_size_entries">
+        <item>Benutzerdefiniert</item>
+        <item>640x360 (16:9)</item>
+        <item>780x360 (19.5:9)</item>
+        <item>640x480 (4:3)</item>
+        <item>800x600 (4:3)</item>
+        <item>854x480 (16:9)</item>
+        <item>960x544 (16:9)</item>
+        <item>1024x768 (4:3)</item>
+        <item>1280x720 (16:9)</item>
+        <item>1280x800 (16:10)</item>
+        <item>1280x1024 (5:4)</item>
+        <item>1366x768 (16:9)</item>
+        <item>1440x900 (16:10)</item>
+        <item>1560x720 (19.5:9)</item>
+        <item>1600x900 (16:9)</item>
+        <item>1920x1080 (16:9)</item>
+    </string-array>
+    <string-array name="wrapper_graphics_driver_version_entries">
+        <item>System</item>
+    </string-array>
+    <string-array name="binding_type_entries">
+        <item>Tastatur</item>
+        <item>Maus</item>
+        <item>Gamepad</item>
+    </string-array>
+    <string-array name="ddrawrapper_entries">
+        <item>CnC-DDraw</item>
+        <item>Dd7To9</item>
+        <item>ddraw-4.21</item>
+        <item>ddraw-11.8</item>
+        <item>Keine</item>
+    </string-array>
+    <string-array name="dxvk_version_entries">
+        <item>Keine</item>
+    </string-array>
+    <string-array name="vkd3d_version_entries">
+        <item>Keine</item>
+    </string-array>
+    <string-array name="device_memory_entries">
+        <item>0 (Standard)</item>
+        <item>512 MB</item>
+        <item>1024 MB</item>
+        <item>2048 MB</item>
+        <item>4096 MB</item>
+        <item>8192 MB</item>
+        <item>12288 MB</item>
+        <item>16384 MB</item>
+    </string-array>
+    <string-array name="wincomponent_entries">
+        <item>Integriert (Wine)</item>
+        <item>Nativ (Windows)</item>
+    </string-array>
+    <string-array name="desktop_theme_entries">
+        <item>Hell</item>
+        <item>Dunkel</item>
+    </string-array>
+    <string-array name="startup_selection_entries">
+        <item>Normal (Alle Dienste laden)</item>
+        <item>Essenziell (Nur essenzielle Dienste laden)</item>
+        <item>Aggressiv (Dienste beim Start beenden)</item>
+    </string-array>
+    <string-array name="button_options">
+        <item>A</item>
+        <item>B</item>
+        <item>X</item>
+        <item>Y</item>
+        <item>R1 (Rechte Schultertaste)</item>
+        <item>R2 (Rechter Trigger)</item>
+        <item>L1 (Linke Schultertaste)</item>
+        <item>L2 (Linker Trigger)</item>
+        <item>Start</item>
+        <item>Select</item>
+        <item>R3 (Rechte Stick-Taste)</item>
+        <item>L3 (Linke Stick-Taste)</item>
+        <item>D-pad Oben</item>
+        <item>D-pad Unten</item>
+        <item>D-pad Links</item>
+        <item>D-pad Rechts</item>
+    </string-array>
 </resources>

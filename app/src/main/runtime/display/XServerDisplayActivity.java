@@ -136,6 +136,7 @@ import com.winlator.cmod.shared.math.Mathf;
 import com.winlator.cmod.shared.math.XForm;
 import com.winlator.cmod.runtime.audio.midi.MidiHandler;
 import com.winlator.cmod.runtime.audio.midi.MidiManager;
+import com.winlator.cmod.shared.framegen.FrameGenEngine;
 import com.winlator.cmod.runtime.display.framegen.SystemFrameGenDetector;
 import com.winlator.cmod.runtime.display.framegen.SystemFrameGenMonitor;
 import com.winlator.cmod.runtime.display.framegen.SystemFrameGenState;
@@ -199,7 +200,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import cn.sherlock.com.sun.media.sound.SF2Soundbank;
 import static com.winlator.cmod.runtime.display.XServerDisplayUtils.*;
@@ -359,8 +359,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private static final String UTF8_ACTIVE_CODEPAGE_MANIFEST = codePageManifest(UTF8_MANIFEST_MARKER, "UTF-8");
     private static final Pattern ACTIVE_CODE_PAGE_PATTERN =
         Pattern.compile("<activeCodePage[^>]*>([^<]*)</activeCodePage>", Pattern.CASE_INSENSITIVE);
-    // Shown once the game window is up; a toast raised during setup would sit behind the preloader dialog.
-    private final AtomicReference<String> pendingLocaleManifestWarning = new AtomicReference<>();
     private int frameRatingWindowId = -1;
     private android.net.wifi.WifiManager.MulticastLock multicastLock;
     private final float[] xform = XForm.getInstance();
@@ -473,18 +471,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private boolean disFrameGenEnabled = false;
     private SystemFrameGenMonitor systemFrameGenMonitor = null;
     private boolean systemFrameGenSupported = false;
-    private boolean systemFrameGenDetected = false;
     private boolean systemFrameGenHudEnabled = false;
-    private boolean systemFrameGenHudPinned = false;
     private boolean systemFrameGenProbeRunning = false;
     private int systemFrameGenMultiplier = 1;
+    private int systemFrameGenIdleProbes = 0;
     private Runnable systemFrameGenPollRunnable = null;
     private static final long SYSTEM_FRAME_GEN_POLL_MS = 2000L;
+    private static final int SYSTEM_FRAME_GEN_IDLE_PROBES = 3;
     private String systemFrameGenSignal = "";
-    // Optical-flow processing resolution for DIS, as the length of the frame's
-    // SHORTER side in pixels. On a 720-tall frame the three presets are the old
-    // 25% / 35% / 50%, but stated this way the pyramid costs the same on any
-    // container resolution instead of ballooning on tall ones.
     private static final int[] DIS_FLOW_MIN_SIDES = {180, 252, 360};
     private static final int DIS_FRAME_GEN_SCALE_DEFAULT = 180;
 
@@ -936,12 +930,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 state = SystemFrameGenDetector.detect();
             } catch (Exception e) {
                 Log.w("XServerDisplayActivity", "System frame generation probe failed", e);
-                state = new SystemFrameGenState();
+                state = null;
             }
             SystemFrameGenState result = state;
             runOnUiThread(() -> {
                 systemFrameGenProbeRunning = false;
-                if (activityDestroyed.get()) return;
+                if (activityDestroyed.get() || result == null) return;
                 applySystemFrameGenState(result);
             });
         }, "SystemFrameGenProbe").start();
@@ -951,20 +945,27 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (!state.getSignal().equals(systemFrameGenSignal)) {
             systemFrameGenSignal = state.getSignal();
             Log.i("XServerDisplayActivity", "System frame generation signal: "
-                    + (systemFrameGenSignal.isEmpty() ? "none" : systemFrameGenSignal));
+                    + (systemFrameGenSignal.isEmpty() ? "none" : systemFrameGenSignal)
+                    + " multiplier=" + state.getMultiplier());
         }
-        boolean detectedChanged = systemFrameGenDetected != state.getActive();
-        boolean multiplierChanged = systemFrameGenMultiplier != state.getMultiplier();
-        systemFrameGenDetected = state.getActive();
-        systemFrameGenMultiplier = state.getMultiplier();
-        if (systemFrameGenHudPinned || systemFrameGenHudEnabled == state.getActive()) {
-            if (multiplierChanged) syncFrameGenerationHud();
-            if (detectedChanged && drawerStateHolder != null) renderDrawerMenu();
+        if (state.getActive()) {
+            systemFrameGenIdleProbes = 0;
+            systemFrameGenMultiplier = state.getMultiplier();
+        } else {
+            systemFrameGenIdleProbes++;
+        }
+
+        boolean settled = state.getActive() || systemFrameGenIdleProbes >= SYSTEM_FRAME_GEN_IDLE_PROBES;
+        if (!settled) return;
+        if (!state.getActive()) systemFrameGenMultiplier = state.getMultiplier();
+
+        if (systemFrameGenHudEnabled == state.getActive()) {
+            syncFrameGenerationHud();
             return;
         }
         systemFrameGenHudEnabled = state.getActive();
         syncFrameGenerationHud();
-        if (drawerStateHolder != null) renderDrawerMenu();
+        applyPreferredRefreshRate();
     }
 
     private void startSystemFrameGenPolling() {
@@ -985,13 +986,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (systemFrameGenPollRunnable == null) return;
         handler.removeCallbacks(systemFrameGenPollRunnable);
         systemFrameGenPollRunnable = null;
-    }
-
-    void setSystemFrameGenHudEnabled(boolean enabled) {
-        systemFrameGenHudPinned = true;
-        if (systemFrameGenHudEnabled == enabled) return;
-        systemFrameGenHudEnabled = enabled;
-        syncFrameGenerationHud();
     }
 
     private final FrameRating.OutputFrameSource frameGenOutputSource =
@@ -1233,9 +1227,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private static int clampDisFrameGenScale(int value) {
-        // Anything at or below 100 was written by the old percentage setting; read
-        // it as a fraction of a 720-tall frame so existing containers migrate to
-        // the nearest preset instead of collapsing to a 25-pixel pyramid.
         int minSide = (value > 0 && value <= 100) ? value * 720 / 100 : value;
         int best = DIS_FRAME_GEN_SCALE_DEFAULT;
         int bestDelta = Integer.MAX_VALUE;
@@ -1452,7 +1443,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 if (renderer != null) renderer.setFrameGenerationRefreshRate(refreshRate);
                 return;
             }
-            RefreshRateUtils.applyPreferredRefreshRate(this, getRefreshRateOverride(), runtimeFpsLimit);
+            int pacedFpsLimit = systemFrameGenHudEnabled ? 0 : runtimeFpsLimit;
+            RefreshRateUtils.applyPreferredRefreshRate(this, getRefreshRateOverride(), pacedFpsLimit);
         };
 
         if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -2394,8 +2386,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             if (activeProfile != null) showInputControls(activeProfile);
                             else startTouchscreenTimeout();
                         }
-                        String localeWarning = pendingLocaleManifestWarning.getAndSet(null);
-                        if (localeWarning != null) WinToast.show(XServerDisplayActivity.this, localeWarning);
                     });
                     if (startFullscreenStretched) {
                         timeoutHandler.post(() -> {
@@ -3933,7 +3923,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             return;
         }
 
-        if (!isCloudSyncEnabledForShortcut() || com.winlator.cmod.feature.sync.CloudSyncHelper.isOfflineMode(shortcut)) {
+        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()) {
             onComplete.run();
             return;
         }
@@ -4071,13 +4061,34 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private boolean isOfflineModeForShortcut() {
-        return shortcut != null && "1".equals(shortcut.getExtra("offline_mode", "0"));
+        if (shortcut == null) return false;
+        if ("1".equals(shortcut.getExtra("offline_mode", "0"))) return true;
+        return isSteamShortcut() && isSteamOfflineModeForShortcut();
     }
 
     private boolean isSteamOfflineModeForShortcut() {
         if (shortcut == null) return false;
         return parseBoolean(getShortcutSetting("steamOfflineMode",
                 container != null && container.isSteamOfflineMode() ? "1" : "0"));
+    }
+
+    private boolean hasValidatedInternet() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return true;
+            android.net.Network active = cm.getActiveNetwork();
+            if (active == null) return false;
+            android.net.NetworkCapabilities caps = cm.getNetworkCapabilities(active);
+            if (caps == null) return false;
+            return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    && caps.hasCapability(
+                            android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        } catch (Exception e) {
+            Log.w("XServerDisplayActivity",
+                    "Could not read the network state; assuming this device is online", e);
+            return true;
+        }
     }
 
     private static final boolean STEAM_AGENT_CLOUD_ENABLED = true;
@@ -5176,13 +5187,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 disFrameGenTargetFps,
                 disFrameGenDebugFlow);
 
-        state = XServerDrawerMenuKt.withSystemFrameGenState(
-                state,
-                systemFrameGenSupported,
-                systemFrameGenDetected,
-                systemFrameGenHudEnabled,
-                systemFrameGenSignal);
-
         // Always-present "Output" tab (live controls while swapped, otherwise a Cast entry point).
         if (externalDisplayController != null) {
             boolean swapped = externalDisplayController.isSwapActive();
@@ -5556,17 +5560,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     }
 
                     @Override
-                    public void onSystemFrameGenHudChanged(boolean enabled) {
-                        setSystemFrameGenHudEnabled(enabled);
+                    public void onFrameGenEnabledChanged(boolean enabled) {
+                        onFrameGenEngineSelected(enabled ? FrameGenEngine.LSFG : FrameGenEngine.OFF);
                     }
 
                     @Override
-                    public void onFrameGenEnabledChanged(boolean enabled) {
-                        if (enabled && frameGenCachePath == null) return;
-                        // One interpolator per frame: the other engine has to be
-                        // switched off deliberately, not silently under the user.
-                        if (enabled && disFrameGenEnabled) return;
-                        frameGenEnabled = enabled;
+                    public void onFrameGenEngineSelected(FrameGenEngine engine) {
+                        boolean lsfg = engine == FrameGenEngine.LSFG;
+                        if (lsfg && frameGenCachePath == null) return;
+                        frameGenEnabled = lsfg;
+                        disFrameGenEnabled = engine == FrameGenEngine.DIS;
                         applyFrameGenerationLive();
                     }
 
@@ -5590,12 +5593,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
                     @Override
                     public void onDisFrameGenEnabledChanged(boolean enabled) {
-                        // The renderer drives one interpolator at a time, so the two
-                        // engines are mutually exclusive rather than fighting over
-                        // the composite chain.
-                        if (enabled && frameGenEnabled) return;
-                        disFrameGenEnabled = enabled;
-                        applyFrameGenerationLive();
+                        onFrameGenEngineSelected(enabled ? FrameGenEngine.DIS : FrameGenEngine.OFF);
                     }
 
                     @Override
@@ -8046,13 +8044,19 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             .PrefManager.INSTANCE.getSteamUserSteamId64());
                     String planWTok = com.winlator.cmod.feature.stores.steam.utils
                             .PrefManager.INSTANCE.getRefreshToken();
-                    if (planWTok != null && !planWTok.isEmpty()
-                            && planWUser != null && !planWUser.isEmpty()
+                    if (planWUser != null && !planWUser.isEmpty()
                             && !planWSid.equals("0")
                             && bsAppId > 0) {
                         envVars.put("WN_STEAM_USERNAME", planWUser);
                         envVars.put("WN_STEAM_STEAMID", planWSid);
-                        envVars.put("WN_STEAM_TOKEN", planWTok);
+                        if (planWTok != null && !planWTok.isEmpty()) {
+                            envVars.put("WN_STEAM_TOKEN", planWTok);
+                        } else {
+                            Log.w("XServerDisplayActivity",
+                                    "Steam Launcher: no cached refresh token — the agent can "
+                                    + "only sign in against the Steam credentials this container "
+                                    + "already cached, which is the offline path");
+                        }
                         envVars.put("WN_STEAM_APPID", String.valueOf(bsAppId));
                         // Pass language for native launcher ACF UserConfig/MountedConfig
                         String acfLang = PrefManager.INSTANCE.getContainerLanguage();
@@ -8228,7 +8232,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             Log.w("XServerDisplayActivity",
                                     "Steam Launcher: Could not query depot data", depotIgnored);
                         }
-                        boolean steamOffline = isSteamOfflineModeForShortcut();
+                        boolean netDown = !hasValidatedInternet();
+                        boolean steamOffline = isSteamOfflineModeForShortcut() || netDown;
                         if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()
                                 || steamOffline) {
                             envVars.put("WN_STEAM_AGENT_CLOUD", "0");
@@ -8236,6 +8241,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                                     "Steam Launcher: WN_STEAM_AGENT_CLOUD=0 — cloud saves are "
                                     + "turned off for this shortcut, so the agent skips both "
                                     + "the launch download and the exit upload");
+                        }
+                        if (netDown) {
+                            envVars.put("WN_STEAM_NET_DOWN", "1");
+                            Log.i("XServerDisplayActivity",
+                                    "Steam Launcher: WN_STEAM_NET_DOWN=1 — this device has no "
+                                    + "validated internet connection, so the agent signs in "
+                                    + "offline and never waits on Steam's servers");
                         }
                         if (steamOffline) {
                             envVars.put("WN_STEAM_OFFLINE", "1");
@@ -8276,16 +8288,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                                 "Steam Launcher: token+identity published (user=" + planWUser
                                 + " sid=" + planWSid
                                 + " appId=" + bsAppId
-                                + " tokenLen=" + planWTok.length() + ")");
+                                + " tokenLen=" + (planWTok == null ? 0 : planWTok.length()) + ")");
                     } else {
                         Log.w("XServerDisplayActivity",
-                                "Steam Launcher: refresh token / user / steamId missing "
+                                "Steam Launcher: user / steamId / appId missing "
                                 + "(user='" + planWUser + "' sidIsZero="
                                 + planWSid.equals("0") + " tokenEmpty="
                                 + (planWTok == null || planWTok.isEmpty())
                                 + " bsAppId=" + bsAppId
                                 + ") — launcher will refuse to start; "
-                                + "sign into Steam first");
+                                + "sign into Steam once while online first");
                     }
                 }
             } catch (Exception e) {
@@ -8851,13 +8863,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 if (!embeddedCodePage.isEmpty()) {
                     Log.w("ContainerLaunch", "Game exe embeds activeCodePage " + embeddedCodePage
                             + "; the external " + localeName + " manifest is ignored for " + gamePath);
-                    pendingLocaleManifestWarning.set(getString(
-                            R.string.session_locale_manifest_embedded_codepage, embeddedCodePage));
                 } else {
                     Log.w("ContainerLaunch", "Game exe has an embedded manifest; the external "
                             + localeName + " activeCodePage manifest may be ignored for " + gamePath);
-                    pendingLocaleManifestWarning.set(getString(
-                            R.string.session_locale_manifest_embedded, localeName));
                 }
             }
 
@@ -8866,7 +8874,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             if (current != null && !current.contains(LOCALE_MANIFEST_MARKER)
                     && !current.contains(UTF8_MANIFEST_MARKER)) {
                 Log.w("ContainerLaunch", "Game ships its own manifest, not overriding: " + manifestFile);
-                pendingLocaleManifestWarning.set(getString(R.string.session_locale_manifest_external));
                 return;
             }
             if (FileUtils.writeString(manifestFile, manifest)) {

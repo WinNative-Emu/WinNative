@@ -4681,6 +4681,15 @@ class SteamService : Service() {
                 return cachedTicket.encryptedTicket
             }
 
+            if (NetworkMonitor.isOffline(this)) {
+                Timber.i(
+                    "encrypted app ticket: device is offline, so app $appId gets the cached " +
+                        "ticket (${cachedTicket?.encryptedTicket?.size ?: 0} bytes) instead of a " +
+                        "15s wait on Steam",
+                )
+                return cachedTicket?.encryptedTicket
+            }
+
             // Cold Client needs this ticket for Capcom DRM titles; tolerate a slow wn-session cold-start by waiting up to 15s.
             var wnTicket: ByteArray? = null
             val ticketWaitDeadlineMs = System.currentTimeMillis() + 15_000L

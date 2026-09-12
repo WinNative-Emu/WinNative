@@ -10,4 +10,84 @@
         <item>畫質優先</item>
         <item>效能優先</item>
     </string-array>
+    <string-array name="screen_size_entries">
+        <item>自訂</item>
+        <item>640x360 (16:9)</item>
+        <item>780x360 (19.5:9)</item>
+        <item>640x480 (4:3)</item>
+        <item>800x600 (4:3)</item>
+        <item>854x480 (16:9)</item>
+        <item>960x544 (16:9)</item>
+        <item>1024x768 (4:3)</item>
+        <item>1280x720 (16:9)</item>
+        <item>1280x800 (16:10)</item>
+        <item>1280x1024 (5:4)</item>
+        <item>1366x768 (16:9)</item>
+        <item>1440x900 (16:10)</item>
+        <item>1560x720 (19.5:9)</item>
+        <item>1600x900 (16:9)</item>
+        <item>1920x1080 (16:9)</item>
+    </string-array>
+    <string-array name="wrapper_graphics_driver_version_entries">
+        <item>系統</item>
+    </string-array>
+    <string-array name="binding_type_entries">
+        <item>鍵盤</item>
+        <item>滑鼠</item>
+        <item>手把</item>
+    </string-array>
+    <string-array name="ddrawrapper_entries">
+        <item>CnC-DDraw</item>
+        <item>Dd7To9</item>
+        <item>ddraw-4.21</item>
+        <item>ddraw-11.8</item>
+        <item>無</item>
+    </string-array>
+    <string-array name="dxvk_version_entries">
+        <item>無</item>
+    </string-array>
+    <string-array name="vkd3d_version_entries">
+        <item>無</item>
+    </string-array>
+    <string-array name="device_memory_entries">
+        <item>0（預設）</item>
+        <item>512 MB</item>
+        <item>1024 MB</item>
+        <item>2048 MB</item>
+        <item>4096 MB</item>
+        <item>8192 MB</item>
+        <item>12288 MB</item>
+        <item>16384 MB</item>
+    </string-array>
+    <string-array name="wincomponent_entries">
+        <item>內建 (Wine)</item>
+        <item>原生 (Windows)</item>
+    </string-array>
+    <string-array name="desktop_theme_entries">
+        <item>淺色</item>
+        <item>深色</item>
+    </string-array>
+    <string-array name="startup_selection_entries">
+        <item>一般（載入所有服務）</item>
+        <item>必要（僅載入必要服務）</item>
+        <item>積極（啟動時停止服務）</item>
+    </string-array>
+    <string-array name="button_options">
+        <item>A</item>
+        <item>B</item>
+        <item>X</item>
+        <item>Y</item>
+        <item>R1（右肩鍵）</item>
+        <item>R2（右扳機）</item>
+        <item>L1（左肩鍵）</item>
+        <item>L2（左扳機）</item>
+        <item>Start</item>
+        <item>Select</item>
+        <item>R3（右搖桿按鍵）</item>
+        <item>L3（左搖桿按鍵）</item>
+        <item>D-pad 上</item>
+        <item>D-pad 下</item>
+        <item>D-pad 左</item>
+        <item>D-pad 右</item>
+    </string-array>
 </resources>

@@ -1993,11 +1993,6 @@ static void blit_composite_to_swapchain(VkRenderer* r, VkCommandBuffer cmd,
     blit.dstOffsets[1].x = (int32_t)r->swapchain_extent.width;
     blit.dstOffsets[1].y = (int32_t)r->swapchain_extent.height;
     blit.dstOffsets[1].z = 1;
-    // NEAREST is right only when this is a 1:1 copy, which it is on the LSFG path
-    // where the composite is the swapchain extent. DIS composites at container
-    // scale, so this is a real rescale and nearest turns it into a blocky
-    // point-sampled upscale - one of the two reasons a frame looked coarser with
-    // generation on than off.
     const bool rescaling = src->width != r->swapchain_extent.width
                         || src->height != r->swapchain_extent.height;
     vkCmdBlitImage(cmd, src->image, VK_IMAGE_LAYOUT_GENERAL,
@@ -2250,17 +2245,6 @@ static void compose_xform_for_window(float out[6], const float scene_xform[6],
     out[5] = a[4]*scene_xform[1] + a[5]*scene_xform[3] + scene_xform[5];
 }
 
-// The part of the composite that actually holds guest pixels. When the
-// container's aspect does not match the panel's, the scene viewport is
-// letterboxed inside the composite and everything outside it stays clear colour.
-// DIS must not see those bars: they are static, and the boundary between a
-// static bar and moving content is a strong contrast edge that the patch search
-// locks onto, dragging the neighbouring flow towards zero. That is what put the
-// artifact bands down the left and right of generated frames while leaving the
-// top and bottom clean - there are no bars there.
-//
-// Derived exactly the way set_viewport_scissor below derives the viewport, so
-// the two cannot drift apart.
 static VkrDisContentRect compute_dis_content_rect(VkRenderer* r, const VkScene* s,
                                                   uint32_t composite_w, uint32_t composite_h) {
     VkrDisContentRect full = {0, 0, composite_w, composite_h};
@@ -2464,8 +2448,6 @@ static VkExtent2D compute_sgsr1_source_extent(VkRenderer* r, const VkScene* s) {
     return source;
 }
 
-// DIS interpolates at the container resolution (the X screen size, fixed for a
-// container's lifetime), not the game's DRI3 source which changes on the fly.
 static VkExtent2D compute_container_extent(VkRenderer* r, const VkScene* s) {
     VkExtent2D out = r->swapchain_extent;
     if (out.width == 0 || out.height == 0 || s->screen_width == 0 || s->screen_height == 0) {
@@ -2477,18 +2459,6 @@ static VkExtent2D compute_container_extent(VkRenderer* r, const VkScene* s) {
     transformed_view_size(&w, &h, r->swapchain_transform);
     if (w == 0 || h == 0) return out;
 
-    // The scene is not drawn across this whole target: it goes through the
-    // letterboxed viewport, which covers only viewport/surface of it. Sizing the
-    // target to the X screen therefore rasterises the guest image SMALLER than
-    // the guest rendered it - a 1280x720 container on a 20:9 panel came out at
-    // 1024x720, a fifth of the horizontal detail discarded before the frame
-    // generator ever saw it, and the loss showed up as a softer picture the
-    // moment generation was switched on.
-    //
-    // Divide out that fraction so the viewport inside the target is at least the
-    // X screen's own resolution. With no letterboxing the fraction is 1 and this
-    // is exactly the old behaviour. The clamp to the swapchain keeps it from
-    // rasterising more pixels than the panel can show.
     if (s->viewport_set && s->viewport_w > 0 && s->viewport_h > 0
         && r->swapchain_extent.width > 0 && r->swapchain_extent.height > 0) {
         VkPreRotatedRect vr = transform_rect_for_pretransform(
@@ -2572,14 +2542,6 @@ static bool record_and_submit_frame(VkRenderer* r) {
         ? compute_sgsr1_source_extent(r, &snap)
         : r->swapchain_extent;
 
-    // One-shot diagnostic for the reported horizontal shift under SGSR1. The
-    // scene is rasterised into a source-sized target through a letterboxed
-    // viewport, and SGSR1 then stretches that whole source - bars included - over
-    // the target, so the content's final position is the source-space viewport
-    // rect multiplied by target/source. Any fraction lost when that rect is
-    // rounded to whole source pixels comes back multiplied by the upscale factor.
-    // These numbers say whether that is what is happening here. Logged only when
-    // they change, so it is one line per configuration, not per frame.
     if (wants_sgsr1) {
         VkPreRotatedRect dbg_sw = transform_rect_for_pretransform(
             snap.viewport_set ? snap.viewport_x : 0,
@@ -2654,34 +2616,15 @@ static bool record_and_submit_frame(VkRenderer* r) {
     bool via_composite = framegen_on && r->framegen_supported
                       && r->swapchain_transfer_dst;
 
-    // DIS interpolates at the container resolution, not the native surface
-    // resolution, so the composite target is sized to the container for DIS and
-    // left at the swapchain resolution for LSFG.
     VkExtent2D composite_extent = r->swapchain_extent;
     if (via_composite) {
         if (r->lsfg) {
             VkExtent2D guest = compute_sgsr1_source_extent(r, &snap);
             vkr_lsfg_set_guest_extent(r->lsfg, guest.width, guest.height);
         } else if (use_dis) {
-            // The wanted size is recomputed every frame. It used to be captured
-            // on the first frame and then frozen, because rebuilding the DIS
-            // resources mid-session took Turnip down - which meant toggling SGSR1
-            // during a session had no effect until the session restarted. The
-            // real cause of that crash was DIS creating its images with an
-            // illegal initialLayout and the rebuild not waiting hard enough
-            // before freeing them; both are fixed, so the size can follow the
-            // settings again.
             if (snap.screen_width == 0 || snap.screen_height == 0) {
                 via_composite = false;
             } else if (wants_sgsr1) {
-                // SGSR1 is an upscaler: it reconstructs the guest's low-res frame
-                // at the size of whatever it renders into. Sizing the composite to
-                // the container would have it reconstruct at container resolution
-                // and then leave a plain bilinear blit to cover the rest of the way
-                // to the panel - which throws away exactly the detail SGSR1 was
-                // asked to recover, and reads as a softer picture than SGSR1 with
-                // no frame generation at all. So when SGSR1 is in the chain the
-                // composite is the panel's own size and the final blit is 1:1.
                 composite_extent = r->swapchain_extent;
             } else {
                 composite_extent = compute_container_extent(r, &snap);
@@ -2715,12 +2658,6 @@ static bool record_and_submit_frame(VkRenderer* r) {
                                                 composite_extent.height, r->swapchain_format,
                                                 dis_content));
         if (composite_stale || chain_stale) {
-            // A DIS rebuild frees every image its descriptor sets point at and
-            // then rewrites those sets, so nothing referencing them may still be
-            // in flight. The render fences do not cover everything here -
-            // generated frames reach the queue by their own path - and this
-            // rebuild is rare and user-driven (SGSR toggled, screen rotated,
-            // container resized), so a full device idle is the right price.
             if (r->dis) {
                 vkDeviceWaitIdle(r->device);
             } else {
@@ -3019,11 +2956,6 @@ static bool record_and_submit_frame(VkRenderer* r) {
         }
 
         if (use_dis && r->dis_debug_flow) {
-            // The flow view has to land on the real frame as well. Painting only
-            // the generated ones left the panel alternating between the game and
-            // the visualisation at the generation ratio, which looks like a
-            // flicker rather than a debug overlay.
-            // vkr_dis_debug_into transitions the target out of UNDEFINED itself.
             vkr_dis_debug_into(r->dis, f->cmd, r->swapchain_images[image_index],
                                r->swapchain_extent.width, r->swapchain_extent.height);
             vkr_image_barrier(f->cmd, r->swapchain_images[image_index],
@@ -4020,9 +3952,6 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetDisFrameGenerationScale)(JNIEnv* env, jcl
     if (!r) return;
 
     pthread_mutex_lock(&r->render_mutex);
-    // Now the shorter-side resolution of the flow pyramid in pixels, not a
-    // percentage. Anything at or below 100 is a stored value from the old
-    // percentage setting; read it as a fraction of a 720-tall frame.
     int side = scalePercent > 0 && scalePercent <= 100 ? scalePercent * 720 / 100 : scalePercent;
     r->dis_scale = side < 64 ? 64u : (uint32_t)(side > 1080 ? 1080 : side);
     if (r->dis) {

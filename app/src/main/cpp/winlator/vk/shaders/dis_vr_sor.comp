@@ -1,9 +1,5 @@
 #version 450
 
-// Variational refinement red-black SOR. Within one colour there are no
-// dependencies. Edge weight is zeroed when a neighbour is missing, exactly
-// matching the four boundary conditions used to assemble A in vrCoef.
-
 precision highp float;
 precision highp int;
 
