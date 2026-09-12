@@ -169,6 +169,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.winlator.cmod.R
+import com.winlator.cmod.shared.framegen.FrameGenEngine
 import com.winlator.cmod.shared.theme.SessionDrawerStyle
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import com.winlator.cmod.shared.ui.dialog.WinNativeDialogButton
@@ -208,7 +209,6 @@ private val BottomDividerColor = SessionDrawerStyle.Outline
 internal val GlassExitTint = SessionDrawerStyle.GlassExitTint
 internal val RecordRed = Color(0xFFE53935)
 
-// Pane content scales down on short displays.
 internal val LocalPaneScale = staticCompositionLocalOf { 1f }
 
 private const val PANE_DIR_LEFT = 1
@@ -500,7 +500,6 @@ internal data class PendingTaskAffinity(
     val requestedAtMillis: Long,
 )
 
-// Top-rail pane specs.
 private data class RailPaneSpec(
     val pane: DrawerPane,
     val itemId: Int,
@@ -538,14 +537,12 @@ private val RAIL_PANES =
             itemId = R.id.main_menu_screen_effects,
             labelRes = R.string.session_drawer_rail_label_effects,
         ),
-        // Shown only when the host adds a main_menu_reshade item to state.items.
         RailPaneSpec(
             pane = DrawerPane.RESHADE,
             itemId = R.id.main_menu_reshade,
             labelRes = R.string.reshade_section_title,
             iconOverride = Icons.Outlined.AutoAwesome,
         ),
-        // Shown only when the host adds a main_menu_output item to state.items.
         RailPaneSpec(
             pane = DrawerPane.OUTPUT,
             itemId = R.id.main_menu_output,
@@ -575,10 +572,6 @@ internal val FrameGenTargetRates = listOf(60, 90, 120, 144, 165)
 internal const val FrameGenFlowScaleMin = 25
 internal const val FrameGenFlowScaleMax = 100
 internal val DisFrameGenTargetRates = listOf(60, 90, 120, 144, 165)
-// Bounds for the DIS flow resolution, which is the frame's shorter side in
-// pixels rather than a percentage. Left at 25..100 they clamped every preset the
-// chips send - 180, 252, 360 - down to 100 on its way into the drawer state, so
-// the highlight never moved and the buttons looked inert.
 internal const val DisFrameGenScaleMin = 64
 internal const val DisFrameGenScaleMax = 1080
 
@@ -591,7 +584,6 @@ data class XServerDrawerItem(
     val enabled: Boolean = true,
 )
 
-/** Device-filtered options + persisted selections for the Record popup. Quality: 0=Perf,1=Balance,2=Quality. */
 data class RecordUiConfig(
     val fpsOptions: List<Int> = emptyList(),
     val resolutionLabels: List<String> = emptyList(),
@@ -636,10 +628,6 @@ data class XServerDrawerState(
     val disFrameGenScale: Int = 180,
     val disFrameGenTargetFps: Int = 0,
     val disFrameGenDebugFlow: Boolean = false,
-    val systemFrameGenSupported: Boolean = false,
-    val systemFrameGenDetected: Boolean = false,
-    val systemFrameGenHudEnabled: Boolean = false,
-    val systemFrameGenSignal: String = "",
     val screenEffectsCardExpanded: Boolean = false,
     val sgsrEnabled: Boolean = false,
     val sgsrSharpness: Int = 100,
@@ -660,7 +648,6 @@ data class XServerDrawerState(
     val pixelateEnabled: Boolean = false,
     val pixelateBlock: Int = 6,
     val colorBlind: Int = 0,
-    // reshadeMode is "solo" (one effect bypasses the rest) or "stack"; param keys follow ReshadeManager.seedValues.
     val reshadeMasterEnabled: Boolean = false,
     val reshadeMode: String = "solo",
     val reshadeLoadout: List<ReshadeLoadoutItem> = emptyList(),
@@ -679,7 +666,6 @@ data class XServerDrawerState(
     val inputControlsGcmRumbleMode: String = "disabled",
     val inputControlsReverseBindingOrder: Boolean = false,
     val cursorSpeed: Float = 1.0f,
-    // External display / cast "Output" pane.
     val outputSwapActive: Boolean = false,
     val outputDisplayName: String = "",
     val outputResolutionLabels: List<String> = emptyList(),
@@ -689,12 +675,9 @@ data class XServerDrawerState(
     val outputAspectMode: Int = 0,
     val outputGameModeSupported: Boolean = false,
     val outputGameModeEnabled: Boolean = false,
-    // Sink ignored real mode switches — phone is scaling; resolution becomes a render-size control.
     val outputPanelScaling: Boolean = false,
     val outputPanelNative: String = "",
-    // Display connected but game still on the phone — show the "Send to display" button.
     val outputDisplayAvailable: Boolean = false,
-    // Viture XR glasses controls (USB), present only when Viture glasses are connected.
     val outputVitureConnected: Boolean = false,
     val outputVitureName: String = "",
     val outputVitureSupportsBrightness: Boolean = false,
@@ -761,7 +744,6 @@ class XServerDrawerStateHolder(
         private set
     private var paneVisibilityListener: ((Boolean) -> Unit)? = null
 
-    // Bumped on swap-back so the host re-requests a layout pass on the Compose-hosted display frame.
     var phoneRelayoutTick by mutableStateOf(0)
         private set
 
@@ -934,7 +916,6 @@ class XServerDrawerStateHolder(
         setOpenPaneAndNotify(DrawerPane.LOGS)
     }
 
-    /** Append a log line (any thread). Buffers off-thread when the pane is hidden (no recomposition); flushes to state when the pane is visible. */
     fun appendLogLine(line: String) {
         if (logsPausedFlag) return
         synchronized(logsBuffer) {
@@ -1050,6 +1031,8 @@ interface XServerDrawerActionListener {
 
     fun onFrameGenEnabledChanged(enabled: Boolean)
 
+    fun onFrameGenEngineSelected(engine: FrameGenEngine)
+
     fun onFrameGenMultiplierSelected(multiplier: Int)
 
     fun onFrameGenTargetRateSelected(rate: Int)
@@ -1057,8 +1040,6 @@ interface XServerDrawerActionListener {
     fun onFrameGenFlowScaleChanged(percent: Int)
 
     fun onDisFrameGenEnabledChanged(enabled: Boolean)
-
-    fun onSystemFrameGenHudChanged(enabled: Boolean)
 
     fun onDisFrameGenScaleChanged(percent: Int)
 
@@ -1132,12 +1113,10 @@ interface XServerDrawerActionListener {
 
     fun onReshadeMasterEnabledChanged(enabled: Boolean)
 
-    // In solo mode enabling one effect bypasses the others (host-side).
     fun onReshadeEffectEnabledChanged(index: Int, enabled: Boolean)
 
     fun onReshadeModeChanged(mode: String)
 
-    // key = ReshadeManager.seedValues scheme.
     fun onReshadeParamChanged(index: Int, key: String, value: Float)
 
     fun onReshadeReset(index: Int)
@@ -1198,7 +1177,6 @@ interface XServerDrawerActionListener {
 
     fun onLogsShare()
 
-    /** Start recording with the chosen settings (indices into the option lists in RecordUiConfig). */
     fun onRecordStart(fpsIndex: Int, resolutionIndex: Int, quality: Int, recordUI: Boolean)
 }
 
@@ -1543,21 +1521,6 @@ fun withFrameGenState(
         frameGenFlowScale = flowScale.coerceIn(FrameGenFlowScaleMin, FrameGenFlowScaleMax),
     )
 
-fun withSystemFrameGenState(
-    state: XServerDrawerState,
-    supported: Boolean,
-    detected: Boolean,
-    hudEnabled: Boolean,
-    signal: String,
-): XServerDrawerState =
-    state.copy(
-        systemFrameGenSupported = supported,
-        systemFrameGenDetected = detected,
-        systemFrameGenHudEnabled = hudEnabled,
-        systemFrameGenSignal = signal,
-    )
-
-// Append DIS frame-generation state and mark the frame-gen rail item active when DIS is on.
 fun withDisFrameGenState(
     state: XServerDrawerState,
     enabled: Boolean,
@@ -1567,12 +1530,6 @@ fun withDisFrameGenState(
 ): XServerDrawerState =
     state.copy(
         disFrameGenEnabled = enabled,
-        // Last line of defence for the exclusivity rule. This runs after
-        // withFrameGenState, so it is the one place that sees both flags, and it
-        // resolves a conflict the same way the renderer does: nativeSetDis...
-        // Enabled(true) tears LSFG down, so DIS wins. Without this the drawer can
-        // be handed two enabled engines by stale container extras and show two lit
-        // switches for a state the compositor cannot actually be in.
         frameGenEnabled = state.frameGenEnabled && !enabled,
         disFrameGenScale = scale.coerceIn(DisFrameGenScaleMin, DisFrameGenScaleMax),
         disFrameGenTargetFps = targetFps.coerceAtLeast(0),
@@ -1587,7 +1544,6 @@ fun withDisFrameGenState(
             },
     )
 
-// Append the always-present "Output" tab item and its state to the drawer state.
 fun withOutputState(
     state: XServerDrawerState,
     swapActive: Boolean,
@@ -1628,7 +1584,6 @@ fun withOutputState(
     )
 }
 
-// Overlay Viture-glasses control state onto the output state (only when Viture glasses are connected).
 fun withVitureState(
     state: XServerDrawerState,
     name: String,
@@ -1660,7 +1615,6 @@ fun withVitureState(
         outputVitureVolumeMax = volumeMax,
     )
 
-// Call only when a ReShade effect was applied at launch (Vulkan wrapper) so the vkBasalt layer is loaded.
 fun withReshadeState(
     state: XServerDrawerState,
     masterEnabled: Boolean,
@@ -1706,7 +1660,6 @@ internal fun XServerDrawerContent(
     controllerActive: Boolean = false,
     onOverlayCloserChange: ((() -> Unit)?) -> Unit = {},
 ) {
-    // Content stays composed while the sheet is closed (host translates it off-screen) to avoid a first-composition cost on open; the staggered card reveal is driven from the sheet's engaged state so it replays on each open.
     val cardsRevealed = remember { mutableStateOf(false) }
     LaunchedEffect(revealCards) { cardsRevealed.value = revealCards }
 
@@ -2141,7 +2094,6 @@ private fun ActionCardGrid(
         when (item.itemId) {
             R.id.main_menu_task_manager -> onOpenTaskManager()
             R.id.main_menu_logs -> onOpenLogs()
-            // Recording: stop if active, otherwise open the settings popup.
             R.id.main_menu_record ->
                 if (item.active) listener.onActionSelected(item.itemId)
                 else showRecordSettings = true
@@ -2563,7 +2515,6 @@ private fun PaneEnableRow(
         onCheckedChange = onCheckedChange,
     )
 }
-
 
 internal class TaskManagerPopupPositionProvider(private val gapPx: Int) : PopupPositionProvider {
     override fun calculatePosition(

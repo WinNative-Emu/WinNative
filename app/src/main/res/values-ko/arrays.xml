@@ -10,4 +10,84 @@
         <item>고화질</item>
         <item>성능</item>
     </string-array>
+    <string-array name="screen_size_entries">
+        <item>사용자 지정</item>
+        <item>640x360 (16:9)</item>
+        <item>780x360 (19.5:9)</item>
+        <item>640x480 (4:3)</item>
+        <item>800x600 (4:3)</item>
+        <item>854x480 (16:9)</item>
+        <item>960x544 (16:9)</item>
+        <item>1024x768 (4:3)</item>
+        <item>1280x720 (16:9)</item>
+        <item>1280x800 (16:10)</item>
+        <item>1280x1024 (5:4)</item>
+        <item>1366x768 (16:9)</item>
+        <item>1440x900 (16:10)</item>
+        <item>1560x720 (19.5:9)</item>
+        <item>1600x900 (16:9)</item>
+        <item>1920x1080 (16:9)</item>
+    </string-array>
+    <string-array name="wrapper_graphics_driver_version_entries">
+        <item>시스템</item>
+    </string-array>
+    <string-array name="binding_type_entries">
+        <item>키보드</item>
+        <item>마우스</item>
+        <item>게임패드</item>
+    </string-array>
+    <string-array name="ddrawrapper_entries">
+        <item>CnC-DDraw</item>
+        <item>Dd7To9</item>
+        <item>ddraw-4.21</item>
+        <item>ddraw-11.8</item>
+        <item>없음</item>
+    </string-array>
+    <string-array name="dxvk_version_entries">
+        <item>없음</item>
+    </string-array>
+    <string-array name="device_memory_entries">
+        <item>0 (기본값)</item>
+        <item>512 MB</item>
+        <item>1024 MB</item>
+        <item>2048 MB</item>
+        <item>4096 MB</item>
+        <item>8192 MB</item>
+        <item>12288 MB</item>
+        <item>16384 MB</item>
+    </string-array>
+    <string-array name="wincomponent_entries">
+        <item>내장 (Wine)</item>
+        <item>네이티브 (Windows)</item>
+    </string-array>
+    <string-array name="desktop_theme_entries">
+        <item>밝음</item>
+        <item>어두움</item>
+    </string-array>
+    <string-array name="startup_selection_entries">
+        <item>일반 (모든 서비스 로드)</item>
+        <item>필수 (필수 서비스만 로드)</item>
+        <item>적극적 (시작 시 서비스 중지)</item>
+    </string-array>
+    <string-array name="vkd3d_version_entries">
+        <item>없음</item>
+    </string-array>
+    <string-array name="button_options">
+        <item>A</item>
+        <item>B</item>
+        <item>X</item>
+        <item>Y</item>
+        <item>R1 (오른쪽 범퍼)</item>
+        <item>R2 (오른쪽 트리거)</item>
+        <item>L1 (왼쪽 범퍼)</item>
+        <item>L2 (왼쪽 트리거)</item>
+        <item>Start</item>
+        <item>Select</item>
+        <item>R3 (오른쪽 스틱 버튼)</item>
+        <item>L3 (왼쪽 스틱 버튼)</item>
+        <item>D-pad 위</item>
+        <item>D-pad 아래</item>
+        <item>D-pad 왼쪽</item>
+        <item>D-pad 오른쪽</item>
+    </string-array>
 </resources>

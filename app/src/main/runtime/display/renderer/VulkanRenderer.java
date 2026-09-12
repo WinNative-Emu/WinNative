@@ -1018,9 +1018,6 @@ public class VulkanRenderer
     }
 
     private boolean disFrameGenerationRequested = false;
-    // Shorter-side resolution of the DIS flow pyramid, in pixels. Must match
-    // DIS_FRAME_GEN_SCALE_DEFAULT in XServerDisplayActivity and
-    // DIS_DEFAULT_FLOW_MIN_SIDE in vkr_dis.c.
     private int disFrameGenerationScale = 180;
     private int disFrameGenerationTargetFps = 0;
 
@@ -1030,8 +1027,6 @@ public class VulkanRenderer
     }
 
     public void setDisFrameGenerationScale(int scalePercent) {
-        // The caller has already snapped this to a preset; the native side migrates
-        // legacy percentages, so only the outer bounds are enforced here.
         int want = Math.max(25, Math.min(1080, scalePercent));
         if (want == disFrameGenerationScale) return;
         disFrameGenerationScale = want;

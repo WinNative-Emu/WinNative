@@ -10,4 +10,84 @@
         <item>Качество</item>
         <item>Производительность</item>
     </string-array>
+    <string-array name="screen_size_entries">
+        <item>Пользовательский</item>
+        <item>640x360 (16:9)</item>
+        <item>780x360 (19.5:9)</item>
+        <item>640x480 (4:3)</item>
+        <item>800x600 (4:3)</item>
+        <item>854x480 (16:9)</item>
+        <item>960x544 (16:9)</item>
+        <item>1024x768 (4:3)</item>
+        <item>1280x720 (16:9)</item>
+        <item>1280x800 (16:10)</item>
+        <item>1280x1024 (5:4)</item>
+        <item>1366x768 (16:9)</item>
+        <item>1440x900 (16:10)</item>
+        <item>1560x720 (19.5:9)</item>
+        <item>1600x900 (16:9)</item>
+        <item>1920x1080 (16:9)</item>
+    </string-array>
+    <string-array name="wrapper_graphics_driver_version_entries">
+        <item>Система</item>
+    </string-array>
+    <string-array name="binding_type_entries">
+        <item>Клавиатура</item>
+        <item>Мышь</item>
+        <item>Геймпад</item>
+    </string-array>
+    <string-array name="ddrawrapper_entries">
+        <item>CnC-DDraw</item>
+        <item>Dd7To9</item>
+        <item>ddraw-4.21</item>
+        <item>ddraw-11.8</item>
+        <item>Нет</item>
+    </string-array>
+    <string-array name="dxvk_version_entries">
+        <item>Нет</item>
+    </string-array>
+    <string-array name="vkd3d_version_entries">
+        <item>Нет</item>
+    </string-array>
+    <string-array name="device_memory_entries">
+        <item>0 (по умолчанию)</item>
+        <item>512 MB</item>
+        <item>1024 MB</item>
+        <item>2048 MB</item>
+        <item>4096 MB</item>
+        <item>8192 MB</item>
+        <item>12288 MB</item>
+        <item>16384 MB</item>
+    </string-array>
+    <string-array name="wincomponent_entries">
+        <item>Встроенный (Wine)</item>
+        <item>Родной (Windows)</item>
+    </string-array>
+    <string-array name="desktop_theme_entries">
+        <item>Светлая</item>
+        <item>Тёмная</item>
+    </string-array>
+    <string-array name="startup_selection_entries">
+        <item>Обычный (загружать все службы)</item>
+        <item>Минимальный (загружать только необходимые службы)</item>
+        <item>Агрессивный (останавливать службы при запуске)</item>
+    </string-array>
+    <string-array name="button_options">
+        <item>A</item>
+        <item>B</item>
+        <item>X</item>
+        <item>Y</item>
+        <item>R1 (правый бампер)</item>
+        <item>R2 (правый триггер)</item>
+        <item>L1 (левый бампер)</item>
+        <item>L2 (левый триггер)</item>
+        <item>Start</item>
+        <item>Select</item>
+        <item>R3 (кнопка правого стика)</item>
+        <item>L3 (кнопка левого стика)</item>
+        <item>D-pad вверх</item>
+        <item>D-pad вниз</item>
+        <item>D-pad влево</item>
+        <item>D-pad вправо</item>
+    </string-array>
 </resources>

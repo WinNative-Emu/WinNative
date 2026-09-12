@@ -10,4 +10,84 @@
         <item>Kvalitet</item>
         <item>Prestanda</item>
     </string-array>
+    <string-array name="screen_size_entries">
+        <item>Anpassad</item>
+        <item>640x360 (16:9)</item>
+        <item>780x360 (19.5:9)</item>
+        <item>640x480 (4:3)</item>
+        <item>800x600 (4:3)</item>
+        <item>854x480 (16:9)</item>
+        <item>960x544 (16:9)</item>
+        <item>1024x768 (4:3)</item>
+        <item>1280x720 (16:9)</item>
+        <item>1280x800 (16:10)</item>
+        <item>1280x1024 (5:4)</item>
+        <item>1366x768 (16:9)</item>
+        <item>1440x900 (16:10)</item>
+        <item>1560x720 (19.5:9)</item>
+        <item>1600x900 (16:9)</item>
+        <item>1920x1080 (16:9)</item>
+    </string-array>
+    <string-array name="wrapper_graphics_driver_version_entries">
+        <item>System</item>
+    </string-array>
+    <string-array name="binding_type_entries">
+        <item>Tangentbord</item>
+        <item>Mus</item>
+        <item>Handkontroll</item>
+    </string-array>
+    <string-array name="ddrawrapper_entries">
+        <item>CnC-DDraw</item>
+        <item>Dd7To9</item>
+        <item>ddraw-4.21</item>
+        <item>ddraw-11.8</item>
+        <item>Ingen</item>
+    </string-array>
+    <string-array name="dxvk_version_entries">
+        <item>Ingen</item>
+    </string-array>
+    <string-array name="vkd3d_version_entries">
+        <item>Ingen</item>
+    </string-array>
+    <string-array name="device_memory_entries">
+        <item>0 (Standard)</item>
+        <item>512 MB</item>
+        <item>1024 MB</item>
+        <item>2048 MB</item>
+        <item>4096 MB</item>
+        <item>8192 MB</item>
+        <item>12288 MB</item>
+        <item>16384 MB</item>
+    </string-array>
+    <string-array name="wincomponent_entries">
+        <item>Inbyggd (Wine)</item>
+        <item>Ursprunglig (Windows)</item>
+    </string-array>
+    <string-array name="desktop_theme_entries">
+        <item>Ljust</item>
+        <item>Mörkt</item>
+    </string-array>
+    <string-array name="startup_selection_entries">
+        <item>Normal (Läs in alla tjänster)</item>
+        <item>Nödvändig (Läs in endast nödvändiga tjänster)</item>
+        <item>Aggressiv (Stoppa tjänster vid start)</item>
+    </string-array>
+    <string-array name="button_options">
+        <item>A</item>
+        <item>B</item>
+        <item>X</item>
+        <item>Y</item>
+        <item>R1 (Höger axelknapp)</item>
+        <item>R2 (Höger avtryckare)</item>
+        <item>L1 (Vänster axelknapp)</item>
+        <item>L2 (Vänster avtryckare)</item>
+        <item>Start</item>
+        <item>Select</item>
+        <item>R3 (Höger spakknapp)</item>
+        <item>L3 (Vänster spakknapp)</item>
+        <item>D-pad upp</item>
+        <item>D-pad ner</item>
+        <item>D-pad vänster</item>
+        <item>D-pad höger</item>
+    </string-array>
 </resources>

@@ -4,4 +4,8 @@
         <item quantity="one">%d ZIP öğesi</item>
         <item quantity="other">%d ZIP öğesi</item>
     </plurals>
+    <plurals name="retro_engine_badges">
+        <item quantity="one">%d rozet</item>
+        <item quantity="other">%d rozet</item>
+    </plurals>
 </resources>
