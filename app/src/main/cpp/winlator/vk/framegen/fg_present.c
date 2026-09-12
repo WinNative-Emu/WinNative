@@ -703,24 +703,13 @@ static uint32_t fg_dis_target(uint32_t multiplier, uint32_t target_rate, float s
     return 0;
 }
 
-// The DIS presets pick the flow pyramid's minimum side (180/252/360 px) relative to 720p. The
-// reworked chain scales a fixed fraction of the guest extent instead, so convert with 720p as
-// the reference resolution.
-static float fg_dis_flow_scale(uint32_t min_side) {
-    if (min_side == 0) min_side = FG_DIS_MIN_SIDE_DEFAULT;
-    float scale = (float)min_side / 720.0f;
-    if (scale < 0.25f) scale = 0.25f;
-    if (scale > 1.0f) scale = 1.0f;
-    return scale;
-}
-
 static void fg_engine_configure(FgPresenter* fg, uint32_t multiplier, uint32_t target_rate,
                                 float flow_scale, float refresh_rate, float source_rate,
                                 uint32_t dis_min_side) {
     if (fg->active_engine == FG_ENGINE_DIS) {
         if (!fg->dis) return;
-        vkr_dis_configure(fg->dis, fg_dis_target(multiplier, target_rate, source_rate),
-                          fg_dis_flow_scale(dis_min_side), refresh_rate, source_rate);
+        vkr_dis_configure(fg->dis, dis_min_side ? dis_min_side : FG_DIS_MIN_SIDE_DEFAULT,
+                          fg_dis_target(multiplier, target_rate, source_rate), refresh_rate);
         return;
     }
     if (!fg->lsfg) return;
@@ -826,7 +815,6 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
 
     uint32_t planned = 0;
     if (fg->active_engine == FG_ENGINE_DIS) {
-        vkr_dis_set_guest_extent(fg->dis, source->width, source->height);
         planned = vkr_dis_plan(fg->dis, capacity, fg->source_frames);
     } else if (fg->lsfg) {
         vkr_lsfg_set_guest_extent(fg->lsfg, source->width, source->height);
@@ -891,11 +879,8 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT);
 
     if (fg->active_engine == FG_ENGINE_DIS) {
-        const VkRect2D content = {{0, 0}, {fg->extent.width, fg->extent.height}};
-        FgTarget* previous =
-            &fg->targets[(fg->frame_index + FG_FRAMES_IN_FLIGHT - 1) % FG_FRAMES_IN_FLIGHT];
-        vkr_dis_process(fg->dis, f->cmd, composite->image, composite->view, previous->view,
-                        fg->extent.width, fg->extent.height, content, planned);
+        vkr_dis_process(fg->dis, f->cmd, composite->image, fg->extent.width, fg->extent.height,
+                        gen_count);
     } else if (fg->lsfg) {
         vkr_lsfg_process(fg->lsfg, f->cmd, composite->image, fg->extent.width, fg->extent.height,
                          gen_count);
@@ -905,7 +890,8 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
         FgTarget* generated = &fg->targets[FG_FRAMES_IN_FLIGHT + g];
         if (fg->active_engine == FG_ENGINE_DIS) {
             vkr_dis_generate_into(fg->dis, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
-                                  generated->view, fg->extent.width, fg->extent.height);
+                                  generated->view, fg->extent.width, fg->extent.height,
+                                  VK_NULL_HANDLE);
             fg_barrier(f->cmd, generated->image, VK_IMAGE_LAYOUT_GENERAL,
                        VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
                        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -1029,13 +1015,15 @@ static void fg_reset_swapchain(FgPresenter* fg) {
 static bool fg_prepare_chain(FgPresenter* fg) {
     if (fg->active_engine == FG_ENGINE_DIS) {
         if (!fg->dis) return false;
-        if (!vkr_dis_needs_rebuild(fg->dis, fg->extent.width, fg->extent.height,
-                                   fg->target_format)) {
+        const VkrDisContentRect content = {0, 0, fg->extent.width, fg->extent.height};
+        if (!vkr_dis_needs_rebuild(fg->dis, fg->extent.width, fg->extent.height, fg->target_format,
+                                   content)) {
             return true;
         }
         vkDeviceWaitIdle(fg->device);
         vkr_dis_forget_targets(fg->dis);
-        return vkr_dis_prepare(fg->dis, fg->extent.width, fg->extent.height, fg->target_format);
+        return vkr_dis_prepare(fg->dis, fg->extent.width, fg->extent.height, fg->target_format,
+                               content);
     }
 
     if (!fg->lsfg) return false;

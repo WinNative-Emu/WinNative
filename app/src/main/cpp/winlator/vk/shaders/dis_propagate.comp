@@ -1,75 +1,92 @@
 #version 450
-#extension GL_EXT_samplerless_texture_functions : require
 
-// Spatial propagation (FS_PROP): each patch keeps its own flow or adopts a neighbour's flow at
-// +offset, whichever has the lower mean-normalized patch SSD.
+precision highp float;
+precision highp int;
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-#define PSZ 8
-#define N   float(PSZ * PSZ)
-
-layout(set = 0, binding = 0) uniform texture2D u_I0;
-layout(set = 0, binding = 1) uniform texture2D u_I1;
-layout(set = 0, binding = 2) uniform texture2D u_grad;
-layout(set = 0, binding = 3) uniform texture2D u_S;
-layout(set = 0, binding = 4, rg32f) uniform image2D o_S;
+layout(set = 0, binding = 0) uniform sampler2D lastLumaMap;
+layout(set = 0, binding = 1) uniform sampler2D nextLumaMap;
+layout(set = 0, binding = 2) uniform sampler2D flowIn;
+layout(set = 0, binding = 5, rgba32f) uniform image2D flowOut;
 
 layout(push_constant) uniform PC {
-    vec2 u_size;
-    ivec2 u_off;
-    int u_stride;
+    int dist;
 } pc;
-
-float sampleI1(vec2 pos) {
-    ivec2 sz = textureSize(u_I1, 0);
-    vec2 mx = vec2(sz - ivec2(1));
-    vec2 q = clamp(pos, vec2(0.0), mx);
-    vec2 b = floor(q);
-    vec2 f = q - b;
-    ivec2 i0 = ivec2(b);
-    float a = texelFetch(u_I1, i0, 0).r;
-    float bb = texelFetch(u_I1, min(i0 + ivec2(1, 0), sz - 1), 0).r;
-    float c = texelFetch(u_I1, min(i0 + ivec2(0, 1), sz - 1), 0).r;
-    float d = texelFetch(u_I1, min(i0 + ivec2(1, 1), sz - 1), 0).r;
-    return mix(mix(a, bb, f.x), mix(c, d, f.x), f.y);
-}
-
-vec2 clampPos(vec2 pos) {
-    return clamp(pos, vec2(1.0 - float(PSZ)), pc.u_size - 1.0);
-}
-
-float fetchI1(vec2 pos) {
-    return sampleI1(pos);
-}
-
-float patchSSD(ivec2 org, vec2 flow) {
-    vec2 pos = clampPos(vec2(org) + flow);
-    float sd = 0.0, sd2 = 0.0;
-    for (int dy = 0; dy < PSZ; dy++) {
-        for (int dx = 0; dx < PSZ; dx++) {
-            float diff = fetchI1(pos + vec2(float(dx), float(dy)))
-                       - texelFetch(u_I0, org + ivec2(dx, dy), 0).r;
-            sd += diff;
-            sd2 += diff * diff;
-        }
-    }
-    return sd2 - sd * sd / N;
-}
 
 void main() {
     ivec2 s = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 sz = imageSize(o_S);
-    if (s.x >= sz.x || s.y >= sz.y) return;
+    ivec2 mx = textureSize(flowIn, 0) - 1;
+    if (s.x > mx.x || s.y > mx.y) return;
 
-    ivec2 q = clamp(s + pc.u_off, ivec2(0), textureSize(u_S, 0) - 1);
-    vec2 own = texelFetch(u_S, s, 0).rg;
-    if (q == s) {
-        imageStore(o_S, s, vec4(own, 0.0, 1.0));
+    vec4 ownIn = texelFetch(flowIn, s, 0);
+    vec2 own = ownIn.xy;
+    float ownSsd = ownIn.z;
+    bool needOwn = !(ownSsd >= 0.0);
+
+    const ivec2 dirs[4] =
+        ivec2[4](ivec2(-1, 0), ivec2(1, 0), ivec2(0, -1), ivec2(0, 1));
+    vec2 cand[4];
+    int candCount = 0;
+    for (int i = 0; i < 4; i++) {
+        ivec2 q = clamp(s + dirs[i] * pc.dist, ivec2(0), mx);
+        if (q == s) continue;
+        cand[candCount++] = texelFetch(flowIn, q, 0).xy;
+    }
+    if (candCount == 0) {
+        imageStore(flowOut, s, vec4(own, ownSsd, 1.0));
         return;
     }
 
-    vec2 cand = texelFetch(u_S, q, 0).rg;
-    ivec2 org = s * pc.u_stride;
-    imageStore(o_S, s, vec4(patchSSD(org, cand) < patchSSD(org, own) ? cand : own, 0.0, 1.0));
+    ivec2 org = s * 3;
+    ivec2 denseSize = textureSize(lastLumaMap, 0);
+    ivec2 denseMax = denseSize - 1;
+    vec2 invImageSize = 1.0 / vec2(denseSize);
+
+    float refLum[64];
+    for (int dy = 0; dy < 8; dy++) {
+        for (int dx = 0; dx < 8; dx++) {
+            ivec2 p = clamp(org + ivec2(dx, dy), ivec2(0), denseMax);
+            refLum[dy * 8 + dx] = texelFetch(lastLumaMap, p, 0).x;
+        }
+    }
+
+    float sd[5];
+    float sd2[5];
+    for (int i = 0; i < 5; i++) {
+        sd[i] = 0.0;
+        sd2[i] = 0.0;
+    }
+
+    for (int dy = 0; dy < 8; dy++) {
+        for (int dx = 0; dx < 8; dx++) {
+            int i = dy * 8 + dx;
+            vec2 base = (vec2(org) + vec2(dx, dy) + 0.5) * invImageSize;
+            float r = refLum[i];
+
+            if (needOwn) {
+                float d0 = textureLod(nextLumaMap, base + own, 0.0).x - r;
+                sd[0] += d0;
+                sd2[0] += d0 * d0;
+            }
+
+            for (int c = 0; c < candCount; c++) {
+                float dc = textureLod(nextLumaMap, base + cand[c], 0.0).x - r;
+                sd[c + 1] += dc;
+                sd2[c + 1] += dc * dc;
+            }
+        }
+    }
+
+    vec2 best = own;
+    float bestSsd = needOwn ? (sd2[0] - sd[0] * sd[0] / 64.0) : ownSsd;
+    for (int c = 0; c < candCount; c++) {
+        float ssd = sd2[c + 1] - sd[c + 1] * sd[c + 1] / 64.0;
+        if (ssd < bestSsd) {
+            bestSsd = ssd;
+            best = cand[c];
+        }
+    }
+
+    imageStore(flowOut, s, vec4(best, bestSsd, 1.0));
 }
