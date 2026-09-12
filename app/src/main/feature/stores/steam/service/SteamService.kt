@@ -12,6 +12,7 @@ import com.winlator.cmod.app.PluviaApp
 import com.winlator.cmod.app.db.PluviaDatabase
 import com.winlator.cmod.app.db.download.DownloadRecord
 import com.winlator.cmod.app.service.DownloadService
+import com.winlator.cmod.app.service.NetworkMonitor
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutUtils
 import com.winlator.cmod.feature.stores.steam.data.AppInfo
