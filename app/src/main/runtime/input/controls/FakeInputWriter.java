@@ -462,6 +462,10 @@ public class FakeInputWriter {
     this.isOpen = false;
   }
 
+  public synchronized void requestFullResend() {
+    this.pendingFullResend = true;
+  }
+
   public synchronized void reset() {
     if (this.isOpen || open()) {
       this.buffer.clear();

@@ -678,6 +678,22 @@ public class WinHandler {
     if (xServer != null && xServer.getRenderer() != null) xServer.getRenderer().requestRenderCoalesced(VulkanRenderer.WAKE_WINHANDLER);
   }
 
+  public void resyncGamepadState() {
+    for (int i = 0; i < MAX_CONTROLLERS; i++) {
+      if (this.writers[i] != null) this.writers[i].requestFullResend();
+    }
+    if (this.lastGamepadSource == GAMEPAD_SOURCE_CONTROLLER && this.currentController != null) {
+      writeControllerGamepadState(
+          this.currentController,
+          shouldApplyGyroToTarget(GAMEPAD_SOURCE_CONTROLLER, this.currentController));
+    } else {
+      writeVirtualGamepadState(shouldApplyGyroToTarget(GAMEPAD_SOURCE_VIRTUAL, null));
+    }
+    XServer xServer = activity.getXServer();
+    if (xServer != null && xServer.getRenderer() != null)
+      xServer.getRenderer().requestRenderCoalesced(VulkanRenderer.WAKE_WINHANDLER);
+  }
+
   public boolean canUseScreenTouchStick() {
     ControlsProfile profile = this.activity.getInputControlsView().getProfile();
     return profile != null && profile.isVirtualGamepad();
