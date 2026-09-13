@@ -113,6 +113,7 @@ public class WinHandler {
   private int fallbackSlot = -1;
   private ExternalController currentController;
   private final GamepadState outputGamepadState = new GamepadState();
+  private final GamepadState idleGamepadState = new GamepadState();
   private int lastGamepadSource = 0;
   private float smoothedGyroX = 0.0f;
   private float smoothedGyroY = 0.0f;
@@ -767,7 +768,15 @@ public class WinHandler {
         return;
       }
     }
-    releaseSlot(-1);
+    Integer virtualSlot = this.deviceToSlot.get(OSC_DEVICE_ID);
+    if (virtualSlot == null || virtualSlot < 0 || this.writers[virtualSlot] == null) {
+      return;
+    }
+    clearGamepadState(this.idleGamepadState);
+    try {
+      this.writers[virtualSlot].writeGamepadState(this.idleGamepadState);
+    } catch (IOException ignored) {
+    }
   }
 
   public void sendGamepadState(ExternalController controller) {
