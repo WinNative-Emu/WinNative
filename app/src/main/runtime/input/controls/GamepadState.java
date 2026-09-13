@@ -45,6 +45,20 @@ public class GamepadState {
     dpad[3] = false;
   }
 
+  public boolean isNeutral() {
+    return thumbLX == 0
+        && thumbLY == 0
+        && thumbRX == 0
+        && thumbRY == 0
+        && triggerL == 0
+        && triggerR == 0
+        && buttons == 0
+        && !dpad[0]
+        && !dpad[1]
+        && !dpad[2]
+        && !dpad[3];
+  }
+
   public byte getPovHat() {
     byte povHat = -1;
     if (dpad[0] && dpad[1]) povHat = 1;

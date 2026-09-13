@@ -97,6 +97,7 @@ public class ControlElement {
   private short y;
   private boolean selected = false;
   private boolean toggleLatched = false;
+  private boolean deferredReleasePending = false;
   private boolean toggleSwitch = false;
   private boolean swipeable = true;
   private boolean radialMenuExpanded = false;
@@ -3866,6 +3867,7 @@ return boundingBox;
       if (isAdaptiveStick()) shiftAdaptiveOrigin(x, y);
       if (type == Type.BUTTON) {
         pressGeneration++;
+        deferredReleasePending = false;
         if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
         if (!toggleSwitch || !toggleLatched) {
           dispatchButtonBinding(true);
@@ -4126,6 +4128,10 @@ return boundingBox;
     return currentPointerId;
   }
 
+  public boolean isIdle() {
+    return currentPointerId == -1 && !deferredReleasePending && !(toggleSwitch && toggleLatched);
+  }
+
   public boolean forceRelease() {
     if (currentPointerId == -1) return false;
     releaseTouchState(0, 0);
@@ -4138,9 +4144,11 @@ return boundingBox;
         long held = System.currentTimeMillis() - (long) touchTime;
         long delay = Math.max(0L, BUTTON_MIN_TIME_TO_KEEP_PRESSED - held);
         final int generation = ++pressGeneration;
+        deferredReleasePending = true;
         inputControlsView.postDelayed(
             () -> {
               if (generation != pressGeneration) return;
+              deferredReleasePending = false;
               dispatchButtonBinding(false);
               inputControlsView.invalidate();
             },

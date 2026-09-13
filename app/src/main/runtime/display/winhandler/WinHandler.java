@@ -743,7 +743,7 @@ public class WinHandler {
     if (binding == null || !binding.isGamepad()) return;
     ControlsProfile profile = this.activity.getInputControlsView().getProfile();
     if (profile == null || !profile.isVirtualGamepad()) return;
-    this.activity.getInputControlsView().handleInputEvent(null, binding, pressed, 0f, false);
+    this.activity.getInputControlsView().handleGestureInputEvent(binding, pressed);
     setLastGamepadSource(GAMEPAD_SOURCE_VIRTUAL, null);
     writeVirtualGamepadState(shouldApplyGyroToTarget(GAMEPAD_SOURCE_VIRTUAL, null), true);
     XServer xServer = activity.getXServer();

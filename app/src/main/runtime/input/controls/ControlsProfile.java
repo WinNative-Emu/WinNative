@@ -83,6 +83,10 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     return gamepadState;
   }
 
+  public boolean isGamepadStateNeutral() {
+    return gamepadState == null || gamepadState.isNeutral();
+  }
+
   public void resetGamepadState() {
     if (gamepadState != null) gamepadState.clear();
   }
