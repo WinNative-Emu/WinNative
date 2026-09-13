@@ -1235,9 +1235,8 @@ VkTexture* vkr_texture_import_ahb(VkRenderer* r, AHardwareBuffer* ahb, bool tran
     if (t->ycbcr != VK_NULL_HANDLE) {
         vi.components = format_props.samplerYcbcrConversionComponents;
     } else {
-        // fixes devices that supports vulkan bgra8 format, but doesn't support bgra8 ahb images
         bool swizzle_rb = format_props.format == VK_FORMAT_R8G8B8A8_UNORM
-            && r->caps.upload_format == VK_FORMAT_B8G8R8A8_UNORM;
+            && desc.format == HAL_PIXEL_FORMAT_BGRA_8888;
         vi.components.r = swizzle_rb ? VK_COMPONENT_SWIZZLE_B : VK_COMPONENT_SWIZZLE_IDENTITY;
         vi.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
         vi.components.b = swizzle_rb ? VK_COMPONENT_SWIZZLE_R : VK_COMPONENT_SWIZZLE_IDENTITY;
