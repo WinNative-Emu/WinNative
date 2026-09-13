@@ -1019,6 +1019,7 @@ class UnifiedActivity :
                         com.winlator.cmod.feature.stores.common.Store.EPIC -> "Epic"
                         com.winlator.cmod.feature.stores.common.Store.GOG -> "GOG"
                         com.winlator.cmod.feature.stores.common.Store.STEAM -> "Steam"
+                        com.winlator.cmod.feature.stores.common.Store.ITCH -> "Itch.io"
                     }
                 when (event) {
                     is com.winlator.cmod.feature.stores.common.StoreSessionEvent.SessionExpired -> {
