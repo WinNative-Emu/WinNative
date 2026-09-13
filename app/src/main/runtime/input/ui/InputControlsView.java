@@ -90,6 +90,7 @@ public class InputControlsView extends View {
 
   private SharedPreferences preferences;
   private final SparseArray<ArrayList<ControlElement>> activeTouchElements = new SparseArray<>();
+  private final Set<Binding> gestureHeldBindings = new HashSet<>();
 
   private ControlElement stickElement;
 
@@ -562,7 +563,10 @@ public class InputControlsView extends View {
     if (stickElement != null) released |= stickElement.forceRelease();
     ControlsProfile activeProfile = profile;
     if (activeProfile != null) {
-      for (ControlElement element : activeProfile.getElements()) released |= element.forceRelease();
+      for (ControlElement element : activeProfile.getElements()) {
+        released |= element.forceRelease();
+        released |= element.releaseToggleLatch();
+      }
       activeProfile.resetGamepadState();
     }
     batchingUpdates = batched;
@@ -592,6 +596,7 @@ public class InputControlsView extends View {
       }
     }
     batchingUpdates = batched;
+    if (reconcileIdleGamepadState()) removedAny = true;
     if (removedAny) {
       forceFlushGamepadState();
       syncCapturedPointers();
@@ -1133,6 +1138,24 @@ public class InputControlsView extends View {
       }
     }
     return false;
+  }
+
+  public void handleGestureInputEvent(Binding binding, boolean isActionDown) {
+    if (isActionDown) gestureHeldBindings.add(binding);
+    else gestureHeldBindings.remove(binding);
+    handleInputEvent(null, binding, isActionDown, 0f, false);
+  }
+
+  private boolean reconcileIdleGamepadState() {
+    ControlsProfile activeProfile = profile;
+    if (activeProfile == null || activeProfile.isGamepadStateNeutral()) return false;
+    if (activeTouchElements.size() > 0 || !gestureHeldBindings.isEmpty()) return false;
+    if (stickElement != null && !stickElement.isIdle()) return false;
+    for (ControlElement element : activeProfile.getElements()) {
+      if (!element.isIdle()) return false;
+    }
+    activeProfile.resetGamepadState();
+    return true;
   }
 
   public void handleInputEvent(Binding binding, boolean isActionDown) {

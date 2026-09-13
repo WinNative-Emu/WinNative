@@ -7214,6 +7214,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         else if (!hasFocus) {
             releasePointerCapture();
         }
+
+        if (!hasFocus) {
+            if (touchpadView != null) touchpadView.resetInputState();
+            if (inputControlsView != null) inputControlsView.cancelActiveTouches();
+        } else if (winHandler != null) {
+            winHandler.resyncGamepadState();
+        }
     }
 
     @Override

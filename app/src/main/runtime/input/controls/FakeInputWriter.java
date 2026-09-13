@@ -18,7 +18,6 @@ public class FakeInputWriter {
   public static final short ABS_RY = 4;
   public static final short ABS_X = 0;
   public static final short ABS_Y = 1;
-  private static final int BUFFER_SIZE = 768;
   private static final int EVENT_SIZE = 24;
   private static final int MAX_FAKE_INPUT_SLOTS = 4;
   private static final int RING_CAPACITY_EVENTS = 4096;
@@ -44,6 +43,7 @@ public class FakeInputWriter {
   public static final short EV_MSC = 4;
   public static final short EV_SYN = 0;
   private static final int MAX_EVENTS_PER_UPDATE = 32;
+  private static final int BUFFER_SIZE = MAX_EVENTS_PER_UPDATE * EVENT_SIZE;
   public static final short MSC_SCAN = 4;
   public static final short SYN_REPORT = 0;
   private static final String TAG = "FakeInputWriter";
@@ -449,6 +449,7 @@ public class FakeInputWriter {
         return false;
       }
       this.isOpen = true;
+      this.pendingFullResend = true;
       Log.i(TAG, "Opened fake input: " + this.eventFile.getAbsolutePath());
       return true;
     } catch (IOException e) {
@@ -459,6 +460,10 @@ public class FakeInputWriter {
 
   public synchronized void close() {
     this.isOpen = false;
+  }
+
+  public synchronized void requestFullResend() {
+    this.pendingFullResend = true;
   }
 
   public synchronized void reset() {
@@ -507,7 +512,10 @@ public class FakeInputWriter {
       if (this.hasChanges) {
         writeEvent((short) 0, (short) 0, 0);
         this.buffer.flip();
-        if (!flushBuffer()) Log.e(TAG, "Reset write error: fake input mmap ring unavailable");
+        if (!flushBuffer()) {
+          Log.e(TAG, "Reset write error: fake input mmap ring unavailable");
+          this.pendingFullResend = true;
+        }
         Log.i(TAG, "Reset fake input to neutral state: " + this.eventFile.getAbsolutePath());
         return;
       }
