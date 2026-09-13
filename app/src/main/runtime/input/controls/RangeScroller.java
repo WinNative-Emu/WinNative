@@ -15,8 +15,8 @@ public class RangeScroller {
   private long touchTime;
   private Binding binding = Binding.NONE;
   private int bindingIndex = -1;
-  private boolean isActionDown = false;
-  private boolean scrolling = false;
+  private volatile boolean isActionDown = false;
+  private volatile boolean scrolling = false;
   private Timer timer;
 
   public RangeScroller(InputControlsView inputControlsView, ControlElement element) {
@@ -102,13 +102,18 @@ public class RangeScroller {
     lastPosition = element.getOrientation() == 0 ? x : y;
     element.setBinding(Binding.NONE);
 
+    final Binding heldBinding = binding;
     timer = new Timer(true);
     timer.schedule(
         new TimerTask() {
           @Override
           public void run() {
-            if (!scrolling)
-              inputControlsView.post(() -> inputControlsView.handleInputEvent(binding, true));
+            if (scrolling) return;
+            inputControlsView.post(
+                () -> {
+                  if (!isActionDown || scrolling || binding != heldBinding) return;
+                  inputControlsView.handleInputEvent(heldBinding, true);
+                });
           }
         },
         TouchpadView.MAX_TAP_MILLISECONDS);
