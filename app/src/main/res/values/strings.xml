@@ -1760,6 +1760,7 @@ Installed path:
     <string name="preloader_launching">Launching</string>
     <string name="preloader_closing">Closing %1$s</string>
     <string name="preloader_preparing_steam_environment">Preparing Steam environment</string>
+    <string name="preloader_launch_failed">Launch failed: %1$s</string>
     <string name="preloader_starting_wine">Starting Wine</string>
     <string name="preloader_starting_steam_launcher">Starting Steam Launcher</string>
     <string name="preloader_loading_steam_client">Loading Steam client</string>
