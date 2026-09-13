@@ -96,6 +96,7 @@ public class ControlElement {
   private short x;
   private short y;
   private boolean selected = false;
+  private boolean toggleLatched = false;
   private boolean toggleSwitch = false;
   private boolean swipeable = true;
   private boolean radialMenuExpanded = false;
@@ -324,6 +325,18 @@ public class ControlElement {
     }
   }
 
+  public boolean isHighlighted() {
+    return selected || (toggleSwitch && toggleLatched);
+  }
+
+  public boolean releaseToggleLatch() {
+    if (!toggleSwitch || !toggleLatched) return false;
+    toggleLatched = false;
+    dispatchButtonBinding(false);
+    inputControlsView.invalidate();
+    return true;
+  }
+
   public String getText() {
     return text;
   }
@@ -537,7 +550,7 @@ return boundingBox;
   }
 
   private boolean isEngaged() {
-    return currentPointerId != -1 || (toggleSwitch && selected);
+    return currentPointerId != -1 || (toggleSwitch && toggleLatched);
   }
 
   // Shared draw caches. Drawing happens only on the UI thread, so static temps are safe.
@@ -659,7 +672,7 @@ return boundingBox;
     int secondaryColor = ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), highlightAlpha);
 
     paint.setColor(
-        (selected && accent == -1) ? secondaryColor : primaryColor);
+        (isHighlighted() && accent == -1) ? secondaryColor : primaryColor);
     paint.setStyle(Paint.Style.STROKE);
     float strokeWidth = snappingSize * 0.25f;
     paint.setStrokeWidth(strokeWidth);
@@ -712,7 +725,7 @@ return boundingBox;
 
           paint.setStyle(Paint.Style.STROKE);
           paint.setColor(
-              (selected && accent == -1)
+              (isHighlighted() && accent == -1)
                   ? secondaryColor
                   : primaryColor);
           paint.setStrokeWidth(strokeWidth);
@@ -820,7 +833,7 @@ return boundingBox;
 
           paint.setStyle(Paint.Style.STROKE);
           paint.setColor(
-              (selected && accent == -1)
+              (isHighlighted() && accent == -1)
                   ? secondaryColor
                   : primaryColor);
           canvas.drawCircle(cx, cy, radius, paint);
@@ -1130,7 +1143,7 @@ return boundingBox;
       frameColor = ColorUtils.setAlphaComponent(accent, (int) ((engaged ? 240 : 150) * a));
       frameWidth = hairline * (engaged ? 1.6f : 1f);
     }
-    if (selected && resolveAccentColor() == -1) {
+    if (isHighlighted() && resolveAccentColor() == -1) {
       frameColor =
           ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), (int) (235 * a));
     }
@@ -1650,7 +1663,7 @@ return boundingBox;
     boolean engaged = isEngaged();
     Rect boundingBox = getBoundingBox();
     int accent = resolveThemedAccent();
-    if (selected && resolveAccentColor() == -1) {
+    if (isHighlighted() && resolveAccentColor() == -1) {
       accent = ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), 255);
     }
     float hairline = Math.max(1.5f, snappingSize * 0.09f * scale);
@@ -2118,7 +2131,7 @@ return boundingBox;
     boolean engaged = isEngaged();
     Rect boundingBox = getBoundingBox();
     int accent = resolveThemedAccent();
-    if (selected && resolveAccentColor() == -1) {
+    if (isHighlighted() && resolveAccentColor() == -1) {
       accent = ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), 255);
     }
     int secondary = neonSecondary(accent);
@@ -2558,7 +2571,7 @@ return boundingBox;
     Rect boundingBox = getBoundingBox();
     int custom = resolveAccentColor();
     int accent = resolveThemedAccent();
-    if (selected && custom == -1) {
+    if (isHighlighted() && custom == -1) {
       accent = ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), 255);
     }
     float hairline = Math.max(1.5f, snappingSize * 0.11f * scale);
@@ -3005,7 +3018,7 @@ return boundingBox;
     boolean engaged = isEngaged();
     Rect boundingBox = getBoundingBox();
     int accent = resolveThemedAccent();
-    if (selected && resolveAccentColor() == -1) {
+    if (isHighlighted() && resolveAccentColor() == -1) {
       accent = ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), 255);
     }
     int labelColor = engaged
@@ -3331,7 +3344,7 @@ return boundingBox;
         ? ColorUtils.setAlphaComponent(accent, textAlpha)
         : Color.argb(textAlpha, 255, 255, 255);
 
-    if (selected && !hasAccent) {
+    if (isHighlighted() && !hasAccent) {
       int highlightAlpha = (int) (255 * overlayOpacity);
       strokeColor = ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), highlightAlpha);
     }
@@ -3854,7 +3867,7 @@ return boundingBox;
       if (type == Type.BUTTON) {
         pressGeneration++;
         if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
-        if (!toggleSwitch || !selected) {
+        if (!toggleSwitch || !toggleLatched) {
           dispatchButtonBinding(true);
         }
         inputControlsView.invalidate();
@@ -4134,10 +4147,10 @@ return boundingBox;
             delay);
         touchTime = null;
       } else {
-        if (!toggleSwitch || selected) {
+        if (!toggleSwitch || toggleLatched) {
           dispatchButtonBinding(false);
         }
-        if (toggleSwitch) selected = !selected;
+        if (toggleSwitch) toggleLatched = !toggleLatched;
       }
       inputControlsView.invalidate();
     } else if (type == Type.RADIAL_MENU) {

@@ -562,7 +562,10 @@ public class InputControlsView extends View {
     if (stickElement != null) released |= stickElement.forceRelease();
     ControlsProfile activeProfile = profile;
     if (activeProfile != null) {
-      for (ControlElement element : activeProfile.getElements()) released |= element.forceRelease();
+      for (ControlElement element : activeProfile.getElements()) {
+        released |= element.forceRelease();
+        released |= element.releaseToggleLatch();
+      }
       activeProfile.resetGamepadState();
     }
     batchingUpdates = batched;
