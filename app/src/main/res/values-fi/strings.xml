@@ -261,6 +261,18 @@
     <string name="stores_accounts_gog_login_failed">GOG-kirjautuminen epäonnistui: %1$s</string>
     <string name="stores_accounts_custom_download_path">Mukautettu latauspolku</string>
     <string name="stores_accounts_custom_download_path_description">Oletuslatauspolku on jo määritetty kohdassa Asetukset &gt; Kaupat. Jos haluat asettaa yksilöllisen mukautetun polun tälle asennukselle, napsauta Jatka.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Ulkoinen tallennustila</string>
+    <string name="external_storage_add_title">Lisää ulkoinen tallennustila</string>
+    <string name="external_storage_add_subtitle">Asenna pelit USB- tai SD-asemalle</string>
+    <string name="external_storage_add_invalid">Kansio ei ole ulkoisella asemalla</string>
+    <string name="external_storage_status_connected">Yhdistetty · %1$s vapaana</string>
+    <string name="external_storage_status_disconnected">Ei yhteyttä</string>
+    <string name="external_storage_download_target_title">Latauksen sijainti</string>
+    <string name="external_storage_download_target_message">Valitse, mihin tämä peli asennetaan.</string>
+    <string name="external_storage_download_target_internal">Sisäinen ensisijaisesti</string>
+    <string name="external_storage_download_target_external">Ulkoinen ensisijaisesti</string>
+    <string name="external_storage_download_target_none">Ulkoista asemaa ei ole yhdistetty</string>
     <string name="stores_accounts_not_signed_in">Ei kirjautunut</string>
     <string name="stores_accounts_status_online">Paikalla</string>
     <string name="stores_accounts_status_away">Poissa</string>

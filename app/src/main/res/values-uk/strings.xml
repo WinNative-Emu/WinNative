@@ -264,6 +264,18 @@
     <string name="stores_accounts_gog_login_failed">Помилка входу в GOG: %1$s</string>
     <string name="stores_accounts_custom_download_path">Користувацький шлях завантаження</string>
     <string name="stores_accounts_custom_download_path_description">Типовий шлях завантаження вже налаштований у Налаштування &gt; Магазини. Якщо ви хочете вказати унікальний шлях для цього конкретного встановлення, натисніть Продовжити.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Зовнішнє сховище</string>
+    <string name="external_storage_add_title">Додати зовнішнє сховище</string>
+    <string name="external_storage_add_subtitle">Встановлювати ігри на USB- або SD-накопичувач</string>
+    <string name="external_storage_add_invalid">Ця тека не на зовнішньому накопичувачі</string>
+    <string name="external_storage_status_connected">Підключено · вільно %1$s</string>
+    <string name="external_storage_status_disconnected">Відключено</string>
+    <string name="external_storage_download_target_title">Місце завантаження</string>
+    <string name="external_storage_download_target_message">Виберіть, куди встановити цю гру.</string>
+    <string name="external_storage_download_target_internal">Надавати перевагу внутрішньому</string>
+    <string name="external_storage_download_target_external">Надавати перевагу зовнішньому</string>
+    <string name="external_storage_download_target_none">Зовнішній накопичувач не підключено</string>
     <string name="stores_accounts_not_signed_in">Не авторизовано</string>
     <string name="stores_accounts_status_online">В мережі</string>
     <string name="stores_accounts_status_away">Відійшов</string>

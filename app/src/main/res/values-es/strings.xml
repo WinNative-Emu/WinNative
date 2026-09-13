@@ -260,6 +260,18 @@
     <string name="stores_accounts_gog_login_failed">Error de inicio de sesión en GOG: %1$s</string>
     <string name="stores_accounts_custom_download_path">Ruta de descarga personalizada</string>
     <string name="stores_accounts_custom_download_path_description">Ya se ha configurado una ruta de descarga predeterminada en Ajustes &gt; Tiendas. Si deseas establecer una ruta personalizada única para esta instalación específica, haz clic en Proceder.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Almacenamiento externo</string>
+    <string name="external_storage_add_title">Añadir almacenamiento externo</string>
+    <string name="external_storage_add_subtitle">Instalar juegos en una unidad USB o SD</string>
+    <string name="external_storage_add_invalid">Esa carpeta no está en una unidad externa</string>
+    <string name="external_storage_status_connected">Conectada · %1$s libres</string>
+    <string name="external_storage_status_disconnected">Desconectada</string>
+    <string name="external_storage_download_target_title">Ubicación de descarga</string>
+    <string name="external_storage_download_target_message">Elige dónde se instalará este juego.</string>
+    <string name="external_storage_download_target_internal">Preferir interno</string>
+    <string name="external_storage_download_target_external">Preferir externo</string>
+    <string name="external_storage_download_target_none">No hay una unidad externa conectada</string>
     <string name="stores_accounts_not_signed_in">Sin sesión iniciada</string>
     <string name="stores_accounts_status_online">En línea</string>
     <string name="stores_accounts_status_away">Ausente</string>

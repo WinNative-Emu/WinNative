@@ -256,6 +256,18 @@
     <string name="stores_accounts_gog_login_failed">GOG लॉगिन विफल: %1$s</string>
     <string name="stores_accounts_custom_download_path">कस्टम डाउनलोड पथ</string>
     <string name="stores_accounts_custom_download_path_description">सेटिंग्स &gt; स्टोर्स में एक डिफ़ॉल्ट डाउनलोड पथ पहले से ही कॉन्फ़िगर किया गया है। यदि आप इस विशिष्ट इंस्टॉलेशन के लिए एक अद्वितीय कस्टम पथ सेट करना चाहते हैं, तो आगे बढ़ें पर क्लिक करें।</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">बाहरी स्टोरेज</string>
+    <string name="external_storage_add_title">बाहरी स्टोरेज जोड़ें</string>
+    <string name="external_storage_add_subtitle">गेम को USB या SD ड्राइव पर इंस्टॉल करें</string>
+    <string name="external_storage_add_invalid">यह फ़ोल्डर किसी बाहरी ड्राइव पर नहीं है</string>
+    <string name="external_storage_status_connected">कनेक्टेड · %1$s खाली</string>
+    <string name="external_storage_status_disconnected">डिस्कनेक्टेड</string>
+    <string name="external_storage_download_target_title">डाउनलोड स्थान</string>
+    <string name="external_storage_download_target_message">चुनें कि यह गेम कहाँ इंस्टॉल हो।</string>
+    <string name="external_storage_download_target_internal">आंतरिक पसंदीदा</string>
+    <string name="external_storage_download_target_external">बाहरी पसंदीदा</string>
+    <string name="external_storage_download_target_none">कोई बाहरी ड्राइव कनेक्ट नहीं है</string>
     <string name="stores_accounts_not_signed_in">साइन इन नहीं किया गया</string>
     <string name="stores_accounts_status_online">ऑनलाइन</string>
     <string name="stores_accounts_status_away">दूर</string>

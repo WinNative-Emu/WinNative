@@ -1992,6 +1992,13 @@ internal fun UnifiedActivity.TopBar(
     } // end Column
 }
 
+private data class ShortcutScanResult(
+    val shortcuts: List<Shortcut>,
+    val customApps: List<SteamApp>,
+    val badges: Map<Int, String>,
+    val storagePaths: Map<Int, String>,
+)
+
 @Composable
 internal fun UnifiedActivity.LibraryCarousel(
     isLoggedIn: Boolean,
@@ -2011,6 +2018,8 @@ internal fun UnifiedActivity.LibraryCarousel(
 
     var cachedShortcuts by remember { mutableStateOf<List<Shortcut>>(emptyList()) }
     var customApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
+    var customStoragePathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    val externalStorageState by com.winlator.cmod.feature.storage.ExternalStorage.state.collectAsState()
     var localLibraryRefreshKey by remember { mutableIntStateOf(0) }
     var shortcutsLoaded by remember { mutableStateOf(false) }
     var pullRefreshing by remember { mutableStateOf(false) }
@@ -2035,6 +2044,7 @@ internal fun UnifiedActivity.LibraryCarousel(
                     }
                     val allShortcuts = cm.loadShortcuts()
                     val badges = HashMap<Int, String>()
+                    val storagePaths = HashMap<Int, String>()
                     val apps =
                         allShortcuts
                             .mapNotNull { shortcut ->
@@ -2063,26 +2073,39 @@ internal fun UnifiedActivity.LibraryCarousel(
                                         ),
                                     )?.let { badges[customId] = it.id }
 
+                                val gameDir =
+                                    shortcut.getExtra(
+                                        "game_install_path",
+                                        shortcut.getExtra("custom_game_folder", ""),
+                                    )
+                                val storagePath =
+                                    sequenceOf(
+                                        gameDir,
+                                        shortcut.getExtra("custom_exe", ""),
+                                        shortcut.getExtra(
+                                            com.winlator.cmod.feature.retro.RetroShortcuts.KEY_ROM,
+                                            "",
+                                        ),
+                                    ).firstOrNull { it.isNotBlank() }
+                                if (storagePath != null) storagePaths[customId] = storagePath
+
                                 SteamApp(
                                     id = customId,
                                     name = displayName,
                                     developer = "Custom",
-                                    gameDir =
-                                        shortcut.getExtra(
-                                            "game_install_path",
-                                            shortcut.getExtra("custom_game_folder", ""),
-                                        ),
+                                    gameDir = gameDir,
                                 )
                             }
 
-                    Triple(allShortcuts, apps, badges)
+                    ShortcutScanResult(allShortcuts, apps, badges, storagePaths)
                 }
             }.getOrNull()
 
         if (shortcutScanResult != null) {
-            cachedShortcuts = shortcutScanResult.first
-            customApps = shortcutScanResult.second
-            retroLibrarySystemIds.value = shortcutScanResult.third
+            cachedShortcuts = shortcutScanResult.shortcuts
+            customApps = shortcutScanResult.customApps
+            customStoragePathByAppId = shortcutScanResult.storagePaths
+            retroLibrarySystemIds.value = shortcutScanResult.badges
         }
 
         shortcutsLoaded = true
@@ -2113,7 +2136,16 @@ internal fun UnifiedActivity.LibraryCarousel(
     var libraryLoaded by remember { mutableStateOf(false) }
     // Suppress transient empty states before background recomputation starts.
     val scanInputToken =
-        remember(steamApps, epicApps, gogApps, customApps, libraryRefreshKey, localLibraryRefreshKey) { Any() }
+        remember(
+            steamApps,
+            epicApps,
+            gogApps,
+            customApps,
+            customStoragePathByAppId,
+            externalStorageState.connectivityKey,
+            libraryRefreshKey,
+            localLibraryRefreshKey,
+        ) { Any() }
     var processedScanToken by remember { mutableStateOf<Any?>(null) }
 
     LaunchedEffect(scanInputToken) {
@@ -2257,10 +2289,21 @@ internal fun UnifiedActivity.LibraryCarousel(
                     preferredStoreOf = { key -> LibraryStoreLinks.preferredStore(context, key) },
                 )
 
+            val externalSnapshot = externalStorageState
+            val customStoragePaths = customStoragePathByAppId
+            val storeInstallPaths =
+                installedRows.associate { row -> row.libraryId to row.installPath }
             val merged =
                 (steamInstalled + customApps + mappedEpic + mappedGog)
                     .distinctBy { it.id }
                     .filterNot { it.id in storeLinks.hiddenLibraryIds }
+                    .filterNot { app ->
+                        val path =
+                            customStoragePaths[app.id]
+                                ?: storeInstallPaths[app.id]?.takeIf { it.isNotBlank() }
+                                ?: app.gameDir.orEmpty()
+                        externalSnapshot.isOnDisconnectedDrive(path)
+                    }
             val sorted =
                 merged.sortedByDescending { app ->
                     val searchKey =

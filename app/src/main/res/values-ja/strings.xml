@@ -261,6 +261,18 @@
     <string name="stores_accounts_gog_login_failed">GOGへのログインに失敗しました: %1$s</string>
     <string name="stores_accounts_custom_download_path">カスタムダウンロードパス</string>
     <string name="stores_accounts_custom_download_path_description">デフォルトのダウンロードパスはすでに 設定 &gt; ストア で設定されています。このインストール専用の固有のカスタムパスを設定する場合は、続けるをクリックしてください。</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">外部ストレージ</string>
+    <string name="external_storage_add_title">外部ストレージを追加</string>
+    <string name="external_storage_add_subtitle">USB や SD ドライブにゲームをインストール</string>
+    <string name="external_storage_add_invalid">そのフォルダーは外部ドライブ上にありません</string>
+    <string name="external_storage_status_connected">接続済み · 空き %1$s</string>
+    <string name="external_storage_status_disconnected">未接続</string>
+    <string name="external_storage_download_target_title">ダウンロード先</string>
+    <string name="external_storage_download_target_message">このゲームのインストール先を選択してください。</string>
+    <string name="external_storage_download_target_internal">内部を優先</string>
+    <string name="external_storage_download_target_external">外部を優先</string>
+    <string name="external_storage_download_target_none">外部ドライブが接続されていません</string>
     <string name="stores_accounts_not_signed_in">サインインしていません</string>
     <string name="stores_accounts_status_online">オンライン</string>
     <string name="stores_accounts_status_away">退席中</string>

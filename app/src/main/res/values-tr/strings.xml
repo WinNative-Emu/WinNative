@@ -261,6 +261,18 @@
     <string name="stores_accounts_gog_login_failed">GOG Girişi başarısız: %1$s</string>
     <string name="stores_accounts_custom_download_path">Özel İndirme Yolu</string>
     <string name="stores_accounts_custom_download_path_description">Ayarlar &gt; Mağazalar bölümünde varsayılan bir indirme yolu zaten yapılandırıldı. Bu belirli yükleme için benzersiz bir özel yol ayarlamak istiyorsanız Devam Et\'e tıklayın.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Harici Depolama</string>
+    <string name="external_storage_add_title">Harici Depolama Ekle</string>
+    <string name="external_storage_add_subtitle">Oyunları bir USB veya SD sürücüye kurun</string>
+    <string name="external_storage_add_invalid">Bu klasör harici bir sürücüde değil</string>
+    <string name="external_storage_status_connected">Bağlı · %1$s boş</string>
+    <string name="external_storage_status_disconnected">Bağlı değil</string>
+    <string name="external_storage_download_target_title">İndirme Konumu</string>
+    <string name="external_storage_download_target_message">Bu oyunun nereye kurulacağını seçin.</string>
+    <string name="external_storage_download_target_internal">Dahili Tercih Edilir</string>
+    <string name="external_storage_download_target_external">Harici Tercih Edilir</string>
+    <string name="external_storage_download_target_none">Bağlı harici sürücü yok</string>
     <string name="stores_accounts_not_signed_in">Giriş yapılmadı</string>
     <string name="stores_accounts_status_online">Çevrimiçi</string>
     <string name="stores_accounts_status_away">Uzakta</string>

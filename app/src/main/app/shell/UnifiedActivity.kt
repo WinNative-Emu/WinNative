@@ -635,6 +635,8 @@ class UnifiedActivity :
 
         UpdateService.startHourlyLoop(this)
         processPendingRetroCloudBackup()
+        com.winlator.cmod.feature.storage.ExternalStorage
+            .refresh()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

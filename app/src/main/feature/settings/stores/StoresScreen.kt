@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderShared
 import androidx.compose.material.icons.outlined.Gamepad
@@ -47,6 +48,7 @@ import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -115,6 +117,15 @@ data class StoreState(
     val itchFolder: String = "",
     val containerLanguageLabels: List<String> = emptyList(),
     val containerLanguageIndex: Int = 0,
+    val externalDrives: List<ExternalDriveRow> = emptyList(),
+)
+
+data class ExternalDriveRow(
+    val id: String,
+    val label: String,
+    val path: String,
+    val connected: Boolean,
+    val freeLabel: String,
 )
 
 @Composable
@@ -137,6 +148,8 @@ fun StoresScreen(
     onPickEpicFolder: () -> Unit,
     onPickGogFolder: () -> Unit,
     onPickItchFolder: () -> Unit,
+    onAddExternalStorage: () -> Unit,
+    onRemoveExternalStorage: (String) -> Unit,
     onContainerLanguageSelected: (Int) -> Unit,
     bridge: SettingsNavBridge? = null,
 ) {
@@ -252,6 +265,20 @@ fun StoresScreen(
                     }
                 }
             }
+
+            SectionLabel(
+                stringResource(R.string.external_storage_section_title),
+                modifier = Modifier.padding(top = 8.dp),
+            )
+
+            state.externalDrives.forEach { drive ->
+                ExternalDriveCard(
+                    drive = drive,
+                    onRemove = { onRemoveExternalStorage(drive.id) },
+                )
+            }
+
+            AddExternalStorageCard(onClick = onAddExternalStorage)
 
             SectionLabel(stringResource(R.string.steam_section_title), modifier = Modifier.padding(top = 8.dp))
 
@@ -809,6 +836,147 @@ private fun FolderPathCard(
             }
             Spacer(Modifier.width(10.dp))
             BrowseButton(onClick = onBrowse)
+        }
+    }
+}
+
+@Composable
+private fun ExternalDriveCard(
+    drive: ExternalDriveRow,
+    onRemove: () -> Unit,
+) {
+    val statusColor = if (drive.connected) StatusGreen else TextSecondary
+    Card(
+        modifier = Modifier.fillMaxWidth().border(1.dp, CardBorder, RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardDark),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(IconBoxBg),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Storage,
+                    contentDescription = null,
+                    tint = statusColor,
+                    modifier = Modifier.size(17.dp),
+                )
+            }
+            Spacer(Modifier.width(13.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = drive.label,
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = drive.path,
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(3.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (drive.connected) StatusGreen else TextSecondary.copy(alpha = 0.4f),
+                                ),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text =
+                            if (drive.connected) {
+                                stringResource(R.string.external_storage_status_connected, drive.freeLabel)
+                            } else {
+                                stringResource(R.string.external_storage_status_disconnected)
+                            },
+                        color = statusColor,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            ActionButton(
+                label = stringResource(R.string.common_ui_remove),
+                textColor = DangerRed,
+                onClick = onRemove,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddExternalStorageCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().border(1.dp, CardBorder, RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardDark),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .paneNavItem(
+                        cornerRadius = 12.dp,
+                        onActivate = onClick,
+                        highlightColor = NavHighlight,
+                        tapToSelect = true,
+                    )
+                    .padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(IconBoxBg),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = null,
+                    tint = Accent,
+                    modifier = Modifier.size(17.dp),
+                )
+            }
+            Spacer(Modifier.width(13.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.external_storage_add_title),
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = stringResource(R.string.external_storage_add_subtitle),
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                )
+            }
         }
     }
 }

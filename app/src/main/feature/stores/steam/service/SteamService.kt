@@ -660,6 +660,9 @@ class SteamService : Service() {
                         paths += Paths.get(volumePath, "Steam", "steamapps", "common").pathString
                     }
                 }
+                paths +=
+                    com.winlator.cmod.feature.storage.ExternalStorage
+                        .connectedInstallRoots(InstallStore.STEAM)
                 return paths.distinct()
             }
 

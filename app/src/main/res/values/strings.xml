@@ -262,6 +262,18 @@
     <string name="stores_accounts_gog_login_failed">GOG Login failed: %1$s</string>
     <string name="stores_accounts_custom_download_path">Custom Download Path</string>
     <string name="stores_accounts_custom_download_path_description">A default download path has already been configured in Settings &gt; Stores. If you wish to set a unique custom path for this specific installation, click Proceed.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">External Storage</string>
+    <string name="external_storage_add_title">Add External Storage</string>
+    <string name="external_storage_add_subtitle">Install games to a USB or SD drive</string>
+    <string name="external_storage_add_invalid">That folder is not on an external drive</string>
+    <string name="external_storage_status_connected">Connected · %1$s free</string>
+    <string name="external_storage_status_disconnected">Disconnected</string>
+    <string name="external_storage_download_target_title">Download Location</string>
+    <string name="external_storage_download_target_message">Choose where this game is installed.</string>
+    <string name="external_storage_download_target_internal">Internal Preferred</string>
+    <string name="external_storage_download_target_external">External Preferred</string>
+    <string name="external_storage_download_target_none">No external drive connected</string>
     <string name="stores_accounts_not_signed_in">Not signed in</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Away</string>

@@ -47,10 +47,12 @@ class ItchDownloadManager(
     fun enqueue(
         game: ItchGame,
         upload: ItchUpload,
+        installPathOverride: String? = null,
     ) {
         val existing = ItchLibrary.find(context, game.id)
         val installPath =
-            existing?.installPath?.takeIf { it.isNotBlank() }
+            installPathOverride?.takeIf { it.isNotBlank() }
+                ?: existing?.installPath?.takeIf { it.isNotBlank() }
                 ?: ItchConstants.gameInstallPath(context, game.title)
         pending[game.id] = Request(game, upload, installPath)
         ItchDownloadRequestStore.put(context, game, upload, installPath)

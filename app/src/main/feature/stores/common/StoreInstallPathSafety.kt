@@ -73,6 +73,10 @@ object StoreInstallPathSafety {
         ).forEach(::add)
 
         configuredDownloadRoots(context).forEach(::add)
+        com.winlator.cmod.feature.storage.ExternalStorage
+            .protectedRoots()
+            .map(::File)
+            .forEach(::add)
         extraRoots.map(::File).forEach(::add)
 
         return roots.values.toList()

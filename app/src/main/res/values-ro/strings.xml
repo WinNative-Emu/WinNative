@@ -260,6 +260,18 @@
     <string name="stores_accounts_gog_login_failed">Autentificarea GOG a esuat: %1$s</string>
     <string name="stores_accounts_custom_download_path">Cale de descarcare personalizata</string>
     <string name="stores_accounts_custom_download_path_description">O cale de descarcare implicita a fost deja configurata in Setari &gt; Magazine. Daca doresti sa setezi o cale personalizata unica pentru aceasta instalare, apasa Continua.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Stocare externă</string>
+    <string name="external_storage_add_title">Adaugă stocare externă</string>
+    <string name="external_storage_add_subtitle">Instalează jocurile pe o unitate USB sau SD</string>
+    <string name="external_storage_add_invalid">Acel dosar nu se află pe o unitate externă</string>
+    <string name="external_storage_status_connected">Conectată · %1$s liberi</string>
+    <string name="external_storage_status_disconnected">Deconectată</string>
+    <string name="external_storage_download_target_title">Locația descărcării</string>
+    <string name="external_storage_download_target_message">Alege unde va fi instalat acest joc.</string>
+    <string name="external_storage_download_target_internal">Preferă intern</string>
+    <string name="external_storage_download_target_external">Preferă extern</string>
+    <string name="external_storage_download_target_none">Nicio unitate externă conectată</string>
     <string name="stores_accounts_not_signed_in">Neautentificat</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Plecat</string>

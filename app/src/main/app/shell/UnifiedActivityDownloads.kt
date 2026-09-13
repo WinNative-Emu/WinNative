@@ -1383,6 +1383,7 @@ internal fun UnifiedActivity.GameManagerDialog(
     val selectedDlcIds = remember { mutableStateListOf<Int>() }
     var customPath by remember { mutableStateOf<String?>(null) }
     var showCustomPathWarning by remember { mutableStateOf(false) }
+    var showDownloadTarget by remember(app.id) { mutableStateOf(false) }
     var isCheckingForUpdate by remember(app.id) { mutableStateOf(false) }
     var isUpdateCheckCoolingDown by remember(app.id) { mutableStateOf(false) }
     var showWorkshopDialog by remember(app.id) { mutableStateOf(false) }
@@ -1526,6 +1527,16 @@ internal fun UnifiedActivity.GameManagerDialog(
             else -> stringResource(R.string.common_ui_custom)
         }
     val isReallyInstalled = installed == true
+    val externalStorageState by com.winlator.cmod.feature.storage.ExternalStorage.state.collectAsState()
+    val externalDrive = externalStorageState.preferredDrive()
+    val externalInstallRoot =
+        externalDrive?.let {
+            com.winlator.cmod.feature.storage.ExternalStorage
+                .storeInstallRoot(
+                    it.drive.downloadPath,
+                    com.winlator.cmod.feature.stores.common.InstallStore.STEAM,
+                )
+        }
     val steamDownloadRecord =
         downloadRecords.firstOrNull {
             it.store == com.winlator.cmod.app.db.download.DownloadRecord.STORE_STEAM &&
@@ -1553,6 +1564,37 @@ internal fun UnifiedActivity.GameManagerDialog(
     val noUpdateAvailableText = stringResource(R.string.store_game_no_update_available)
     val updateAvailableText = stringResource(R.string.store_game_update_available)
     val updateFailedText = stringResource(R.string.store_game_update_check_failed)
+
+    val startSteamInstall: (com.winlator.cmod.feature.storage.DownloadTarget) -> Unit = { target ->
+        val requestedPath =
+            if (target == com.winlator.cmod.feature.storage.DownloadTarget.EXTERNAL) {
+                externalInstallRoot ?: customPath
+            } else {
+                customPath
+            }
+        context.runIfOnlineOrToast {
+            scope.launch(Dispatchers.IO) {
+                val installableDlcIds = dlcItems
+                    .filter { !it.isInstalled && it.id in selectedDlcIds }
+                    .map { it.id }
+                SteamService.downloadApp(app.id, installableDlcIds, false, requestedPath)
+                withContext(Dispatchers.Main) { onDismissRequest() }
+            }
+        }
+    }
+
+    if (showDownloadTarget) {
+        com.winlator.cmod.feature.storage.DownloadTargetDialog(
+            internalPath = installPathDisplay,
+            externalPath = externalInstallRoot,
+            externalLabel = externalDrive?.drive?.label.orEmpty(),
+            onDismiss = { showDownloadTarget = false },
+            onConfirm = { target ->
+                showDownloadTarget = false
+                startSteamInstall(target)
+            },
+        )
+    }
 
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -1646,14 +1688,10 @@ internal fun UnifiedActivity.GameManagerDialog(
                         )
                         return@StoreGameDetailScreen
                     }
-                    context.runIfOnlineOrToast {
-                        scope.launch(Dispatchers.IO) {
-                            val installableDlcIds = dlcItems
-                                .filter { !it.isInstalled && it.id in selectedDlcIds }
-                                .map { it.id }
-                            SteamService.downloadApp(app.id, installableDlcIds, false, customPath)
-                            withContext(Dispatchers.Main) { onDismissRequest() }
-                        }
+                    if (isReallyInstalled) {
+                        startSteamInstall(com.winlator.cmod.feature.storage.DownloadTarget.INTERNAL)
+                    } else {
+                        showDownloadTarget = true
                     }
                 },
                 onCheckForUpdate = { startUpdateCheck(app.id, app.name) },

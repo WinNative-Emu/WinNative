@@ -103,9 +103,10 @@ object ItchService {
         context: Context,
         game: ItchGame,
         upload: ItchUpload,
+        installPathOverride: String? = null,
     ) {
         start(context)
-        manager?.enqueue(game, upload)
+        manager?.enqueue(game, upload, installPathOverride)
     }
 
     fun installPath(
