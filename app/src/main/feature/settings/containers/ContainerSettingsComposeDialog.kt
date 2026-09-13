@@ -53,6 +53,7 @@ import com.winlator.cmod.feature.settings.WineD3DConfigUtils
 import com.winlator.cmod.shared.android.AppUtils
 import com.winlator.cmod.shared.android.DirectoryPickerDialog
 import com.winlator.cmod.shared.android.RefreshRateUtils
+import com.winlator.cmod.shared.android.ScreenSizes
 import com.winlator.cmod.shared.ui.toast.WinToast
 import com.winlator.cmod.shared.io.AssetPaths
 import com.winlator.cmod.runtime.wine.EnvVars
@@ -1529,19 +1530,16 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
 
     private fun selectScreenSize(screenSize: String) {
         val entries = state.screenSizeEntries.value
-        val idx = entries.indexOfFirst {
-            StringUtils.parseIdentifier(it) == StringUtils.parseIdentifier(screenSize)
-        }
-        if (idx >= 0) {
+        val normalized = ScreenSizes.sanitize(screenSize, Container.DEFAULT_SCREEN_SIZE)
+        val idx = entries.indexOfFirst { StringUtils.parseIdentifier(it) == normalized }
+        if (idx > 0) {
             state.selectedScreenSize.intValue = idx
-        } else {
-            state.selectedScreenSize.intValue = 0 // "Custom"
-            val parts = screenSize.split("x")
-            if (parts.size == 2) {
-                state.customWidth.value = parts[0]
-                state.customHeight.value = parts[1]
-            }
+            return
         }
+        state.selectedScreenSize.intValue = 0
+        val parts = normalized.split("x")
+        state.customWidth.value = parts[0]
+        state.customHeight.value = parts[1]
     }
 
     /** Selected rate, or null for "Default" — stored as key absence so it falls through to the phone's auto rate. */
@@ -1557,16 +1555,18 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         val entries = state.screenSizeEntries.value
         val idx = state.selectedScreenSize.intValue
         if (idx !in entries.indices) return Container.DEFAULT_SCREEN_SIZE
-        val selectedValue = entries[idx]
-        return if (selectedValue.equals("custom", ignoreCase = true)) {
-            val w = state.customWidth.value.trim()
-            val h = state.customHeight.value.trim()
-            if (w.matches(Regex("[0-9]+")) && h.matches(Regex("[0-9]+"))) {
-                val width = (w.toInt() / 2) * 2
-                val height = (h.toInt() / 2) * 2
-                "${width}x${height}"
-            } else Container.DEFAULT_SCREEN_SIZE
-        } else StringUtils.parseIdentifier(selectedValue)
+        if (idx == 0) {
+            val width = state.customWidth.value.trim().toIntOrNull()
+            val height = state.customHeight.value.trim().toIntOrNull()
+            if (width == null || height == null || width <= 0 || height <= 0) {
+                return Container.DEFAULT_SCREEN_SIZE
+            }
+            return ScreenSizes.format(width, height)
+        }
+        return ScreenSizes.sanitize(
+            StringUtils.parseIdentifier(entries[idx]),
+            Container.DEFAULT_SCREEN_SIZE
+        )
     }
 
     private fun buildWinComponentsString(): String {

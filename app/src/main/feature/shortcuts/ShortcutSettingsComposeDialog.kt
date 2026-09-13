@@ -74,6 +74,7 @@ import com.winlator.cmod.runtime.wine.WineUtils
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.util.KeyValueSet
 import com.winlator.cmod.shared.android.RefreshRateUtils
+import com.winlator.cmod.shared.android.ScreenSizes
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import com.winlator.cmod.shared.util.StringUtils
 import com.winlator.cmod.runtime.input.ui.InputControlsView
@@ -1077,21 +1078,16 @@ class ShortcutSettingsComposeDialog private constructor(
 
     private fun selectScreenSize(screenSize: String) {
         val entries = state.screenSizeEntries.value
-        // Try to match by identifier
-        val idx = entries.indexOfFirst {
-            StringUtils.parseIdentifier(it) == StringUtils.parseIdentifier(screenSize)
-        }
-        if (idx >= 0) {
+        val normalized = ScreenSizes.sanitize(screenSize, Container.DEFAULT_SCREEN_SIZE)
+        val idx = entries.indexOfFirst { StringUtils.parseIdentifier(it) == normalized }
+        if (idx > 0) {
             state.selectedScreenSize.intValue = idx
-        } else {
-            // Custom screen size
-            state.selectedScreenSize.intValue = 0 // "Custom" is at index 0
-            val parts = screenSize.split("x")
-            if (parts.size == 2) {
-                state.customWidth.value = parts[0]
-                state.customHeight.value = parts[1]
-            }
+            return
         }
+        state.selectedScreenSize.intValue = 0
+        val parts = normalized.split("x")
+        state.customWidth.value = parts[0]
+        state.customHeight.value = parts[1]
     }
 
 
@@ -2014,22 +2010,18 @@ class ShortcutSettingsComposeDialog private constructor(
         val entries = state.screenSizeEntries.value
         val selectedIdx = state.selectedScreenSize.intValue
         if (selectedIdx !in entries.indices) return Container.DEFAULT_SCREEN_SIZE
-
-        val selectedValue = entries[selectedIdx]
-        return if (selectedValue.equals("custom", ignoreCase = true)) {
-            val w = state.customWidth.value.trim()
-            val h = state.customHeight.value.trim()
-            if (w.matches(Regex("[0-9]+")) && h.matches(Regex("[0-9]+"))) {
-                // Ensure even numbers
-                val width = (w.toInt() / 2) * 2
-                val height = (h.toInt() / 2) * 2
-                "${width}x${height}"
-            } else {
-                Container.DEFAULT_SCREEN_SIZE
+        if (selectedIdx == 0) {
+            val width = state.customWidth.value.trim().toIntOrNull()
+            val height = state.customHeight.value.trim().toIntOrNull()
+            if (width == null || height == null || width <= 0 || height <= 0) {
+                return Container.DEFAULT_SCREEN_SIZE
             }
-        } else {
-            StringUtils.parseIdentifier(selectedValue)
+            return ScreenSizes.format(width, height)
         }
+        return ScreenSizes.sanitize(
+            StringUtils.parseIdentifier(entries[selectedIdx]),
+            Container.DEFAULT_SCREEN_SIZE
+        )
     }
 
     private fun buildWinComponentsString(): String {

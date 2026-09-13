@@ -99,6 +99,7 @@ import com.winlator.cmod.shared.ui.dialog.PreloaderDialog;
 import com.winlator.cmod.runtime.system.ProcessHelper;
 import com.winlator.cmod.runtime.system.SessionKeepAliveService;
 import com.winlator.cmod.shared.android.RefreshRateUtils;
+import com.winlator.cmod.shared.android.ScreenSizes;
 import com.winlator.cmod.shared.util.StringUtils;
 import com.winlator.cmod.shared.io.TarCompressorUtils;
 import com.winlator.cmod.runtime.display.renderer.EffectComposer;
@@ -2391,6 +2392,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         inputControlsManager = new InputControlsManager(this);
         gestureProfileManager = new GestureProfileManager(this);
+        String sanitizedScreenSize = ScreenSizes.sanitize(screenSize, Container.DEFAULT_SCREEN_SIZE);
+        if (!sanitizedScreenSize.equals(screenSize)) {
+            Log.w("XServerDisplayActivity", "Unusable screen size '" + screenSize +
+                    "', falling back to '" + sanitizedScreenSize + "'");
+            screenSize = sanitizedScreenSize;
+        }
         sgsrBaseScreenSize = screenSize;
         String effectiveScreenSize =
                 SGSRResolutionUtils.applyRenderScale(screenSize, sgsrEnabled, sgsrUpscaleMode);
