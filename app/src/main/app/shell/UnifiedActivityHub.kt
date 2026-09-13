@@ -76,6 +76,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -266,6 +267,8 @@ import kotlin.math.roundToInt
 private val StoreTabKeys = setOf("steam", "epic", "gog", "itch")
 private val HeaderCollapseTriggerDistance = 24.dp
 private const val HeaderRevealFraction = 0.5f
+private val TabLabelAutoSize =
+    TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.sp, stepSize = 0.5.sp)
 
 @Composable
 internal fun UnifiedActivity.UnifiedHub() {
@@ -1612,9 +1615,10 @@ internal fun UnifiedActivity.TopBar(
                                 ) {
                                     Text(
                                         text = tab.label.uppercase(),
+                                        modifier = Modifier.padding(horizontal = 6.dp),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 13.sp,
+                                        autoSize = TabLabelAutoSize,
                                         maxLines = 1,
                                         color = textColor,
                                     )

@@ -28,26 +28,10 @@
         <item>1600x900 (16:9)</item>
         <item>1920x1080 (16:9)</item>
     </string-array>
-    <string-array name="wrapper_graphics_driver_version_entries">
-        <item>System</item>
-    </string-array>
     <string-array name="binding_type_entries">
         <item>Tastatur</item>
         <item>Mus</item>
         <item>Gamepad</item>
-    </string-array>
-    <string-array name="ddrawrapper_entries">
-        <item>CnC-DDraw</item>
-        <item>Dd7To9</item>
-        <item>ddraw-4.21</item>
-        <item>ddraw-11.8</item>
-        <item>Ingen</item>
-    </string-array>
-    <string-array name="dxvk_version_entries">
-        <item>Ingen</item>
-    </string-array>
-    <string-array name="vkd3d_version_entries">
-        <item>Ingen</item>
     </string-array>
     <string-array name="device_memory_entries">
         <item>0 (Standard)</item>
