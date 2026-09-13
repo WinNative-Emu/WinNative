@@ -14,6 +14,11 @@ pub const DEPOT_FILE_FLAG_EXECUTABLE: u32 = 32;
 pub const DEPOT_FILE_FLAG_DIRECTORY: u32 = 64;
 pub const DEPOT_FILE_FLAG_SYMLINK: u32 = 512;
 pub const MAX_CHUNK_ATTEMPTS: u32 = 5;
+const RESIZE_BUFFER_BYTES: usize = 256 * 1024;
+const ERRNO_EPERM: i32 = 1;
+const ERRNO_EACCES: i32 = 13;
+const ERRNO_ENOSYS: i32 = 38;
+const ERRNO_EOPNOTSUPP: i32 = 95;
 pub const SLOW_CHUNK_ROTATE_THRESHOLD_SECS: u64 = 8;
 pub const SLOW_CHUNK_ROTATE_CONSECUTIVE_LIMIT: u32 = 3;
 
@@ -646,14 +651,105 @@ pub fn sync_file(path: impl AsRef<Path>) -> bool {
 
 pub fn finalize_regular_file(path: impl AsRef<Path>, size: u64) -> Result<(), String> {
     let path = path.as_ref();
+    let current = fs::metadata(path)
+        .map_err(|err| format!("write_depot: final stat '{}': {err}", path.display()))?
+        .len();
+    if current != size {
+        resize_regular_file(path, current, size)?;
+    }
+    OpenOptions::new()
+        .write(true)
+        .open(path)
+        .and_then(|file| file.sync_all())
+        .map_err(|err| format!("write_depot: final sync '{}': {err}", path.display()))
+}
+
+fn resize_regular_file(path: &Path, current: u64, size: u64) -> Result<(), String> {
     let file = OpenOptions::new()
         .write(true)
         .open(path)
         .map_err(|err| format!("write_depot: final open '{}': {err}", path.display()))?;
-    file.set_len(size)
-        .map_err(|err| format!("write_depot: final truncate '{}': {err}", path.display()))?;
-    file.sync_all()
-        .map_err(|err| format!("write_depot: final sync '{}': {err}", path.display()))
+    match file.set_len(size) {
+        Ok(()) => Ok(()),
+        Err(err) if metadata_op_unsupported(&err) => {
+            drop(file);
+            if size > current {
+                extend_with_zeros(path, current, size)
+            } else {
+                shrink_by_rewrite(path, size)
+            }
+        }
+        Err(err) => Err(format!(
+            "write_depot: final truncate '{}': {err}",
+            path.display()
+        )),
+    }
+}
+
+fn extend_with_zeros(path: &Path, current: u64, size: u64) -> Result<(), String> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .open(path)
+        .map_err(|err| format!("write_depot: extend open '{}': {err}", path.display()))?;
+    file.seek(SeekFrom::Start(current))
+        .map_err(|err| format!("write_depot: extend seek '{}': {err}", path.display()))?;
+    let mut remaining = size - current;
+    let zeros = vec![0u8; RESIZE_BUFFER_BYTES.min(remaining as usize)];
+    while remaining > 0 {
+        let step = (zeros.len() as u64).min(remaining) as usize;
+        file.write_all(&zeros[..step])
+            .map_err(|err| format!("write_depot: extend write '{}': {err}", path.display()))?;
+        remaining -= step as u64;
+    }
+    Ok(())
+}
+
+fn shrink_by_rewrite(path: &Path, size: u64) -> Result<(), String> {
+    let temp = shrink_temp_path(path);
+    let result = copy_prefix(path, &temp, size);
+    if result.is_err() {
+        let _ = fs::remove_file(&temp);
+        return result;
+    }
+    fs::rename(&temp, path).map_err(|err| {
+        let _ = fs::remove_file(&temp);
+        format!("write_depot: shrink rename '{}': {err}", path.display())
+    })
+}
+
+fn copy_prefix(path: &Path, temp: &Path, size: u64) -> Result<(), String> {
+    let mut source = File::open(path)
+        .map_err(|err| format!("write_depot: shrink open '{}': {err}", path.display()))?;
+    let mut target = File::create(temp)
+        .map_err(|err| format!("write_depot: shrink create '{}': {err}", temp.display()))?;
+    let mut remaining = size;
+    let mut buffer = vec![0u8; RESIZE_BUFFER_BYTES];
+    while remaining > 0 {
+        let step = (buffer.len() as u64).min(remaining) as usize;
+        source
+            .read_exact(&mut buffer[..step])
+            .map_err(|err| format!("write_depot: shrink read '{}': {err}", path.display()))?;
+        target
+            .write_all(&buffer[..step])
+            .map_err(|err| format!("write_depot: shrink write '{}': {err}", temp.display()))?;
+        remaining -= step as u64;
+    }
+    target
+        .sync_all()
+        .map_err(|err| format!("write_depot: shrink sync '{}': {err}", temp.display()))
+}
+
+fn shrink_temp_path(path: &Path) -> std::path::PathBuf {
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(".wnresize");
+    path.with_file_name(name)
+}
+
+fn metadata_op_unsupported(err: &std::io::Error) -> bool {
+    matches!(
+        err.raw_os_error(),
+        Some(ERRNO_EPERM) | Some(ERRNO_EACCES) | Some(ERRNO_ENOSYS) | Some(ERRNO_EOPNOTSUPP)
+    )
 }
 
 fn join_target_path(target_dir: &str, rel: &str) -> String {
@@ -715,8 +811,11 @@ fn create_platform_symlink(target: &str, path: &Path) -> std::io::Result<()> {
 fn set_file_mode(path: &Path, mode: u32) -> Result<(), String> {
     use std::os::unix::fs::PermissionsExt;
     let permissions = fs::Permissions::from_mode(mode);
-    fs::set_permissions(path, permissions)
-        .map_err(|err| format!("write_depot: chmod '{}': {err}", path.display()))
+    match fs::set_permissions(path, permissions) {
+        Ok(()) => Ok(()),
+        Err(err) if metadata_op_unsupported(&err) => Ok(()),
+        Err(err) => Err(format!("write_depot: chmod '{}': {err}", path.display())),
+    }
 }
 
 #[cfg(not(unix))]
@@ -729,6 +828,81 @@ mod tests {
     use super::*;
     use crate::crypto::{aes256_cbc_encrypt, aes256_ecb_encrypt_block, AES_BLOCK_BYTES};
     use std::path::PathBuf;
+
+    #[test]
+    fn finalize_leaves_matching_file_untouched() {
+        let dir = temp_dir("depot_writer_finalize_match");
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("exact.bin");
+        fs::write(&path, b"abcdef").unwrap();
+        finalize_regular_file(&path, 6).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), b"abcdef");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn extend_with_zeros_grows_file_without_truncate() {
+        let dir = temp_dir("depot_writer_extend");
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("grow.bin");
+        fs::write(&path, b"abc").unwrap();
+        extend_with_zeros(&path, 3, 6).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), b"abc\0\0\0");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn shrink_by_rewrite_keeps_prefix_and_removes_temp() {
+        let dir = temp_dir("depot_writer_shrink");
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("shrink.bin");
+        fs::write(&path, b"abcdef").unwrap();
+        shrink_by_rewrite(&path, 3).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), b"abc");
+        assert!(!shrink_temp_path(&path).exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unsupported_metadata_errors_are_classified() {
+        use std::io::{Error, ErrorKind};
+        assert!(metadata_op_unsupported(&Error::from_raw_os_error(
+            ERRNO_EPERM
+        )));
+        assert!(metadata_op_unsupported(&Error::from_raw_os_error(
+            ERRNO_EOPNOTSUPP
+        )));
+        assert!(!metadata_op_unsupported(&Error::from_raw_os_error(28)));
+        assert!(!metadata_op_unsupported(&Error::new(ErrorKind::Other, "x")));
+    }
+
+    #[test]
+    fn finalize_survives_filesystem_that_rejects_truncate() {
+        let dir = temp_dir("depot_writer_no_truncate");
+        fs::create_dir_all(&dir).unwrap();
+
+        let same = dir.join("same.bin");
+        fs::write(&same, b"abcdef").unwrap();
+        finalize_regular_file(&same, 6).unwrap();
+        assert_eq!(fs::read(&same).unwrap(), b"abcdef");
+
+        let grow = dir.join("grow.bin");
+        fs::write(&grow, b"abc").unwrap();
+        finalize_regular_file(&grow, 6).unwrap();
+        assert_eq!(fs::read(&grow).unwrap(), b"abc\0\0\0");
+
+        let shrink = dir.join("shrink.bin");
+        fs::write(&shrink, b"abcdef").unwrap();
+        finalize_regular_file(&shrink, 2).unwrap();
+        assert_eq!(fs::read(&shrink).unwrap(), b"ab");
+
+        let empty = dir.join("empty.bin");
+        fs::write(&empty, b"").unwrap();
+        finalize_regular_file(&empty, 0).unwrap();
+        assert_eq!(fs::metadata(&empty).unwrap().len(), 0);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn depot_adler_uses_steam_zero_seed() {
