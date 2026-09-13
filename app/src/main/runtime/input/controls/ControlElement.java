@@ -4105,7 +4105,21 @@ return boundingBox;
 
   public boolean handleTouchUp(int pointerId, float x, float y) {
     if (pointerId != currentPointerId) return false;
+    releaseTouchState(x, y);
+    return true;
+  }
 
+  public int getCurrentPointerId() {
+    return currentPointerId;
+  }
+
+  public boolean forceRelease() {
+    if (currentPointerId == -1) return false;
+    releaseTouchState(0, 0);
+    return true;
+  }
+
+  private void releaseTouchState(float x, float y) {
     if (type == Type.BUTTON) {
       if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
         long held = System.currentTimeMillis() - (long) touchTime;
@@ -4176,7 +4190,6 @@ return boundingBox;
     }
 
     currentPointerId = -1;
-    return true;
   }
 
   private int getRadialBindingIndexAt(float x, float y) {

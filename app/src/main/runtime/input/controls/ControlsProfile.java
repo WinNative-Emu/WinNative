@@ -83,6 +83,10 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     return gamepadState;
   }
 
+  public void resetGamepadState() {
+    if (gamepadState != null) gamepadState.clear();
+  }
+
   public ExternalController addController(String id) {
     ExternalController controller = getController(id);
     if (controller == null) {

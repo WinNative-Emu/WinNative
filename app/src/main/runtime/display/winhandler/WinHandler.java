@@ -736,24 +736,20 @@ public class WinHandler {
 
   private void writeVirtualGamepadState(boolean applyGyroOverlay, boolean allowHiddenControls) {
     ControlsProfile profile = this.activity.getInputControlsView().getProfile();
-    if (profile == null) {
-      return;
-    }
-    GamepadState gamepadState = profile.getGamepadState();
     boolean useVirtualGamepad =
-        profile.isVirtualGamepad()
+        profile != null
+            && profile.isVirtualGamepad()
             && (allowHiddenControls || this.activity.getInputControlsView().isShowTouchscreenControls());
     if (useVirtualGamepad) {
       int slot = assignSlot(-1);
       if (slot >= 0 && this.writers[slot] != null) {
         try {
           this.writers[slot].writeGamepadState(
-              getOutputGamepadState(gamepadState, applyGyroOverlay));
+              getOutputGamepadState(profile.getGamepadState(), applyGyroOverlay));
         } catch (IOException ignored) {
         }
         return;
       }
-      return;
     }
     releaseSlot(-1);
   }
