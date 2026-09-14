@@ -1,7 +1,6 @@
 package com.winlator.cmod.runtime.input.controls;
 
 import android.util.Log;
-import androidx.core.app.NotificationCompat;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -33,7 +32,8 @@ public class FakeInputWriter {
   private static final int RING_GENERATION_OFFSET = 24;
   // Authoritative absolute-state snapshot the native reader replays as a full
   // keyframe to heal any delta-stream desync. Written under a seqlock
-  // (RING_SNAPSHOT_SEQ_OFFSET: odd = write in progress).
+  // (RING_SNAPSHOT_SEQ_OFFSET: odd = write in progress). The same sequence
+  // protects event bytes, write_seq, generation and resync as one publication.
   private static final int RING_SNAPSHOT_SEQ_OFFSET = 32;
   private static final int RING_SNAPSHOT_BUTTONS_OFFSET = 40;
   private static final int RING_SNAPSHOT_AXES_OFFSET = 44; // short[8]
@@ -87,13 +87,12 @@ public class FakeInputWriter {
   // must re-emit the whole state once; otherwise an unchanged control would stay
   // silent and the ring snapshot would never catch up.
   private boolean pendingFullResend = false;
-  private boolean publishedStateNeutral = true;
   private boolean forceResend = false;
   private final ByteBuffer buffer = ByteBuffer.allocateDirect(BUFFER_SIZE);
 
   public FakeInputWriter(String fakeInputPath, int slot) {
     this.slot = slot;
-    this.eventFile = new File(fakeInputPath, NotificationCompat.CATEGORY_EVENT + slot);
+    this.eventFile = new File(fakeInputPath, "event" + slot);
     this.buffer.order(ByteOrder.LITTLE_ENDIAN);
   }
 
@@ -190,23 +189,25 @@ public class FakeInputWriter {
     if (ringSlot == null) {
       return;
     }
-    ringSlot.data = null;
-    if (ringSlot.ringChannel != null) {
-      try {
-        ringSlot.ringChannel.close();
-      } catch (IOException ignored) {
+    synchronized (ringSlot) {
+      ringSlot.data = null;
+      if (ringSlot.ringChannel != null) {
+        try {
+          ringSlot.ringChannel.close();
+        } catch (IOException ignored) {
+        }
+        ringSlot.ringChannel = null;
       }
-      ringSlot.ringChannel = null;
-    }
-    if (ringSlot.ringRaf != null) {
-      try {
-        ringSlot.ringRaf.close();
-      } catch (IOException ignored) {
+      if (ringSlot.ringRaf != null) {
+        try {
+          ringSlot.ringRaf.close();
+        } catch (IOException ignored) {
+        }
+        ringSlot.ringRaf = null;
       }
-      ringSlot.ringRaf = null;
-    }
-    if (ringSlot.ringFile != null && ringSlot.ringFile.exists()) {
-      ringSlot.ringFile.delete();
+      if (ringSlot.ringFile != null && ringSlot.ringFile.exists()) {
+        ringSlot.ringFile.delete();
+      }
     }
     RING_SLOTS[slot] = null;
   }
@@ -294,19 +295,22 @@ public class FakeInputWriter {
 
   private boolean activateRingSlot() {
     RingSlot ringSlot = ensureRingSlot();
-    if (ringSlot == null || ringSlot.data == null) {
+    if (ringSlot == null) {
       return false;
     }
     synchronized (ringSlot) {
+      if (ringSlot.data == null) return false;
       if (!ringSlot.active) {
         if (ringSlot.everActivated) {
           ringSlot.generation++;
         } else {
           ringSlot.everActivated = true;
         }
+        long sequence = beginPublication(ringSlot.data);
         ringSlot.data.putLong(RING_WRITE_SEQ_OFFSET, 0L);
         clearSnapshotLocked(ringSlot.data);
         ringSlot.data.putLong(RING_GENERATION_OFFSET, ringSlot.generation);
+        endPublication(ringSlot.data, sequence);
         ringSlot.active = true;
         Log.d(
             TAG,
@@ -328,9 +332,11 @@ public class FakeInputWriter {
     synchronized (ringSlot) {
       if (ringSlot.active && ringSlot.data != null) {
         ringSlot.generation++;
+        long sequence = beginPublication(ringSlot.data);
         ringSlot.data.putLong(RING_WRITE_SEQ_OFFSET, 0L);
         clearSnapshotLocked(ringSlot.data);
         ringSlot.data.putLong(RING_GENERATION_OFFSET, ringSlot.generation);
+        endPublication(ringSlot.data, sequence);
         Log.i(
             TAG,
             "Deactivated fake input ring for slot "
@@ -344,7 +350,7 @@ public class FakeInputWriter {
 
   private boolean flushBufferToRing() {
     RingSlot ringSlot = ensureRingSlot();
-    if (ringSlot == null || ringSlot.data == null) {
+    if (ringSlot == null) {
       return false;
     }
 
@@ -353,6 +359,8 @@ public class FakeInputWriter {
     ByteBuffer source = this.buffer.duplicate();
     synchronized (ringSlot) {
       ByteBuffer ring = ringSlot.data;
+      if (ring == null) return false;
+      long sequence = beginPublication(ring);
       long writeSeq = ring.getLong(RING_WRITE_SEQ_OFFSET);
       int sourceLimit = source.limit();
       while (source.remaining() >= EVENT_SIZE) {
@@ -372,15 +380,17 @@ public class FakeInputWriter {
       // Publish the resulting absolute state. prev* now hold the post-update
       // values, i.e. exactly the state the events just written transition to.
       writeSnapshotLocked(ring);
-      nativeStoreFence();
       ring.putLong(RING_WRITE_SEQ_OFFSET, writeSeq);
+      if (this.forceResend) {
+        ring.putInt(RING_RESYNC_SEQ_OFFSET, ring.getInt(RING_RESYNC_SEQ_OFFSET) + 1);
+      }
+      endPublication(ring, sequence);
     }
     return true;
   }
 
-  // Publishes the full absolute controller state for the native reader to replay
-  // as a keyframe. seqlock: bump to odd, write fields, bump to even, with
-  // store-store fences so the reader's acquire loads see consistent payloads.
+  // Called inside the event publication so this state and its write cursor
+  // always describe the same frame.
   private void writeSnapshotLocked(ByteBuffer ring) {
     int buttons = 0;
     for (int i = 0; i < BUTTON_MAP.length; i++) {
@@ -388,9 +398,6 @@ public class FakeInputWriter {
         buttons |= (1 << i);
       }
     }
-    long seq = ring.getLong(RING_SNAPSHOT_SEQ_OFFSET);
-    ring.putLong(RING_SNAPSHOT_SEQ_OFFSET, seq + 1); // odd: write in progress
-    nativeStoreFence();
     ring.putInt(RING_SNAPSHOT_BUTTONS_OFFSET, buttons);
     // Axis order must match the native kSnapshotAxisCodes:
     // X, Y, RX, RY, GAS(=triggerR), BRAKE(=triggerL), HAT0X, HAT0Y.
@@ -402,8 +409,6 @@ public class FakeInputWriter {
     ring.putShort(RING_SNAPSHOT_AXES_OFFSET + 10, clampShort(this.prevTriggerL));
     ring.putShort(RING_SNAPSHOT_AXES_OFFSET + 12, clampShort(this.prevHatX));
     ring.putShort(RING_SNAPSHOT_AXES_OFFSET + 14, clampShort(this.prevHatY));
-    nativeStoreFence();
-    ring.putLong(RING_SNAPSHOT_SEQ_OFFSET, seq + 2); // even: write complete
   }
 
   private static short clampShort(int value) {
@@ -417,15 +422,22 @@ public class FakeInputWriter {
   }
 
   private static void clearSnapshotLocked(ByteBuffer ring) {
-    long seq = ring.getLong(RING_SNAPSHOT_SEQ_OFFSET);
-    ring.putLong(RING_SNAPSHOT_SEQ_OFFSET, seq + 1);
-    nativeStoreFence();
     ring.putInt(RING_SNAPSHOT_BUTTONS_OFFSET, 0);
     for (int i = 0; i < 8; i++) {
       ring.putShort(RING_SNAPSHOT_AXES_OFFSET + (i * 2), (short) 0);
     }
+  }
+
+  private static long beginPublication(ByteBuffer ring) {
+    long sequence = ring.getLong(RING_SNAPSHOT_SEQ_OFFSET);
+    ring.putLong(RING_SNAPSHOT_SEQ_OFFSET, sequence + 1);
     nativeStoreFence();
-    ring.putLong(RING_SNAPSHOT_SEQ_OFFSET, seq + 2);
+    return sequence;
+  }
+
+  private static void endPublication(ByteBuffer ring, long sequence) {
+    nativeStoreFence();
+    ring.putLong(RING_SNAPSHOT_SEQ_OFFSET, sequence + 2);
   }
 
   private boolean flushBuffer() {
@@ -467,75 +479,50 @@ public class FakeInputWriter {
 
   public synchronized void requestFullResend() {
     this.pendingFullResend = true;
-    requestRingResync();
-  }
-
-  private void requestRingResync() {
-    RingSlot ringSlot = ensureRingSlot();
-    if (ringSlot == null || ringSlot.data == null) {
-      return;
-    }
-    synchronized (ringSlot) {
-      ByteBuffer ring = ringSlot.data;
-      nativeStoreFence();
-      ring.putInt(RING_RESYNC_SEQ_OFFSET, ring.getInt(RING_RESYNC_SEQ_OFFSET) + 1);
-    }
-  }
-
-  private boolean isPublishedStateNeutral() {
-    for (int i = 0; i < BUTTON_MAP.length; i++) {
-      if (this.prevButtonStates[i]) return false;
-    }
-    return this.prevThumbLX == 0
-        && this.prevThumbLY == 0
-        && this.prevThumbRX == 0
-        && this.prevThumbRY == 0
-        && this.prevTriggerL == 0
-        && this.prevTriggerR == 0
-        && this.prevHatX == 0
-        && this.prevHatY == 0;
   }
 
   public synchronized void reset() {
     if (this.isOpen || open()) {
+      this.forceResend = this.pendingFullResend;
+      this.pendingFullResend = false;
       this.buffer.clear();
       this.hasChanges = false;
       for (int i = 0; i < BUTTON_MAP.length; i++) {
-        if (this.prevButtonStates[i]) {
+        if (this.forceResend || this.prevButtonStates[i]) {
           this.prevButtonStates[i] = false;
           writeEvent((short) 4, (short) 4, BUTTON_MAP[i]);
           writeEvent((short) 1, BUTTON_MAP[i], 0);
         }
       }
-      if (this.prevThumbLX != 0) {
+      if (this.forceResend || this.prevThumbLX != 0) {
         this.prevThumbLX = 0;
         writeEvent((short) 3, (short) 0, 0);
       }
-      if (this.prevThumbLY != 0) {
+      if (this.forceResend || this.prevThumbLY != 0) {
         this.prevThumbLY = 0;
         writeEvent((short) 3, (short) 1, 0);
       }
-      if (this.prevThumbRX != 0) {
+      if (this.forceResend || this.prevThumbRX != 0) {
         this.prevThumbRX = 0;
         writeEvent((short) 3, (short) 3, 0);
       }
-      if (this.prevThumbRY != 0) {
+      if (this.forceResend || this.prevThumbRY != 0) {
         this.prevThumbRY = 0;
         writeEvent((short) 3, (short) 4, 0);
       }
-      if (this.prevTriggerL != 0) {
+      if (this.forceResend || this.prevTriggerL != 0) {
         this.prevTriggerL = 0;
         writeEvent((short) 3, (short) 10, 0);
       }
-      if (this.prevTriggerR != 0) {
+      if (this.forceResend || this.prevTriggerR != 0) {
         this.prevTriggerR = 0;
         writeEvent((short) 3, (short) 9, 0);
       }
-      if (this.prevHatX != 0) {
+      if (this.forceResend || this.prevHatX != 0) {
         this.prevHatX = 0;
         writeEvent((short) 3, (short) 16, 0);
       }
-      if (this.prevHatY != 0) {
+      if (this.forceResend || this.prevHatY != 0) {
         this.prevHatY = 0;
         writeEvent((short) 3, (short) 17, 0);
       }
@@ -546,6 +533,7 @@ public class FakeInputWriter {
           Log.e(TAG, "Reset write error: fake input mmap ring unavailable");
           this.pendingFullResend = true;
         }
+        this.forceResend = false;
         Log.i(TAG, "Reset fake input to neutral state: " + this.eventFile.getAbsolutePath());
         return;
       }
@@ -598,14 +586,6 @@ public class FakeInputWriter {
     writeEvent((short) 1, BUTTON_MAP[i], z ? 1 : 0);
   }
 
-  private void writeAxis(short code, int value, int[] prevRef, int index) {
-    if (prevRef[index] == value) {
-      return;
-    }
-    prevRef[index] = value;
-    writeEvent((short) 3, code, value);
-  }
-
   public synchronized void writeGamepadState(GamepadState state) throws IOException {
     int hatX;
     if (!this.isOpen && !open()) {
@@ -617,7 +597,7 @@ public class FakeInputWriter {
     this.forceResend = this.pendingFullResend;
     this.pendingFullResend = false;
     if (this.forceResend) {
-      Log.d(TAG, "Re-emitting full gamepad state after failed publish for slot " + this.slot);
+      Log.d(TAG, "Publishing full gamepad state for slot " + this.slot);
     }
     this.buffer.clear();
     this.hasChanges = false;
@@ -685,11 +665,6 @@ public class FakeInputWriter {
         // Couldn't publish; re-assert the whole state on the next frame.
         this.pendingFullResend = true;
       }
-      boolean neutral = isPublishedStateNeutral();
-      if (neutral && !this.publishedStateNeutral) {
-        requestRingResync();
-      }
-      this.publishedStateNeutral = neutral;
     }
     this.forceResend = false;
   }

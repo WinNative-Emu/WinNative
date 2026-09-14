@@ -17,6 +17,7 @@
 #include <linux/input.h>
 #include <linux/joystick.h>
 #include <poll.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -88,6 +89,13 @@ struct FakeController {
   uint64_t generation = 0;
   uint32_t resync_seq = 0;
   size_t mapping_size = 0;
+  bool closed = false;
+  bool needs_keyframe = true;
+
+  ~FakeController() {
+    if (ring) munmap(ring, mapping_size);
+    free(event);
+  }
   // Pending keyframe (full absolute-state baseline) currently streaming to the
   // guest. The axis/button values are captured from the snapshot when the
   // keyframe starts so the frame stays consistent across multi-read delivery.
@@ -126,34 +134,13 @@ static const uint16_t kSnapshotButtons[10] = {
     BTN_A,  BTN_B,      BTN_X,     BTN_Y,      BTN_TL,
     BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR};
 
-static std::unordered_map<int, FakeController> controller_map;
+static std::unordered_map<int, std::shared_ptr<FakeController>> controller_map;
 static std::unordered_map<int, std::string> ring_paths;
 static std::recursive_mutex controller_mutex;
 static bool ring_paths_loaded = false;
-static bool initialized = false;
 static const char *hook_dir = nullptr;
 static const char *udev_data_dir = nullptr;
 static bool vibration_enabled = true;
-volatile sig_atomic_t stop_flag = 0;
-
-static int (*my_open)(const char *, int, ...) = nullptr;
-static int (*my_openat)(int, const char *, int, ...) = nullptr;
-static int (*my_stat)(const char *, struct stat *) = nullptr;
-static int (*my_fstat)(int fd, struct stat *buf) = nullptr;
-static int (*my_access)(const char *, int) = nullptr;
-static int (*my_faccessat)(int, const char *, int, int) = nullptr;
-static int (*my_scandir)(const char *, struct dirent ***,
-                         int (*)(const struct dirent *),
-                         int (*)(const struct dirent **,
-                                 const struct dirent **));
-static int (*my_inotify_add_watch)(int, const char *, uint32_t);
-static int (*my_close)(int);
-static int (*my_poll)(struct pollfd *, nfds_t, int) = nullptr;
-static int (*my_ppoll)(struct pollfd *, nfds_t, const struct timespec *,
-                       const sigset_t *) = nullptr;
-static int (*my_select)(int, fd_set *, fd_set *, fd_set *,
-                        struct timeval *) = nullptr;
-static ssize_t (*my_write)(int, const void *, size_t) = nullptr;
 
 static std::unordered_map<int, struct ff_effect> ff_effects;
 static int next_ff_id = 0;
@@ -178,18 +165,6 @@ void log(const char *message, ...) {
 }
 } // namespace Logger
 
-void handle_sigint(int sig) {
-  (void)sig;
-  stop_flag = 1;
-}
-
-void setup_signal_handler() {
-  if (!initialized) {
-    signal(SIGINT, handle_sigint);
-    initialized = true;
-  }
-}
-
 __attribute__((constructor)) static void library_init() {
   if (!hook_dir)
     hook_dir = getenv("FAKE_EVDEV_DIR")
@@ -207,7 +182,10 @@ send_vibration(int strong, int weak, uint16_t duration_ms, uint16_t slot) {
   if (!vibration_enabled)
     return;
 
-  int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  // Rumble is best effort. A full Android listener backlog must never park
+  // winebus (or every input hook through controller_mutex), and a closing
+  // listener must not terminate the guest with SIGPIPE.
+  int sock = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
   if (sock < 0)
     return;
 
@@ -227,7 +205,7 @@ send_vibration(int strong, int weak, uint16_t duration_ms, uint16_t slot) {
   data[1] = static_cast<uint16_t>(weak);
   data[2] = duration_ms;
   data[3] = slot;
-  send(sock, data, sizeof(data), 0);
+  send(sock, data, sizeof(data), MSG_DONTWAIT | MSG_NOSIGNAL);
   syscall(SYS_close, sock);
 }
 
@@ -349,13 +327,15 @@ __attribute__((visibility("hidden"))) static void load_ring_paths() {
   }
 
   free(copy);
+  ring_paths_loaded = true;
 }
 
-__attribute__((visibility("hidden"))) static const char *
+__attribute__((visibility("hidden"))) static std::string
 get_ring_path_for_slot(int slot) {
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
   load_ring_paths();
   auto it = ring_paths.find(slot);
-  return it == ring_paths.end() ? nullptr : it->second.c_str();
+  return it == ring_paths.end() ? std::string() : it->second;
 }
 
 __attribute__((visibility("hidden"))) static uint64_t
@@ -382,60 +362,47 @@ ring_header_is_valid(const FakeInputRingHeader *ring) {
 }
 
 struct SnapshotState {
+  uint64_t sequence = 0;
+  uint64_t write_seq = 0;
+  uint64_t generation = 0;
+  uint32_t resync_seq = 0;
   uint32_t buttons = 0;
-  int32_t axes[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  int32_t axes[8] = {};
 };
 
 static long long monotonic_ms();
 
-// Read the authoritative absolute-state snapshot using the writer's seqlock.
-// Retries on a torn read (snapshot_seq odd or changed mid-read); after a few
-// failed attempts returns the neutral baseline rather than spinning. This
-// mirrors the publication model already used for write_seq.
-__attribute__((visibility("hidden"))) static SnapshotState
-read_snapshot(const FakeInputRingHeader *ring) {
-  SnapshotState out;
+// The writer protects the events, cursor and snapshot in one publication.
+// A busy writer is retried later; inventing a neutral state would lose holds.
+__attribute__((visibility("hidden"))) static bool
+read_snapshot(const FakeInputRingHeader *ring, SnapshotState &out) {
   for (int attempt = 0; attempt < 8; attempt++) {
-    uint64_t s1 = __atomic_load_n(&ring->snapshot_seq, __ATOMIC_ACQUIRE);
-    if (s1 & 1ULL)
-      continue; // a write is in progress
-    uint32_t buttons = ring->snapshot_buttons;
-    int16_t axes[8];
+    uint64_t sequence = __atomic_load_n(&ring->snapshot_seq, __ATOMIC_ACQUIRE);
+    if (sequence & 1ULL) continue;
+    out.sequence = sequence;
+    out.write_seq = ring_write_seq(ring);
+    out.generation = ring_generation(ring);
+    out.resync_seq = ring_resync_seq(ring);
+    out.buttons = __atomic_load_n(&ring->snapshot_buttons, __ATOMIC_RELAXED);
     for (int i = 0; i < 8; i++)
-      axes[i] = ring->snapshot_axes[i];
+      out.axes[i] = __atomic_load_n(&ring->snapshot_axes[i], __ATOMIC_RELAXED);
     __atomic_thread_fence(__ATOMIC_ACQUIRE);
-    uint64_t s2 = __atomic_load_n(&ring->snapshot_seq, __ATOMIC_RELAXED);
-    if (s1 == s2) {
-      out.buttons = buttons;
-      for (int i = 0; i < 8; i++)
-        out.axes[i] = axes[i]; // sign-extend to int32 for the event value
-      return out;
-    }
+    if (sequence == __atomic_load_n(&ring->snapshot_seq, __ATOMIC_RELAXED))
+      return true;
   }
-  return out;
+  return false;
 }
 
-// Capture the current absolute state into the controller so it can be streamed
-// as a keyframe independently of the ring. Idempotent w.r.t. an in-flight
-// keyframe: callers guard on keyframe_remaining == 0 so a partially delivered
-// frame is never restarted mid-stream.
+// This baseline supersedes all deltas through its cursor. Replaying older
+// deltas after it can reassert a control that the snapshot already released.
 __attribute__((visibility("hidden"))) static void
-capture_keyframe(FakeController &fake, const char *reason, int fd) {
-  SnapshotState snap = read_snapshot(fake.ring);
+capture_keyframe(FakeController &fake, const SnapshotState &snap) {
   fake.keyframe_buttons = snap.buttons;
-  for (int i = 0; i < 8; i++)
-    fake.keyframe_axes[i] = snap.axes[i];
+  for (int i = 0; i < 8; i++) fake.keyframe_axes[i] = snap.axes[i];
   fake.keyframe_remaining = kNeutralEventCount;
-  Logger::log("Fake input keyframe reason=%s fd=%d slot=%d read_seq=%llu "
-              "write_seq=%llu buttons=0x%03x axes=[%d,%d,%d,%d,%d,%d,%d,%d]\n",
-              reason ? reason : "unknown", fd, fake.slot,
-              static_cast<unsigned long long>(fake.read_seq),
-              static_cast<unsigned long long>(ring_write_seq(fake.ring)),
-              fake.keyframe_buttons, fake.keyframe_axes[0],
-              fake.keyframe_axes[1], fake.keyframe_axes[2],
-              fake.keyframe_axes[3], fake.keyframe_axes[4],
-              fake.keyframe_axes[5], fake.keyframe_axes[6],
-              fake.keyframe_axes[7]);
+  fake.read_seq = snap.write_seq;
+  fake.resync_seq = snap.resync_seq;
+  fake.needs_keyframe = false;
 }
 
 // Resolve the value a keyframe event should carry from the captured snapshot.
@@ -458,16 +425,15 @@ keyframe_value(const FakeController &fake, uint16_t type, uint16_t code) {
 __attribute__((visibility("hidden"))) static int
 open_fake_input_ring(const char *event, int flags) {
   int slot = get_event_number(event);
-  const char *ring_path = get_ring_path_for_slot(slot);
-  if (!ring_path) {
+  std::string ring_path = get_ring_path_for_slot(slot);
+  if (ring_path.empty()) {
     errno = ENODEV;
     return -1;
   }
 
-  if (!my_open)
-    *(void **)&my_open = dlsym(RTLD_NEXT, "open");
+  static auto my_open = reinterpret_cast<int (*)(const char *, int, ...)>(dlsym(RTLD_NEXT, "open"));
 
-  int fd = my_open(ring_path, O_RDWR | (flags & O_NONBLOCK));
+  int fd = my_open(ring_path.c_str(), O_RDWR | (flags & (O_NONBLOCK | O_CLOEXEC)));
   if (fd < 0)
     return -1;
 
@@ -489,17 +455,17 @@ open_fake_input_ring(const char *event, int flags) {
     return -1;
   }
 
-  FakeController controller = {};
-  controller.event = strdup(event);
-  controller.slot = slot;
-  controller.ring = ring;
-  controller.mapping_size = FAKE_INPUT_RING_SIZE;
-  controller.read_seq = ring_write_seq(ring);
-  controller.generation = ring_generation(ring);
-  controller.resync_seq = ring_resync_seq(ring);
-  // Emit the current absolute state as the first frame so a guest that opens
-  // mid-hold (or reopens after a slot hand-off) starts already in sync.
-  capture_keyframe(controller, "open", fd);
+  auto controller = std::make_shared<FakeController>();
+  controller->event = strdup(event);
+  controller->slot = slot;
+  controller->ring = ring;
+  controller->mapping_size = FAKE_INPUT_RING_SIZE;
+  controller->generation = ring_generation(ring);
+  // Establish the cursor at open so taps arriving before the first read stay
+  // queued. If publication is busy, read() will finish establishing it later.
+  SnapshotState snap;
+  if (read_snapshot(ring, snap) && snap.generation == controller->generation)
+    capture_keyframe(*controller, snap);
   {
     std::lock_guard<std::recursive_mutex> guard(controller_mutex);
     controller_map[fd] = controller;
@@ -528,38 +494,39 @@ __attribute__((visibility("hidden"))) static bool fake_fd_is_stale(int fd) {
   std::lock_guard<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   return controller != controller_map.end() &&
-         ring_generation(controller->second.ring) != controller->second.generation;
+         ring_generation(controller->second->ring) != controller->second->generation;
 }
 
-__attribute__((visibility("hidden"))) static bool
-fake_fd_has_unread_data(int fd) {
-  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
-  auto controller = controller_map.find(fd);
-  if (controller == controller_map.end())
-    return false;
-
-  FakeController &fake = controller->second;
+// Caller holds controller_mutex.
+static bool fake_has_unread_data(const FakeController &fake) {
   if (ring_generation(fake.ring) != fake.generation)
     return false;
-  uint32_t resync = ring_resync_seq(fake.ring);
-  if (resync != fake.resync_seq) {
-    fake.resync_seq = resync;
-    if (fake.keyframe_remaining == 0) {
-      capture_keyframe(fake, "resync", fd);
-    }
-  }
-  uint64_t write_seq = ring_write_seq(fake.ring);
-  if (write_seq < fake.read_seq)
-    fake.read_seq = write_seq;
-  if (write_seq - fake.read_seq > FAKE_INPUT_RING_CAPACITY) {
-    fake.read_seq = write_seq - FAKE_INPUT_RING_CAPACITY;
-    if (fake.keyframe_remaining == 0) {
-      capture_keyframe(fake, "overflow", fd);
-    }
-  }
-  // A pending keyframe counts as readable so poll/blocking reads wake to finish
-  // flushing it even after the ring itself has drained.
-  return fake.keyframe_remaining > 0 || write_seq > fake.read_seq;
+  // Readiness never consumes resync requests or changes the read cursor.
+  // Do not spin a nonblocking guest on a producer's unfinished publication.
+  if (fake.keyframe_remaining > 0) return true;
+  uint64_t sequence = __atomic_load_n(&fake.ring->snapshot_seq, __ATOMIC_ACQUIRE);
+  if (sequence & 1ULL) return false;
+  bool ready = fake.needs_keyframe ||
+               ring_resync_seq(fake.ring) != fake.resync_seq ||
+               ring_write_seq(fake.ring) != fake.read_seq;
+  __atomic_thread_fence(__ATOMIC_ACQUIRE);
+  return ready && sequence == __atomic_load_n(&fake.ring->snapshot_seq, __ATOMIC_RELAXED);
+}
+
+static bool fake_fd_has_unread_data(int fd) {
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
+  auto it = controller_map.find(fd);
+  return it != controller_map.end() && fake_has_unread_data(*it->second);
+}
+
+static short fake_poll_revents(const std::shared_ptr<FakeController> &fake, short events) {
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
+  if (fake->closed) return POLLNVAL;
+  if (ring_generation(fake->ring) != fake->generation) return POLLHUP;
+  short ready = events & (POLLOUT | POLLWRNORM);
+  if ((events & (POLLIN | POLLRDNORM)) && fake_has_unread_data(*fake))
+    ready |= events & (POLLIN | POLLRDNORM);
+  return ready;
 }
 
 __attribute__((visibility("hidden"))) static long long
@@ -600,8 +567,7 @@ EXPORT int open(const char *pathname, int flags, ...) {
 
   va_end(va);
 
-  if (!my_open)
-    *(void **)&my_open = dlsym(RTLD_NEXT, "open");
+  static auto my_open = reinterpret_cast<int (*)(const char *, int, ...)>(dlsym(RTLD_NEXT, "open"));
 
   char *fake_path = nullptr;
   const char *event = nullptr;
@@ -664,8 +630,7 @@ EXPORT int openat(int dirfd, const char *pathname, int flags, ...) {
 
   va_end(va);
 
-  if (!my_openat)
-    *(void **)&my_openat = dlsym(RTLD_NEXT, "openat");
+  static auto my_openat = reinterpret_cast<int (*)(int, const char *, int, ...)>(dlsym(RTLD_NEXT, "openat"));
 
   char *fake_path = nullptr;
   const char *event = nullptr;
@@ -713,8 +678,7 @@ EXPORT int openat(int dirfd, const char *pathname, int flags, ...) {
 }
 
 EXPORT int stat(const char *pathname, struct stat *statbuf) {
-  if (!my_stat)
-    *(void **)&my_stat = dlsym(RTLD_NEXT, "stat");
+  static auto my_stat = reinterpret_cast<decltype(&::stat)>(dlsym(RTLD_NEXT, "stat"));
 
   const char *event = nullptr;
   char *fake_path = nullptr;
@@ -754,8 +718,7 @@ EXPORT int stat(const char *pathname, struct stat *statbuf) {
 }
 
 EXPORT int fstat(int fd, struct stat *buf) {
-  if (!my_fstat)
-    *(void **)&my_fstat = dlsym(RTLD_NEXT, "fstat");
+  static auto my_fstat = reinterpret_cast<decltype(&::fstat)>(dlsym(RTLD_NEXT, "fstat"));
 
   int ret = my_fstat(fd, buf);
 
@@ -763,15 +726,14 @@ EXPORT int fstat(int fd, struct stat *buf) {
   auto controller = controller_map.find(fd);
   if (ret == 0 && controller != controller_map.end()) {
     buf->st_mode = (buf->st_mode & ~S_IFMT) | S_IFCHR;
-    buf->st_rdev = get_fake_input_rdev(controller->second.event);
+    buf->st_rdev = get_fake_input_rdev(controller->second->event);
   }
 
   return ret;
 }
 
 EXPORT int access(const char *pathname, int mode) {
-  if (!my_access)
-    *(void **)&my_access = dlsym(RTLD_NEXT, "access");
+  static auto my_access = reinterpret_cast<decltype(&::access)>(dlsym(RTLD_NEXT, "access"));
 
   char *fake_path = nullptr;
   if (pathname) {
@@ -801,8 +763,7 @@ EXPORT int access(const char *pathname, int mode) {
 }
 
 EXPORT int faccessat(int dirfd, const char *pathname, int mode, int flags) {
-  if (!my_faccessat)
-    *(void **)&my_faccessat = dlsym(RTLD_NEXT, "faccessat");
+  static auto my_faccessat = reinterpret_cast<decltype(&::faccessat)>(dlsym(RTLD_NEXT, "faccessat"));
 
   char *fake_path = nullptr;
   if (pathname) {
@@ -835,8 +796,7 @@ EXPORT int scandir(const char *dirp, struct dirent ***namelist,
                    int (*filter)(const struct dirent *),
                    int (*compar)(const struct dirent **,
                                  const struct dirent **)) {
-  if (!my_scandir)
-    *(void **)&my_scandir = dlsym(RTLD_NEXT, "scandir");
+  static auto my_scandir = reinterpret_cast<decltype(&::scandir)>(dlsym(RTLD_NEXT, "scandir"));
 
   if (dirp) {
     if (!strcmp(dirp, "/dev/input")) {
@@ -850,8 +810,7 @@ EXPORT int scandir(const char *dirp, struct dirent ***namelist,
 }
 
 EXPORT int inotify_add_watch(int fd, const char *pathname, uint32_t mask) {
-  if (!my_inotify_add_watch)
-    *(void **)&my_inotify_add_watch = dlsym(RTLD_NEXT, "inotify_add_watch");
+  static auto my_inotify_add_watch = reinterpret_cast<decltype(&::inotify_add_watch)>(dlsym(RTLD_NEXT, "inotify_add_watch"));
 
   char *fake_path = nullptr;
   if (pathname) {
@@ -871,6 +830,40 @@ EXPORT int inotify_add_watch(int fd, const char *pathname, uint32_t mask) {
   if (fake_path)
     free(fake_path);
   return ret;
+}
+
+template <size_t N>
+static int copy_ioctl_bits(int op, void *destination, const unsigned char (&bits)[N]) {
+  size_t size = std::min<size_t>(_IOC_SIZE(op), N);
+  if (size) memcpy(destination, bits, size);
+  return static_cast<int>(size);
+}
+
+static bool wait_snapshot(std::shared_ptr<FakeController> fake,
+                          std::unique_lock<std::recursive_mutex> &guard,
+                          SnapshotState &snap) {
+  for (;;) {
+    if (fake->closed) {
+      errno = EBADF;
+      return false;
+    }
+    if (ring_generation(fake->ring) != fake->generation) {
+      errno = ENODEV;
+      return false;
+    }
+    if (read_snapshot(fake->ring, snap)) return true;
+    // Enumeration queries must not fail merely because Android is publishing
+    // an input frame. Other hooks (including Binder) can proceed while we wait.
+    guard.unlock();
+    struct timespec wait = {0, 1000000};
+    int result = nanosleep(&wait, nullptr);
+    int saved_errno = errno;
+    guard.lock();
+    if (result < 0) {
+      errno = saved_errno;
+      return false;
+    }
+  }
 }
 
 EXPORT int ioctl(int fd, int op, ...) {
@@ -893,8 +886,8 @@ EXPORT int ioctl(int fd, int op, ...) {
 
   int type = (op >> 8 & 0xFF);
   int number = (op >> 0 & 0xFF);
-  const char *event = controller->second.event ? controller->second.event : "event0";
-  int event_number = controller->second.slot;
+  const char *event = controller->second->event ? controller->second->event : "event0";
+  int event_number = controller->second->slot;
 
   if (type == 0x45 && number == 0x1) {
     Logger::log("Hooking ioctl EVIOCGVERSION for event %s\n", event);
@@ -924,39 +917,40 @@ EXPORT int ioctl(int fd, int op, ...) {
     copy_slot_ioctl_string(op, argp, GAMEPAD_UNIQ_TEMPLATE, event_number);
     return 0;
   } else if (type == 0x45 && number == 0x9) {
-    Logger::log("Hooking ioctl EVIOCGPROP for event %s\n", event);
-    return 0;
+    unsigned char bitmask[(INPUT_PROP_MAX + 8) / 8] = {};
+    return copy_ioctl_bits(op, argp, bitmask);
   } else if (type == 0x45 && number == 0x18) {
-    Logger::log("Hooking ioctl EVIOCGKEY(len) for event %s\n", event);
-    char bitmask[KEY_MAX / 8] = {0};
-    memcpy(argp, (void *)&bitmask, sizeof(bitmask));
-    return 0;
+    SnapshotState snap;
+    if (!wait_snapshot(controller->second, guard, snap)) return -1;
+    unsigned char bitmask[(KEY_MAX + 8) / 8] = {};
+    for (int i = 0; i < 10; ++i) {
+      if (snap.buttons & (1u << i))
+        bitmask[kSnapshotButtons[i] / 8] |= 1u << (kSnapshotButtons[i] % 8);
+    }
+    return copy_ioctl_bits(op, argp, bitmask);
   } else if (type == 0x45 && number == 0x20) {
     Logger::log("Hooking ioctl EVIOCGBIT(0, len) for event %s\n", event);
-    char bitmask[EV_MAX / 8] = {0};
+    unsigned char bitmask[(EV_MAX + 8) / 8] = {};
     bitmask[EV_SYN / 8] |= (1 << (EV_SYN % 8));
     bitmask[EV_KEY / 8] |= (1 << (EV_KEY % 8));
     bitmask[EV_ABS / 8] |= (1 << (EV_ABS % 8));
-    memcpy(argp, (void *)&bitmask, sizeof(bitmask));
-    return 0;
+    return copy_ioctl_bits(op, argp, bitmask);
   } else if (type == 0x45 && number == 0x21) {
     Logger::log("Hooking ioctl EVIOCGBIT(EV_KEY, len) for event %s\n", event);
-    char bitmask[KEY_MAX / 8] = {0};
+    unsigned char bitmask[(KEY_MAX + 8) / 8] = {};
     const int xbox_buttons[] = {BTN_A,    BTN_B,      BTN_X,      BTN_Y,
                                 BTN_TL,   BTN_TR,     BTN_SELECT, BTN_START,
                                 BTN_MODE, BTN_THUMBL, BTN_THUMBR};
     for (int button : xbox_buttons)
       bitmask[button / 8] |= (1 << (button % 8));
-    memcpy(argp, (void *)&bitmask, sizeof(bitmask));
-    return 0;
+    return copy_ioctl_bits(op, argp, bitmask);
   } else if (type == 0x45 && number == 0x22) {
     Logger::log("Hooking ioctl EVIOCGBIT(EV_REL, len) for event %s\n", event);
-    char bitmask[REL_MAX / 8] = {0};
-    memcpy(argp, (void *)&bitmask, sizeof(bitmask));
-    return 0;
+    unsigned char bitmask[(REL_MAX + 8) / 8] = {};
+    return copy_ioctl_bits(op, argp, bitmask);
   } else if (type == 0x45 && number == 0x23) {
     Logger::log("Hooking ioctl EVIOCGBIT(EV_ABS, len) for event %s\n", event);
-    char bitmask[ABS_MAX / 8] = {0};
+    unsigned char bitmask[(ABS_MAX + 8) / 8] = {};
     bitmask[ABS_X / 8] |= (1 << (ABS_X % 8));
     bitmask[ABS_Y / 8] |= (1 << (ABS_Y % 8));
     bitmask[ABS_RX / 8] |= (1 << (ABS_RX % 8));
@@ -965,15 +959,13 @@ EXPORT int ioctl(int fd, int op, ...) {
     bitmask[ABS_BRAKE / 8] |= (1 << (ABS_BRAKE % 8));
     bitmask[ABS_HAT0X / 8] |= (1 << (ABS_HAT0X % 8));
     bitmask[ABS_HAT0Y / 8] |= (1 << (ABS_HAT0Y % 8));
-    memcpy(argp, (void *)&bitmask, sizeof(bitmask));
-    return 0;
+    return copy_ioctl_bits(op, argp, bitmask);
   } else if (type == 0x45 && number == 0x35) {
     Logger::log("Hooking ioctl EVIOCGBIT(EV_FF, len) for event %s\n", event);
-    char bitmask[FF_MAX / 8] = {0};
+    unsigned char bitmask[(FF_MAX + 8) / 8] = {};
     bitmask[FF_RUMBLE / 8] |= (1 << (FF_RUMBLE % 8));
     bitmask[FF_PERIODIC / 8] |= (1 << (FF_PERIODIC % 8));
-    memcpy(argp, (void *)&bitmask, sizeof(bitmask));
-    return 0;
+    return copy_ioctl_bits(op, argp, bitmask);
   } else if (type == 0x45 && number == 0x80) {
     struct ff_effect *effect = static_cast<struct ff_effect *>(argp);
     if (effect->id == -1)
@@ -1015,7 +1007,11 @@ EXPORT int ioctl(int fd, int op, ...) {
       abs_info.minimum = -1;
       abs_info.maximum = 1;
     }
-    memcpy(argp, (void *)&abs_info, sizeof(abs_info));
+    SnapshotState snap;
+    if (!wait_snapshot(controller->second, guard, snap)) return -1;
+    for (int i = 0; i < 8; ++i)
+      if (kSnapshotAxisCodes[i] == number - 0x40) abs_info.value = snap.axes[i];
+    memcpy(argp, &abs_info, std::min<size_t>(_IOC_SIZE(op), sizeof(abs_info)));
     return 0;
   } else if (type == 0x45 && number == 0x90) {
     Logger::log("Hooking ioctl EVIOCGRAB for event %s\n", event);
@@ -1041,22 +1037,20 @@ EXPORT int ioctl(int fd, int op, ...) {
     return 0;
   } else {
     Logger::log("Unhandled evdev ioctl, type %d number %d\n", type, number);
+    guard.unlock();
     return syscall(SYS_ioctl, fd, op, argp);
   }
 }
 
 EXPORT int close(int fd) {
-  if (!my_close)
-    *(void **)&my_close = dlsym(RTLD_NEXT, "close");
+  static auto my_close = reinterpret_cast<decltype(&::close)>(dlsym(RTLD_NEXT, "close"));
 
   std::unique_lock<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   if (controller != controller_map.end()) {
     Logger::log("Removing controller, fd %d event %s\n", controller->first,
-                controller->second.event ? controller->second.event : "(unknown)");
-    if (controller->second.ring)
-      munmap(controller->second.ring, controller->second.mapping_size);
-    free(controller->second.event);
+                controller->second->event ? controller->second->event : "(unknown)");
+    controller->second->closed = true;
     controller_map.erase(fd);
   }
   guard.unlock();
@@ -1065,119 +1059,99 @@ EXPORT int close(int fd) {
 }
 
 EXPORT ssize_t read(int fd, void *buf, size_t count) {
-  FakeController *fake_ptr = nullptr;
-  {
-    std::lock_guard<std::recursive_mutex> guard(controller_mutex);
-    auto controller = controller_map.find(fd);
-    if (controller != controller_map.end()) fake_ptr = &controller->second;
+  std::unique_lock<std::recursive_mutex> guard(controller_mutex);
+  auto controller = controller_map.find(fd);
+  if (controller == controller_map.end()) {
+    guard.unlock();
+    return syscall(SYS_read, fd, buf, count);
   }
+  // Keep the mapping alive across waits, even if close() removes the fd and
+  // another open reuses its number. Every state access still holds the lock.
+  auto handle = controller->second;
+  FakeController &fake = *handle;
+  if (count < FAKE_INPUT_EVENT_SIZE) {
+    errno = EINVAL;
+    return -1;
+  }
+  int flags = fcntl(fd, F_GETFL);
+  bool nonblock = flags >= 0 && (flags & O_NONBLOCK);
+  long backoff_ns = 1000 * 1000;
 
-  if (fake_ptr != nullptr) {
-    FakeController &fake = *fake_ptr;
-    if (count < FAKE_INPUT_EVENT_SIZE) {
-      errno = EINVAL;
+  for (;;) {
+    if (fake.closed) {
+      errno = EBADF;
       return -1;
     }
-
-    int flags = fcntl(fd, F_GETFL);
-    bool isNonBlock = flags >= 0 && (flags & O_NONBLOCK);
-
-    if (fake_fd_is_stale(fd)) {
+    if (ring_generation(fake.ring) != fake.generation) {
       errno = ENODEV;
       return -1;
     }
-
-    long backoff_ns = 1000 * 1000; // 1ms initial
-    while (!fake_fd_has_unread_data(fd)) {
-      if (fake_fd_is_stale(fd)) {
-        errno = ENODEV;
-        return -1;
-      }
-      if (isNonBlock) {
-        errno = EAGAIN;
-        return -1;
-      }
-      setup_signal_handler();
-      if (stop_flag) {
-        errno = EINTR;
-        return -1;
-      }
-      struct timespec sleep_time = {0, backoff_ns};
-      nanosleep(&sleep_time, nullptr);
-      if (backoff_ns < 16 * 1000 * 1000)
-        backoff_ns *= 2;
-    }
-
-    uint64_t write_seq = ring_write_seq(fake.ring);
-    if (write_seq - fake.read_seq > FAKE_INPUT_RING_CAPACITY) {
-      fake.read_seq = write_seq - FAKE_INPUT_RING_CAPACITY;
+    for (int attempt = 0; attempt < 8; ++attempt) {
+      size_t requested = count / FAKE_INPUT_EVENT_SIZE;
       if (fake.keyframe_remaining == 0) {
-        capture_keyframe(fake, "overflow", fd);
+        SnapshotState snap;
+        if (!read_snapshot(fake.ring, snap)) break;
+        if (snap.generation != fake.generation) {
+          errno = ENODEV;
+          return -1;
+        }
+        if (fake.needs_keyframe || snap.resync_seq != fake.resync_seq ||
+            snap.write_seq < fake.read_seq ||
+            snap.write_seq - fake.read_seq > FAKE_INPUT_RING_CAPACITY) {
+          capture_keyframe(fake, snap);
+        } else {
+          size_t events = std::min<uint64_t>(requested, snap.write_seq - fake.read_seq);
+          if (events == 0) break;
+          const uint8_t *ring_events = reinterpret_cast<const uint8_t *>(fake.ring) +
+                                       FAKE_INPUT_RING_HEADER_SIZE;
+          for (size_t i = 0; i < events; ++i) {
+            size_t index = (fake.read_seq + i) % FAKE_INPUT_RING_CAPACITY;
+            memcpy(static_cast<uint8_t *>(buf) + i * FAKE_INPUT_EVENT_SIZE,
+                   ring_events + index * FAKE_INPUT_EVENT_SIZE, FAKE_INPUT_EVENT_SIZE);
+          }
+          // A producer can lap the reader while it copies. Discard that copy
+          // instead of delivering torn/overwritten events or losing a release.
+          __atomic_thread_fence(__ATOMIC_ACQUIRE);
+          if (snap.sequence != __atomic_load_n(&fake.ring->snapshot_seq, __ATOMIC_RELAXED))
+            continue;
+          fake.read_seq += events;
+          return static_cast<ssize_t>(events * FAKE_INPUT_EVENT_SIZE);
+        }
       }
-    }
 
-    uint8_t *out = static_cast<uint8_t *>(buf);
-    size_t out_events = 0;
-    size_t requested_events = count / FAKE_INPUT_EVENT_SIZE;
-
-    // A keyframe is pending (open / ring overflow). Replay the full
-    // absolute baseline — every button and axis at its snapshot value — before
-    // any surviving delta events, so a lost button-up / axis-return can't stick.
-    // The frame streams across reads of any size: we emit as much as fits and do
-    // NOT consume the ring until it is fully delivered, so even a
-    // one-event-at-a-time consumer recovers. keyframe_remaining keeps the fd
-    // readable (see fake_fd_has_unread_data) so poll wakes us to finish it.
-    if (fake.keyframe_remaining > 0) {
+      // Finish a captured frame before handling a newer resync. Its counter is
+      // acknowledged only when that newer snapshot is actually captured.
+      size_t events = std::min(requested, fake.keyframe_remaining);
       struct timeval now = {};
       gettimeofday(&now, nullptr);
-      while (fake.keyframe_remaining > 0 && out_events < requested_events) {
-        size_t idx = kNeutralEventCount - fake.keyframe_remaining;
-        struct input_event ev;
-        memset(&ev, 0, sizeof(ev));
+      for (size_t i = 0; i < events; ++i) {
+        size_t index = kNeutralEventCount - fake.keyframe_remaining;
+        struct input_event ev = {};
         ev.time = now;
-        ev.type = kNeutralEvents[idx].type;
-        ev.code = kNeutralEvents[idx].code;
-        ev.value = keyframe_value(fake, kNeutralEvents[idx].type,
-                                  kNeutralEvents[idx].code);
-        memcpy(out + (out_events * FAKE_INPUT_EVENT_SIZE), &ev,
-               FAKE_INPUT_EVENT_SIZE);
-        out_events++;
-        fake.keyframe_remaining--;
+        ev.type = kNeutralEvents[index].type;
+        ev.code = kNeutralEvents[index].code;
+        ev.value = keyframe_value(fake, ev.type, ev.code);
+        memcpy(static_cast<uint8_t *>(buf) + i * FAKE_INPUT_EVENT_SIZE,
+               &ev, FAKE_INPUT_EVENT_SIZE);
+        --fake.keyframe_remaining;
       }
-      if (fake.keyframe_remaining > 0) {
-        // Buffer filled before the baseline finished; deliver the remainder (and
-        // only then fresh events) on subsequent reads. out_events >= 1 here.
-        return static_cast<ssize_t>(out_events * FAKE_INPUT_EVENT_SIZE);
-      }
+      return static_cast<ssize_t>(events * FAKE_INPUT_EVENT_SIZE);
     }
-
-    size_t available_events =
-        static_cast<size_t>(std::min<uint64_t>(write_seq - fake.read_seq,
-                                              FAKE_INPUT_RING_CAPACITY));
-    size_t events_to_read =
-        std::min(requested_events - out_events, available_events);
-    const uint8_t *ring_events =
-        reinterpret_cast<const uint8_t *>(fake.ring) +
-        FAKE_INPUT_RING_HEADER_SIZE;
-
-    for (size_t i = 0; i < events_to_read; i++) {
-      size_t event_index =
-          static_cast<size_t>((fake.read_seq + i) % FAKE_INPUT_RING_CAPACITY);
-      memcpy(out + ((out_events + i) * FAKE_INPUT_EVENT_SIZE),
-             ring_events + (event_index * FAKE_INPUT_EVENT_SIZE),
-             FAKE_INPUT_EVENT_SIZE);
+    if (nonblock) {
+      errno = EAGAIN;
+      return -1;
     }
-
-    fake.read_seq += events_to_read;
-    return static_cast<ssize_t>((out_events + events_to_read) *
-                                FAKE_INPUT_EVENT_SIZE);
+    guard.unlock();
+    struct timespec sleep_time = {0, backoff_ns};
+    int result = nanosleep(&sleep_time, nullptr);
+    guard.lock();
+    if (result < 0) return -1;
+    if (backoff_ns < 16 * 1000 * 1000) backoff_ns *= 2;
   }
-  return syscall(SYS_read, fd, buf, count);
 }
 
 EXPORT ssize_t write(int fd, const void *buf, size_t count) {
-  if (!my_write)
-    *(void **)&my_write = dlsym(RTLD_NEXT, "write");
+  static auto my_write = reinterpret_cast<decltype(&::write)>(dlsym(RTLD_NEXT, "write"));
 
   std::unique_lock<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
@@ -1188,7 +1162,7 @@ EXPORT ssize_t write(int fd, const void *buf, size_t count) {
     }
 
     const struct input_event *ev = nullptr;
-    uint16_t slot = static_cast<uint16_t>(controller->second.slot);
+    uint16_t slot = static_cast<uint16_t>(controller->second->slot);
     if (count == sizeof(struct input_event)) {
       ev = static_cast<const struct input_event *>(buf);
       check_ff_event(ev, slot);
@@ -1209,7 +1183,7 @@ EXPORT ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
       return -1;
     }
 
-    uint16_t slot = static_cast<uint16_t>(controller->second.slot);
+    uint16_t slot = static_cast<uint16_t>(controller->second->slot);
     ssize_t total = 0;
     for (int i = 0; i < iovcnt; i++) {
       if (iov[i].iov_len == sizeof(struct input_event)) {
@@ -1225,27 +1199,36 @@ EXPORT ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
   return syscall(SYS_writev, fd, iov, iovcnt);
 }
 
-EXPORT int poll(struct pollfd *fds, nfds_t nfds, int timeout) {
-  if (!my_poll)
-    *(void **)&my_poll = dlsym(RTLD_NEXT, "poll");
+static int poll_fake(struct pollfd *fds, nfds_t nfds, int timeout,
+                     const sigset_t *sigmask) {
+  static auto my_poll = reinterpret_cast<decltype(&::poll)>(dlsym(RTLD_NEXT, "poll"));
+  static auto my_ppoll = reinterpret_cast<decltype(&::ppoll)>(dlsym(RTLD_NEXT, "ppoll"));
 
   bool has_fake_fds = false;
   std::vector<struct pollfd> real_fds;
   real_fds.reserve(nfds);
-
-  for (nfds_t i = 0; i < nfds; i++) {
-    if (is_fake_input_fd(fds[i].fd)) {
-      has_fake_fds = true;
-    }
-    real_fds.push_back(fds[i]);
-    if (is_fake_input_fd(real_fds[i].fd)) {
-      real_fds[i].fd = -1;
-      real_fds[i].revents = 0;
+  std::vector<std::shared_ptr<FakeController>> fake_fds(nfds);
+  {
+    std::lock_guard<std::recursive_mutex> guard(controller_mutex);
+    for (nfds_t i = 0; i < nfds; i++) {
+      real_fds.push_back(fds[i]);
+      auto it = controller_map.find(fds[i].fd);
+      if (it != controller_map.end()) {
+        fake_fds[i] = it->second;
+        has_fake_fds = true;
+        real_fds[i].fd = -1;
+        real_fds[i].revents = 0;
+      }
     }
   }
 
-  if (!has_fake_fds)
-    return my_poll ? my_poll(fds, nfds, timeout) : -1;
+  if (!has_fake_fds) {
+    if (sigmask) {
+      struct timespec wait = {timeout / 1000, (timeout % 1000) * 1000000L};
+      return my_ppoll(fds, nfds, timeout < 0 ? nullptr : &wait, sigmask);
+    }
+    return my_poll(fds, nfds, timeout);
+  }
 
   const long long deadline_ms = timeout < 0 ? -1 : monotonic_ms() + timeout;
   int backoff_ms = 1;
@@ -1257,16 +1240,8 @@ EXPORT int poll(struct pollfd *fds, nfds_t nfds, int timeout) {
       fds[i].revents = 0;
 
     for (nfds_t i = 0; i < nfds; i++) {
-      if (!is_fake_input_fd(fds[i].fd))
-        continue;
-
-      short revents = 0;
-      if (fake_fd_is_stale(fds[i].fd))
-        revents |= POLLHUP;
-      if ((fds[i].events & (POLLIN | POLLRDNORM)) &&
-          fake_fd_has_unread_data(fds[i].fd))
-        revents |= (fds[i].events & (POLLIN | POLLRDNORM));
-
+      if (!fake_fds[i]) continue;
+      short revents = fake_poll_revents(fake_fds[i], fds[i].events);
       fds[i].revents = revents;
       if (revents)
         ready++;
@@ -1280,10 +1255,17 @@ EXPORT int poll(struct pollfd *fds, nfds_t nfds, int timeout) {
       return std::max(remaining, 0);
     }();
 
-    int real_ready = my_poll ? my_poll(real_fds.data(), nfds, real_timeout) : 0;
+    int real_ready;
+    if (sigmask) {
+      struct timespec wait = {real_timeout / 1000, (real_timeout % 1000) * 1000000L};
+      real_ready = my_ppoll(real_fds.data(), nfds, &wait, sigmask);
+    } else {
+      real_ready = my_poll(real_fds.data(), nfds, real_timeout);
+    }
+    if (real_ready < 0) return -1;
     if (real_ready > 0) {
       for (nfds_t i = 0; i < nfds; i++) {
-        if (!is_fake_input_fd(fds[i].fd)) {
+        if (!fake_fds[i]) {
           fds[i].revents = real_fds[i].revents;
           if (fds[i].revents)
             ready++;
@@ -1293,16 +1275,8 @@ EXPORT int poll(struct pollfd *fds, nfds_t nfds, int timeout) {
 
     if (ready == 0 && real_timeout > 0) {
       for (nfds_t i = 0; i < nfds; i++) {
-        if (!is_fake_input_fd(fds[i].fd))
-          continue;
-
-        short revents = 0;
-        if (fake_fd_is_stale(fds[i].fd))
-          revents |= POLLHUP;
-        if ((fds[i].events & (POLLIN | POLLRDNORM)) &&
-            fake_fd_has_unread_data(fds[i].fd))
-          revents |= (fds[i].events & (POLLIN | POLLRDNORM));
-
+        if (!fake_fds[i]) continue;
+        short revents = fake_poll_revents(fake_fds[i], fds[i].events);
         fds[i].revents = revents;
         if (revents)
           ready++;
@@ -1323,23 +1297,42 @@ EXPORT int poll(struct pollfd *fds, nfds_t nfds, int timeout) {
   }
 }
 
+EXPORT int poll(struct pollfd *fds, nfds_t nfds, int timeout) {
+  return poll_fake(fds, nfds, timeout, nullptr);
+}
+
 EXPORT int ppoll(struct pollfd *fds, nfds_t nfds,
                  const struct timespec *timeout, const sigset_t *sigmask) {
-  if (!my_ppoll)
-    *(void **)&my_ppoll = dlsym(RTLD_NEXT, "ppoll");
-
-  if (sigmask)
-    return my_ppoll ? my_ppoll(fds, nfds, timeout, sigmask)
-                    : syscall(SYS_ppoll, fds, nfds, timeout, sigmask,
-                              sizeof(sigset_t));
-
-  return poll(fds, nfds, static_cast<int>(timespec_to_ms(timeout)));
+  static auto my_ppoll = reinterpret_cast<decltype(&::ppoll)>(dlsym(RTLD_NEXT, "ppoll"));
+  if (timeout && (timeout->tv_sec < 0 || timeout->tv_nsec < 0 || timeout->tv_nsec >= 1000000000L)) {
+    errno = EINVAL;
+    return -1;
+  }
+  for (nfds_t i = 0; i < nfds; ++i) {
+    if (!is_fake_input_fd(fds[i].fd)) continue;
+    if (!sigmask)
+      return poll_fake(fds, nfds, static_cast<int>(timespec_to_ms(timeout)), nullptr);
+    // Keep signals pending between polling slices. Each kernel ppoll applies
+    // the requested mask atomically with its wait, just like a single ppoll.
+    sigset_t all_signals, original_mask;
+    sigfillset(&all_signals);
+    int error = pthread_sigmask(SIG_SETMASK, &all_signals, &original_mask);
+    if (error) {
+      errno = error;
+      return -1;
+    }
+    int result = poll_fake(fds, nfds, static_cast<int>(timespec_to_ms(timeout)), sigmask);
+    int saved_errno = errno;
+    pthread_sigmask(SIG_SETMASK, &original_mask, nullptr);
+    errno = saved_errno;
+    return result;
+  }
+  return my_ppoll(fds, nfds, timeout, sigmask);
 }
 
 EXPORT int select(int nfds, fd_set *readfds, fd_set *writefds,
                   fd_set *exceptfds, struct timeval *timeout) {
-  if (!my_select)
-    *(void **)&my_select = dlsym(RTLD_NEXT, "select");
+  static auto my_select = reinterpret_cast<decltype(&::select)>(dlsym(RTLD_NEXT, "select"));
 
   fd_set original_readfds;
   fd_set original_writefds;
@@ -1432,6 +1425,7 @@ EXPORT int select(int nfds, fd_set *readfds, fd_set *writefds,
                         exceptfds ? &iter_exceptfds : nullptr, &wait_tv)
             : 0;
 
+    if (real_ready < 0) return -1;
     if (real_ready > 0) {
       for (int fd = 0; fd < nfds; fd++) {
         if (readfds && FD_ISSET(fd, &iter_readfds)) {
