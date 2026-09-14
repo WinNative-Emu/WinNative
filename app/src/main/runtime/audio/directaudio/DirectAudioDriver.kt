@@ -94,51 +94,67 @@ object DirectAudioDriver {
             stamp.writeText(stampId)
             Timber.tag(TAG).i("installed DirectAudio %s into %s", stampId, wineLibDir)
         }
-        patchDirectAudioNeeded(File(wineLibDir, "aarch64-unix/$SO_NAME"))
-        mirrorIntoPrefix(imageFs, wineLibDir)
-        return true
+        if (!patchDirectAudioNeeded(File(wineLibDir, "aarch64-unix/$SO_NAME"))) return false
+        return mirrorIntoPrefix(imageFs, wineLibDir)
     }
 
-    private fun mirrorIntoPrefix(imageFs: ImageFs, wineLibDir: File) {
+    private fun mirrorIntoPrefix(imageFs: ImageFs, wineLibDir: File): Boolean {
         val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
-        copyIfChanged(File(wineLibDir, "aarch64-windows/$DRV_NAME"), File(windowsDir, "system32/$DRV_NAME"))
-        copyIfChanged(File(wineLibDir, "i386-windows/$DRV_NAME"), File(windowsDir, "syswow64/$DRV_NAME"))
+        val win64 = copyIfChanged(
+            File(wineLibDir, "aarch64-windows/$DRV_NAME"), File(windowsDir, "system32/$DRV_NAME"))
+        val win32 = copyIfChanged(
+            File(wineLibDir, "i386-windows/$DRV_NAME"), File(windowsDir, "syswow64/$DRV_NAME"))
+        return win64 && win32
     }
 
-    private fun copyIfChanged(src: File, dst: File) {
+    private fun copyIfChanged(src: File, dst: File): Boolean {
         if (!src.isFile) {
-            Timber.tag(TAG).w("no driver PE at %s; mmdevapi will not find it", src)
-            return
+            Timber.tag(TAG).e("no driver PE at %s; mmdevapi will not find it", src)
+            return false
         }
-        if (dst.isFile && dst.length() == src.length()) return
-        try {
+        if (dst.isFile && dst.length() == src.length()) return true
+        return try {
             dst.parentFile?.mkdirs()
             src.inputStream().use { input -> dst.outputStream().use { output -> input.copyTo(output) } }
             dst.setExecutable(true, false)
             Timber.tag(TAG).i("staged %s into %s", src.name, dst.parentFile?.name)
+            true
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "failed to stage %s into the prefix", src.name)
+            false
         }
     }
 
-    private fun patchDirectAudioNeeded(soFile: File) {
-        if (!soFile.isFile) return
-        try {
+    private fun patchDirectAudioNeeded(soFile: File): Boolean {
+        if (!soFile.isFile) {
+            Timber.tag(TAG).e("no unixlib at %s", soFile)
+            return false
+        }
+        return try {
             val bytes = soFile.readBytes()
-            val old = "libaaudio.so".toByteArray(Charsets.US_ASCII)
             val repl = "libwaudio.so".toByteArray(Charsets.US_ASCII)
-            var idx = -1
-            outer@ for (i in 0..bytes.size - old.size - 1) {
-                for (j in old.indices) if (bytes[i + j] != old[j]) continue@outer
-                if (bytes[i + old.size] == 0.toByte()) { idx = i; break }
+            if (indexOfNeeded(bytes, repl) >= 0) return true
+            val idx = indexOfNeeded(bytes, "libaaudio.so".toByteArray(Charsets.US_ASCII))
+            if (idx < 0) {
+                Timber.tag(TAG).e("neither libaaudio.so nor libwaudio.so is a NEEDED of %s", soFile.name)
+                return false
             }
-            if (idx < 0) return
             System.arraycopy(repl, 0, bytes, idx, repl.size)
             soFile.writeBytes(bytes)
             Timber.tag(TAG).i("patched winedirectaudio.so NEEDED libaaudio.so -> libwaudio.so")
+            true
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "failed to patch winedirectaudio.so NEEDED")
+            false
         }
+    }
+
+    private fun indexOfNeeded(bytes: ByteArray, needle: ByteArray): Int {
+        outer@ for (i in 0..bytes.size - needle.size - 1) {
+            for (j in needle.indices) if (bytes[i + j] != needle[j]) continue@outer
+            if (bytes[i + needle.size] == 0.toByte()) return i
+        }
+        return -1
     }
 
     private fun unzipAsset(context: Context, asset: String, wineLibDir: File): Boolean {

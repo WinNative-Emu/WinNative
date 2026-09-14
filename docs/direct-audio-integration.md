@@ -154,6 +154,24 @@ above.
 the backend — `Software\Wine\Drivers` → `Audio` = `directaudio`. Selecting DirectAudio adds no
 environment component and opens no socket, because there is no daemon to start.
 
+That registry key is the whole activation, so it must never name a driver that is not on disk:
+`mmdevapi` fails its `LoadLibraryW`, `CoCreateInstance(MMDeviceEnumerator)` fails with it, and a
+title that initialises audio while loading does not start at all. The failure looks like a hung
+launch, not like a missing sound device.
+
+`resolveAudioDriver()` therefore runs the overlay **before** the registry is written and, when it
+cannot complete, drops the launch back to `Container.DEFAULT_AUDIO_DRIVER` — the registry then
+names PulseAudio, the PulseAudio component is added like any other launch, and a toast says why.
+The container's own saved choice is untouched, so the next launch retries the install.
+
+`install()` reports that honestly: staging either PE half into the prefix, or failing to find
+`libaaudio.so`/`libwaudio.so` in the unixlib's dynamic section, now returns `false` rather than
+logging and returning success.
+
+The version it is asked about must be the Wine **identifier** (`proton-11.0-6-arm64ec`), not
+`WineInfo.fullVersion()` (`11.0-6`) — `wineAbiTag()` requires the `arm64ec` arch in the string and
+rejects everything else, so passing the bare version makes every install fail.
+
 ### Microphone opt-in
 
 The toggle is per container and per shortcut (extra `directAudioMic`), surfaced in the audio

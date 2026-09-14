@@ -509,6 +509,7 @@
     <string name="container_config_processor_affinity">Processor Affinity</string>
     <string name="container_config_processor_affinity_32bit">Processor Affinity (32-bit apps)</string>
     <string name="container_config_audio_driver">Audio Driver</string>
+    <string name="directaudio_unavailable">DirectAudio is not available for this Wine version; using PulseAudio</string>
     <string name="container_config_direct_audio_mic">Microphone (DirectAudio)</string>
     <string name="container_config_direct_audio_mic_help">Lets a game record from your device microphone, for in-game voice chat. Some titles that check for a microphone while loading will fail to start with this on — turn it on only for a game that needs it.</string>
     <string name="container_config_win_components">Win Components</string>
