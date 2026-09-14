@@ -841,6 +841,7 @@ public class InputControlsView extends View {
 
   @Override
   public boolean onGenericMotionEvent(MotionEvent event) {
+    if (isInputSuspended()) return true;
     if (!editMode && profile != null) {
       ExternalController controller = profile.getController(event.getDeviceId());
 
@@ -873,7 +874,10 @@ public class InputControlsView extends View {
 
   @Override
   public boolean onTouchEvent(MotionEvent event) {
-    if (getContext() instanceof XServerDisplayActivity && ((XServerDisplayActivity)getContext()).isInputSuspended()) return true;
+    if (isInputSuspended()) {
+      dispatchUnhandledTouch(event);
+      return true;
+    }
 
     boolean hapticsEnabled = preferences.getBoolean("touchscreen_haptics_enabled", false);
 
@@ -1119,7 +1123,7 @@ public class InputControlsView extends View {
   }
 
   public boolean onKeyEvent(KeyEvent event) {
-    if (getContext() instanceof XServerDisplayActivity && ((XServerDisplayActivity)getContext()).isInputSuspended()) return false;
+    if (isInputSuspended()) return false;
     if (profile != null && event.getRepeatCount() == 0) {
       ExternalController controller = profile.getController(event.getDeviceId());
       if (controller != null) {
@@ -1310,5 +1314,9 @@ public class InputControlsView extends View {
       }
     }
     return icons[id];
+  }
+
+  private boolean isInputSuspended() {
+    return getContext() instanceof XServerDisplayActivity && ((XServerDisplayActivity)getContext()).isInputSuspended();
   }
 }
