@@ -68,7 +68,7 @@ struct FakeInputRingHeader {
   uint64_t snapshot_seq;      // 32
   uint32_t snapshot_buttons;  // 40  bit i -> kSnapshotButtons[i] pressed
   int16_t snapshot_axes[8];   // 44  values in kSnapshotAxisCodes order
-  uint8_t reserved[4];        // 60
+  uint32_t resync_seq;        // 60
 };
 
 static_assert(sizeof(FakeInputRingHeader) == 64,
@@ -86,6 +86,7 @@ struct FakeController {
   FakeInputRingHeader *ring = nullptr;
   uint64_t read_seq = 0;
   uint64_t generation = 0;
+  uint32_t resync_seq = 0;
   size_t mapping_size = 0;
   // Pending keyframe (full absolute-state baseline) currently streaming to the
   // guest. The axis/button values are captured from the snapshot when the
@@ -367,6 +368,11 @@ ring_generation(const FakeInputRingHeader *ring) {
   return __atomic_load_n(&ring->generation, __ATOMIC_ACQUIRE);
 }
 
+__attribute__((visibility("hidden"))) static uint32_t
+ring_resync_seq(const FakeInputRingHeader *ring) {
+  return __atomic_load_n(&ring->resync_seq, __ATOMIC_ACQUIRE);
+}
+
 __attribute__((visibility("hidden"))) static bool
 ring_header_is_valid(const FakeInputRingHeader *ring) {
   return ring && ring->magic == FAKE_INPUT_RING_MAGIC &&
@@ -490,6 +496,7 @@ open_fake_input_ring(const char *event, int flags) {
   controller.mapping_size = FAKE_INPUT_RING_SIZE;
   controller.read_seq = ring_write_seq(ring);
   controller.generation = ring_generation(ring);
+  controller.resync_seq = ring_resync_seq(ring);
   // Emit the current absolute state as the first frame so a guest that opens
   // mid-hold (or reopens after a slot hand-off) starts already in sync.
   capture_keyframe(controller, "open", fd);
@@ -534,6 +541,13 @@ fake_fd_has_unread_data(int fd) {
   FakeController &fake = controller->second;
   if (ring_generation(fake.ring) != fake.generation)
     return false;
+  uint32_t resync = ring_resync_seq(fake.ring);
+  if (resync != fake.resync_seq) {
+    fake.resync_seq = resync;
+    if (fake.keyframe_remaining == 0) {
+      capture_keyframe(fake, "resync", fd);
+    }
+  }
   uint64_t write_seq = ring_write_seq(fake.ring);
   if (write_seq < fake.read_seq)
     fake.read_seq = write_seq;
