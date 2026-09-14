@@ -33,6 +33,8 @@ object DirectAudioDriver {
     private const val BUNDLED_VERSION = "1.3.2"
 
     // Archive entry -> destination dir under lib/wine.
+    internal val MMDEVAPI_ENTRY_POINTS = listOf("get_device_guid", "get_device_name_from_guid")
+
     private val LAYOUT = listOf(
         "aarch64-windows/$DRV_NAME" to "aarch64-windows",
         "i386-windows/$DRV_NAME" to "i386-windows",
@@ -94,8 +96,80 @@ object DirectAudioDriver {
             stamp.writeText(stampId)
             Timber.tag(TAG).i("installed DirectAudio %s into %s", stampId, wineLibDir)
         }
+        if (!driverExportsEntryPoints(wineLibDir)) {
+            removeFromPrefix(imageFs)
+            return false
+        }
         if (!patchDirectAudioNeeded(File(wineLibDir, "aarch64-unix/$SO_NAME"))) return false
         return mirrorIntoPrefix(imageFs, wineLibDir)
+    }
+
+    private fun driverExportsEntryPoints(wineLibDir: File): Boolean {
+        var ok = true
+        for ((entry, dir) in LAYOUT) {
+            if (!entry.endsWith(DRV_NAME)) continue
+            if (!exportsRequiredNames(File(wineLibDir, "$dir/${File(entry).name}"))) ok = false
+        }
+        return ok
+    }
+
+    private fun exportsRequiredNames(pe: File): Boolean =
+        try {
+            val names = peExportNames(pe.readBytes())
+            val ok = names.containsAll(MMDEVAPI_ENTRY_POINTS)
+            if (!ok) {
+                Timber.tag(TAG).e(
+                    "%s exports [%s]; mmdevapi needs [%s] and will refuse to initialise the driver",
+                    pe.path, names.joinToString(), MMDEVAPI_ENTRY_POINTS.joinToString())
+            }
+            ok
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "could not read the export table of %s", pe.path)
+            false
+        }
+
+    internal fun peExportNames(b: ByteArray): List<String> {
+        fun u16(o: Int) = (b[o].toInt() and 0xff) or ((b[o + 1].toInt() and 0xff) shl 8)
+        fun u32(o: Int) = u16(o) or (u16(o + 2) shl 16)
+        if (u16(0) != 0x5A4D) return emptyList()
+        val pe = u32(0x3c)
+        if (u32(pe) != 0x00004550) return emptyList()
+        val opt = pe + 24
+        val exportRva = u32(opt + if (u16(opt) == 0x20B) 112 else 96)
+        if (exportRva == 0) return emptyList()
+        val sectionCount = u16(pe + 6)
+        val sections = opt + u16(pe + 20)
+        fun offsetOf(rva: Int): Int {
+            for (i in 0 until sectionCount) {
+                val s = sections + 40 * i
+                val va = u32(s + 12)
+                if (rva >= va && rva < va + u32(s + 8)) return u32(s + 20) + (rva - va)
+            }
+            return -1
+        }
+        val dir = offsetOf(exportRva)
+        if (dir < 0) return emptyList()
+        val nameTable = offsetOf(u32(dir + 32))
+        if (nameTable < 0) return emptyList()
+        val names = ArrayList<String>()
+        for (i in 0 until u32(dir + 24)) {
+            val at = offsetOf(u32(nameTable + 4 * i))
+            if (at < 0) continue
+            var end = at
+            while (end < b.size && b[end] != 0.toByte()) end++
+            names += String(b, at, end - at, Charsets.US_ASCII)
+        }
+        return names
+    }
+
+    private fun removeFromPrefix(imageFs: ImageFs) {
+        val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+        for (dir in listOf("system32", "syswow64")) {
+            val stale = File(windowsDir, "$dir/$DRV_NAME")
+            if (stale.isFile && stale.delete()) {
+                Timber.tag(TAG).i("removed unusable %s from %s", DRV_NAME, dir)
+            }
+        }
     }
 
     private fun mirrorIntoPrefix(imageFs: ImageFs, wineLibDir: File): Boolean {

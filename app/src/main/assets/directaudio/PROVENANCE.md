@@ -43,6 +43,26 @@ aarch64-unix/winedirectaudio.so       bionic unixlib — the AAudio backend
 11.0-6 (ABI-interchangeable). `sdk28` is built for 4 KB kernel pages, `sdk35` for
 16 KB — `DirectAudioDriver.pageSizeTag()` picks between them at runtime.
 
+## The wine11 artifacts are non-functional upstream
+
+**Both `wine11` archives ship a `winedirectaudio.drv` with no export table**, in both
+the `aarch64-windows` and `i386-windows` halves. Their `.text` is a third the size of
+the working wine10 build and they import only `ucrtbase.dll` and `kernel32.dll` — no
+`ntdll.dll`, so they cannot make a unix call, and no `ole32.dll`, so they have no COM.
+`mmdevapi` resolves a driver with `GetProcAddress` for `get_device_guid` and
+`get_device_name_from_guid`; with no exports that fails, `load_driver` returns FALSE,
+and the game dies during audio initialisation rather than merely playing silent.
+
+This is upstream's build, not our packaging — the bundled bytes match the checksums
+above, and `directaudio-v1.3.1`, `directaudio-v1.3.2` and the v1.3.2 diagnostics build
+all have the same defect. There is no fixed release to pull.
+
+`DirectAudioDriver` therefore verifies the export table of both PE halves before it
+stages anything into the prefix, so DirectAudio is refused on Proton 11 and the launch
+falls back to the default audio driver. The archives stay bundled: drop in a fixed
+upstream build and the gate passes on its own, with no code change. `DirectAudioDriverExportsTest`
+pins the current state and will fail when a fixed artifact lands.
+
 ## Source availability (LGPL-2.1 §6)
 
 The corresponding source for these binaries is the upstream repository above at tag

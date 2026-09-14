@@ -79,6 +79,19 @@ byte-identical to its render-only build: no capture endpoints, every capture op 
 All host-side logic lives in
 [`runtime/audio/directaudio/DirectAudioDriver.kt`](../app/src/main/runtime/audio/directaudio/DirectAudioDriver.kt).
 
+### Proton 11 is not supported today
+
+The bundled `wine11` driver binaries are stubs with **no export table** — see
+[`PROVENANCE.md`](../app/src/main/assets/directaudio/PROVENANCE.md). `mmdevapi` resolves its
+backend with `GetProcAddress` for `get_device_guid` and `get_device_name_from_guid`, so a
+driver with no exports fails `load_driver` and takes the game's audio initialisation down with
+it. That is a failed launch, not silence. Every upstream release has the same defect, so
+DirectAudio currently works only on **Proton 10.0-4**.
+
+`install()` checks both PE halves for those two exports before staging anything into the
+prefix, so this is enforced by inspecting the artifact rather than by a version blocklist — a
+fixed upstream build starts working the moment it is dropped in.
+
 ### Driver selection and overlay
 
 Two axes decide which bundled build is installed:
@@ -164,9 +177,16 @@ cannot complete, drops the launch back to `Container.DEFAULT_AUDIO_DRIVER` — t
 names PulseAudio, the PulseAudio component is added like any other launch, and a toast says why.
 The container's own saved choice is untouched, so the next launch retries the install.
 
-`install()` reports that honestly: staging either PE half into the prefix, or failing to find
-`libaaudio.so`/`libwaudio.so` in the unixlib's dynamic section, now returns `false` rather than
-logging and returning success.
+`install()` reports that honestly: a PE half that does not export the mmdevapi entry points,
+a failed stage into the prefix, or a unixlib with neither `libaaudio.so` nor `libwaudio.so` in
+its dynamic section all return `false` rather than logging and returning success. A rejected
+driver is also deleted from `system32`/`syswow64`, so a prefix staged by an earlier build does
+not keep a dead `winedirectaudio.drv` around.
+
+Order matters: `resolveAudioDriver()` runs **after** `setupWineSystemFiles()`, because
+`ensureWinePrefixReady()` can move a broken `.wine` aside and extract a fresh prefix. Staging
+the driver before that would put it in the directory that is about to become
+`.wine.broken-backup`.
 
 The version it is asked about must be the Wine **identifier** (`proton-11.0-6-arm64ec`), not
 `WineInfo.fullVersion()` (`11.0-6`) — `wineAbiTag()` requires the `arm64ec` arch in the string and

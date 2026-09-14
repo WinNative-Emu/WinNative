@@ -2522,8 +2522,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
                     UpdateService.INSTANCE.cancelPostGameCheck();
 
-                    resolveAudioDriver();
-
                     if (!sessionToReuse) {
                         if (isSteamShortcut()) {
                             try {
@@ -2577,6 +2575,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         }
                         setupWineSystemFiles();
                         extractGraphicsDriverFiles();
+                        resolveAudioDriver();
                         changeWineAudioDriver();
 
                         try {
@@ -2594,6 +2593,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     } else {
                         Log.i("XServerDisplayActivity", "Skipping pre-game setup for active background session");
                         applyPreferredRefreshRate();
+                        resolveAudioDriver();
                     }
 
                     try {
