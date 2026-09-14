@@ -79,29 +79,29 @@ byte-identical to its render-only build: no capture endpoints, every capture op 
 All host-side logic lives in
 [`runtime/audio/directaudio/DirectAudioDriver.kt`](../app/src/main/runtime/audio/directaudio/DirectAudioDriver.kt).
 
-### Proton 11 is not supported today
-
-The bundled `wine11` driver binaries are stubs with **no export table** — see
-[`PROVENANCE.md`](../app/src/main/assets/directaudio/PROVENANCE.md). `mmdevapi` resolves its
-backend with `GetProcAddress` for `get_device_guid` and `get_device_name_from_guid`, so a
-driver with no exports fails `load_driver` and takes the game's audio initialisation down with
-it. That is a failed launch, not silence. Every upstream release has the same defect, so
-DirectAudio currently works only on **Proton 10.0-4**.
-
-`install()` checks both PE halves for those two exports before staging anything into the
-prefix, so this is enforced by inspecting the artifact rather than by a version blocklist — a
-fixed upstream build starts working the moment it is dropped in.
-
 ### Driver selection and overlay
 
 Two axes decide which bundled build is installed:
 
-- **Wine ABI** — one Wine-11 build serves Proton 11.0-1 / -3 / -5 / -6 (ABI-interchangeable);
-  Proton 10.0-4 needs the separate wine10 build. Anything else is reported unsupported rather
-  than guessed at.
-- **Kernel page size** — `sdk35` for a 16 KB-page kernel, `sdk28` for the classic 4 KB, read via
-  `Os.sysconf(_SC_PAGESIZE)`. Loading the wrong one fails to map. Nothing else in the app needed
-  page size before, so the check is new.
+- **mmdevapi unixlib ABI** — the driver plugs straight into mmdevapi's unixlib table, so the
+  build that fits is a property of the Proton binary, not of its version string. Both the driver
+  and every Proton's own `winealsa.so` export `__wine_unix_call_funcs`, whose size is that table:
+  **36** entries for Proton 9.0 and 10.0-4, **37** for Proton 11.x. `DirectAudioDriver` reads the
+  count out of `<layer>/lib/wine/aarch64-unix/winealsa.so` and picks the bundled build whose own
+  unixlib reports the same count. No version parsing, so custom, GE and beta Protons work on the
+  same footing as the stock ones, and a Proton whose table matches neither build is refused
+  instead of being handed a mismatched driver.
+- **Kernel page size** — `sdk35` for a 16 KB-page kernel (`p_align` 0x4000), `sdk28` for the
+  classic 4 KB (0x1000), read via `Os.sysconf(_SC_PAGESIZE)`. Loading the wrong one fails to map.
+  Nothing else in the app needed page size before, so the check is new.
+
+The `wine10`/`wine11` asset names are historical — the wine10 build serves Proton 9.0 as well,
+which the old version table refused outright.
+
+A Wine 11 `.drv` has **no PE export table**, and that is correct: Wine 11's own `winealsa.drv`
+and `winepulse.drv` have exactly the same shape, because the `.drv` is a generic unixlib host
+there and the driver logic lives entirely in the `.so`. Only Wine 10 and earlier resolve
+`get_device_guid` / `get_device_name_from_guid` through PE exports.
 
 The complete 3-file set is then overlaid onto the container's Wine layer, stamped by bundled
 version + variant so it is a no-op on every launch after the first:
@@ -177,11 +177,11 @@ cannot complete, drops the launch back to `Container.DEFAULT_AUDIO_DRIVER` — t
 names PulseAudio, the PulseAudio component is added like any other launch, and a toast says why.
 The container's own saved choice is untouched, so the next launch retries the install.
 
-`install()` reports that honestly: a PE half that does not export the mmdevapi entry points,
-a failed stage into the prefix, or a unixlib with neither `libaaudio.so` nor `libwaudio.so` in
-its dynamic section all return `false` rather than logging and returning success. A rejected
-driver is also deleted from `system32`/`syswow64`, so a prefix staged by an earlier build does
-not keep a dead `winedirectaudio.drv` around.
+`install()` reports that honestly: no bundled build matching the layer's unixlib ABI, a failed
+stage into the prefix, or a unixlib with neither `libaaudio.so` nor `libwaudio.so` in its dynamic
+section all return `false` rather than logging and returning success. A refused driver is also
+deleted from `system32`/`syswow64`, so a prefix staged by an earlier build does not keep a dead
+`winedirectaudio.drv` around.
 
 Order matters: `resolveAudioDriver()` runs **after** `setupWineSystemFiles()`, because
 `ensureWinePrefixReady()` can move a broken `.wine` aside and extract a fresh prefix. Staging
