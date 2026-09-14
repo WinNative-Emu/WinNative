@@ -28,6 +28,16 @@ object DirectAudioDriver {
     private const val ASSET_DIR = "directaudio"
     private const val DRV_NAME = "winedirectaudio.drv"
     private const val SO_NAME = "winedirectaudio.so"
+    private const val UNIX_CALL_TABLE = "__wine_unix_call_funcs"
+    private const val SHT_DYNSYM = 11
+
+    // Newest first: the first bundled build whose unixlib table matches wins.
+    private val ABI_TAGS = listOf("wine11", "wine10")
+
+    // Every Proton ships at least one of these; they carry the same mmdevapi
+    // unixlib table the DirectAudio driver has to plug into.
+    private val HOST_UNIX_PROBES =
+        listOf("aarch64-unix/winealsa.so", "aarch64-unix/winepulse.so")
 
     // Bump when the bundled driver changes so existing layers re-overlay.
     private const val BUNDLED_VERSION = "1.3.2"
@@ -50,35 +60,112 @@ object DirectAudioDriver {
             "sdk28"
         }
 
-    // One wine11 build serves every 11.0-x; 10.0-4 needs wine10. Anything else
-    // is unsupported rather than guessed at.
-    fun wineAbiTag(wineVersion: String?): String? {
-        if (wineVersion?.contains(ARM64EC) != true) return null
-        val major = Regex("""(\d+)\.\d+""").find(wineVersion)
-            ?.groupValues?.get(1)?.toIntOrNull() ?: return null
-        return when (major) {
-            11 -> "wine11"
-            10 -> "wine10"
-            else -> null
+    fun isSupportedFor(wineVersion: String?): Boolean =
+        wineVersion?.contains(ARM64EC, ignoreCase = true) == true
+
+    // The driver plugs into mmdevapi's unixlib table, so the build that fits is
+    // decided by the Proton layer's own ABI, not by a version parsed from its name:
+    // custom, GE and beta builds carry names no version table can predict, and a
+    // Proton whose table changed would otherwise be handed a mismatched driver.
+    internal fun unixCallEntries(elf: ByteArray): Int {
+        if (elf.size < 64) return 0
+        if (elf[0] != 0x7F.toByte() || elf[1] != 'E'.code.toByte() ||
+            elf[2] != 'L'.code.toByte() || elf[3] != 'F'.code.toByte()) return 0
+        if (elf[4].toInt() != 2 || elf[5].toInt() != 1) return 0
+        fun u16(o: Int) = (elf[o].toInt() and 0xFF) or ((elf[o + 1].toInt() and 0xFF) shl 8)
+        fun u32(o: Int) = u16(o).toLong() or (u16(o + 2).toLong() shl 16)
+        fun u64(o: Int) = u32(o) or (u32(o + 4) shl 32)
+        val sectionOffset = u64(0x28).toInt()
+        val sectionSize = u16(0x3A)
+        val sectionCount = u16(0x3C)
+        if (sectionOffset <= 0 || sectionCount == 0) return 0
+        for (i in 0 until sectionCount) {
+            val section = sectionOffset + i * sectionSize
+            if (section + sectionSize > elf.size) return 0
+            if (u32(section + 4).toInt() != SHT_DYNSYM) continue
+            val symbols = u64(section + 24).toInt()
+            val symbolsSize = u64(section + 32).toInt()
+            val entrySize = u64(section + 56).toInt().let { if (it > 0) it else 24 }
+            val strings = u64(sectionOffset + u32(section + 40).toInt() * sectionSize + 24).toInt()
+            var sym = symbols
+            while (sym + entrySize <= symbols + symbolsSize && sym + entrySize <= elf.size) {
+                val at = strings + u32(sym).toInt()
+                if (at in 0 until elf.size) {
+                    var end = at
+                    while (end < elf.size && elf[end] != 0.toByte()) end++
+                    if (String(elf, at, end - at, Charsets.US_ASCII) == UNIX_CALL_TABLE) {
+                        return (u64(sym + 16) / 8L).toInt()
+                    }
+                }
+                sym += entrySize
+            }
         }
+        return 0
     }
 
-    fun isSupportedFor(wineVersion: String?): Boolean = wineAbiTag(wineVersion) != null
+    private fun hostUnixAbi(wineLibDir: File): Int {
+        for (probe in HOST_UNIX_PROBES) {
+            val file = File(wineLibDir, probe)
+            if (!file.isFile) continue
+            val entries = try {
+                unixCallEntries(file.readBytes())
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "could not read %s", file)
+                0
+            }
+            if (entries > 0) return entries
+        }
+        return 0
+    }
 
-    private fun assetFor(wineVersion: String?): String? =
-        wineAbiTag(wineVersion)?.let { "$ASSET_DIR/directaudio-$it-$ARM64EC-${pageSizeTag()}.zip" }
+    internal fun driverUnixAbi(context: Context, asset: String): Int =
+        try {
+            context.assets.open(asset).use { raw ->
+                ZipInputStream(raw.buffered()).use { zip ->
+                    var entries = 0
+                    while (entries == 0) {
+                        val entry = zip.nextEntry ?: break
+                        if (entry.name == "aarch64-unix/$SO_NAME") {
+                            entries = unixCallEntries(zip.readBytes())
+                        }
+                        zip.closeEntry()
+                    }
+                    entries
+                }
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "could not read the unixlib in %s", asset)
+            0
+        }
+
+    internal fun assetForAbi(context: Context, abi: Int): String? {
+        if (abi <= 0) return null
+        for (tag in ABI_TAGS) {
+            val asset = "$ASSET_DIR/directaudio-$tag-$ARM64EC-${pageSizeTag()}.zip"
+            if (driverUnixAbi(context, asset) == abi) return asset
+        }
+        return null
+    }
 
     // Installs both PE halves plus the unixlib: which PE loads is decided by the
     // guest game's bitness, not the device. Stamped, so it runs once per layer.
     fun install(context: Context, imageFs: ImageFs, wineVersion: String?): Boolean {
-        val asset = assetFor(wineVersion)
-        if (asset == null) {
-            Timber.tag(TAG).w("no driver build for wineVersion=%s; not installing", wineVersion)
+        if (!isSupportedFor(wineVersion)) {
+            Timber.tag(TAG).w("wineVersion=%s is not arm64ec; not installing", wineVersion)
             return false
         }
 
         val wineLibDir = File(imageFs.winePath, "lib/wine")
-        val stampId = "$BUNDLED_VERSION-${wineAbiTag(wineVersion)}-${pageSizeTag()}"
+        val abi = hostUnixAbi(wineLibDir)
+        val asset = assetForAbi(context, abi)
+        if (asset == null) {
+            Timber.tag(TAG).w(
+                "no bundled driver matches the mmdevapi unixlib ABI of %s (%d entries)",
+                imageFs.winePath, abi)
+            removeFromPrefix(imageFs)
+            return false
+        }
+        val stampId = "$BUNDLED_VERSION-abi$abi-${pageSizeTag()}"
         val stamp = File(wineLibDir, ".directaudio.stamp")
         val installed = LAYOUT.all { (entry, dir) ->
             File(wineLibDir, "$dir/${File(entry).name}").isFile
@@ -94,51 +181,77 @@ object DirectAudioDriver {
             stamp.writeText(stampId)
             Timber.tag(TAG).i("installed DirectAudio %s into %s", stampId, wineLibDir)
         }
-        patchDirectAudioNeeded(File(wineLibDir, "aarch64-unix/$SO_NAME"))
-        mirrorIntoPrefix(imageFs, wineLibDir)
-        return true
+        if (!patchDirectAudioNeeded(File(wineLibDir, "aarch64-unix/$SO_NAME"))) return false
+        return mirrorIntoPrefix(imageFs, wineLibDir)
     }
 
-    private fun mirrorIntoPrefix(imageFs: ImageFs, wineLibDir: File) {
+    private fun removeFromPrefix(imageFs: ImageFs) {
         val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
-        copyIfChanged(File(wineLibDir, "aarch64-windows/$DRV_NAME"), File(windowsDir, "system32/$DRV_NAME"))
-        copyIfChanged(File(wineLibDir, "i386-windows/$DRV_NAME"), File(windowsDir, "syswow64/$DRV_NAME"))
+        for (dir in listOf("system32", "syswow64")) {
+            val stale = File(windowsDir, "$dir/$DRV_NAME")
+            if (stale.isFile && stale.delete()) {
+                Timber.tag(TAG).i("removed unusable %s from %s", DRV_NAME, dir)
+            }
+        }
     }
 
-    private fun copyIfChanged(src: File, dst: File) {
+    private fun mirrorIntoPrefix(imageFs: ImageFs, wineLibDir: File): Boolean {
+        val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+        val win64 = copyIfChanged(
+            File(wineLibDir, "aarch64-windows/$DRV_NAME"), File(windowsDir, "system32/$DRV_NAME"))
+        val win32 = copyIfChanged(
+            File(wineLibDir, "i386-windows/$DRV_NAME"), File(windowsDir, "syswow64/$DRV_NAME"))
+        return win64 && win32
+    }
+
+    private fun copyIfChanged(src: File, dst: File): Boolean {
         if (!src.isFile) {
-            Timber.tag(TAG).w("no driver PE at %s; mmdevapi will not find it", src)
-            return
+            Timber.tag(TAG).e("no driver PE at %s; mmdevapi will not find it", src)
+            return false
         }
-        if (dst.isFile && dst.length() == src.length()) return
-        try {
+        if (dst.isFile && dst.length() == src.length()) return true
+        return try {
             dst.parentFile?.mkdirs()
             src.inputStream().use { input -> dst.outputStream().use { output -> input.copyTo(output) } }
             dst.setExecutable(true, false)
             Timber.tag(TAG).i("staged %s into %s", src.name, dst.parentFile?.name)
+            true
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "failed to stage %s into the prefix", src.name)
+            false
         }
     }
 
-    private fun patchDirectAudioNeeded(soFile: File) {
-        if (!soFile.isFile) return
-        try {
+    private fun patchDirectAudioNeeded(soFile: File): Boolean {
+        if (!soFile.isFile) {
+            Timber.tag(TAG).e("no unixlib at %s", soFile)
+            return false
+        }
+        return try {
             val bytes = soFile.readBytes()
-            val old = "libaaudio.so".toByteArray(Charsets.US_ASCII)
             val repl = "libwaudio.so".toByteArray(Charsets.US_ASCII)
-            var idx = -1
-            outer@ for (i in 0..bytes.size - old.size - 1) {
-                for (j in old.indices) if (bytes[i + j] != old[j]) continue@outer
-                if (bytes[i + old.size] == 0.toByte()) { idx = i; break }
+            if (indexOfNeeded(bytes, repl) >= 0) return true
+            val idx = indexOfNeeded(bytes, "libaaudio.so".toByteArray(Charsets.US_ASCII))
+            if (idx < 0) {
+                Timber.tag(TAG).e("neither libaaudio.so nor libwaudio.so is a NEEDED of %s", soFile.name)
+                return false
             }
-            if (idx < 0) return
             System.arraycopy(repl, 0, bytes, idx, repl.size)
             soFile.writeBytes(bytes)
             Timber.tag(TAG).i("patched winedirectaudio.so NEEDED libaaudio.so -> libwaudio.so")
+            true
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "failed to patch winedirectaudio.so NEEDED")
+            false
         }
+    }
+
+    private fun indexOfNeeded(bytes: ByteArray, needle: ByteArray): Int {
+        outer@ for (i in 0..bytes.size - needle.size - 1) {
+            for (j in needle.indices) if (bytes[i + j] != needle[j]) continue@outer
+            if (bytes[i + needle.size] == 0.toByte()) return i
+        }
+        return -1
     }
 
     private fun unzipAsset(context: Context, asset: String, wineLibDir: File): Boolean {

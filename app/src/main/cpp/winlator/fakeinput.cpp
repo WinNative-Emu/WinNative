@@ -881,9 +881,13 @@ EXPORT int ioctl(int fd, int op, ...) {
   argp = va_arg(va, void *);
   va_end(va);
 
-  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
+  // The lock must not be held across the passthrough: binder's transport is a
+  // blocking ioctl(BINDER_WRITE_READ), so a parked binder pool thread would own
+  // controller_mutex for as long as it waits and deadlock every other ioctl.
+  std::unique_lock<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   if (controller == controller_map.end()) {
+    guard.unlock();
     return syscall(SYS_ioctl, fd, op, argp);
   }
 
@@ -1175,7 +1179,7 @@ EXPORT ssize_t write(int fd, const void *buf, size_t count) {
   if (!my_write)
     *(void **)&my_write = dlsym(RTLD_NEXT, "write");
 
-  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
+  std::unique_lock<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   if (controller != controller_map.end()) {
     if (fake_fd_is_stale(fd)) {
@@ -1192,11 +1196,12 @@ EXPORT ssize_t write(int fd, const void *buf, size_t count) {
 
     return static_cast<ssize_t>(count);
   }
+  guard.unlock();
   return my_write(fd, buf, count);
 }
 
 EXPORT ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
-  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
+  std::unique_lock<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   if (controller != controller_map.end()) {
     if (fake_fd_is_stale(fd)) {
@@ -1216,6 +1221,7 @@ EXPORT ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
     }
     return total;
   }
+  guard.unlock();
   return syscall(SYS_writev, fd, iov, iovcnt);
 }
 
