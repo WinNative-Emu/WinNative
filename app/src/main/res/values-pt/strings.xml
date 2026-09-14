@@ -261,6 +261,18 @@
     <string name="stores_accounts_gog_login_failed">Falha no início de sessão da GOG: %1$s</string>
     <string name="stores_accounts_custom_download_path">Caminho de Transferência Personalizado</string>
     <string name="stores_accounts_custom_download_path_description">Já foi configurado um caminho de transferência predefinido em Definições &gt; Lojas. Se pretender definir um caminho personalizado exclusivo para esta instalação específica, clique em Prosseguir.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Armazenamento externo</string>
+    <string name="external_storage_add_title">Adicionar armazenamento externo</string>
+    <string name="external_storage_add_subtitle">Instalar jogos numa unidade USB ou SD</string>
+    <string name="external_storage_add_invalid">Essa pasta não está numa unidade externa</string>
+    <string name="external_storage_status_connected">Ligada · %1$s livres</string>
+    <string name="external_storage_status_disconnected">Desligada</string>
+    <string name="external_storage_download_target_title">Local de transferência</string>
+    <string name="external_storage_download_target_message">Escolha onde este jogo será instalado.</string>
+    <string name="external_storage_download_target_internal">Preferir interno</string>
+    <string name="external_storage_download_target_external">Preferir externo</string>
+    <string name="external_storage_download_target_none">Nenhuma unidade externa ligada</string>
     <string name="stores_accounts_not_signed_in">Sessão não iniciada</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Ausente</string>

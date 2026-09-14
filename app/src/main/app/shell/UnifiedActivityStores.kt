@@ -945,6 +945,7 @@ internal fun UnifiedActivity.EpicGameManagerDialog(
     val selectedDlcIds = remember { mutableStateListOf<Int>() }
     var customPath by remember { mutableStateOf<String?>(null) }
     var showCustomPathWarning by remember { mutableStateOf(false) }
+    var showDownloadTarget by remember(app.id) { mutableStateOf(false) }
     var isCheckingForUpdate by remember(app.id) { mutableStateOf(false) }
     var updateInfo by remember(app.id) { mutableStateOf<EpicUpdateInfo?>(null) }
     var updateStatusText by remember(app.id) { mutableStateOf<String?>(null) }
@@ -1058,6 +1059,46 @@ internal fun UnifiedActivity.EpicGameManagerDialog(
     val isInstallEnabled = requiredBytes == 0L || availableBytes >= requiredBytes
     val installActionEnabled = isInstallEnabled && !hasBlockingEpicDownload
     val installPathDisplay = if (installed) app.installPath else (customPath ?: EpicConstants.defaultEpicGamesPath(context))
+    val externalStorageState by com.winlator.cmod.feature.storage.ExternalStorage.state.collectAsState()
+    val externalDrive = externalStorageState.preferredDrive()
+    val externalInstallRoot =
+        externalDrive?.let {
+            com.winlator.cmod.feature.storage.ExternalStorage
+                .storeInstallRoot(
+                    it.drive.downloadPath,
+                    com.winlator.cmod.feature.stores.common.InstallStore.EPIC,
+                )
+        }
+    val startEpicInstall: (com.winlator.cmod.feature.storage.DownloadTarget) -> Unit = { target ->
+        val sanitizedTitle = app.title.replace(Regex("[^a-zA-Z0-9 \\-_]"), "").trim()
+        val externalRoot =
+            externalInstallRoot.takeIf {
+                target == com.winlator.cmod.feature.storage.DownloadTarget.EXTERNAL
+            }
+        val installPath =
+            when {
+                externalRoot != null -> java.io.File(externalRoot, sanitizedTitle).absolutePath
+                customPath != null -> java.io.File(customPath!!, sanitizedTitle).absolutePath
+                else -> EpicConstants.getGameInstallPath(context, app.title)
+            }
+        context.runIfOnlineOrToast {
+            EpicService.downloadGame(context, app.id, selectedDlcIds.toList(), installPath, "en-US")
+            onDismissRequest()
+        }
+    }
+
+    if (showDownloadTarget) {
+        com.winlator.cmod.feature.storage.DownloadTargetDialog(
+            internalPath = installPathDisplay,
+            externalPath = externalInstallRoot,
+            externalLabel = externalDrive?.drive?.label.orEmpty(),
+            onDismiss = { showDownloadTarget = false },
+            onConfirm = { target ->
+                showDownloadTarget = false
+                startEpicInstall(target)
+            },
+        )
+    }
 
     val dlcItems =
         remember(dlcApps) {
@@ -1131,16 +1172,10 @@ internal fun UnifiedActivity.EpicGameManagerDialog(
                         )
                         return@StoreGameDetailScreen
                     }
-                    val installPath =
-                        if (customPath != null) {
-                            val sanitizedTitle = app.title.replace(Regex("[^a-zA-Z0-9 \\-_]"), "").trim()
-                            java.io.File(customPath!!, sanitizedTitle).absolutePath
-                        } else {
-                            EpicConstants.getGameInstallPath(context, app.title)
-                        }
-                    context.runIfOnlineOrToast {
-                        EpicService.downloadGame(context, app.id, selectedDlcIds.toList(), installPath, "en-US")
-                        onDismissRequest()
+                    if (installed) {
+                        startEpicInstall(com.winlator.cmod.feature.storage.DownloadTarget.INTERNAL)
+                    } else {
+                        showDownloadTarget = true
                     }
                 },
                 onCloudSync = {
@@ -1521,6 +1556,7 @@ internal fun UnifiedActivity.GOGGameManagerDialog(
     var dlcSizes by remember(app.id) { mutableStateOf<Map<Int, GOGManifestSizes>>(emptyMap()) }
     var customPath by remember { mutableStateOf<String?>(null) }
     var showCustomPathWarning by remember { mutableStateOf(false) }
+    var showDownloadTarget by remember(app.id) { mutableStateOf(false) }
     var dlcApps by remember(app.id) { mutableStateOf<List<GOGDlcInfo>>(emptyList()) }
     val selectedDlcIds = remember(app.id) { mutableStateListOf<Int>() }
     var isCheckingForGogUpdate by remember(app.id) { mutableStateOf(false) }
@@ -1629,6 +1665,52 @@ internal fun UnifiedActivity.GOGGameManagerDialog(
         } else {
             GOGConstants.getGameInstallPath(app.title)
         }
+    val externalStorageState by com.winlator.cmod.feature.storage.ExternalStorage.state.collectAsState()
+    val externalDrive = externalStorageState.preferredDrive()
+    val externalInstallRoot =
+        externalDrive?.let {
+            com.winlator.cmod.feature.storage.ExternalStorage
+                .storeInstallRoot(
+                    it.drive.downloadPath,
+                    com.winlator.cmod.feature.stores.common.InstallStore.GOG,
+                )
+        }
+    val startGogInstall: (com.winlator.cmod.feature.storage.DownloadTarget) -> Unit = { target ->
+        val externalRoot =
+            externalInstallRoot.takeIf {
+                target == com.winlator.cmod.feature.storage.DownloadTarget.EXTERNAL
+            }
+        val installPath =
+            if (externalRoot != null) {
+                java.io.File(externalRoot, GOGConstants.getSanitizedGameFolderName(app.title)).absolutePath
+            } else {
+                installPathDisplay
+            }
+        context.runIfOnlineOrToast {
+            GOGService.downloadGame(
+                context,
+                app.id,
+                installPath,
+                PrefManager.containerLanguage,
+                selectedDlcIds.toList(),
+            )
+            onDismissRequest()
+        }
+    }
+
+    if (showDownloadTarget) {
+        com.winlator.cmod.feature.storage.DownloadTargetDialog(
+            internalPath = installPathDisplay,
+            externalPath = externalInstallRoot,
+            externalLabel = externalDrive?.drive?.label.orEmpty(),
+            onDismiss = { showDownloadTarget = false },
+            onConfirm = { target ->
+                showDownloadTarget = false
+                startGogInstall(target)
+            },
+        )
+    }
+
     val dlcItems =
         remember(dlcApps, dlcSizes) {
             dlcApps.mapNotNull { dlc ->
@@ -1749,15 +1831,10 @@ internal fun UnifiedActivity.GOGGameManagerDialog(
                         )
                         return@StoreGameDetailScreen
                     }
-                    context.runIfOnlineOrToast {
-                        GOGService.downloadGame(
-                            context,
-                            app.id,
-                            installPathDisplay,
-                            PrefManager.containerLanguage,
-                            selectedDlcIds.toList(),
-                        )
-                        onDismissRequest()
+                    if (installed) {
+                        startGogInstall(com.winlator.cmod.feature.storage.DownloadTarget.INTERNAL)
+                    } else {
+                        showDownloadTarget = true
                     }
                 },
                 onCloudSync = {

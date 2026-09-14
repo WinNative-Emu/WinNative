@@ -260,6 +260,18 @@
     <string name="stores_accounts_gog_login_failed">GOG 登入失敗：%1$s</string>
     <string name="stores_accounts_custom_download_path">自訂下載路徑</string>
     <string name="stores_accounts_custom_download_path_description">已在設定 &gt; 商店中設定預設下載路徑。如果您想為此特定安裝設定唯一的自訂路徑，請點擊繼續。</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">外部儲存空間</string>
+    <string name="external_storage_add_title">新增外部儲存空間</string>
+    <string name="external_storage_add_subtitle">將遊戲安裝到 USB 或 SD 裝置</string>
+    <string name="external_storage_add_invalid">該資料夾不在外部裝置上</string>
+    <string name="external_storage_status_connected">已連接 · 剩餘 %1$s</string>
+    <string name="external_storage_status_disconnected">已中斷連接</string>
+    <string name="external_storage_download_target_title">下載位置</string>
+    <string name="external_storage_download_target_message">選擇此遊戲的安裝位置。</string>
+    <string name="external_storage_download_target_internal">優先內部儲存</string>
+    <string name="external_storage_download_target_external">優先外部儲存</string>
+    <string name="external_storage_download_target_none">未連接外部裝置</string>
     <string name="stores_accounts_not_signed_in">尚未登入</string>
     <string name="stores_accounts_status_online">線上</string>
     <string name="stores_accounts_status_away">離開</string>

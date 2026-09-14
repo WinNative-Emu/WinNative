@@ -264,6 +264,18 @@
     <string name="stores_accounts_gog_login_failed">Logowanie do GOG nie powiodło się: %1$s</string>
     <string name="stores_accounts_custom_download_path">Własna ścieżka pobierania</string>
     <string name="stores_accounts_custom_download_path_description">Domyślna ścieżka pobierania została już skonfigurowana w Ustawienia &gt; Sklepy. Jeśli chcesz ustawić osobną ścieżkę dla tej instalacji, kliknij Kontynuuj.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Pamięć zewnętrzna</string>
+    <string name="external_storage_add_title">Dodaj pamięć zewnętrzną</string>
+    <string name="external_storage_add_subtitle">Instaluj gry na dysku USB lub karcie SD</string>
+    <string name="external_storage_add_invalid">Ten folder nie znajduje się na dysku zewnętrznym</string>
+    <string name="external_storage_status_connected">Podłączony · wolne %1$s</string>
+    <string name="external_storage_status_disconnected">Odłączony</string>
+    <string name="external_storage_download_target_title">Lokalizacja pobierania</string>
+    <string name="external_storage_download_target_message">Wybierz, gdzie zainstalować tę grę.</string>
+    <string name="external_storage_download_target_internal">Preferuj wewnętrzną</string>
+    <string name="external_storage_download_target_external">Preferuj zewnętrzną</string>
+    <string name="external_storage_download_target_none">Nie podłączono dysku zewnętrznego</string>
     <string name="stores_accounts_not_signed_in">Niezalogowano</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Zaraz wracam</string>

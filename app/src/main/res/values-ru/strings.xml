@@ -263,6 +263,18 @@
     <string name="stores_accounts_gog_login_failed">Не удалось войти в GOG: %1$s</string>
     <string name="stores_accounts_custom_download_path">Пользовательский путь загрузки</string>
     <string name="stores_accounts_custom_download_path_description">Путь загрузки по умолчанию уже настроен в разделе «Настройки» &gt; «Магазины». Если вы хотите установить уникальный путь для этой конкретной установки, нажмите «Продолжить».</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Внешнее хранилище</string>
+    <string name="external_storage_add_title">Добавить внешнее хранилище</string>
+    <string name="external_storage_add_subtitle">Устанавливать игры на USB- или SD-накопитель</string>
+    <string name="external_storage_add_invalid">Эта папка не находится на внешнем накопителе</string>
+    <string name="external_storage_status_connected">Подключено · свободно %1$s</string>
+    <string name="external_storage_status_disconnected">Отключено</string>
+    <string name="external_storage_download_target_title">Место загрузки</string>
+    <string name="external_storage_download_target_message">Выберите, куда установить эту игру.</string>
+    <string name="external_storage_download_target_internal">Предпочесть внутреннее</string>
+    <string name="external_storage_download_target_external">Предпочесть внешнее</string>
+    <string name="external_storage_download_target_none">Внешний накопитель не подключён</string>
     <string name="stores_accounts_not_signed_in">Вход не выполнен</string>
     <string name="stores_accounts_status_online">Онлайн</string>
     <string name="stores_accounts_status_away">Нет на месте</string>

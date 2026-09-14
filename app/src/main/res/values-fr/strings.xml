@@ -260,6 +260,18 @@
     <string name="stores_accounts_gog_login_failed">Échec de la connexion GOG : %1$s</string>
     <string name="stores_accounts_custom_download_path">Chemin de téléchargement personnalisé</string>
     <string name="stores_accounts_custom_download_path_description">Un chemin de téléchargement par défaut a déjà été configuré dans Paramètres &gt; Boutiques. Si vous souhaitez définir un chemin personnalisé unique pour cette installation spécifique, cliquez sur Continuer.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Stockage externe</string>
+    <string name="external_storage_add_title">Ajouter un stockage externe</string>
+    <string name="external_storage_add_subtitle">Installer les jeux sur une clé USB ou une carte SD</string>
+    <string name="external_storage_add_invalid">Ce dossier n\'est pas sur un lecteur externe</string>
+    <string name="external_storage_status_connected">Connecté · %1$s libres</string>
+    <string name="external_storage_status_disconnected">Déconnecté</string>
+    <string name="external_storage_download_target_title">Emplacement de téléchargement</string>
+    <string name="external_storage_download_target_message">Choisissez où ce jeu sera installé.</string>
+    <string name="external_storage_download_target_internal">Interne de préférence</string>
+    <string name="external_storage_download_target_external">Externe de préférence</string>
+    <string name="external_storage_download_target_none">Aucun lecteur externe connecté</string>
     <string name="stores_accounts_not_signed_in">Non connecté</string>
     <string name="stores_accounts_status_online">En ligne</string>
     <string name="stores_accounts_status_away">Absent</string>

@@ -260,6 +260,18 @@
     <string name="stores_accounts_gog_login_failed">GOG 로그인 실패: %1$s</string>
     <string name="stores_accounts_custom_download_path">사용자 지정 다운로드 경로</string>
     <string name="stores_accounts_custom_download_path_description">설정 &gt; 스토어에 기본 다운로드 경로가 이미 구성되어 있습니다. 이 설치에 고유한 사용자 지정 경로를 설정하려면 진행을 클릭하세요.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">외부 저장소</string>
+    <string name="external_storage_add_title">외부 저장소 추가</string>
+    <string name="external_storage_add_subtitle">USB 또는 SD 드라이브에 게임 설치</string>
+    <string name="external_storage_add_invalid">해당 폴더는 외부 드라이브에 없습니다</string>
+    <string name="external_storage_status_connected">연결됨 · %1$s 사용 가능</string>
+    <string name="external_storage_status_disconnected">연결 끊김</string>
+    <string name="external_storage_download_target_title">다운로드 위치</string>
+    <string name="external_storage_download_target_message">이 게임을 설치할 위치를 선택하세요.</string>
+    <string name="external_storage_download_target_internal">내부 우선</string>
+    <string name="external_storage_download_target_external">외부 우선</string>
+    <string name="external_storage_download_target_none">연결된 외부 드라이브가 없습니다</string>
     <string name="stores_accounts_not_signed_in">로그인되지 않음</string>
     <string name="stores_accounts_status_online">온라인</string>
     <string name="stores_accounts_status_away">자리 비움</string>

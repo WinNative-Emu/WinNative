@@ -260,6 +260,18 @@
     <string name="stores_accounts_gog_login_failed">GOG-login mislykkedes: %1$s</string>
     <string name="stores_accounts_custom_download_path">Brugerdefineret downloadsti</string>
     <string name="stores_accounts_custom_download_path_description">En standard downloadsti er allerede konfigureret i Indstillinger &gt; Butikker. Hvis du ønsker at angive en unik brugerdefineret sti til denne specifikke installation, klik Fortsæt.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Ekstern lagring</string>
+    <string name="external_storage_add_title">Tilføj ekstern lagring</string>
+    <string name="external_storage_add_subtitle">Installer spil på et USB- eller SD-drev</string>
+    <string name="external_storage_add_invalid">Den mappe ligger ikke på et eksternt drev</string>
+    <string name="external_storage_status_connected">Tilsluttet · %1$s ledig</string>
+    <string name="external_storage_status_disconnected">Frakoblet</string>
+    <string name="external_storage_download_target_title">Downloadplacering</string>
+    <string name="external_storage_download_target_message">Vælg hvor dette spil skal installeres.</string>
+    <string name="external_storage_download_target_internal">Foretræk intern</string>
+    <string name="external_storage_download_target_external">Foretræk ekstern</string>
+    <string name="external_storage_download_target_none">Intet eksternt drev tilsluttet</string>
     <string name="stores_accounts_not_signed_in">Ikke logget ind</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Væk</string>

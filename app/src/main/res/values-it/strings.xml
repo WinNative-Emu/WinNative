@@ -260,6 +260,18 @@
     <string name="stores_accounts_gog_login_failed">Accesso a GOG fallito: %1$s</string>
     <string name="stores_accounts_custom_download_path">Percorso di download personalizzato</string>
     <string name="stores_accounts_custom_download_path_description">Un percorso di download predefinito è già stato configurato in Impostazioni &gt; Negozi. Se desideri impostare un percorso personalizzato per questa specifica installazione, tocca Procedi.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Archiviazione esterna</string>
+    <string name="external_storage_add_title">Aggiungi archiviazione esterna</string>
+    <string name="external_storage_add_subtitle">Installa i giochi su un\'unità USB o SD</string>
+    <string name="external_storage_add_invalid">Quella cartella non si trova su un\'unità esterna</string>
+    <string name="external_storage_status_connected">Collegata · %1$s liberi</string>
+    <string name="external_storage_status_disconnected">Scollegata</string>
+    <string name="external_storage_download_target_title">Percorso di download</string>
+    <string name="external_storage_download_target_message">Scegli dove installare questo gioco.</string>
+    <string name="external_storage_download_target_internal">Preferisci interna</string>
+    <string name="external_storage_download_target_external">Preferisci esterna</string>
+    <string name="external_storage_download_target_none">Nessuna unità esterna collegata</string>
     <string name="stores_accounts_not_signed_in">Non connesso</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Assente</string>

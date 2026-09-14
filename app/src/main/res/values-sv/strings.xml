@@ -261,6 +261,18 @@
     <string name="stores_accounts_gog_login_failed">GOG-inloggning misslyckades: %1$s</string>
     <string name="stores_accounts_custom_download_path">Anpassad nedladdningssökväg</string>
     <string name="stores_accounts_custom_download_path_description">En standardsökväg för nedladdning har redan konfigurerats i Inställningar &gt; Butiker. Om du vill ange en unik anpassad sökväg för just den här installationen, klicka på Fortsätt.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Extern lagring</string>
+    <string name="external_storage_add_title">Lägg till extern lagring</string>
+    <string name="external_storage_add_subtitle">Installera spel på en USB- eller SD-enhet</string>
+    <string name="external_storage_add_invalid">Den mappen finns inte på en extern enhet</string>
+    <string name="external_storage_status_connected">Ansluten · %1$s ledigt</string>
+    <string name="external_storage_status_disconnected">Frånkopplad</string>
+    <string name="external_storage_download_target_title">Nedladdningsplats</string>
+    <string name="external_storage_download_target_message">Välj var det här spelet ska installeras.</string>
+    <string name="external_storage_download_target_internal">Föredra intern</string>
+    <string name="external_storage_download_target_external">Föredra extern</string>
+    <string name="external_storage_download_target_none">Ingen extern enhet ansluten</string>
     <string name="stores_accounts_not_signed_in">Inte inloggad</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Frånvarande</string>

@@ -261,6 +261,18 @@
     <string name="stores_accounts_gog_login_failed">เข้าสู่ระบบ GOG ไม่สำเร็จ: %1$s</string>
     <string name="stores_accounts_custom_download_path">เส้นทางดาวน์โหลดกำหนดเอง</string>
     <string name="stores_accounts_custom_download_path_description">มีการกำหนดเส้นทางดาวน์โหลดเริ่มต้นไว้แล้วใน การตั้งค่า &gt; ร้านค้า หากคุณต้องการตั้งเส้นทางกำหนดเองสำหรับการติดตั้งนี้โดยเฉพาะ ให้คลิกดำเนินการ</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">ที่เก็บข้อมูลภายนอก</string>
+    <string name="external_storage_add_title">เพิ่มที่เก็บข้อมูลภายนอก</string>
+    <string name="external_storage_add_subtitle">ติดตั้งเกมลงในไดรฟ์ USB หรือ SD</string>
+    <string name="external_storage_add_invalid">โฟลเดอร์นั้นไม่ได้อยู่บนไดรฟ์ภายนอก</string>
+    <string name="external_storage_status_connected">เชื่อมต่อแล้ว · ว่าง %1$s</string>
+    <string name="external_storage_status_disconnected">ตัดการเชื่อมต่อ</string>
+    <string name="external_storage_download_target_title">ตำแหน่งดาวน์โหลด</string>
+    <string name="external_storage_download_target_message">เลือกตำแหน่งที่จะติดตั้งเกมนี้</string>
+    <string name="external_storage_download_target_internal">เลือกภายในก่อน</string>
+    <string name="external_storage_download_target_external">เลือกภายนอกก่อน</string>
+    <string name="external_storage_download_target_none">ไม่ได้เชื่อมต่อไดรฟ์ภายนอก</string>
     <string name="stores_accounts_not_signed_in">ยังไม่ได้เข้าสู่ระบบ</string>
     <string name="stores_accounts_status_online">ออนไลน์</string>
     <string name="stores_accounts_status_away">ไม่อยู่</string>

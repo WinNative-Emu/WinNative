@@ -261,6 +261,18 @@
     <string name="stores_accounts_gog_login_failed">GOG-innlogging mislyktes: %1$s</string>
     <string name="stores_accounts_custom_download_path">Egendefinert nedlastingssti</string>
     <string name="stores_accounts_custom_download_path_description">En standard nedlastingssti er allerede konfigurert i Innstillinger &gt; Butikker. Hvis du vil angi en unik egendefinert sti for denne spesifikke installasjonen, klikk Fortsett.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Ekstern lagring</string>
+    <string name="external_storage_add_title">Legg til ekstern lagring</string>
+    <string name="external_storage_add_subtitle">Installer spill på en USB- eller SD-stasjon</string>
+    <string name="external_storage_add_invalid">Den mappen er ikke på en ekstern stasjon</string>
+    <string name="external_storage_status_connected">Tilkoblet · %1$s ledig</string>
+    <string name="external_storage_status_disconnected">Frakoblet</string>
+    <string name="external_storage_download_target_title">Nedlastingsplassering</string>
+    <string name="external_storage_download_target_message">Velg hvor dette spillet skal installeres.</string>
+    <string name="external_storage_download_target_internal">Foretrekk intern</string>
+    <string name="external_storage_download_target_external">Foretrekk ekstern</string>
+    <string name="external_storage_download_target_none">Ingen ekstern stasjon tilkoblet</string>
     <string name="stores_accounts_not_signed_in">Ikke innlogget</string>
     <string name="stores_accounts_status_online">Pålogget</string>
     <string name="stores_accounts_status_away">Borte</string>

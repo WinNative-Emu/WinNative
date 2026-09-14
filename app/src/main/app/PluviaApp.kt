@@ -79,6 +79,8 @@ class PluviaApp : Application() {
 
         PrefManager.install(this)
         GOGConstants.init(this)
+        com.winlator.cmod.feature.storage.ExternalStorage
+            .install(this)
 
         com.winlator.cmod.app.service.NetworkMonitor
             .init(this)

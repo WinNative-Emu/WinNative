@@ -260,6 +260,18 @@
     <string name="stores_accounts_gog_login_failed">GOG-Anmeldung fehlgeschlagen: %1$s</string>
     <string name="stores_accounts_custom_download_path">Benutzerdefinierter Download-Pfad</string>
     <string name="stores_accounts_custom_download_path_description">Ein Standard-Download-Pfad wurde bereits unter Einstellungen &gt; Stores konfiguriert. Wenn du einen individuellen Pfad für diese Installation festlegen möchtest, klicke auf Fortfahren.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Externer Speicher</string>
+    <string name="external_storage_add_title">Externen Speicher hinzufügen</string>
+    <string name="external_storage_add_subtitle">Spiele auf einem USB- oder SD-Laufwerk installieren</string>
+    <string name="external_storage_add_invalid">Dieser Ordner liegt nicht auf einem externen Laufwerk</string>
+    <string name="external_storage_status_connected">Verbunden · %1$s frei</string>
+    <string name="external_storage_status_disconnected">Getrennt</string>
+    <string name="external_storage_download_target_title">Download-Speicherort</string>
+    <string name="external_storage_download_target_message">Wähle, wo dieses Spiel installiert wird.</string>
+    <string name="external_storage_download_target_internal">Intern bevorzugt</string>
+    <string name="external_storage_download_target_external">Extern bevorzugt</string>
+    <string name="external_storage_download_target_none">Kein externes Laufwerk verbunden</string>
     <string name="stores_accounts_not_signed_in">Nicht angemeldet</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Abwesend</string>

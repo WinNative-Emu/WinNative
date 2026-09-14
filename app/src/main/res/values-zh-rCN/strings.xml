@@ -260,6 +260,18 @@
     <string name="stores_accounts_gog_login_failed">GOG 登录失败：%1$s</string>
     <string name="stores_accounts_custom_download_path">自定义下载路径</string>
     <string name="stores_accounts_custom_download_path_description">设置 &gt; 商店中已配置了默认下载路径。如果您希望为此次安装设置特定的自定义路径，请点击继续。</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">外部存储</string>
+    <string name="external_storage_add_title">添加外部存储</string>
+    <string name="external_storage_add_subtitle">将游戏安装到 USB 或 SD 驱动器</string>
+    <string name="external_storage_add_invalid">该文件夹不在外部驱动器上</string>
+    <string name="external_storage_status_connected">已连接 · 剩余 %1$s</string>
+    <string name="external_storage_status_disconnected">已断开</string>
+    <string name="external_storage_download_target_title">下载位置</string>
+    <string name="external_storage_download_target_message">选择此游戏的安装位置。</string>
+    <string name="external_storage_download_target_internal">优先内部存储</string>
+    <string name="external_storage_download_target_external">优先外部存储</string>
+    <string name="external_storage_download_target_none">未连接外部驱动器</string>
     <string name="stores_accounts_not_signed_in">未登录</string>
     <string name="stores_accounts_status_online">在线</string>
     <string name="stores_accounts_status_away">离开</string>
