@@ -2706,6 +2706,10 @@ static bool record_and_submit_frame(VkRenderer* r) {
         }
     }
 
+    uint32_t framegen_budget = r->framegen_budget;
+    if (framegen_budget > framegen_capacity) framegen_budget = framegen_capacity;
+    if (framegen_planned > framegen_budget) framegen_planned = framegen_budget;
+
     VkCompositeTarget* composite = via_composite ? &r->composite[r->frame_index] : NULL;
 
     uint32_t image_index = 0;
@@ -2745,18 +2749,29 @@ static bool record_and_submit_frame(VkRenderer* r) {
     uint32_t gen_image_index[VKR_LSFG_MAX_GENERATIONS] = {0};
     for (uint32_t g = 0; g < framegen_planned; g++) {
         uint32_t idx = 0;
-        VkResult ga = vkAcquireNextImageKHR(r->device, r->swapchain, gen_acquire_timeout,
+        VkResult ga = vkAcquireNextImageKHR(r->device, r->swapchain,
+                                            g == 0 ? gen_acquire_timeout : 0ULL,
                                             f->image_available_gen[g], VK_NULL_HANDLE, &idx);
         if (ga != VK_SUCCESS && ga != VK_SUBOPTIMAL_KHR) {
             if (r->framegen_acquire_misses++ % 120 == 0) {
                 VK_LOGW("Generated frame %u/%u dropped: acquire returned %d "
-                        "(swapchain images=%u capacity=%u)",
+                        "(swapchain images=%u capacity=%u budget=%u)",
                         g + 1, framegen_planned, (int)ga, r->swapchain_image_count,
-                        framegen_capacity);
+                        framegen_capacity, framegen_budget);
             }
             break;
         }
         gen_image_index[gen_count++] = idx;
+    }
+
+    if (gen_count < framegen_planned) {
+        r->framegen_budget = gen_count;
+        r->framegen_ok_streak = 0;
+    } else if (++r->framegen_ok_streak >= VK_FRAMEGEN_RECOVER_FRAMES) {
+        r->framegen_ok_streak = 0;
+        if (framegen_budget < framegen_capacity) {
+            r->framegen_budget = framegen_budget + 1;
+        }
     }
 
     // Sample the render rate down to the requested fps on a fixed grid, then acquire an encoder
@@ -3201,6 +3216,7 @@ JNIEXPORT jlong JNICALL JNI_FN(nativeCreate)(JNIEnv* env, jclass clazz,
     (void)clazz;
     VkRenderer* r = calloc(1, sizeof(VkRenderer));
     if (!r) return 0;
+    r->framegen_budget = UINT32_MAX;
     r->target_present_mode = VK_PRESENT_MODE_FIFO_KHR;
     r->validation_enabled = (enableValidationLayers == JNI_TRUE);
     pthread_mutex_init(&r->scene_mutex, NULL);
