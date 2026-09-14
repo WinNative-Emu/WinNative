@@ -2879,4 +2879,7 @@ Installeret sti:
     <string name="networking_mac_summary">Hardwareadresse, der rapporteres for den primære adapter. Lad feltet stå tomt for den automatiske adresse, der udledes af enheden.</string>
     <string name="networking_mac_automatic">Automatisk: %1$s</string>
     <string name="networking_mac_invalid">Indtast 12 hexcifre (for eksempel 3c:5a:b4:12:34:56). Den første byte skal være unicast og globalt administreret, så bit 0 og 1 er nul; mange spil afviser lokalt administrerede adresser såsom 02:….</string>
+    <string name="steam_controller_left_pad_click">Klik på venstre pegefelt</string>
+    <string name="steam_controller_right_pad_click">Klik på højre pegefelt</string>
+    <string name="controller_test_generic">Generisk</string>
 </resources>

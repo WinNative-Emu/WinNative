@@ -2877,4 +2877,7 @@ Installerad sökväg:
     <string name="networking_mac_summary">Hårdvaruadress som rapporteras för den primära adaptern. Lämna tomt för den automatiska enhetshärledda adressen.</string>
     <string name="networking_mac_automatic">Automatisk: %1$s</string>
     <string name="networking_mac_invalid">Ange 12 hexadecimala tecken (till exempel 3c:5a:b4:12:34:56). Den första byten måste vara unicast och globalt administrerad, så bitarna 0 och 1 ska vara nollställda; många spel avvisar lokalt administrerade adresser som 02:….</string>
+    <string name="steam_controller_left_pad_click">Klick på vänster styrplatta</string>
+    <string name="steam_controller_right_pad_click">Klick på höger styrplatta</string>
+    <string name="controller_test_generic">Generisk</string>
 </resources>

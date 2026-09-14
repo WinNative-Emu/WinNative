@@ -2877,4 +2877,7 @@ Yüklü konum:
     <string name="networking_mac_summary">Birincil adaptör için bildirilen donanım adresi. Cihazdan türetilen otomatik adres için boş bırakın.</string>
     <string name="networking_mac_automatic">Otomatik: %1$s</string>
     <string name="networking_mac_invalid">12 onaltılık basamak girin (örneğin 3c:5a:b4:12:34:56). İlk bayt tek noktaya yayın ve küresel olarak yönetilen türde olmalı, yani 0 ve 1 numaralı bitler sıfır olmalıdır; birçok oyun 02:… gibi yerel olarak yönetilen adresleri reddeder.</string>
+    <string name="steam_controller_left_pad_click">Sol yüzeye tıklama</string>
+    <string name="steam_controller_right_pad_click">Sağ yüzeye tıklama</string>
+    <string name="controller_test_generic">Genel</string>
 </resources>

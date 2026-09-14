@@ -2884,5 +2884,8 @@ Zainstalowana ścieżka:
     <string name="networking_mac_summary">Adres sprzętowy zgłaszany dla głównej karty sieciowej. Pozostaw puste, aby użyć adresu wyprowadzonego automatycznie z urządzenia.</string>
     <string name="networking_mac_automatic">Automatyczny: %1$s</string>
     <string name="networking_mac_invalid">Wprowadź 12 cyfr szesnastkowych (na przykład 3c:5a:b4:12:34:56). Pierwszy bajt musi być unicastowy i administrowany globalnie, czyli z wyzerowanymi bitami 0 i 1; wiele gier odrzuca adresy administrowane lokalnie, takie jak 02:….</string>
+    <string name="steam_controller_left_pad_click">Kliknięcie lewego panelu</string>
+    <string name="steam_controller_right_pad_click">Kliknięcie prawego panelu</string>
+    <string name="controller_test_generic">Ogólny</string>
 </resources>
 

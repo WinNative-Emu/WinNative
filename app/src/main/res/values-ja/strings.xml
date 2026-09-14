@@ -2877,4 +2877,7 @@
     <string name="networking_mac_summary">プライマリアダプターとして報告されるハードウェアアドレス。空欄にすると、デバイスから自動生成されたアドレスを使用します。</string>
     <string name="networking_mac_automatic">自動: %1$s</string>
     <string name="networking_mac_invalid">16 進数 12 桁を入力してください (例: 3c:5a:b4:12:34:56)。最初のバイトはユニキャストかつグローバル管理である必要があるため、ビット 0 と 1 は 0 にしてください。多くのゲームは 02:… のようなローカル管理アドレスを拒否します。</string>
+    <string name="steam_controller_left_pad_click">左パッドのクリック</string>
+    <string name="steam_controller_right_pad_click">右パッドのクリック</string>
+    <string name="controller_test_generic">汎用</string>
 </resources>

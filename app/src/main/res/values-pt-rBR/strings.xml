@@ -2877,5 +2877,8 @@ Caminho instalado:
     <string name="networking_mac_summary">Endereço de hardware informado para o adaptador principal. Deixe vazio para usar o endereço automático derivado do dispositivo.</string>
     <string name="networking_mac_automatic">Automático: %1$s</string>
     <string name="networking_mac_invalid">Digite 12 dígitos hexadecimais (por exemplo 3c:5a:b4:12:34:56). O primeiro byte precisa ser unicast e de administração global, ou seja, com os bits 0 e 1 zerados; muitos jogos rejeitam endereços de administração local como 02:….</string>
+    <string name="steam_controller_left_pad_click">Clique no painel esquerdo</string>
+    <string name="steam_controller_right_pad_click">Clique no painel direito</string>
+    <string name="controller_test_generic">Genérico</string>
 </resources>
 

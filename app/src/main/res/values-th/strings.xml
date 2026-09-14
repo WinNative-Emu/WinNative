@@ -2876,4 +2876,7 @@
     <string name="networking_mac_summary">ที่อยู่ฮาร์ดแวร์ที่รายงานสำหรับอะแดปเตอร์หลัก เว้นว่างไว้เพื่อใช้ที่อยู่อัตโนมัติที่สร้างจากอุปกรณ์</string>
     <string name="networking_mac_automatic">อัตโนมัติ: %1$s</string>
     <string name="networking_mac_invalid">ป้อนเลขฐานสิบหก 12 หลัก (เช่น 3c:5a:b4:12:34:56) ไบต์แรกต้องเป็นแบบยูนิคาสต์และกำหนดจากส่วนกลาง บิต 0 และ 1 จึงต้องเป็น 0 หลายเกมปฏิเสธที่อยู่ที่กำหนดในเครื่อง เช่น 02:…</string>
+    <string name="steam_controller_left_pad_click">คลิกแพดซ้าย</string>
+    <string name="steam_controller_right_pad_click">คลิกแพดขวา</string>
+    <string name="controller_test_generic">ทั่วไป</string>
 </resources>

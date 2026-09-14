@@ -15,37 +15,37 @@ exclusiveContent {
 
 Do **not** edit any file in this tree by hand — the checksums must match the bytes.
 
-## `org.libsdl.android:SDL3` — `3.4.16`
+## `org.libsdl.android:SDL3` — `3.4.16-winnative.1`
 
-The official SDL 3.4.16 Android release AAR, used for the optional **Steam Controller** support.
-SDL's HIDAPI Steam drivers are what read the 2015 and 2026 Steam Controllers over Bluetooth LE and
-USB; see `SteamControllerBackend` and `app/src/main/cpp/steamctrl/steam_controller_bridge.cpp`.
-SDL publishes this AAR only as a GitHub release asset, not to a Maven repository, so it is
-vendored here.
+The Steam Controller backend uses this arm64 Android build. It has a separate
+`org.winnative.steam` Java/JNI package and `libSDL3steam.so` so it cannot collide
+with the older SDL integration shipped by ARMSX2.
 
-- `SDL3-3.4.16.aar` is byte-identical to the AAR inside the upstream release asset
-  `SDL3-devel-3.4.16-android.zip` from
-  <https://github.com/libsdl-org/SDL/releases/tag/release-3.4.16>.
-  AAR sha256 `03710fc7b49cc070551446841a843840fabf2aaaaa3043cd5739292a55e4e61c`
-  (recorded in `SDL3-3.4.16.aar.sha256`).
-- `SDL3-3.4.16.pom` is hand-written (packaging `aar`, no dependencies) — upstream ships no POM.
-- The AAR carries SDL's Java classes (`org.libsdl.app.*`, including `HIDDeviceManager`, which is
-  how SDL reaches Bluetooth/USB HID on Android) plus a prefab package. `libsteamctrl.so` links
-  `SDL3::SDL3` through prefab (`buildFeatures.prefab` in `app/build.gradle`), and that link is also
-  what packages `libSDL3.so` into the APK — the AAR has no `jni/` folder.
-- Consumed as `implementation 'org.libsdl.android:SDL3:3.4.16@aar'` (`@aar` because there is no
-  Gradle module metadata upstream).
-- License: **zlib** (`META-INF/LICENSE.txt` inside the AAR). See `EMULATOR_CREDITS.md`.
+`tools/sdl/steam-bluetooth.patch` serializes Bluetooth callbacks with shutdown,
+ignores callbacks from old connections, disconnects failed or timed-out GATT
+operations with bounded reconnection attempts, waits for the newer controller's
+MTU negotiation before enabling notifications, and preserves the final byte of
+output reports. Both the Java classes
+and native library are built from SDL's `release-3.4.16` source archive. SDL's zlib
+license is retained in the AAR.
 
-The AAR's prefab metadata records NDK r28; WinNative builds with r27 and prefab accepts it. Only
-`arm64-v8a` is extracted, since that is the single ABI in `abiFilters`.
+Rebuild using JDK 21, Python 3.12+, CMake, Ninja, Android SDK 35 and NDK 27.3.13750724:
 
-### How to update
+```sh
+python3 tools/sdl/build_android_transport.py --sdk "$ANDROID_HOME"
+```
 
-1. Download the new `SDL3-devel-<ver>-android.zip` from the SDL releases page and verify it
-   against the release notes.
-2. Copy the AAR out unmodified into `org/libsdl/android/SDL3/<ver>/`, alongside a matching
-   `.pom` and an `.aar.sha256`.
-3. Bump the version in `app/build.gradle`.
-4. Delete the old version directory.
-5. Build and run before merging — `libsteamctrl.so` links against it directly.
+The script verifies the source archive and original AAR checksums, applies the
+patch, relocates Java and JNI names, builds the arm64 native library with 16 KB
+page alignment, and packages the artifact. The generated SHA-256 is stored beside
+it. The app links it through the existing SDL3 prefab target.
+
+The original `3.4.16/` artifact is retained as the reproducible packaging input.
+It is byte-identical to the AAR in SDL's
+[official Android release](https://github.com/libsdl-org/SDL/releases/tag/release-3.4.16):
+SHA-256 `03710fc7b49cc070551446841a843840fabf2aaaaa3043cd5739292a55e4e61c`.
+The app depends only on `3.4.16-winnative.1`.
+
+After changing the patch, rebuild the AAR, run the controller and Bluetooth tests,
+and build the APK to check DEX and native library packaging. Do not edit AAR bytes
+or checksum files manually.

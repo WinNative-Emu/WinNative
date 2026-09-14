@@ -2877,5 +2877,8 @@
     <string name="networking_mac_summary">为主适配器报告的硬件地址。留空则使用根据设备自动生成的地址。</string>
     <string name="networking_mac_invalid">请输入 12 位十六进制数字（例如 3c:5a:b4:12:34:56）。第一个字节必须是单播且全局管理的，即第 0 位和第 1 位为 0；许多游戏会拒绝 02:… 这类本地管理的地址。</string>
     <string name="networking_mac_automatic">自动：%1$s</string>
+    <string name="steam_controller_left_pad_click">左触控板按下</string>
+    <string name="steam_controller_right_pad_click">右触控板按下</string>
+    <string name="controller_test_generic">通用</string>
 </resources>
 

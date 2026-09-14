@@ -2876,4 +2876,7 @@ Ruta instalada:
     <string name="networking_mac_summary">Dirección de hardware que se informa para el adaptador principal. Déjala vacía para usar la dirección automática derivada del dispositivo.</string>
     <string name="networking_mac_automatic">Automática: %1$s</string>
     <string name="networking_mac_invalid">Ingresa 12 dígitos hexadecimales (por ejemplo 3c:5a:b4:12:34:56). El primer byte debe ser de unidifusión y de administración global, así que los bits 0 y 1 en cero; muchos juegos rechazan las direcciones de administración local como 02:….</string>
+    <string name="steam_controller_left_pad_click">Clic del panel izquierdo</string>
+    <string name="steam_controller_right_pad_click">Clic del panel derecho</string>
+    <string name="controller_test_generic">Genérico</string>
 </resources>

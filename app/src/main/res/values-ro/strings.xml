@@ -2877,5 +2877,8 @@ Cale instalata:
     <string name="networking_mac_summary">Adresa hardware raportată pentru adaptorul principal. Lasă gol pentru adresa automată derivată din dispozitiv.</string>
     <string name="networking_mac_automatic">Automat: %1$s</string>
     <string name="networking_mac_invalid">Introdu 12 cifre hexazecimale (de exemplu 3c:5a:b4:12:34:56). Primul octet trebuie să fie unicast și administrat global, deci biții 0 și 1 pe zero; multe jocuri resping adresele administrate local, precum 02:….</string>
+    <string name="steam_controller_left_pad_click">Clic pe panoul stâng</string>
+    <string name="steam_controller_right_pad_click">Clic pe panoul drept</string>
+    <string name="controller_test_generic">Generic</string>
 </resources>
 

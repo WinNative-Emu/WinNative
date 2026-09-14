@@ -232,6 +232,12 @@ internal val PAD_REFS: Map<PadArt, PadArtRef> = mapOf(
         drawableRes = R.drawable.pad_steam,
         vbW = 500.0f, vbH = 350.0f,
         el = mapOf(
+            "lpad" to Triple(180f, 193f, 27f),
+            "rpad" to Triple(320f, 193f, 27f),
+            "l4" to Triple(115f, 225f, 12f),
+            "l5" to Triple(120f, 254f, 12f),
+            "r4" to Triple(385f, 225f, 12f),
+            "r5" to Triple(380f, 254f, 12f),
             "a" to Triple(348.0f, 148.0f, 11.0f),
             "b" to Triple(366.0f, 130.0f, 11.0f),
             "dpad_down" to Triple(150.0f, 148.0f, 10.0f),

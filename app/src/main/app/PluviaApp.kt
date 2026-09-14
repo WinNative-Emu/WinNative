@@ -2,7 +2,6 @@ package com.winlator.cmod.app
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
-import android.os.Looper
 import android.util.Log
 import com.winlator.cmod.app.config.DeviceProfileSettings
 import com.winlator.cmod.app.db.PluviaDatabase

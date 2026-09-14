@@ -17,13 +17,13 @@ constexpr Uint16 kValveVendorId = 0x28DE;
 
 constexpr int I_ID = 0;
 constexpr int I_BUTTONS = 1;
-constexpr int I_STRIDE = 2;
+constexpr int I_CAPS = 2, I_PRODUCT = 3, I_STRIDE = 4;
 
 constexpr int F_LX = 0, F_LY = 1, F_RX = 2, F_RY = 3;
 constexpr int F_LT = 4, F_RT = 5;
-constexpr int F_RPAD_DOWN = 6, F_RPAD_X = 7, F_RPAD_Y = 8;
-constexpr int F_LPAD_DOWN = 9, F_LPAD_X = 10, F_LPAD_Y = 11;
-constexpr int F_STRIDE = 12;
+constexpr int F_RPAD_DOWN = 6;
+constexpr int F_LPAD_DOWN = 9;
+constexpr int F_GYRO_X = 12, F_GYRO_VALID = 15, F_STRIDE = 16;
 
 enum : int {
     B_A = 0, B_B, B_X, B_Y, B_LB, B_RB, B_BACK, B_START, B_LSTICK, B_RSTICK, B_GUIDE,
@@ -60,6 +60,7 @@ constexpr ButtonMap kButtons[] = {
 struct Pad {
     SDL_JoystickID id;
     SDL_Gamepad *gamepad;
+    int capabilities;
 };
 
 std::mutex g_lock;
@@ -121,7 +122,13 @@ void syncPadsLocked() {
             LOGW("SDL_OpenGamepad(%d) failed: %s", (int)id, SDL_GetError());
             continue;
         }
-        g_pads[g_numPads++] = { id, gamepad };
+        int capabilities = SDL_GetNumGamepadTouchpads(gamepad) << 8;
+        if (SDL_GetBooleanProperty(SDL_GetGamepadProperties(gamepad), SDL_PROP_GAMEPAD_CAP_RUMBLE_BOOLEAN, false))
+            capabilities |= 1;
+        if (SDL_GamepadHasSensor(gamepad, SDL_SENSOR_GYRO)
+                && SDL_SetGamepadSensorEnabled(gamepad, SDL_SENSOR_GYRO, true))
+            capabilities |= 2;
+        g_pads[g_numPads++] = { id, gamepad, capabilities };
         LOGI("Steam controller %d connected: %s (pid %04x, touchpads %d, path %s)", (int)id,
              SDL_GetGamepadNameForID(id), SDL_GetGamepadProductForID(id),
              SDL_GetNumGamepadTouchpads(gamepad), SDL_GetGamepadPathForID(id));
@@ -151,6 +158,7 @@ Java_com_winlator_cmod_runtime_input_controls_SteamControllerBackend_nativeInit(
 
     if (!SDL_Init(SDL_INIT_GAMEPAD)) {
         LOGW("SDL_Init(GAMEPAD) failed: %s", SDL_GetError());
+        SDL_Quit();
         return JNI_FALSE;
     }
     if (!bluetooth) SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_STEAM, "1");
@@ -168,6 +176,8 @@ JNIEXPORT jint JNICALL
 Java_com_winlator_cmod_runtime_input_controls_SteamControllerBackend_nativePoll(JNIEnv *env, jclass, jintArray ints, jfloatArray floats) {
     std::lock_guard<std::mutex> guard(g_lock);
     if (!g_initialized) return -1;
+    if (!ints || !floats || env->GetArrayLength(ints) < kMaxPads * I_STRIDE
+            || env->GetArrayLength(floats) < kMaxPads * F_STRIDE) return -1;
 
     SDL_UpdateGamepads();
     SDL_FlushEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST);
@@ -186,6 +196,11 @@ Java_com_winlator_cmod_runtime_input_controls_SteamControllerBackend_nativePoll(
         }
         pi[I_ID] = (jint)g_pads[p].id;
         pi[I_BUTTONS] = buttons;
+        pi[I_CAPS] = g_pads[p].capabilities;
+        pi[I_PRODUCT] = SDL_GetGamepadProduct(gamepad);
+        if ((g_pads[p].capabilities & 2) != 0
+                && SDL_GetGamepadSensorData(gamepad, SDL_SENSOR_GYRO, pf + F_GYRO_X, 3))
+            pf[F_GYRO_VALID] = 1.0f;
 
         pf[F_LX] = stickAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTX);
         pf[F_LY] = stickAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTY);

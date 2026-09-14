@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -88,10 +89,11 @@ fun VisualControllerBinder(
         onSaved()
     }
 
+    val targets = bindTargets(controller)
     val boundN = remember(bindRev, controller) { boundCount(controller) }
     val labels =
         remember(bindRev, controller) {
-            BIND_TARGETS.associate { it.id to bindingLabelOrNull(controller, it.id) }
+            targets.associate { it.id to bindingLabelOrNull(controller, it.id) }
         }
     val boundBindIds = remember(bindRev, controller) { labels.filterValues { it != null }.keys.toSet() }
 
@@ -235,7 +237,7 @@ fun VisualControllerBinder(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        stringResource(R.string.controller_bind_remap_on, boundN, BIND_TARGETS.size),
+                        stringResource(R.string.controller_bind_remap_on, boundN, targets.size),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = BindWarn,
@@ -273,7 +275,7 @@ fun VisualControllerBinder(
         val panel: @Composable () -> Unit = {
             val current = selectedId
             if (current == null) {
-                BindSummary(labels, boundN) { id -> selectedId = id }
+                BindSummary(labels, boundN, targets) { id -> selectedId = id }
             } else {
                 BindEditor(
                     id = current,
@@ -321,18 +323,19 @@ fun VisualControllerBinder(
 private fun BindSummary(
     labels: Map<String, String?>,
     boundN: Int,
+    targets: List<BindTarget>,
     onSelect: (String) -> Unit,
 ) {
     val context = LocalContext.current
     Column(Modifier.fillMaxWidth()) {
         Text(
-            stringResource(R.string.controller_bind_summary, boundN, BIND_TARGETS.size),
+            stringResource(R.string.controller_bind_summary, boundN, targets.size),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = WinNativeTextPrimary,
         )
         Spacer(Modifier.height(6.dp))
-        BIND_TARGETS.forEach { t ->
+        targets.forEach { t ->
             val label = labels[t.id]
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -342,6 +345,7 @@ private fun BindSummary(
                         .padding(vertical = 3.dp)
                         .background(BindRowFill, RoundedCornerShape(9.dp))
                         .clickable { onSelect(t.id) }
+                        .heightIn(min = 48.dp)
                         .padding(horizontal = 10.dp, vertical = 8.dp),
             ) {
                 Text(

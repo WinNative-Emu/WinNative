@@ -202,9 +202,9 @@ Android input path.
 | Piece | What it does |
 | --- | --- |
 | `steamctrl/steam_controller_bridge.cpp` | JNI bridge over SDL3's gamepad API: flat int/float arrays for up to four Valve HIDAPI pads, plus rumble |
-| `SteamControllerBackend` | ~250 Hz poll thread, frame coalescing onto the main thread, the 22-bit button model, trackpad-as-mouse and the back-paddle / "…" bindings |
+| `SteamControllerBackend` | ~250 Hz poll thread, ordered frame delivery onto the main thread, the 22-bit button model, trackpad-as-mouse and the back-paddle / "…" bindings |
 | `WinHandler` SDL pads | Seats each pad in the ordinary player-slot machinery under a synthetic device id, shadows the Valve device Android also exposes, and routes rumble back through SDL |
-| `ControllerTestPanel` | The animated pad picture: live button glow, movable stick nubs that glow with deflection, trigger and battery readouts, and the inputs-verified tally (18 on a Steam Controller) |
+| `ControllerTestPanel` | The animated pad picture: live button glow, movable stick nubs that glow with deflection, trigger and battery readouts, and the per-device inputs-verified tally, including paddles and touchpads |
 | `VisualControllerBinder` | Tap a button on the pad art to rebind it, written into the same profile store the list editor uses |
 | `pad_*.png` | The per-family controller artwork (Xbox 360 / Xbox / DualSense / DualShock 4 / DualShock 3 / Switch Pro / 8BitDo / GameCube / SNES / Steam / Generic) |
 
@@ -236,7 +236,7 @@ Credit history — every commit below is The412Banner's, in
 | `c2acbbd` | 2026-09-10 | Merge branch 'feat/steam-controller-sdl': opt-in Steam Controller support via SDL3 |
 
 Bannerlator is GPL-3.0, the same license as WinNative, and remains so. SDL3 is Zlib-licensed and
-is vendored unmodified; see [`vendor/maven/README.md`](vendor/maven/README.md) and
+uses a separate Java/JNI namespace and native library for this integration, with a Bluetooth transport patch; see [`vendor/maven/README.md`](vendor/maven/README.md) and
 [`EMULATOR_CREDITS.md`](EMULATOR_CREDITS.md).
 
 > Steam Controller support, controller test and visual binder by The412Banner

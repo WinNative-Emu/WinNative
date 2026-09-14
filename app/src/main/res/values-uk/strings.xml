@@ -2883,5 +2883,8 @@
     <string name="networking_mac_summary">Апаратна адреса, що повідомляється для основного адаптера. Залиште порожнім для автоматичної адреси, похідної від пристрою.</string>
     <string name="networking_mac_automatic">Автоматично: %1$s</string>
     <string name="networking_mac_invalid">Введіть 12 шістнадцяткових цифр (наприклад 3c:5a:b4:12:34:56). Перший байт має бути одноадресним і глобально адміністрованим, тому біти 0 і 1 мають бути нульовими; багато ігор відхиляють локально адміністровані адреси, як-от 02:….</string>
+    <string name="steam_controller_left_pad_click">Натискання лівої панелі</string>
+    <string name="steam_controller_right_pad_click">Натискання правої панелі</string>
+    <string name="controller_test_generic">Універсальний</string>
 </resources>
 

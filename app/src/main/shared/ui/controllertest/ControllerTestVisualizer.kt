@@ -85,6 +85,7 @@ enum class PadArt {
     SNES,
 }
 
+@Composable
 fun padArtLabel(a: PadArt): String =
     when (a) {
         PadArt.XBOX_360 -> "Xbox 360"
@@ -93,7 +94,7 @@ fun padArtLabel(a: PadArt): String =
         PadArt.DUALSHOCK4 -> "DualShock 4"
         PadArt.SWITCH_PRO -> "Switch Pro"
         PadArt.EIGHTBITDO -> "8BitDo"
-        PadArt.GENERIC -> "Generic"
+        PadArt.GENERIC -> stringResource(R.string.controller_test_generic)
         PadArt.DUALSHOCK3 -> "DualShock 3"
         PadArt.STEAM -> "Steam"
         PadArt.GAMECUBE -> "GameCube"
@@ -155,7 +156,7 @@ private val ALL_ELEMENTS =
         "back", "start", "l3", "r3", "dup", "ddown", "dleft", "dright", "guide",
     )
 
-private val STEAM_ELEMENTS = ALL_ELEMENTS + "qam"
+private val STEAM_ELEMENTS = ALL_ELEMENTS + listOf("qam", "l4", "l5", "r4", "r5", "lpad", "rpad", "ltouch", "rtouch", "lstick", "rstick")
 
 @Composable
 private fun friendlyName(id: String): String =
@@ -178,6 +179,17 @@ private fun friendlyName(id: String): String =
         "dright" -> stringResource(R.string.controller_test_element_dpad_right)
         "guide" -> stringResource(R.string.controller_test_element_guide)
         "qam" -> stringResource(R.string.controller_test_element_quick_access)
+        "l4" -> stringResource(R.string.steam_controller_paddle_l4)
+        "l5" -> stringResource(R.string.steam_controller_paddle_l5)
+        "r4" -> stringResource(R.string.steam_controller_paddle_r4)
+        "r5" -> stringResource(R.string.steam_controller_paddle_r5)
+        "lpad" -> stringResource(R.string.steam_controller_left_pad_click)
+        "rpad" -> stringResource(R.string.steam_controller_right_pad_click)
+        "lstick" -> stringResource(R.string.controller_test_left_stick)
+        "rstick" -> stringResource(R.string.controller_test_right_stick)
+        "gyro" -> stringResource(R.string.session_gyroscope_title)
+        "ltouch" -> stringResource(R.string.steam_controller_trackpad_left)
+        "rtouch" -> stringResource(R.string.steam_controller_trackpad_right)
         else -> id
     }
 
@@ -203,6 +215,14 @@ internal fun pressedSet(snap: ControllerTestSnapshot?): Set<String> {
     if (snap.dpadRight) s.add("dright")
     if (snap.guide) s.add("guide")
     if (snap.quickAccess) s.add("qam")
+    mapOf(16 to "r4", 17 to "l4", 18 to "r5", 19 to "l5", 20 to "rpad", 21 to "lpad").forEach { (bit, id) ->
+        if (snap.steamButtons and (1 shl bit) != 0) s.add(id)
+    }
+    if (kotlin.math.abs(snap.thumbLX) > 0.5f || kotlin.math.abs(snap.thumbLY) > 0.5f) s.add("lstick")
+    if (kotlin.math.abs(snap.thumbRX) > 0.5f || kotlin.math.abs(snap.thumbRY) > 0.5f) s.add("rstick")
+    if (snap.gyroMoving) s.add("gyro")
+    if (snap.leftTouch) s.add("ltouch")
+    if (snap.rightTouch) s.add("rtouch")
     return s
 }
 
@@ -250,9 +270,13 @@ fun ControllerTestPanel(
     val art = manualArt ?: autoArt
 
     val pressed = pressedSet(snapshot)
-    val elements = if (autoArt == PadArt.STEAM) STEAM_ELEMENTS else ALL_ELEMENTS
-    val seen = remember(resetKey) { mutableStateListOf<String>() }
-    var lastInputId by remember(resetKey) { mutableStateOf<String?>(null) }
+    val elements = when {
+        autoArt != PadArt.STEAM -> ALL_ELEMENTS
+        snapshot != null && snapshot.touchpadCount < 2 -> ALL_ELEMENTS + listOf("l4", "r4")
+        else -> STEAM_ELEMENTS + if (snapshot?.hasGyro == true) listOf("gyro") else emptyList()
+    }
+    val seen = remember(resetKey, snapshot?.deviceId) { mutableStateListOf<String>() }
+    var lastInputId by remember(resetKey, snapshot?.deviceId) { mutableStateOf<String?>(null) }
     LaunchedEffect(pressed) {
         pressed.forEach { if (it !in seen && it in elements) seen.add(it) }
         pressed.firstOrNull { it in elements }?.let { lastInputId = it }
@@ -476,7 +500,9 @@ private fun highlightManifest(
             "back" -> listOf("back", "select", "share", "minus", "view")
             "start" -> listOf("start", "options", "plus", "menu")
             "guide" -> listOf("guide", "home")
-            "qam" -> listOf("qam")
+            "qam", "l4", "l5", "r4", "r5", "lpad", "rpad" -> listOf(logical)
+            "ltouch" -> listOf("lpad")
+            "rtouch" -> listOf("rpad")
             else -> emptyList()
         }
     return cands.firstOrNull { ref.el.containsKey(it) }
@@ -484,7 +510,7 @@ private fun highlightManifest(
 
 internal fun manifestToBindId(manifestId: String): String? =
     when (manifestId) {
-        "a", "b", "x", "y", "lt", "rt", "l3", "r3", "lb", "rb", "start", "back", "guide" -> manifestId
+        "a", "b", "x", "y", "lt", "rt", "l3", "r3", "lb", "rb", "start", "back", "guide", "qam", "l4", "l5", "r4", "r5", "lpad", "rpad" -> manifestId
         "dpad_up" -> "dup"
         "dpad_down" -> "ddown"
         "dpad_left" -> "dleft"
@@ -521,6 +547,7 @@ private fun bindToManifest(
             "back" -> listOf("back", "select", "share", "minus", "view")
             "start" -> listOf("start", "options", "plus", "menu")
             "guide" -> listOf("guide", "home")
+            "qam", "l4", "l5", "r4", "r5", "lpad", "rpad" -> listOf(bindId)
             "lsu", "lsd", "lsl", "lsr" -> listOf("lstick")
             "rsu", "rsd", "rsl", "rsr" -> listOf("rstick", "cstick")
             else -> emptyList()
@@ -624,6 +651,8 @@ internal fun PadArtView(
                 }
             }
             snapshot?.let { s ->
+                if (s.leftTouch) drawStickNub(ref, "lpad", s.leftTouchX * 2 - 1, s.leftTouchY * 2 - 1, sx, sy, sr, accent, true)
+                if (s.rightTouch) drawStickNub(ref, "rpad", s.rightTouchX * 2 - 1, s.rightTouchY * 2 - 1, sx, sy, sr, accent, true)
                 drawStickNub(ref, "lstick", s.thumbLX, s.thumbLY, sx, sy, sr, accent, "l3" in pressedManifest)
                 val rNub = if (ref.el.containsKey("rstick")) "rstick" else "cstick"
                 drawStickNub(ref, rNub, s.thumbRX, s.thumbRY, sx, sy, sr, accent, "r3" in pressedManifest)

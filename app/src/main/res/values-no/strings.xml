@@ -2877,4 +2877,7 @@ Installert bane:
     <string name="networking_mac_summary">Maskinvareadressen som oppgis for hovedadapteren. La feltet stå tomt for den automatiske adressen som utledes fra enheten.</string>
     <string name="networking_mac_automatic">Automatisk: %1$s</string>
     <string name="networking_mac_invalid">Skriv inn 12 heksadesimale sifre (for eksempel 3c:5a:b4:12:34:56). Den første byten må være unicast og globalt administrert, altså med bit 0 og 1 nullstilt; mange spill avviser lokalt administrerte adresser som 02:….</string>
+    <string name="steam_controller_left_pad_click">Klikk på venstre styreflate</string>
+    <string name="steam_controller_right_pad_click">Klikk på høyre styreflate</string>
+    <string name="controller_test_generic">Generisk</string>
 </resources>

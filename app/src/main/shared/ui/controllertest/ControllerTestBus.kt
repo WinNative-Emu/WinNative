@@ -27,6 +27,16 @@ data class ControllerTestSnapshot
         val batteryPct: Int,
         val hasVibrator: Boolean,
         val quickAccess: Boolean = false,
+        val steamButtons: Int = 0,
+        val touchpadCount: Int = 0,
+        val leftTouch: Boolean = false,
+        val rightTouch: Boolean = false,
+        val leftTouchX: Float = 0f,
+        val leftTouchY: Float = 0f,
+        val rightTouchX: Float = 0f,
+        val rightTouchY: Float = 0f,
+        val hasGyro: Boolean = false,
+        val gyroMoving: Boolean = false,
     )
 
 object ControllerTestBus {
@@ -47,9 +57,6 @@ object ControllerTestBus {
     fun isActive(): Boolean = active
 
     @JvmStatic
-    fun isDialogOpen(): Boolean = dialogOpen
-
-    @JvmStatic
     fun currentDeviceId(): Int = _snapshot.value?.deviceId ?: Int.MIN_VALUE
 
     @JvmStatic
@@ -64,6 +71,19 @@ object ControllerTestBus {
             active = false
             _snapshot.value = null
         }
+    }
+
+    @JvmStatic
+    fun disconnect(deviceId: Int) {
+        if (_snapshot.value?.deviceId == deviceId) _snapshot.value = null
+    }
+
+    @JvmStatic
+    fun publishSteamGyro(pad: ExternalController, x: Float, y: Float, z: Float) {
+        val current = _snapshot.value ?: return
+        if (!dialogOpen || current.deviceId != pad.deviceId) return
+        val moving = kotlin.math.abs(x) > 0.2f || kotlin.math.abs(y) > 0.2f || kotlin.math.abs(z) > 0.2f
+        if (current.gyroMoving != moving) _snapshot.value = current.copy(gyroMoving = moving)
     }
 
     private fun batteryPercent(device: InputDevice?): Int {
@@ -133,8 +153,18 @@ object ControllerTestBus {
                 deviceDescriptor = pad.id ?: "",
                 padArt = PadArt.STEAM.ordinal,
                 batteryPct = -1,
-                hasVibrator = true,
+                hasVibrator = pad.steamHasRumble,
                 quickAccess = quickAccessDown,
+                steamButtons = pad.steamButtons,
+                touchpadCount = pad.steamTouchpadCount,
+                leftTouch = pad.steamLeftTouch,
+                rightTouch = pad.steamRightTouch,
+                leftTouchX = pad.steamLeftX,
+                leftTouchY = pad.steamLeftY,
+                rightTouchX = pad.steamRightX,
+                rightTouchY = pad.steamRightY,
+                hasGyro = pad.steamHasGyro,
+                gyroMoving = _snapshot.value?.takeIf { it.deviceId == pad.deviceId }?.gyroMoving ?: false,
             )
     }
 }

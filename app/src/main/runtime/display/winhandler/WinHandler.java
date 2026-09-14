@@ -814,6 +814,17 @@ public class WinHandler {
 
   // Menu owns the controller while open; zero tracked state and push it once so nothing stays held in the guest.
   public void neutralizeControllers() {
+    resetGyroRuntimeState();
+    steamGyroTimestamp = 0;
+    for (ExternalController pad : this.sdlPads.values()) {
+      Integer slot = this.deviceToSlot.get(pad.getDeviceId());
+      if (slot != null && this.writers[slot] != null) {
+        try {
+          this.writers[slot].writeGamepadState(new GamepadState());
+        } catch (IOException ignored) {
+        }
+      }
+    }
     for (ExternalController controller : this.controllers.values()) {
       if (controller == null) {
         continue;
@@ -1620,7 +1631,42 @@ public class WinHandler {
     currentController = getController(0);
   }
 
+  private long steamGyroTimestamp;
+  private int steamGyroDevice = Integer.MIN_VALUE;
+  private float steamYaw, steamPitch;
+
+  private boolean usesSteamGyro() {
+    return this.currentController != null && this.currentController.steamHasGyro
+        && this.sdlPads.containsKey(this.currentController.getDeviceId());
+  }
+
+  public void updateSteamGyroData(ExternalController pad, float x, float y, long timestampNanos) {
+    if (this.currentController == null || this.currentController.getDeviceId() != pad.getDeviceId()) return;
+    float seconds = steamGyroDevice == pad.getDeviceId() && steamGyroTimestamp != 0
+        ? (timestampNanos - steamGyroTimestamp) / 1_000_000_000f : 0f;
+    if (seconds < 0 || seconds > 0.1f) seconds = 0;
+    if (steamGyroDevice != pad.getDeviceId()) {
+      steamYaw = steamPitch = 0;
+      recenterGyroOrientation();
+    }
+    steamGyroDevice = pad.getDeviceId();
+    steamGyroTimestamp = timestampNanos;
+    if (this.preferences.getBoolean("gyro_orientation_enabled", false)
+        && !this.preferences.getBoolean("mouse_gyro_enabled", false)) {
+      steamYaw += y * seconds;
+      steamPitch += x * seconds;
+      applyGyroOrientation(steamYaw, steamPitch);
+    } else {
+      applyGyroData(x, y);
+    }
+  }
+
   public void updateGyroData(float rawGyroX, float rawGyroY) {
+    if (usesSteamGyro()) return;
+    applyGyroData(rawGyroX, rawGyroY);
+  }
+
+  private void applyGyroData(float rawGyroX, float rawGyroY) {
     GyroSettings gyroSettings = getGyroSettings();
     if (!gyroSettings.enabled) {
       resetGyroRuntimeState();
@@ -1660,6 +1706,11 @@ public class WinHandler {
 
   // Tilt-to-position path: drives the stick from absolute yaw/pitch offset, so a held tilt sustains.
   public void updateGyroOrientation(float yaw, float pitch) {
+    if (usesSteamGyro()) return;
+    applyGyroOrientation(yaw, pitch);
+  }
+
+  private void applyGyroOrientation(float yaw, float pitch) {
     GyroSettings gyroSettings = getGyroSettings();
     if (!gyroSettings.enabled) {
       resetGyroRuntimeState();

@@ -13,8 +13,11 @@ import android.util.Log;
 import android.util.SparseArray;
 import android.view.KeyEvent;
 import java.util.Arrays;
-import org.libsdl.app.HIDDeviceManager;
-import org.libsdl.app.SDL;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Map;
+import org.winnative.steam.HIDDeviceManager;
+import org.winnative.steam.SDL;
 
 public final class SteamControllerBackend {
   private static final String TAG = "SteamControllerBackend";
@@ -27,9 +30,9 @@ public final class SteamControllerBackend {
   private static final float TRIGGER_FULL = 0.98f;
 
   private static final int MAX_PADS = 4;
-  private static final int I_ID = 0, I_BUTTONS = 1, I_STRIDE = 2;
+  private static final int I_ID = 0, I_BUTTONS = 1, I_CAPS = 2, I_PRODUCT = 3, I_STRIDE = 4;
   private static final int F_LX = 0, F_LY = 1, F_RX = 2, F_RY = 3, F_LT = 4, F_RT = 5;
-  private static final int F_RPAD_DOWN = 6, F_LPAD_DOWN = 9, F_STRIDE = 12;
+  private static final int F_RPAD_DOWN = 6, F_LPAD_DOWN = 9, F_GYRO_X = 12, F_GYRO_VALID = 15, F_STRIDE = 16;
   private static final int B_A = 0,
       B_B = 1,
       B_X = 2,
@@ -60,6 +63,8 @@ public final class SteamControllerBackend {
 
   public static final int PADDLE_COUNT = 5;
   private static final int[] PADDLE_BITS = {B_L4, B_L5, B_R4, B_R5, B_QAM};
+  private static final int[] PADDLE_KEYS = {KeyEvent.KEYCODE_BUTTON_1, KeyEvent.KEYCODE_BUTTON_2,
+      KeyEvent.KEYCODE_BUTTON_3, KeyEvent.KEYCODE_BUTTON_4, KeyEvent.KEYCODE_BUTTON_5};
 
   private static final int[][] BUTTON_KEYCODES = {
     {B_A, KeyEvent.KEYCODE_BUTTON_A},
@@ -73,9 +78,26 @@ public final class SteamControllerBackend {
     {B_LSTICK, KeyEvent.KEYCODE_BUTTON_THUMBL},
     {B_RSTICK, KeyEvent.KEYCODE_BUTTON_THUMBR},
     {B_GUIDE, KeyEvent.KEYCODE_BUTTON_MODE},
+    {B_DPAD_UP, KeyEvent.KEYCODE_DPAD_UP},
+    {B_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_DOWN},
+    {B_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_LEFT},
+    {B_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_RIGHT},
+    {B_L4, KeyEvent.KEYCODE_BUTTON_1},
+    {B_L5, KeyEvent.KEYCODE_BUTTON_2},
+    {B_R4, KeyEvent.KEYCODE_BUTTON_3},
+    {B_R5, KeyEvent.KEYCODE_BUTTON_4},
+    {B_QAM, KeyEvent.KEYCODE_BUTTON_5},
+    {B_LPAD_CLICK, KeyEvent.KEYCODE_BUTTON_6},
+    {B_RPAD_CLICK, KeyEvent.KEYCODE_BUTTON_7},
   };
 
   public interface Listener {
+    default boolean isSteamPadInputEnabled() { return true; }
+
+    default boolean hasSteamPadBinding(ExternalController pad, int keyCode) { return false; }
+
+    default void onSteamPadGyro(ExternalController pad, float x, float y, float z, long timestampNanos) {}
+
     void onSteamPadConnected(ExternalController pad);
 
     void onSteamPadDisconnected(ExternalController pad);
@@ -93,6 +115,7 @@ public final class SteamControllerBackend {
   private static boolean librariesLoaded;
   private static boolean jniReady;
   private static SteamControllerBackend running_;
+  private static SteamControllerBackend pending;
 
   private final Activity activity;
   private final Listener listener;
@@ -100,19 +123,36 @@ public final class SteamControllerBackend {
   private final Binding[] paddleBindings = new Binding[PADDLE_COUNT];
   private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-  private HIDDeviceManager hidManager;
+  private final Transport transport;
   private Thread pollThread;
   private volatile boolean running;
 
   private final Object frameLock = new Object();
-  private int[] frameInts;
-  private float[] frameFloats;
-  private String[] frameNames;
-  private String[] framePaths;
-  private int frameCount;
+  private final ArrayDeque<Frame> frames = new ArrayDeque<>();
+  private final Map<Integer, int[]> rumbles = new HashMap<>();
   private boolean applyQueued;
   private final Runnable applyFrame = this::applyFrame;
 
+  private static final class Frame {
+    final int[] ints;
+    final float[] floats;
+    final String[] names, paths;
+    final int count;
+    final long timestampNanos = System.nanoTime();
+
+    Frame(int[] ints, float[] floats, String[] names, String[] paths, int count) {
+      this.ints = ints.clone();
+      this.floats = floats.clone();
+      this.names = names.clone();
+      this.paths = paths.clone();
+      this.count = count;
+    }
+  }
+
+  private Frame latestFrame;
+  private boolean inputEnabled = true;
+  private final Map<Binding, Integer> heldBindings = new HashMap<>();
+  private final int[] heldMouseButtons = new int[2];
   private final SparseArray<Pad> pads = new SparseArray<>();
 
   private static final class Pad {
@@ -133,8 +173,56 @@ public final class SteamControllerBackend {
     float x, y, accX, accY;
   }
 
+  interface Transport {
+    boolean load();
+    void setup(Activity activity);
+    boolean init(boolean bluetooth);
+    int poll(int[] ints, float[] floats);
+    String name(int id);
+    String path(int id);
+    void rumble(int id, int low, int high, int durationMs);
+    void shutdown();
+    void release();
+  }
+
+  private static final class SdlTransport implements Transport {
+    private HIDDeviceManager hidManager;
+
+    public boolean load() { return loadLibraries(); }
+    public void setup(Activity activity) {
+      if (!jniReady) {
+        SDL.setupJNI();
+        jniReady = true;
+      }
+      SDL.initialize();
+      SDL.setContext(activity);
+      hidManager = HIDDeviceManager.acquire(activity);
+    }
+    public boolean init(boolean bluetooth) { return nativeInit(bluetooth); }
+    public int poll(int[] ints, float[] floats) { return nativePoll(ints, floats); }
+    public String name(int id) { return nativeGetName(id); }
+    public String path(int id) { return nativeGetPath(id); }
+    public void rumble(int id, int low, int high, int durationMs) {
+      nativeRumble(id, low, high, durationMs);
+    }
+    public void shutdown() { nativeShutdown(); }
+    public void release() {
+      if (hidManager != null) {
+        HIDDeviceManager.release(hidManager);
+        hidManager = null;
+      }
+      SDL.setContext(null);
+    }
+  }
+
   public SteamControllerBackend(
       Activity activity, int trackpadMode, Binding[] paddles, Listener listener) {
+    this(activity, trackpadMode, paddles, listener, new SdlTransport());
+  }
+
+  SteamControllerBackend(
+      Activity activity, int trackpadMode, Binding[] paddles, Listener listener, Transport transport) {
+    this.transport = transport;
     this.activity = activity;
     this.trackpadMode =
         (trackpadMode < TRACKPAD_MOUSE_OFF || trackpadMode > TRACKPAD_MOUSE_BOTH)
@@ -156,89 +244,114 @@ public final class SteamControllerBackend {
   }
 
   public boolean start() {
+    requireMainThread();
     if (running) return true;
-    if (running_ != null && running_ != this) running_.stop();
-    if (!loadLibraries()) return false;
+    if (running_ == this || !transport.load()) return false;
+    running = true;
+    if (running_ != null) {
+      if (pending != null) pending.stop();
+      pending = this;
+      running_.stop();
+      return true;
+    }
+    return startOwned();
+  }
+
+  private boolean startOwned() {
+    running_ = this;
     try {
-      if (!jniReady) {
-        SDL.setupJNI();
-        jniReady = true;
-      }
-      SDL.initialize();
-      SDL.setContext(activity);
-      hidManager = HIDDeviceManager.acquire(activity);
-    } catch (Throwable t) {
-      Log.e(TAG, "SDL Java setup failed; Steam Controller support stays off", t);
-      releaseHidManager();
-      clearSdlContextIfUnowned();
+      transport.setup(activity);
+      final boolean bluetooth = hasBluetoothPermission(activity);
+      pollThread = new Thread(() -> pollLoop(bluetooth), "SteamCtrlPoll");
+      pollThread.start();
+      return true;
+    } catch (RuntimeException | LinkageError failure) {
+      Log.e(TAG, "SDL setup failed", failure);
+      running = false;
+      finishStop();
       return false;
     }
-    final boolean bluetooth = hasBluetoothPermission(activity);
-    running = true;
-    running_ = this;
-    pollThread = new Thread(() -> pollLoop(bluetooth), "SteamCtrlPoll");
-    pollThread.start();
-    Log.i(TAG, "Started (bluetooth " + bluetooth + ", trackpad mouse mode " + trackpadMode + ")");
-    return true;
   }
 
   public void stop() {
+    requireMainThread();
     running = false;
-    boolean pollThreadFinished = true;
-    if (pollThread != null) {
-      try {
-        pollThread.join(1500);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-      pollThreadFinished = !pollThread.isAlive();
-      pollThread = null;
-    }
-    if (running_ == this) running_ = null;
+    if (pending == this) pending = null;
     mainHandler.removeCallbacks(applyFrame);
     synchronized (frameLock) {
+      frames.clear();
+      rumbles.clear();
       applyQueued = false;
-      frameInts = null;
-      frameFloats = null;
-      frameCount = 0;
     }
-    pads.clear();
-    if (!pollThreadFinished) {
-      Log.w(TAG, "Poll thread did not finish in time; leaving SDL teardown to it");
-      return;
-    }
-    releaseHidManager();
-    clearSdlContextIfUnowned();
-    Log.i(TAG, "Stopped");
+    disconnectPads();
+    latestFrame = null;
   }
 
-  private void releaseHidManager() {
-    if (hidManager == null) return;
-    try {
-      HIDDeviceManager.release(hidManager);
-    } catch (Throwable t) {
-      Log.e(TAG, "HIDDeviceManager.release failed", t);
+  private void disconnectPads() {
+    for (int i = pads.size() - 1; i >= 0; i--) {
+      Pad pad = pads.valueAt(i);
+      pads.removeAt(i);
+      releaseHeld(pad);
+      listener.onSteamPadDisconnected(pad.controller);
     }
-    hidManager = null;
   }
 
-  private static void clearSdlContextIfUnowned() {
-    if (running_ != null) return;
-    try {
-      SDL.setContext(null);
-    } catch (Throwable t) {
-      Log.e(TAG, "Clearing the SDL context failed", t);
+  private void finishStop() {
+    requireMainThread();
+    running = false;
+    mainHandler.removeCallbacks(applyFrame);
+    synchronized (frameLock) {
+      frames.clear();
+      rumbles.clear();
+      applyQueued = false;
+    }
+    disconnectPads();
+    transport.release();
+    pollThread = null;
+    if (running_ == this) running_ = null;
+    latestFrame = null;
+    SteamControllerBackend next = pending;
+    pending = null;
+    if (next != null && next.running) next.startOwned();
+  }
+
+  private static void requireMainThread() {
+    if (Looper.myLooper() != Looper.getMainLooper()) {
+      throw new IllegalStateException("Steam Controller lifecycle must run on the main thread");
+    }
+  }
+
+  public void publishCurrentState() {
+    requireMainThread();
+    if (!running || latestFrame == null) return;
+    for (int i = 0; i < pads.size(); i++) {
+      releaseHeld(pads.valueAt(i));
+      pads.valueAt(i).buttons = -1;
+    }
+    applyFrameInner(latestFrame);
+  }
+
+  private void updateInputEnabled() {
+    boolean enabled = listener.isSteamPadInputEnabled();
+    if (inputEnabled == enabled) return;
+    inputEnabled = enabled;
+    for (int i = 0; i < pads.size(); i++) {
+      Pad pad = pads.valueAt(i);
+      releaseHeld(pad);
+      pad.buttons = -1;
     }
   }
 
   public void rumble(int deviceId, int low, int high, int durationMs) {
-    if (running) nativeRumble(DEVICE_ID_BASE - deviceId, low, high, durationMs);
+    synchronized (frameLock) {
+      if (running) rumbles.put(deviceId, new int[] {low, high, durationMs});
+    }
   }
 
   private static synchronized boolean loadLibraries() {
     if (librariesLoaded) return true;
     try {
-      System.loadLibrary("SDL3");
+      System.loadLibrary("SDL3steam");
       System.loadLibrary("steamctrl");
       librariesLoaded = true;
     } catch (Throwable t) {
@@ -250,20 +363,21 @@ public final class SteamControllerBackend {
   private void pollLoop(boolean bluetooth) {
     try {
       pollLoopInner(bluetooth);
-    } catch (Throwable t) {
-      Log.e(TAG, "Steam Controller poll thread failed; support stops this session", t);
+    } catch (RuntimeException | LinkageError failure) {
+      Log.e(TAG, "Steam Controller polling failed", failure);
+    } finally {
       running = false;
       try {
-        nativeShutdown();
-      } catch (Throwable shutdownFailure) {
-        Log.e(TAG, "nativeShutdown after poll failure also failed", shutdownFailure);
+        transport.shutdown();
+      } finally {
+        mainHandler.post(this::finishStop);
       }
     }
   }
 
   private void pollLoopInner(boolean bluetooth) {
     Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY);
-    if (!nativeInit(bluetooth)) {
+    if (!transport.init(bluetooth)) {
       Log.w(TAG, "SDL init failed; Steam Controller support stays off this session");
       running = false;
       return;
@@ -277,16 +391,27 @@ public final class SteamControllerBackend {
     int lastCount = 0;
     SparseArray<String[]> identities = new SparseArray<>();
     while (running) {
-      int count = nativePoll(ints, floats);
+      Map<Integer, int[]> requests;
+      synchronized (frameLock) {
+        requests = rumbles.isEmpty() ? java.util.Collections.emptyMap() : new HashMap<>(rumbles);
+        rumbles.clear();
+      }
+      for (Map.Entry<Integer, int[]> request : requests.entrySet()) {
+        int[] values = request.getValue();
+        transport.rumble(DEVICE_ID_BASE - request.getKey(), values[0], values[1], values[2]);
+      }
+      Arrays.fill(ints, 0);
+      Arrays.fill(floats, 0);
+      int count = transport.poll(ints, floats);
       if (count < 0) break;
-      if (count != lastCount
+      if ((count > 0 && floats[F_GYRO_VALID] > 0) || count != lastCount
           || !Arrays.equals(ints, lastInts)
           || !Arrays.equals(floats, lastFloats)) {
         for (int p = 0; p < count; p++) {
           int id = ints[p * I_STRIDE + I_ID];
           String[] identity = identities.get(id);
           if (identity == null) {
-            identity = new String[] {nativeGetName(id), nativeGetPath(id)};
+            identity = new String[] {transport.name(id), transport.path(id)};
             identities.put(id, identity);
           }
           names[p] = identity[0];
@@ -299,45 +424,49 @@ public final class SteamControllerBackend {
       }
       SystemClock.sleep(POLL_INTERVAL_MS);
     }
-    nativeShutdown();
   }
 
   private void publish(int[] ints, float[] floats, String[] names, String[] paths, int count) {
     synchronized (frameLock) {
-      frameInts = ints.clone();
-      frameFloats = floats.clone();
-      frameNames = names.clone();
-      framePaths = paths.clone();
-      frameCount = count;
+      if (!running) return;
+      if (frames.size() >= 256) {
+        throw new IllegalStateException("Steam Controller input delivery stalled");
+      }
+      frames.addLast(new Frame(ints, floats, names, paths, count));
       if (applyQueued) return;
       applyQueued = true;
+      mainHandler.post(applyFrame);
     }
-    mainHandler.post(applyFrame);
   }
 
   private void applyFrame() {
     try {
-      applyFrameInner();
-    } catch (Throwable t) {
-      Log.e(TAG, "Steam Controller frame delivery failed", t);
+      for (int delivered = 0; delivered < 32; delivered++) {
+        Frame frame;
+        synchronized (frameLock) {
+          frame = frames.pollFirst();
+          if (frame == null || !running) {
+            applyQueued = false;
+            return;
+          }
+        }
+        applyFrameInner(frame);
+      }
+      mainHandler.post(applyFrame);
+    } catch (RuntimeException failure) {
+      Log.e(TAG, "Steam Controller frame delivery failed", failure);
+      stop();
     }
   }
 
-  private void applyFrameInner() {
-    int[] ints;
-    float[] floats;
-    String[] names;
-    String[] paths;
-    int count;
-    synchronized (frameLock) {
-      ints = frameInts;
-      floats = frameFloats;
-      names = frameNames;
-      paths = framePaths;
-      count = frameCount;
-      applyQueued = false;
-    }
-    if (!running || ints == null) return;
+  private void applyFrameInner(Frame frame) {
+    latestFrame = frame;
+    updateInputEnabled();
+    int[] ints = frame.ints;
+    float[] floats = frame.floats;
+    String[] names = frame.names;
+    String[] paths = frame.paths;
+    int count = frame.count;
 
     for (int i = pads.size() - 1; i >= 0; i--) {
       int id = pads.keyAt(i);
@@ -359,12 +488,23 @@ public final class SteamControllerBackend {
     for (int p = 0; p < count; p++) {
       int id = ints[p * I_STRIDE + I_ID];
       Pad pad = pads.get(id);
-      if (pad == null) {
+      boolean connected = pad == null;
+      if (connected) {
         pad = new Pad(createController(id, names[p], paths[p]));
         pads.put(id, pad);
-        listener.onSteamPadConnected(pad.controller);
       }
+      int caps = ints[p * I_STRIDE + I_CAPS];
+      pad.controller.steamTouchpadCount = caps >> 8;
+      pad.controller.steamHasRumble = (caps & 1) != 0;
+      pad.controller.steamHasGyro = (caps & 2) != 0;
+      pad.controller.steamProductId = ints[p * I_STRIDE + I_PRODUCT];
+      if (connected) listener.onSteamPadConnected(pad.controller);
       applyPad(pad, ints[p * I_STRIDE + I_BUTTONS], floats, p * F_STRIDE);
+      int f = p * F_STRIDE;
+      if (floats[f + F_GYRO_VALID] > 0) {
+        listener.onSteamPadGyro(pad.controller, floats[f + F_GYRO_X],
+            floats[f + F_GYRO_X + 1], floats[f + F_GYRO_X + 2], frame.timestampNanos);
+      }
     }
   }
 
@@ -378,7 +518,21 @@ public final class SteamControllerBackend {
   }
 
   private void applyPad(Pad pad, int buttons, float[] floats, int base) {
-    boolean changed = buttons != pad.buttons;
+    ExternalController controller = pad.controller;
+    boolean changed = buttons != pad.buttons
+        || controller.steamLeftTouch != (floats[base + F_LPAD_DOWN] > 0.5f)
+        || controller.steamRightTouch != (floats[base + F_RPAD_DOWN] > 0.5f)
+        || controller.steamLeftX != floats[base + F_LPAD_DOWN + 1]
+        || controller.steamLeftY != floats[base + F_LPAD_DOWN + 2]
+        || controller.steamRightX != floats[base + F_RPAD_DOWN + 1]
+        || controller.steamRightY != floats[base + F_RPAD_DOWN + 2];
+    controller.steamButtons = buttons;
+    controller.steamLeftTouch = floats[base + F_LPAD_DOWN] > 0.5f;
+    controller.steamRightTouch = floats[base + F_RPAD_DOWN] > 0.5f;
+    controller.steamLeftX = floats[base + F_LPAD_DOWN + 1];
+    controller.steamLeftY = floats[base + F_LPAD_DOWN + 2];
+    controller.steamRightX = floats[base + F_RPAD_DOWN + 1];
+    controller.steamRightY = floats[base + F_RPAD_DOWN + 2];
     for (int a = 0; a < pad.axes.length; a++) {
       if (pad.axes[a] != floats[base + a]) {
         pad.axes[a] = floats[base + a];
@@ -390,8 +544,9 @@ public final class SteamControllerBackend {
       int effective = buttons;
       float lt = floats[base + F_LT];
       float rt = floats[base + F_RT];
-      for (int i = 0; i < PADDLE_COUNT; i++) {
-        boolean down = bit(buttons, PADDLE_BITS[i]);
+      for (int i = 0; inputEnabled && i < PADDLE_COUNT; i++) {
+        boolean down = bit(buttons, PADDLE_BITS[i])
+            && !listener.hasSteamPadBinding(pad.controller, PADDLE_KEYS[i]);
         Binding target = paddleBindings[i];
         if (target == Binding.NONE) {
           pad.paddleDown[i] = down;
@@ -404,7 +559,7 @@ public final class SteamControllerBackend {
             else effective |= gamepadTargetBits(target);
           }
         } else if (down != pad.paddleDown[i]) {
-          listener.onSteamPadBinding(target, down);
+          setBindingDown(target, down);
         }
         pad.paddleDown[i] = down;
       }
@@ -435,14 +590,15 @@ public final class SteamControllerBackend {
       listener.onSteamPadState(
           pad.controller, bit(effective, B_GUIDE), bit(buttons, B_QAM), pressedKeyCodes(effective));
     }
-    if (trackpadMode == TRACKPAD_MOUSE_RIGHT || trackpadMode == TRACKPAD_MOUSE_BOTH)
-      applyTrackpad(pad.right, floats, base + F_RPAD_DOWN, bit(buttons, B_RPAD_CLICK), false);
-    if (trackpadMode == TRACKPAD_MOUSE_LEFT || trackpadMode == TRACKPAD_MOUSE_BOTH)
+    if (inputEnabled && (trackpadMode == TRACKPAD_MOUSE_RIGHT || trackpadMode == TRACKPAD_MOUSE_BOTH))
+      applyTrackpad(pad.right, floats, base + F_RPAD_DOWN,
+          bit(buttons, B_RPAD_CLICK) && !listener.hasSteamPadBinding(pad.controller, KeyEvent.KEYCODE_BUTTON_7), false);
+    if (inputEnabled && (trackpadMode == TRACKPAD_MOUSE_LEFT || trackpadMode == TRACKPAD_MOUSE_BOTH))
       applyTrackpad(
           pad.left,
           floats,
           base + F_LPAD_DOWN,
-          bit(buttons, B_LPAD_CLICK),
+          bit(buttons, B_LPAD_CLICK) && !listener.hasSteamPadBinding(pad.controller, KeyEvent.KEYCODE_BUTTON_6),
           trackpadMode == TRACKPAD_MOUSE_BOTH);
   }
 
@@ -515,23 +671,41 @@ public final class SteamControllerBackend {
 
     if (click != t.clickDown) {
       t.clickDown = click;
-      listener.onSteamPadMouseButton(secondary, click);
+      setMouseButtonDown(secondary, click);
     }
   }
 
+  private void setBindingDown(Binding binding, boolean down) {
+    int previous = heldBindings.getOrDefault(binding, 0);
+    int next = Math.max(0, previous + (down ? 1 : -1));
+    if (next == 0) heldBindings.remove(binding);
+    else heldBindings.put(binding, next);
+    if ((previous == 0) != (next == 0)) listener.onSteamPadBinding(binding, next > 0);
+  }
+
+  private void setMouseButtonDown(boolean secondary, boolean down) {
+    int index = secondary ? 1 : 0;
+    int previous = heldMouseButtons[index];
+    int next = Math.max(0, previous + (down ? 1 : -1));
+    heldMouseButtons[index] = next;
+    if ((previous == 0) != (next == 0)) listener.onSteamPadMouseButton(secondary, next > 0);
+  }
+
   private void releaseHeld(Pad pad) {
+    pad.right.down = false;
+    pad.left.down = false;
     if (pad.right.clickDown) {
       pad.right.clickDown = false;
-      listener.onSteamPadMouseButton(false, false);
+      setMouseButtonDown(false, false);
     }
     if (pad.left.clickDown) {
       pad.left.clickDown = false;
-      listener.onSteamPadMouseButton(trackpadMode == TRACKPAD_MOUSE_BOTH, false);
+      setMouseButtonDown(trackpadMode == TRACKPAD_MOUSE_BOTH, false);
     }
     for (int i = 0; i < PADDLE_COUNT; i++) {
       Binding target = paddleBindings[i];
       if (pad.paddleDown[i] && target != Binding.NONE && !target.isGamepad())
-        listener.onSteamPadBinding(target, false);
+        setBindingDown(target, false);
       pad.paddleDown[i] = false;
     }
   }

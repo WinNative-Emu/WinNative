@@ -2783,4 +2783,7 @@
     <string name="networking_mac_summary">Аппаратный адрес, сообщаемый для основного адаптера. Оставьте пустым, чтобы использовать адрес, автоматически полученный от устройства.</string>
     <string name="networking_mac_automatic">Автоматически: %1$s</string>
     <string name="networking_mac_invalid">Введите 12 шестнадцатеричных цифр (например 3c:5a:b4:12:34:56). Первый байт должен быть индивидуальным и глобально администрируемым, то есть биты 0 и 1 сброшены; многие игры отклоняют локально администрируемые адреса вроде 02:….</string>
+    <string name="steam_controller_left_pad_click">Нажатие левой панели</string>
+    <string name="steam_controller_right_pad_click">Нажатие правой панели</string>
+    <string name="controller_test_generic">Универсальный</string>
 </resources>

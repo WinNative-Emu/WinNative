@@ -13,6 +13,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -83,6 +84,11 @@ class InputControlsFragment : Fragment() {
     private var activeBindingL2WasPressed = false
     private var activeBindingR2WasPressed = false
 
+    private var steamBackend: SteamControllerBackend? = null
+    private val steamPads = linkedMapOf<String, ExternalController>()
+    private val bluetoothPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        restartSteamBackend()
+    }
     private var showControllerTest by mutableStateOf(false)
     private val testController = ExternalController()
     private var testGuideDown = false
@@ -232,6 +238,8 @@ class InputControlsFragment : Fragment() {
                                 onOpenControllerTest = {
                                     ControllerTestBus.onIdentify = Runnable { identifyController() }
                                     showControllerTest = true
+                                    ControllerTestBus.setDialogOpen(true)
+                                    steamBackend?.publishCurrentState()
                                 },
                                 onSteamControllerEnabledChanged = ::setSteamControllerEnabled,
                                 onSteamTrackpadModeSelected = ::setSteamTrackpadMode,
@@ -266,11 +274,19 @@ class InputControlsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        startSteamBackend()
         refreshVisibleControllers()
         publishUiState()
     }
 
+    override fun onPause() {
+        stopSteamBackend()
+        super.onPause()
+    }
+
     override fun onDestroyView() {
+        stopSteamBackend()
+        showControllerTest = false
         detachGyroPreview()
         stopControllerInputCapture()
         ControllerTestBus.setDialogOpen(false)
@@ -279,14 +295,15 @@ class InputControlsFragment : Fragment() {
     }
 
     fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (steamPads.isNotEmpty() && event.device?.vendorId == SteamControllerBackend.VALVE_VENDOR_ID) return true
         if (showControllerTest && ControllerTestBus.isActive()) {
             val device = event.device
             if (ExternalController.isGameController(device)) {
                 if (event.repeatCount == 0) {
+                    prepareTestController(device)
                     if (event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE) {
                         testGuideDown = event.action == KeyEvent.ACTION_DOWN
                     }
-                    prepareTestController(device)
                     testController.updateStateFromKeyEvent(event)
                     ControllerTestBus.publish(testController, device, testGuideDown)
                 }
@@ -303,6 +320,7 @@ class InputControlsFragment : Fragment() {
     }
 
     fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (steamPads.isNotEmpty() && event.device?.vendorId == SteamControllerBackend.VALVE_VENDOR_ID) return true
         if (showControllerTest && ControllerTestBus.isActive()) {
             val device = event.device
             if (ExternalController.isGameController(device)) {
@@ -410,7 +428,7 @@ class InputControlsFragment : Fragment() {
                             controllerId = controller.id,
                             name = controller.name,
                             bindingCount = controller.controllerBindingCount,
-                            connected = controller.isConnected,
+                            connected = steamPads.containsKey(controller.id) || controller.isConnected,
                             expanded = profile != null && controller.id in expandedControllerIds,
                             showBindings = profile != null,
                             bindings =
@@ -455,10 +473,12 @@ class InputControlsFragment : Fragment() {
         val activeId = activeBindingController?.id
         visibleControllers.clear()
 
+        val liveControllers = ExternalController.getControllers()
+            .filterNot { steamPads.isNotEmpty() && android.view.InputDevice.getDevice(it.deviceId)?.vendorId == SteamControllerBackend.VALVE_VENDOR_ID }
+            .plus(steamPads.values)
         val profile = currentProfile
         if (profile != null) {
             val profileControllers = profile.loadControllers()
-            val liveControllers = ExternalController.getControllers()
             
             for (pController in profileControllers) {
                 val liveMatch = liveControllers.find { it.id == pController.id }
@@ -478,7 +498,7 @@ class InputControlsFragment : Fragment() {
                 }
             }
         } else {
-            visibleControllers.addAll(ExternalController.getControllers())
+            visibleControllers.addAll(liveControllers)
         }
 
         activeBindingController =
@@ -547,7 +567,11 @@ class InputControlsFragment : Fragment() {
     }
 
     private fun identifyController() {
-        val deviceId = testController.deviceId
+        val deviceId = ControllerTestBus.currentDeviceId()
+        if (deviceId <= SteamControllerBackend.DEVICE_ID_BASE && deviceId != Int.MIN_VALUE) {
+            steamBackend?.rumble(deviceId, 0xFFFF, 0xFFFF, 320)
+            return
+        }
         val vibrator = android.view.InputDevice.getDevice(deviceId)?.vibrator ?: return
         if (!vibrator.hasVibrator()) return
         vibrator.vibrate(
@@ -558,6 +582,7 @@ class InputControlsFragment : Fragment() {
     private fun prepareTestController(device: android.view.InputDevice?) {
         if (device == null) return
         if (testController.deviceId != device.id) {
+            testController.state.clear()
             testController.setDeviceId(device.id)
             testController.id = device.descriptor
             testController.name = device.name
@@ -566,8 +591,65 @@ class InputControlsFragment : Fragment() {
         }
     }
 
+    private fun startSteamBackend() {
+        val host = activity ?: return
+        if (steamBackend != null || !SteamControllerPrefs.isEnabled(host)) return
+        val backend = SteamControllerBackend(host, SteamControllerBackend.TRACKPAD_MOUSE_OFF, null,
+            object : SteamControllerBackend.Listener {
+                override fun onSteamPadConnected(pad: ExternalController) {
+                    steamPads[pad.id] = pad
+                    refreshVisibleControllers()
+                    publishUiState()
+                }
+
+                override fun onSteamPadDisconnected(pad: ExternalController) {
+                    steamPads.remove(pad.id)
+                    ControllerTestBus.disconnect(pad.deviceId)
+                    refreshVisibleControllers()
+                    publishUiState()
+                }
+
+                override fun onSteamPadState(pad: ExternalController, guideDown: Boolean, quickAccessDown: Boolean, pressedKeyCodes: IntArray) {
+                    ControllerTestBus.publishSteamPad(pad, guideDown, quickAccessDown)
+                    if (showControllerTest) return
+                    val controller = activeBindingController?.takeIf { it.id == pad.id } ?: return
+                    pressedKeyCodes.forEach { onControllerButtonPressed(controller, it) }
+                    if (pad.state.triggerL > 0.5f) onControllerButtonPressed(controller, KeyEvent.KEYCODE_BUTTON_L2)
+                    if (pad.state.triggerR > 0.5f) onControllerButtonPressed(controller, KeyEvent.KEYCODE_BUTTON_R2)
+                    val axes = intArrayOf(MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RZ, MotionEvent.AXIS_HAT_X, MotionEvent.AXIS_HAT_Y)
+                    val values = floatArrayOf(pad.state.thumbLX, pad.state.thumbLY, pad.state.thumbRX, pad.state.thumbRY, pad.state.getDPadX().toFloat(), pad.state.getDPadY().toFloat())
+                    axes.indices.filter { kotlin.math.abs(values[it]) > ControlElement.STICK_DEAD_ZONE }.forEach {
+                        onControllerButtonPressed(controller, ExternalControllerBinding.getKeyCodeForAxis(axes[it], Mathf.sign(values[it])))
+                    }
+                }
+
+                override fun onSteamPadGyro(pad: ExternalController, x: Float, y: Float, z: Float, timestampNanos: Long) {
+                    ControllerTestBus.publishSteamGyro(pad, x, y, z)
+                }
+
+                override fun onSteamPadBinding(binding: Binding, down: Boolean) = Unit
+                override fun onSteamPadMouseMove(dx: Int, dy: Int) = Unit
+                override fun onSteamPadMouseButton(secondary: Boolean, down: Boolean) = Unit
+            })
+        if (backend.start()) steamBackend = backend
+    }
+
+    private fun stopSteamBackend() {
+        steamBackend?.stop()
+        steamBackend = null
+    }
+
+    private fun restartSteamBackend() {
+        stopSteamBackend()
+        if (isResumed) startSteamBackend()
+    }
+
     private fun setSteamControllerEnabled(enabled: Boolean) {
         SteamControllerPrefs.setEnabled(requireContext(), enabled)
+        if (enabled && android.os.Build.VERSION.SDK_INT >= 31 && !SteamControllerBackend.hasBluetoothPermission(requireContext())) {
+            bluetoothPermission.launch(android.Manifest.permission.BLUETOOTH_CONNECT)
+        }
+        restartSteamBackend()
         publishUiState()
     }
 

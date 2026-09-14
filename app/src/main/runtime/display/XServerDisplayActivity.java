@@ -349,6 +349,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private ComposeView controllerTestComposeView;
     private final ExternalController controllerTestController = new ExternalController();
     private boolean controllerTestGuideDown = false;
+    private boolean steamInputForeground = false;
     private WineRequestHandler wineRequestHandler;
     private float globalCursorSpeed = 1.0f;
     private MagnifierView magnifierView;
@@ -459,6 +460,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private boolean isAnyControllerConnected() {
+        if (winHandler != null && winHandler.hasSdlPads()) return true;
         for (int id : android.view.InputDevice.getDeviceIds()) {
             android.view.InputDevice dev = android.view.InputDevice.getDevice(id);
             if (dev != null && ExternalController.isGameController(dev)) return true;
@@ -3245,6 +3247,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     @Override
     public void onResume() {
         super.onResume();
+        steamInputForeground = true;
+        if (steamControllerBackend != null) steamControllerBackend.publishCurrentState();
         com.winlator.cmod.feature.stores.steam.service.GameSessionState.setInGame(this, true);
         applyPreferredRefreshRate();
         registerGyroSensorIfEnabled();
@@ -3310,6 +3314,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         LogManager.log(TAG, "Session paused; entering background", getApplicationContext());
         SessionKeepAliveService.onPauseSession(this);
 
+        steamInputForeground = false;
+        refreshSteamControllerInput();
         super.onPause();
         stopSystemFrameGenPolling();
         if (systemFrameGenMonitor != null) systemFrameGenMonitor.stop();
@@ -6314,6 +6320,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         @Override
                         public void onDrawerOpened() {
                             releasePointerCapture();
+                            refreshSteamControllerInput();
                             if (winHandler != null) {
                                 winHandler.neutralizeControllers();
                             }
@@ -6327,6 +6334,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
                         @Override
                         public void onDrawerClosed() {
+                            refreshSteamControllerInput();
                             drawerStickHandler.removeCallbacks(drawerStickRepeat);
                             drawerStickDir = 0;
                             if (hudCardExpanded) {
@@ -6878,6 +6886,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     if (inputControlsView != null) inputControlsView.cancelActiveTouches();
                 }
                 isPaused = !isPaused;
+                refreshSteamControllerInput();
                 renderDrawerMenu();
                 break;
             case R.id.main_menu_pip_mode:
@@ -9902,55 +9911,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (drawerStateHolder != null && (drawerStateHolder.isDrawerOpen() || drawerStateHolder.isPaneOpen())
-                && ExternalController.isGameController(event.getDevice())) {
-            drawerStateHolder.updateControllerConnected(true);
-            int kc = event.getKeyCode();
-            boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
-            if (kc == KeyEvent.KEYCODE_BUTTON_MODE) {
-                // Menu open: a fresh press closes it; suppress the tail of the hold that opened it.
-                if (down && event.getEventTime() - guideMenuOpenedAt > GUIDE_HOLD_TAIL_MS) {
-                    guideMenuOpenedAt = 0L;
-                    handleNavigationBackPressed();
-                }
-                return true;
-            }
-            if (kc == KeyEvent.KEYCODE_BUTTON_B) {
-                if (down) handleNavigationBackPressed();
-                return true;
-            }
-            if (down) {
-                if (!drawerStateHolder.isPaneOpen()) {
-                    if (kc == KeyEvent.KEYCODE_DPAD_LEFT) {
-                        drawerStateHolder.menuNavLeft();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                        drawerStateHolder.menuNavRight();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_UP) {
-                        drawerStateHolder.menuNavUp();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_DOWN) {
-                        drawerStateHolder.menuNavDown();
-                    } else if (kc == KeyEvent.KEYCODE_BUTTON_A || kc == KeyEvent.KEYCODE_DPAD_CENTER) {
-                        drawerStateHolder.menuActivate();
-                    }
-                } else {
-                    if (kc == KeyEvent.KEYCODE_DPAD_UP) {
-                        drawerStateHolder.paneNavUp();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_DOWN) {
-                        drawerStateHolder.paneNavDown();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_LEFT) {
-                        drawerStateHolder.paneNavLeft();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                        drawerStateHolder.paneNavRight();
-                    } else if (kc == KeyEvent.KEYCODE_BUTTON_A || kc == KeyEvent.KEYCODE_DPAD_CENTER) {
-                        drawerStateHolder.paneActivate();
-                    } else if (kc == KeyEvent.KEYCODE_BUTTON_X) {
-                        drawerStateHolder.paneSecondary();
-                    }
-                }
-            }
-            return true;
-        }
         if (isSteamControllerShadowEvent(event.getDevice())) return true;
+        if (ExternalController.isGameController(event.getDevice())
+                && handleControllerMenuKey(event.getKeyCode(), event.getAction() == KeyEvent.ACTION_DOWN, event.getEventTime())) return true;
         if (controllerTestComposeView != null
                 && com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.isActive()
                 && consumeControllerTestKeyEvent(event)) {
@@ -10015,6 +9978,94 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return super.dispatchKeyEvent(event);
     }
 
+    private boolean handleControllerMenuKey(int kc, boolean down, long eventTime) {
+        if (drawerStateHolder == null || (!drawerStateHolder.isDrawerOpen() && !drawerStateHolder.isPaneOpen())) return false;
+        drawerStateHolder.updateControllerConnected(true);
+        if (kc == KeyEvent.KEYCODE_BUTTON_MODE) {
+            // Menu open: a fresh press closes it; suppress the tail of the hold that opened it.
+            if (down && eventTime - guideMenuOpenedAt > GUIDE_HOLD_TAIL_MS) {
+                guideMenuOpenedAt = 0L;
+                handleNavigationBackPressed();
+            }
+            return true;
+        }
+        if (kc == KeyEvent.KEYCODE_BUTTON_B) {
+            if (down) handleNavigationBackPressed();
+            return true;
+        }
+        if (down) {
+            if (!drawerStateHolder.isPaneOpen()) {
+                if (kc == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    drawerStateHolder.menuNavLeft();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    drawerStateHolder.menuNavRight();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_UP) {
+                    drawerStateHolder.menuNavUp();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    drawerStateHolder.menuNavDown();
+                } else if (kc == KeyEvent.KEYCODE_BUTTON_A || kc == KeyEvent.KEYCODE_DPAD_CENTER) {
+                    drawerStateHolder.menuActivate();
+                }
+            } else {
+                if (kc == KeyEvent.KEYCODE_DPAD_UP) {
+                    drawerStateHolder.paneNavUp();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    drawerStateHolder.paneNavDown();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    drawerStateHolder.paneNavLeft();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    drawerStateHolder.paneNavRight();
+                } else if (kc == KeyEvent.KEYCODE_BUTTON_A || kc == KeyEvent.KEYCODE_DPAD_CENTER) {
+                    drawerStateHolder.paneActivate();
+                } else if (kc == KeyEvent.KEYCODE_BUTTON_X) {
+                    drawerStateHolder.paneSecondary();
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean hasSteamControllerGuideBinding(ExternalController pad) {
+        ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+        ExternalController mapped = profile != null ? profile.getController(pad.getId()) : null;
+        return mapped != null && mapped.getControllerBinding(KeyEvent.KEYCODE_BUTTON_MODE) != null;
+    }
+
+    private final java.util.Map<Integer, java.util.Set<Integer>> steamMenuKeys = new java.util.HashMap<>();
+
+    private void handleSteamMenuInput(ExternalController pad, int[] pressedKeyCodes) {
+        java.util.Set<Integer> pressed = new java.util.HashSet<>();
+        for (int keyCode : pressedKeyCodes) pressed.add(keyCode);
+        java.util.Set<Integer> previous = steamMenuKeys.put(pad.getDeviceId(), pressed);
+        if (previous == null) previous = java.util.Collections.emptySet();
+        if (!steamInputForeground || controllerTestComposeView != null) return;
+        boolean menuOpen = drawerStateHolder != null && (drawerStateHolder.isDrawerOpen() || drawerStateHolder.isPaneOpen());
+        if (menuOpen) {
+            for (int keyCode : pressed) {
+                if (!previous.contains(keyCode)) handleControllerMenuKey(keyCode, true, SystemClock.uptimeMillis());
+            }
+            int dir = pad.state.thumbLX < -0.5f ? 1 : pad.state.thumbLX > 0.5f ? 2
+                    : pad.state.thumbLY < -0.5f ? 3 : pad.state.thumbLY > 0.5f ? 4 : 0;
+            if (dir != drawerStickDir) {
+                drawerStickDir = dir;
+                drawerStickHandler.removeCallbacks(drawerStickRepeat);
+                if (dir != 0) {
+                    fireDrawerStickDir(dir);
+                    drawerStickHandler.postDelayed(drawerStickRepeat, 350);
+                }
+            }
+        } else if (!previous.contains(KeyEvent.KEYCODE_BUTTON_MODE) && pressed.contains(KeyEvent.KEYCODE_BUTTON_MODE)
+                && !hasSteamControllerGuideBinding(pad)) {
+            guideHoldPending = true;
+            handler.removeCallbacks(guideHoldOpenRunnable);
+            handler.postDelayed(guideHoldOpenRunnable, GUIDE_HOLD_OPEN_MS);
+        }
+        if (previous.contains(KeyEvent.KEYCODE_BUTTON_MODE) && !pressed.contains(KeyEvent.KEYCODE_BUTTON_MODE)) {
+            guideHoldPending = false;
+            handler.removeCallbacks(guideHoldOpenRunnable);
+        }
+    }
+
     public InputControlsManager getControllerTestProfileManager() {
         return inputControlsManager;
     }
@@ -10029,6 +10080,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (inputControlsView == null) return;
         ControlsProfile profile = inputControlsView.getProfile();
         if (profile != null) showInputControls(profile);
+        refreshSteamControllerInput();
     }
 
     private void showControllerTestDialog() {
@@ -10045,6 +10097,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT));
         controllerTestComposeView = view;
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.setDialogOpen(true);
+        refreshSteamControllerInput();
     }
 
     private void hideControllerTestDialog() {
@@ -10056,6 +10110,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             ((android.view.ViewGroup) parent).removeView(controllerTestComposeView);
         }
         controllerTestComposeView = null;
+        refreshSteamControllerInput();
     }
 
     private void publishControllerTestSnapshot(android.view.InputDevice device) {
@@ -10067,10 +10122,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         android.view.InputDevice device = event.getDevice();
         if (!ExternalController.isGameController(device)) return false;
         if (event.getRepeatCount() == 0) {
+            prepareControllerTestController(device);
             if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE) {
                 controllerTestGuideDown = event.getAction() == KeyEvent.ACTION_DOWN;
             }
-            prepareControllerTestController(device);
             controllerTestController.updateStateFromKeyEvent(event);
             publishControllerTestSnapshot(device);
         }
@@ -10105,11 +10160,27 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     private void prepareControllerTestController(android.view.InputDevice device) {
         if (device == null || controllerTestController.getDeviceId() == device.getId()) return;
+        controllerTestController.state.clear();
         controllerTestController.setDeviceId(device.getId());
         controllerTestController.setId(device.getDescriptor());
         controllerTestController.setName(device.getName());
         controllerTestController.setTriggerType(ExternalController.TRIGGER_IS_BOTH);
         controllerTestGuideDown = false;
+    }
+
+    private boolean isSteamControllerInputEnabled() {
+        return steamInputForeground && !isInputSuspended() && controllerTestComposeView == null
+                && !activityDestroyed.get() && (drawerStateHolder == null
+                || (!drawerStateHolder.isDrawerOpen() && !drawerStateHolder.isPaneOpen()));
+    }
+
+    private void refreshSteamControllerInput() {
+        if (steamControllerBackend == null) return;
+        if (!isSteamControllerInputEnabled()) {
+            if (inputControlsView != null) inputControlsView.releaseSteamPadInputs();
+            if (winHandler != null) winHandler.neutralizeControllers();
+        }
+        steamControllerBackend.publishCurrentState();
     }
 
     private void startSteamControllerSupport() {
@@ -10125,12 +10196,32 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         this, trackpadMode, paddles,
                         new com.winlator.cmod.runtime.input.controls.SteamControllerBackend.Listener() {
             @Override
+            public boolean isSteamPadInputEnabled() {
+                return isSteamControllerInputEnabled();
+            }
+
+            @Override
+            public boolean hasSteamPadBinding(ExternalController pad, int keyCode) {
+                ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+                ExternalController mapped = profile != null ? profile.getController(pad.getId()) : null;
+                return mapped != null && mapped.getControllerBinding(keyCode) != null;
+            }
+
+            @Override
             public void onSteamPadConnected(ExternalController pad) {
                 if (winHandler != null) winHandler.onSdlPadConnected(pad);
             }
 
             @Override
             public void onSteamPadDisconnected(ExternalController pad) {
+                java.util.Set<Integer> held = steamMenuKeys.remove(pad.getDeviceId());
+                if (held != null && held.contains(KeyEvent.KEYCODE_BUTTON_MODE)) {
+                    guideHoldPending = false;
+                    handler.removeCallbacks(guideHoldOpenRunnable);
+                }
+                drawerStickHandler.removeCallbacks(drawerStickRepeat);
+                drawerStickDir = 0;
+                com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.disconnect(pad.getDeviceId());
                 if (inputControlsView != null) inputControlsView.onSteamPadDisconnected(pad);
                 if (winHandler != null) winHandler.onSdlPadDisconnected(pad);
             }
@@ -10140,28 +10231,37 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                                         boolean quickAccessDown, int[] pressedKeyCodes) {
                 com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.publishSteamPad(
                         pad, guideDown, quickAccessDown);
-                if (controllerTestComposeView != null) return;
+                handleSteamMenuInput(pad, pressedKeyCodes);
+                if (!isSteamControllerInputEnabled()) return;
                 if (inputControlsView != null
                         && inputControlsView.onSteamPadState(pad, pressedKeyCodes)) return;
                 if (winHandler != null) winHandler.sendGamepadState(pad);
             }
 
             @Override
+            public void onSteamPadGyro(ExternalController pad, float x, float y, float z, long timestampNanos) {
+                com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.publishSteamGyro(pad, x, y, z);
+                if (winHandler != null && isSteamControllerInputEnabled()) {
+                    winHandler.updateSteamGyroData(pad, x, y, timestampNanos);
+                }
+            }
+
+            @Override
             public void onSteamPadBinding(
                     com.winlator.cmod.runtime.input.controls.Binding binding, boolean down) {
-                if (down && controllerTestComposeView != null) return;
+                if (down && !isSteamControllerInputEnabled()) return;
                 if (inputControlsView != null) inputControlsView.handleInputEvent(binding, down);
             }
 
             @Override
             public void onSteamPadMouseMove(int dx, int dy) {
-                if (controllerTestComposeView != null) return;
+                if (!isSteamControllerInputEnabled()) return;
                 if (winHandler != null) winHandler.steamPadMouseMove(dx, dy);
             }
 
             @Override
             public void onSteamPadMouseButton(boolean secondary, boolean down) {
-                if (down && controllerTestComposeView != null) return;
+                if (down && !isSteamControllerInputEnabled()) return;
                 if (winHandler != null) winHandler.steamPadMouseButton(secondary, down);
             }
         });

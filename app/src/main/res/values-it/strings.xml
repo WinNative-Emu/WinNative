@@ -2879,5 +2879,8 @@ Percorso installato:
     <string name="networking_mac_summary">Indirizzo hardware dichiarato per la scheda principale. Lascia vuoto per l\'indirizzo automatico derivato dal dispositivo.</string>
     <string name="networking_mac_automatic">Automatico: %1$s</string>
     <string name="networking_mac_invalid">Inserisci 12 cifre esadecimali (per esempio 3c:5a:b4:12:34:56). Il primo byte deve essere unicast e amministrato globalmente, quindi con i bit 0 e 1 azzerati; molti giochi rifiutano gli indirizzi amministrati localmente come 02:….</string>
+    <string name="steam_controller_left_pad_click">Clic del pad sinistro</string>
+    <string name="steam_controller_right_pad_click">Clic del pad destro</string>
+    <string name="controller_test_generic">Generico</string>
 </resources>
 

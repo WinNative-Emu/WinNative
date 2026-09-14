@@ -2812,4 +2812,7 @@
     <string name="device_profile_library_stock">स्टॉक ग्रिड</string>
     <string name="device_profile_session_square">वर्गाकार एक्शन बटन</string>
     <string name="device_profile_session_stock">स्टॉक आकार</string>
+    <string name="steam_controller_left_pad_click">बाएँ पैड पर क्लिक</string>
+    <string name="steam_controller_right_pad_click">दाएँ पैड पर क्लिक</string>
+    <string name="controller_test_generic">सामान्य</string>
 </resources>

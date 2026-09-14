@@ -2876,5 +2876,8 @@
     <string name="networking_mac_summary">為主要網路介面卡回報的硬體位址。留空即使用依裝置自動產生的位址。</string>
     <string name="networking_mac_automatic">自動：%1$s</string>
     <string name="networking_mac_invalid">請輸入 12 個十六進位數字（例如 3c:5a:b4:12:34:56）。第一個位元組必須是單點傳送且全域管理，因此第 0 和第 1 位元須為 0；許多遊戲會拒絕本機管理的位址，例如 02:…。</string>
+    <string name="steam_controller_left_pad_click">左觸控板按下</string>
+    <string name="steam_controller_right_pad_click">右觸控板按下</string>
+    <string name="controller_test_generic">通用</string>
 </resources>
 

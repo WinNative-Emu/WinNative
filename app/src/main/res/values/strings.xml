@@ -2889,4 +2889,7 @@ Installed path:
     <string name="steam_controller_paddle_r5">R5 (lower right)</string>
     <string name="steam_controller_button_qam">… (Quick Access)</string>
     <string name="steam_controller_restart_required">Takes effect the next time a game starts.</string>
+    <string name="steam_controller_left_pad_click">Left pad click</string>
+    <string name="steam_controller_right_pad_click">Right pad click</string>
+    <string name="controller_test_generic">Generic</string>
 </resources>

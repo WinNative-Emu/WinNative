@@ -2879,5 +2879,8 @@
     <string name="networking_mac_summary">기본 어댑터로 보고되는 하드웨어 주소입니다. 비워 두면 기기에서 자동으로 생성한 주소를 사용합니다.</string>
     <string name="networking_mac_automatic">자동: %1$s</string>
     <string name="networking_mac_invalid">16진수 12자리를 입력하세요 (예: 3c:5a:b4:12:34:56). 첫 바이트는 유니캐스트이면서 전역 관리 주소여야 하므로 비트 0과 1이 0이어야 합니다. 많은 게임이 02:… 같은 로컬 관리 주소를 거부합니다.</string>
+    <string name="steam_controller_left_pad_click">왼쪽 패드 클릭</string>
+    <string name="steam_controller_right_pad_click">오른쪽 패드 클릭</string>
+    <string name="controller_test_generic">일반</string>
 </resources>
 

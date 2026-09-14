@@ -141,7 +141,20 @@ internal val BIND_TARGETS: List<BindTarget> =
         ),
     )
 
-internal val BIND_BY_ID: Map<String, BindTarget> = BIND_TARGETS.associateBy { it.id }
+internal val STEAM_BIND_TARGETS = listOf(
+    BindTarget("l4", R.string.steam_controller_paddle_l4, null, KeyEvent.KEYCODE_BUTTON_1, null),
+    BindTarget("l5", R.string.steam_controller_paddle_l5, null, KeyEvent.KEYCODE_BUTTON_2, null),
+    BindTarget("r4", R.string.steam_controller_paddle_r4, null, KeyEvent.KEYCODE_BUTTON_3, null),
+    BindTarget("r5", R.string.steam_controller_paddle_r5, null, KeyEvent.KEYCODE_BUTTON_4, null),
+    BindTarget("qam", R.string.steam_controller_button_qam, null, KeyEvent.KEYCODE_BUTTON_5, null),
+    BindTarget("lpad", R.string.steam_controller_left_pad_click, null, KeyEvent.KEYCODE_BUTTON_6, null),
+    BindTarget("rpad", R.string.steam_controller_right_pad_click, null, KeyEvent.KEYCODE_BUTTON_7, null),
+)
+
+internal fun bindTargets(controller: ExternalController?): List<BindTarget> =
+    if (controller?.id?.startsWith("sdl:") == true) BIND_TARGETS + STEAM_BIND_TARGETS else BIND_TARGETS
+
+internal val BIND_BY_ID: Map<String, BindTarget> = (BIND_TARGETS + STEAM_BIND_TARGETS).associateBy { it.id }
 
 internal fun bindTargetName(
     context: Context,
@@ -157,17 +170,9 @@ internal fun bindingLabelOrNull(
     return b.binding?.toString()
 }
 
-internal fun isBound(
-    controller: ExternalController?,
-    id: String,
-): Boolean {
-    val t = BIND_BY_ID[id] ?: return false
-    return controller?.getControllerBinding(t.keyCode) != null
-}
-
 internal fun boundCount(controller: ExternalController?): Int {
     if (controller == null) return 0
-    return BIND_TARGETS.count { controller.getControllerBinding(it.keyCode) != null }
+    return bindTargets(controller).count { controller.getControllerBinding(it.keyCode) != null }
 }
 
 internal fun setTarget(

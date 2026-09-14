@@ -95,14 +95,16 @@ the user's own Lossless Scaling installation, which they must own separately on 
 ## Controller support
 
 Steam Controller support and the visual controller test / binding screen were written by
-**The412Banner** for **Bannerlator** and ported into WinNative. The SDL3 Android release AAR is
-vendored unmodified under `vendor/maven/org/libsdl/android/SDL3/` and is only used to read Valve
+**The412Banner** for **Bannerlator** and ported into WinNative. SDL3 is
+built with an isolated Java/JNI namespace and Bluetooth transport fixes under
+`vendor/maven/org/libsdl/android/SDL3/`; the source pin, patch and rebuild script are in
+`tools/sdl/`. It is only used to read Valve
 HIDAPI devices; every other controller keeps WinNative's normal Android input path.
 
 | Component | Role | License | Source |
 | --- | --- | --- | --- |
 | Bannerlator | Steam Controller backend, pad artwork and the controller test / visual binder this port is derived from | GPL-3.0 | https://github.com/The412Banner/Bannerlator |
-| SDL3 3.4.16 (official Android release AAR, unmodified) | HIDAPI Steam Controller drivers | Zlib | https://github.com/libsdl-org/SDL |
+| SDL3 3.4.16 (WinNative Steam Controller build) | HIDAPI Steam Controller drivers | Zlib | https://github.com/libsdl-org/SDL |
 
 ## Source availability
 

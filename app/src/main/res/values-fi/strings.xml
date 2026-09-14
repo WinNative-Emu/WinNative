@@ -2877,4 +2877,7 @@ Asennuspolku:
     <string name="networking_mac_summary">Ensisijaiselle sovittimelle ilmoitettava laiteosoite. Jätä tyhjäksi, jos haluat automaattisen, laitteesta johdetun osoitteen.</string>
     <string name="networking_mac_automatic">Automaattinen: %1$s</string>
     <string name="networking_mac_invalid">Anna 12 heksadesimaalinumeroa (esimerkiksi 3c:5a:b4:12:34:56). Ensimmäisen tavun on oltava unicast ja globaalisti hallinnoitu, joten bitit 0 ja 1 nollina; monet pelit hylkäävät paikallisesti hallinnoidut osoitteet kuten 02:….</string>
+    <string name="steam_controller_left_pad_click">Vasemman kosketuslevyn painallus</string>
+    <string name="steam_controller_right_pad_click">Oikean kosketuslevyn painallus</string>
+    <string name="controller_test_generic">Yleinen</string>
 </resources>

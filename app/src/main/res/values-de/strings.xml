@@ -2879,4 +2879,7 @@ Installierter Pfad:
     <string name="networking_mac_summary">Hardwareadresse, die für den primären Adapter gemeldet wird. Leer lassen für die automatisch vom Gerät abgeleitete Adresse.</string>
     <string name="networking_mac_automatic">Automatisch: %1$s</string>
     <string name="networking_mac_invalid">Gib 12 Hex-Ziffern ein (zum Beispiel 3c:5a:b4:12:34:56). Das erste Byte muss Unicast und global verwaltet sein, also Bit 0 und 1 auf null; viele Spiele lehnen lokal verwaltete Adressen wie 02:… ab.</string>
+    <string name="steam_controller_left_pad_click">Linkes Touchpad drücken</string>
+    <string name="steam_controller_right_pad_click">Rechtes Touchpad drücken</string>
+    <string name="controller_test_generic">Allgemein</string>
 </resources>
