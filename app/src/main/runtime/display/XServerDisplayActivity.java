@@ -9478,6 +9478,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         inputControlsView.invalidate();
         if (winHandler != null) {
+            winHandler.representVirtualGamepad();
             winHandler.sendGamepadState();
         }
         startTouchscreenTimeout();

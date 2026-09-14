@@ -679,6 +679,22 @@ public class WinHandler {
     if (xServer != null && xServer.getRenderer() != null) xServer.getRenderer().requestRenderCoalesced(VulkanRenderer.WAKE_WINHANDLER);
   }
 
+  public void representVirtualGamepad() {
+    Integer slot = this.deviceToSlot.get(OSC_DEVICE_ID);
+    if (slot == null || slot < 0 || slot >= MAX_CONTROLLERS) {
+      return;
+    }
+    if (this.writers[slot] != null) {
+      this.writers[slot].destroy();
+      this.writers[slot] = null;
+    }
+    ensureWriterForSlot(slot);
+    if (this.writers[slot] != null) {
+      this.writers[slot].requestFullResend();
+      Log.d("WinHandler", "Re-presented virtual gamepad on slot " + slot + ".");
+    }
+  }
+
   public void resyncGamepadState() {
     for (int i = 0; i < MAX_CONTROLLERS; i++) {
       if (this.writers[i] != null) this.writers[i].requestFullResend();
