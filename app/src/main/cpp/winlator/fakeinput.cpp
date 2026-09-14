@@ -127,6 +127,7 @@ static const uint16_t kSnapshotButtons[10] = {
 
 static std::unordered_map<int, FakeController> controller_map;
 static std::unordered_map<int, std::string> ring_paths;
+static std::recursive_mutex controller_mutex;
 static bool ring_paths_loaded = false;
 static bool initialized = false;
 static const char *hook_dir = nullptr;
@@ -319,13 +320,15 @@ get_fake_input_rdev(const char *event) {
 }
 
 __attribute__((visibility("hidden"))) static void load_ring_paths() {
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
   if (ring_paths_loaded)
     return;
 
-  ring_paths_loaded = true;
   const char *spec = getenv("FAKE_EVDEV_MEMFD_PATHS");
-  if (!spec || !*spec)
+  if (!spec || !*spec) {
+    ring_paths_loaded = true;
     return;
+  }
 
   char *copy = strdup(spec);
   if (!copy)
@@ -490,7 +493,10 @@ open_fake_input_ring(const char *event, int flags) {
   // Emit the current absolute state as the first frame so a guest that opens
   // mid-hold (or reopens after a slot hand-off) starts already in sync.
   capture_keyframe(controller, "open", fd);
-  controller_map[fd] = controller;
+  {
+    std::lock_guard<std::recursive_mutex> guard(controller_mutex);
+    controller_map[fd] = controller;
+  }
 
   Logger::log("Adding ring-backed controller, fd %d event %s slot %d\n", fd,
               event, slot);
@@ -507,10 +513,12 @@ copy_slot_ioctl_string(int op, void *argp, const char *format, int event_number)
 }
 
 __attribute__((visibility("hidden"))) static bool is_fake_input_fd(int fd) {
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
   return controller_map.find(fd) != controller_map.end();
 }
 
 __attribute__((visibility("hidden"))) static bool fake_fd_is_stale(int fd) {
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   return controller != controller_map.end() &&
          ring_generation(controller->second.ring) != controller->second.generation;
@@ -518,6 +526,7 @@ __attribute__((visibility("hidden"))) static bool fake_fd_is_stale(int fd) {
 
 __attribute__((visibility("hidden"))) static bool
 fake_fd_has_unread_data(int fd) {
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   if (controller == controller_map.end())
     return false;
@@ -736,6 +745,7 @@ EXPORT int fstat(int fd, struct stat *buf) {
 
   int ret = my_fstat(fd, buf);
 
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   if (ret == 0 && controller != controller_map.end()) {
     buf->st_mode = (buf->st_mode & ~S_IFMT) | S_IFCHR;
@@ -857,6 +867,7 @@ EXPORT int ioctl(int fd, int op, ...) {
   argp = va_arg(va, void *);
   va_end(va);
 
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   if (controller == controller_map.end()) {
     return syscall(SYS_ioctl, fd, op, argp);
@@ -1020,6 +1031,7 @@ EXPORT int close(int fd) {
   if (!my_close)
     *(void **)&my_close = dlsym(RTLD_NEXT, "close");
 
+  std::unique_lock<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   if (controller != controller_map.end()) {
     Logger::log("Removing controller, fd %d event %s\n", controller->first,
@@ -1029,15 +1041,21 @@ EXPORT int close(int fd) {
     free(controller->second.event);
     controller_map.erase(fd);
   }
+  guard.unlock();
 
   return my_close(fd);
 }
 
 EXPORT ssize_t read(int fd, void *buf, size_t count) {
-  auto controller = controller_map.find(fd);
+  FakeController *fake_ptr = nullptr;
+  {
+    std::lock_guard<std::recursive_mutex> guard(controller_mutex);
+    auto controller = controller_map.find(fd);
+    if (controller != controller_map.end()) fake_ptr = &controller->second;
+  }
 
-  if (controller != controller_map.end()) {
-    FakeController &fake = controller->second;
+  if (fake_ptr != nullptr) {
+    FakeController &fake = *fake_ptr;
     if (count < FAKE_INPUT_EVENT_SIZE) {
       errno = EINVAL;
       return -1;
@@ -1143,6 +1161,7 @@ EXPORT ssize_t write(int fd, const void *buf, size_t count) {
   if (!my_write)
     *(void **)&my_write = dlsym(RTLD_NEXT, "write");
 
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   if (controller != controller_map.end()) {
     if (fake_fd_is_stale(fd)) {
@@ -1163,6 +1182,7 @@ EXPORT ssize_t write(int fd, const void *buf, size_t count) {
 }
 
 EXPORT ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
+  std::lock_guard<std::recursive_mutex> guard(controller_mutex);
   auto controller = controller_map.find(fd);
   if (controller != controller_map.end()) {
     if (fake_fd_is_stale(fd)) {
