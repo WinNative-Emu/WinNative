@@ -75,6 +75,19 @@
     <string name="common_ui_shortcut">Ярлик</string>
     <string name="common_ui_custom">Користувацький</string>
     <string name="common_ui_about">Про додаток</string>
+    <string name="about_app_heading">ЗАСТОСУНОК</string>
+    <string name="about_app_desc">Відомості про збірку цього встановлення</string>
+    <string name="about_version">Версія</string>
+    <string name="about_build_id">ID збірки</string>
+    <string name="about_version_code">Код версії</string>
+    <string name="about_variant">Варіант збірки</string>
+    <string name="about_package">Назва пакета</string>
+    <string name="about_branding_heading">ЗАХИСТ ВІД МАГАЗИНУ</string>
+    <string name="about_branding_desc">Чому ця збірка повідомляє іншу версію</string>
+    <string name="about_reported_version_code">Заявлений код версії</string>
+    <string name="about_branding_explain">Ця збірка встановлюється як %1$s, щоб пристрій застосував профіль продуктивності того застосунку. Її заявлений код версії вищий за будь-який, який може опублікувати Google Play, тож Play Store ніколи не запропонує оновлення, яке замінило б WinNative. Версія вище — справжня.</string>
+    <string name="about_copy">Копіювати дані збірки</string>
+    <string name="about_copied">Дані збірки скопійовано</string>
     <string name="common_ui_back">Назад</string>
     <string name="common_ui_apply">Застосувати</string>
     <string name="common_ui_save">Зберегти</string>
@@ -125,6 +138,11 @@
     <string name="store_game_update_failed_notice">Не вдалося оновити</string>
     <string name="store_game_update_check_failed_notice">Не вдалося перевірити оновлення</string>
     <string name="store_game_download_already_active">Ця гра вже завантажується. Скасуйте поточне завантаження, перш ніж додавати DLC.</string>
+    <string name="store_game_branch_label">Версія</string>
+    <string name="store_game_branch_public">Типова (публічна)</string>
+    <string name="store_game_branch_build">Збірка %1$s</string>
+    <string name="store_game_branch_changed">Версію змінено на %1$s. Завантажте, щоб застосувати.</string>
+    <string name="store_game_branch_switch_installed">Версію змінено на %1$s. Натисніть «Перевірити оновлення», щоб змінити встановлені файли.</string>
     <string name="common_ui_select">Вибрати</string>
     <string name="common_ui_select_folder">Вибрати теку</string>
     <string name="common_ui_current_folder">Поточна тека</string>
@@ -164,10 +182,14 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Завантажити зображення</string>
+    <string name="library_games_store_none_owned">Жодна бібліотека магазину не містить цієї гри</string>
     <string name="library_games_scraping_artwork">Завантаження</string>
     <string name="library_games_shortcut_created">Ярлик створено</string>
     <string name="library_games_failed_to_create_shortcut">Не вдалося створити ярлик: %s</string>
     <string name="library_games_install_path">Шлях встановлення</string>
+    <string name="library_games_store_change">Змінити магазин</string>
+    <string name="library_games_store_switch_label">Магазин</string>
+    <string name="library_games_store_switched">Тепер для цієї гри використовується %1$s</string>
     <string name="library_games_not_enough_space">Потрібно ще %1$s місця</string>
     <string name="library_games_download_slash_install">Завантажити / Встановити</string>
     <string name="library_games_save_management">КЕРУВАННЯ ЗБЕРЕЖЕННЯМИ</string>
@@ -242,6 +264,18 @@
     <string name="stores_accounts_gog_login_failed">Помилка входу в GOG: %1$s</string>
     <string name="stores_accounts_custom_download_path">Користувацький шлях завантаження</string>
     <string name="stores_accounts_custom_download_path_description">Типовий шлях завантаження вже налаштований у Налаштування &gt; Магазини. Якщо ви хочете вказати унікальний шлях для цього конкретного встановлення, натисніть Продовжити.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Зовнішнє сховище</string>
+    <string name="external_storage_add_title">Додати зовнішнє сховище</string>
+    <string name="external_storage_add_subtitle">Встановлювати ігри на USB- або SD-накопичувач</string>
+    <string name="external_storage_add_invalid">Ця тека не на зовнішньому накопичувачі</string>
+    <string name="external_storage_status_connected">Підключено · вільно %1$s</string>
+    <string name="external_storage_status_disconnected">Відключено</string>
+    <string name="external_storage_download_target_title">Місце завантаження</string>
+    <string name="external_storage_download_target_message">Виберіть, куди встановити цю гру.</string>
+    <string name="external_storage_download_target_internal">Надавати перевагу внутрішньому</string>
+    <string name="external_storage_download_target_external">Надавати перевагу зовнішньому</string>
+    <string name="external_storage_download_target_none">Зовнішній накопичувач не підключено</string>
     <string name="stores_accounts_not_signed_in">Не авторизовано</string>
     <string name="stores_accounts_status_online">В мережі</string>
     <string name="stores_accounts_status_away">Відійшов</string>
@@ -591,6 +625,8 @@
     <string name="session_drawer_keyboard">Клавіатура</string>
     <string name="session_drawer_toggle_fullscreen">Перемкнути повноекранний режим</string>
     <string name="session_drawer_show_touchscreen_controls">Показати сенсорні елементи керування</string>
+    <string name="input_controls_adaptive_joysticks">Адаптивні джойстики</string>
+    <string name="input_controls_adaptive_joysticks_summary">Стіки лишаються прихованими, доки ви не торкнетеся поблизу їхнього місця</string>
     <string name="session_drawer_magnifier">Збільшувач</string>
     <string name="session_drawer_logs">Журнали</string>
     <string name="session_drawer_pip_mode">Режим PiP</string>
@@ -777,6 +813,46 @@
     <string name="session_gyroscope_deadzone_format">Мертва зона: %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">Чутливість: %1$d%%</string>
 
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Пристрій</string>
+    <string name="device_profile_heading">ПРОФІЛЬ ПРИСТРОЮ</string>
+    <string name="device_profile_desc">Один профіль на пристрій — підлаштовує макети та розміри під цей екран.</string>
+    <string name="device_profile_change">ЗМІНИТИ</string>
+    <string name="device_profile_source_detected">Визначено автоматично</string>
+    <string name="device_profile_source_manual">Вибрано вручну</string>
+    <string name="device_profile_default">Типовий</string>
+    <string name="device_profile_default_summary">Усі телефони та планшети без власного профілю.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Ігровий планшет RedMagic Astra 2, усі регіональні моделі.</string>
+    <string name="device_profile_controls_heading">ЩО ЗАДАЄ ЦЕЙ ПРОФІЛЬ</string>
+    <string name="device_profile_controls_desc">Типові значення, які профіль застосовує в усьому застосунку.</string>
+    <string name="device_profile_feature_input_layouts">Макети керування</string>
+    <string name="device_profile_feature_input_layouts_summary">Вбудовані сенсорні макети, розміщені під цей розмір екрана.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Адаптивні джойстики</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Типове значення для контейнерів, де його ніколи не задавали.</string>
+    <string name="device_profile_feature_library_icons">Розміри та пропорції значків бібліотеки</string>
+    <string name="device_profile_feature_library_icons_summary">Стовпці сітки та форма обкладинок у бібліотеці.</string>
+    <string name="device_profile_feature_session_menu">Розміри кнопок меню в грі</string>
+    <string name="device_profile_feature_session_menu_summary">Розміри зон торкання в меню сесії.</string>
+    <string name="device_profile_feature_shortcut_defaults">Рекомендовані налаштування гри</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Типові значення для кожної гри, запропоновані для цього пристрою.</string>
+    <string name="device_profile_recommended_on">Рекомендовано: увімк.</string>
+    <string name="device_profile_recommended_off">Рекомендовано: вимк.</string>
+    <string name="device_profile_layouts_stock">Стандартні макети</string>
+    <string name="device_profile_layouts_tuned">Підлаштовано під цей екран</string>
+    <string name="device_profile_reapply">Застосувати вбудовані макети знову</string>
+    <string name="device_profile_reapply_desc">Відновлює всі вбудовані макети, які ви не редагували.</string>
+    <string name="device_profile_device_heading">ЦЕЙ ПРИСТРІЙ</string>
+    <string name="device_profile_device_desc">З чим було зіставлено профіль.</string>
+    <string name="device_profile_info_model">Модель</string>
+    <string name="device_profile_info_board">Плата</string>
+    <string name="device_profile_info_manufacturer">Виробник</string>
+    <string name="device_profile_info_screen">Екран</string>
+    <string name="device_profile_library_wide">Широкі картки 3:2 для горизонтальних обкладинок</string>
+    <string name="device_profile_library_stock">Стандартна сітка</string>
+    <string name="device_profile_session_square">Квадратні кнопки дій</string>
+    <string name="device_profile_session_stock">Стандартні розміри</string>
+
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Швидкість курсора</string>
     <string name="settings_general_theme">Тема</string>
@@ -870,6 +946,8 @@
     <string name="settings_debug_no_logs_available">Немає доступних журналів налагодження. Спочатку увімкніть параметри налагодження та запустіть гру.</string>
     <string name="settings_debug_capture_failed">Не вдалося захопити журнали: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Записувати помилки, попередження та збої процесу WinNative у файл</string>
+    <string name="settings_filtered_logs_to_file_title">Відфільтрований журнал налагодження</string>
+    <string name="settings_filtered_logs_to_file_desc">Зберегти журнали застосунка у файл, відфільтровані згідно налаштувань фільтра тегів.</string>
     <string name="settings_debug_section_emulation">Емуляція</string>
     <string name="settings_debug_section_subsystems">Підсистеми</string>
     <string name="settings_debug_section_tools">Інструменти</string>
@@ -1112,6 +1190,8 @@
     <string name="preloader_downloading_cloud">Завантаження хмарних збережень</string>
     <string name="preloader_syncing_cloud">Синхронізація хмарних збережень</string>
     <string name="preloader_uploading_cloud">Вивантаження хмарних збережень</string>
+    <string name="preloader_closing_game_waiting">Закриття %1$s — очікування збереження гри…</string>
+    <string name="preloader_cloud_upload_done">Хмарне збереження вивантажено — завершення…</string>
     <string name="preloader_checking_cloud">Перевірка хмарних збережень</string>
     <string name="preloader_cloud_sync_retry">%1$s Повтор %2$d/%3$d</string>
     <string name="preloader_cloud_downloading">Завантаження Cloud Sync</string>
@@ -1388,10 +1468,12 @@
     <string name="preloader_loading_steam_client">Завантаження клієнта Steam</string>
     <string name="preloader_connecting_to_steam">Підключення до Steam</string>
     <string name="preloader_signing_in_to_steam">Вхід у Steam</string>
+    <string name="preloader_signing_in_offline">Вхід в офлайн-режимі</string>
     <string name="preloader_fetching_game_info">Вхід виконано — отримання інформації про гру</string>
     <string name="preloader_steam_ready">Steam готовий</string>
     <string name="preloader_updating_game_info">Оновлення інформації про гру</string>
     <string name="preloader_verifying_install">Перевірка встановлення</string>
+    <string name="preloader_checking_install_scripts">Перевірка скриптів встановлення</string>
     <string name="preloader_scanning_redists">Сканування компонентів для розповсюдження</string>
     <string name="preloader_installing_redist_single">Встановлення компонента для розповсюдження</string>
     <string name="preloader_installing_named_redist">Встановлення %1$s</string>
@@ -1399,10 +1481,23 @@
     <string name="preloader_redists_ready">Компоненти для розповсюдження готові</string>
     <string name="preloader_no_redists">Немає компонентів для розповсюдження для встановлення</string>
     <string name="preloader_steam_service_running">Служба Steam працює</string>
+    <string name="preloader_syncing_cloud_saves">Синхронізація збережень Steam Cloud…</string>
     <string name="preloader_launching_game">Запуск %1$s</string>
     <string name="preloader_steam_launcher_failed_restaging">Збій Steam Launcher — повторна підготовка ресурсів</string>
     <string name="preloader_steam_launcher_start_failed">Steam Launcher не вдалося запустити. Повторна підготовка — запустіть ще раз</string>
     <string name="preloader_steam_launcher_game_never_started">Steam Launcher дістався гри, але вона не запустилася</string>
+    <string name="steam_cloud_conflict_backing_up">Резервне копіювання відхиленого збереження…</string>
+    <string name="steam_cloud_conflict_waiting">Очікування вашого вибору Steam Cloud…</string>
+    <string name="steam_cloud_conflict_unknown_time">Невідомо</string>
+    <string name="steam_blocked_title">Steam досі грає в гру</string>
+    <string name="steam_blocked_running_message">Steam досі вважає %1$s запущеною з попередньої сесії, тому не запустить %2$s.\n\nЗупинити її та продовжити?</string>
+    <string name="steam_blocked_same_game_message">Steam досі вважає %1$s запущеною з попередньої сесії, тому не запустить її знову.\n\nЗупинити її та продовжити?</string>
+    <string name="steam_blocked_other_session_message">Ваш обліковий запис Steam грає в %1$s в іншій сесії, тому %2$s не може запуститися.\n\nЗупинити іншу сесію та продовжити?</string>
+    <string name="steam_blocked_confirm">Зупинити та продовжити</string>
+    <string name="steam_blocked_unknown_game">іншу гру</string>
+    <string name="steam_blocked_declined">Запуск скасовано — Steam досі грає в іншу гру</string>
+    <string name="steam_blocked_waiting">Очікування, доки Steam зупинить іншу гру…</string>
+    <string name="steam_launch_insecure_warning">Steam відхилив захищений запуск — %1$s запущено без VAC. Мережева гра може бути недоступна.</string>
     <!-- Workshop -->
     <string name="workshop_loading_items">Завантаження елементів Workshop</string>
     <string name="workshop_search_items">Пошук елементів Workshop</string>
@@ -1628,9 +1723,6 @@
     <string name="cloud_saves_history_cloud_readonly">Лише читання</string>
     <string name="session_drawer_rail_label_record">Запис</string>
     <string name="session_record_failed">Не вдалося почати запис</string>
-    <string name="session_locale_manifest_embedded">Перевизначення локалі (%1$s) може не спрацювати: гра містить власний маніфест</string>
-    <string name="session_locale_manifest_embedded_codepage">Перевизначення локалі проігноровано: гра задає власну кодову сторінку (%1$s)</string>
-    <string name="session_locale_manifest_external">Перевизначення локалі пропущено: гра постачається з власним файлом маніфесту</string>
     <string name="session_record_fps">Частота кадрів</string>
     <string name="session_record_include_ui">Записувати інтерфейс</string>
     <string name="session_record_include_ui_subtitle">Включити HUD та екранні елементи керування</string>
@@ -1643,6 +1735,53 @@
     <string name="steam_chat_setting_stay_running">Працювати у фоні</string>
     <string name="steam_chat_setting_stay_running_desc">Залишати чат активним після виходу з WinNative</string>
     <string name="settings_content_refresh">Оновити</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Журналювання застосунку</string>
+    <string name="settings_debug_application_logging_subtitle">Увімкнути журналювання та показати параметри журналювання</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Журнал причин завершення</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Записувати причину останнього завершення процесу застосунку</string>
+    <string name="settings_debug_crash_log_title">Журнал збоїв</string>
+    <string name="settings_debug_crash_log_subtitle">Зберігати трасування нативних збоїв (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Журнал спостереження за подіями</string>
+    <string name="settings_debug_event_watch_log_subtitle">Записувати системний журнал навколо подій паузи/відновлення</string>
+    <string name="settings_debug_log_tag_filter_channel">Фільтр тегів журналу</string>
+    <string name="settings_debug_tags_selected_suffix">тегів вибрано</string>
+    <string name="settings_debug_manual_text_filter_hint">Фільтрувати рядки журналу за текстом…</string>
+    <string name="settings_debug_tag_filter_mode">Режим</string>
+    <string name="settings_debug_tag_filter_all">Усі</string>
+    <string name="settings_debug_tag_filter_include">Включати</string>
+    <string name="settings_debug_tag_filter_exclude">Виключати</string>
+    <string name="settings_debug_add_custom_tag_hint">Додати власний тег…</string>
+    <string name="settings_debug_no_tags_selected">Теги не вибрано</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Захист у фоновому режимі</string>
+    <string name="settings_other_background_subtitle">Зберігати сесію активною у фоновому режимі</string>
+    <string name="settings_other_bg_pause_mode_title">Режим паузи у фоні</string>
+    <string name="settings_other_bg_pause_all_title">Призупиняти всі процеси</string>
+    <string name="settings_other_bg_pause_all_subtitle">Призупиняє всі процеси — максимальна економія батареї (можливі проблеми).</string>
+    <string name="settings_other_bg_pause_game_only_title">Призупиняти лише гру</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Призупиняє лише процес активної гри; інші процеси та служби продовжують працювати.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Призупиняти все, крім гри</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Призупиняє всі процеси та служби, але залишає процес гри активним.</string>
+    <string name="settings_other_bg_auto_pause_title">Автопауза сесії</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Автоматично призупиняти сесію, коли застосунок переходить у фон або пристрій заблоковано.</string>
+    <string name="settings_other_bg_wakelock_title">Увімкнути wake lock ЦП для посилення фонового захисту</string>
+    <string name="settings_other_bg_wakelock_subtitle">Не дає ЦП переходити в глибокий сон, поки сесія на паузі. Збільшує витрату батареї, але може покращити персистентність і стабільність на пристроях з агресивною оптимізацією батареї.</string>
+    <string name="settings_other_bg_heartbeat_title">Частота heartbeat (секунди)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Може покращити фоновий захист застосунку. Значення 0 вимикає функцію. Що менше значення, то більша можлива витрата батареї.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat вимкнено</string>
+    <string name="settings_other_bg_heartbeat_minimum">Мінімум — 5 с; буде виправлено під час збереження</string>
+    <string name="settings_other_bg_heartbeat_effective">Виконується кожні %1$d с</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Сесію контейнера призупинено</string>
+    <string name="fg_keep_alive_notification_content_container_running">Виконується сесія контейнера</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Завантаження та встановлення компонентів</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Чат Steam працює у фоновому режимі</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: служба активна</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: служби активні</string>
+    <string name="general_and">і</string>
     <string name="settings_retro_title">Ретро</string>
     <string name="retro_save_transfer_title">Перенесення збереження</string>
     <string name="retro_save_transfer_message">Імпортуйте локальне збереження для цієї гри або експортуйте поточне збереження.</string>
@@ -2206,6 +2345,10 @@
     <string name="retro_scr_tab_defaults">Стандартні</string>
     <string name="retro_scr_tab_credits">Автори</string>
     <string name="settings_support_title">Підтримка</string>
+    <string name="support_donate_heading">ПІДТРИМАТИ</string>
+    <string name="support_donate_desc">Підтримайте розробку WinNative. Відкривається у браузері.</string>
+    <string name="support_paypal">paypal.me/MaxJividen</string>
+    <string name="support_paypal_desc">PayPal • разово або регулярно</string>
     <string name="support_heading">ОТРИМАТИ ДОПОМОГУ</string>
     <string name="support_desc">Ставте запитання, повідомляйте про проблеми або стежте за розробкою. Кожне посилання відкривається у браузері.</string>
     <string name="support_winnative_discord_desc">Discord • підтримка та розробка</string>
@@ -2531,6 +2674,9 @@
     <string name="retro_tab_system">Система</string>
     <string name="session_drawer_frame_generation">Генерація кадрів</string>
     <string name="session_drawer_frame_generation_enable">Генерувати кадри</string>
+    <string name="session_drawer_frame_generation_engine_off">Вимк.</string>
+    <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
+    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
     <string name="session_drawer_frame_generation_multiplier">Множник</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Адаптивна ціль</string>
@@ -2538,14 +2684,9 @@
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Інтерполює між відрендереними кадрами за допомогою Lossless Scaling. Рух плавніший, але затримка вводу зростає на один кадр.</string>
     <string name="session_drawer_frame_generation_target_note">Підвищується до цілі лише доки це дає вимірний виграш, замість утримання фіксованого множника.</string>
-    <string name="session_drawer_frame_generation_missing">Установіть Lossless Scaling у налаштуваннях контейнера, щоб використовувати генерацію кадрів.</string>
-    <string name="session_drawer_dis_frame_generation">Генерація кадрів (DIS)</string>
-    <string name="session_drawer_dis_frame_generation_enable">Генерувати кадри (DIS)</string>
+    <string name="session_drawer_frame_generation_missing">Установіть Lossless Scaling у налаштуваннях контейнера, щоб використовувати рушій LSFG. DIS не потребує нічого додатково.</string>
     <string name="session_drawer_dis_frame_generation_note">Інтерполює між відрендереними кадрами методом Dense Inverse Search. Вбудовано; зовнішні шейдери не потрібні.</string>
-    <string name="session_drawer_frame_generation_blocked_by_dis">Щоб увімкнути, спершу вимкніть генерацію кадрів DIS.</string>
-    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Щоб увімкнути, спершу вимкніть генерацію кадрів Lossless Scaling.</string>
     <string name="session_drawer_dis_resolution_scale">Масштаб роздільної здатності</string>
-    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Швидко</string>
     <string name="session_drawer_dis_preset_balance">Баланс</string>
     <string name="session_drawer_dis_preset_quality">Якість</string>
@@ -2553,6 +2694,8 @@
     <string name="session_drawer_dis_target_fps">Цільовий FPS</string>
     <string name="session_drawer_dis_target_fps_max">Макс. частота оновлення</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
+    <string name="session_drawer_dis_debug_flow">Показати потік</string>
+    <string name="session_drawer_dis_debug_flow_note">Малює вектори руху, які оцінює DIS, замість згенерованого кадру. Лише для діагностики.</string>
     <string name="frame_generation_preset">Пресет якості</string>
     <string name="frame_generation_preset_ultra_performance">Ультрапродуктивність</string>
     <string name="frame_generation_preset_performance">Продуктивність</string>
@@ -2720,5 +2863,25 @@
     <string name="steam_controller_paddle_r5">R5 (нижня права)</string>
     <string name="steam_controller_button_qam">… (Швидкий доступ)</string>
     <string name="steam_controller_restart_required">Зміни наберуть чинності під час наступного запуску гри.</string>
+    <string name="update_available_title">Доступне оновлення</string>
+    <string name="update_action_update">Оновити</string>
+    <string name="update_ignore_until_next">Ігнорувати до наступного оновлення</string>
+    <string name="update_no_notes">Для цієї збірки не опубліковано приміток до випуску.</string>
+    <string name="update_apk_notice">Це оновлення змінює сам застосунок, тому Android попросить підтвердити встановлення. Ваші ігри, контейнери та налаштування збережуться.</string>
+    <string name="update_up_to_date">WinNative актуальний.</string>
+    <string name="update_unsupported_build">Оновлення в застосунку доступні лише для офіційних підписаних випусків.</string>
+    <string name="settings_general_update_channel">Канал оновлень</string>
+    <string name="settings_general_update_channel_summary">Офіційний постачає перевірені випуски. Розробницький — ранні збірки.</string>
+    <string name="update_channel_official">Офіційний</string>
+    <string name="update_channel_development">Розробницький</string>
+    <string name="networking_section_title">Мережа</string>
+    <string name="networking_driver">Мережевий драйвер</string>
+    <string name="networking_driver_winnative">Мережевий драйвер WinNative</string>
+    <string name="networking_driver_none">Типовий для Wine (без емуляції адаптера)</string>
+    <string name="networking_driver_summary">Надає програмам Windows справжній список мережевих адаптерів зі стабільними MAC-адресами. Android приховує дані про інтерфейси від застосунків, тож без нього ігри та DRM бачать машину без мережевих карт.</string>
+    <string name="networking_mac">MAC-адреса</string>
+    <string name="networking_mac_summary">Апаратна адреса, що повідомляється для основного адаптера. Залиште порожнім для автоматичної адреси, похідної від пристрою.</string>
+    <string name="networking_mac_automatic">Автоматично: %1$s</string>
+    <string name="networking_mac_invalid">Введіть 12 шістнадцяткових цифр (наприклад 3c:5a:b4:12:34:56). Перший байт має бути одноадресним і глобально адміністрованим, тому біти 0 і 1 мають бути нульовими; багато ігор відхиляють локально адміністровані адреси, як-от 02:….</string>
 </resources>
 

@@ -28,7 +28,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
+import com.winlator.cmod.app.config.DeviceProfileSettings
 import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings
+import com.winlator.cmod.runtime.wine.WineThemeManager
 import com.winlator.cmod.BuildConfig
 import com.winlator.cmod.R
 import com.winlator.cmod.app.PluviaApp
@@ -72,6 +74,7 @@ import com.winlator.cmod.runtime.wine.WineUtils
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.util.KeyValueSet
 import com.winlator.cmod.shared.android.RefreshRateUtils
+import com.winlator.cmod.shared.android.ScreenSizes
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import com.winlator.cmod.shared.util.StringUtils
 import com.winlator.cmod.runtime.input.ui.InputControlsView
@@ -392,7 +395,10 @@ class ShortcutSettingsComposeDialog private constructor(
         state.disableXInput.value = shortcut.getExtra("disableXinput", "0") == "1"
         state.adaptiveJoysticks.value = getShortcutSetting(
             InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
-            container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0")
+            container.getExtra(
+                InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                DeviceProfileSettings.adaptiveJoysticksDefaultExtra(context),
+            ),
         ) == "1"
         state.shortcutExclusiveXInput.value = shortcut.getExtra("exclusiveXInput", "").let {
             if (it.isEmpty()) container.isExclusiveXInput() else it == "1"
@@ -723,10 +729,9 @@ class ShortcutSettingsComposeDialog private constructor(
         state.desktopThemeEntries.value = desktopThemeArr
         // Desktop theme is stored as compound "THEME,TYPE,COLOR" — extract theme name
         val savedDesktopTheme = getShortcutSetting("desktopTheme", container.getDesktopTheme())
-        val themePart = savedDesktopTheme.split(",").firstOrNull()?.trim() ?: ""
-        // Match case-insensitively: enum is "LIGHT"/"DARK", entries are "Light"/"Dark"
-        val themeIdx = desktopThemeArr.indexOfFirst { it.equals(themePart, ignoreCase = true) }
-        state.selectedDesktopTheme.intValue = if (themeIdx >= 0) themeIdx else 0
+        state.selectedDesktopTheme.intValue =
+            WineThemeManager.ThemeInfo(savedDesktopTheme).theme.ordinal
+                .coerceIn(0, (desktopThemeArr.size - 1).coerceAtLeast(0))
 
         // Show Box64/FEXCore frames based on saved emulator selection immediately,
         // before the async content sync runs
@@ -1073,21 +1078,16 @@ class ShortcutSettingsComposeDialog private constructor(
 
     private fun selectScreenSize(screenSize: String) {
         val entries = state.screenSizeEntries.value
-        // Try to match by identifier
-        val idx = entries.indexOfFirst {
-            StringUtils.parseIdentifier(it) == StringUtils.parseIdentifier(screenSize)
-        }
-        if (idx >= 0) {
+        val normalized = ScreenSizes.sanitize(screenSize, Container.DEFAULT_SCREEN_SIZE)
+        val idx = entries.indexOfFirst { StringUtils.parseIdentifier(it) == normalized }
+        if (idx > 0) {
             state.selectedScreenSize.intValue = idx
-        } else {
-            // Custom screen size
-            state.selectedScreenSize.intValue = 0 // "Custom" is at index 0
-            val parts = screenSize.split("x")
-            if (parts.size == 2) {
-                state.customWidth.value = parts[0]
-                state.customHeight.value = parts[1]
-            }
+            return
         }
+        state.selectedScreenSize.intValue = 0
+        val parts = normalized.split("x")
+        state.customWidth.value = parts[0]
+        state.customHeight.value = parts[1]
     }
 
 
@@ -1319,7 +1319,10 @@ class ShortcutSettingsComposeDialog private constructor(
             hasContainerOverride = hasContainerOverride or saveOverride(
                 InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
                 if (state.adaptiveJoysticks.value) "1" else "0",
-                container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0")
+                container.getExtra(
+                    InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                    DeviceProfileSettings.adaptiveJoysticksDefaultExtra(context),
+                ),
             )
 
             // Touchscreen mode
@@ -1397,10 +1400,6 @@ class ShortcutSettingsComposeDialog private constructor(
                 if (state.frameGenEnabled.value) "1" else "0",
                 container.getExtra("frameGen", "0"),
             )
-            // Only the Lossless Scaling engine is exposed here, and the two are
-            // mutually exclusive, so enabling it has to switch DIS off as well.
-            // Without this the shortcut keeps inheriting disFrameGen=1 from the
-            // container and the session starts on DIS instead.
             if (state.frameGenEnabled.value) {
                 hasContainerOverride = hasContainerOverride or saveOverride(
                     "disFrameGen",
@@ -1454,8 +1453,12 @@ class ShortcutSettingsComposeDialog private constructor(
             if (state.desktopThemeEntries.value.isNotEmpty()) {
                 val desktopThemeEntries = state.desktopThemeEntries.value
                 val dtIdx = state.selectedDesktopTheme.intValue
-                val selectedLabel = if (dtIdx in desktopThemeEntries.indices) desktopThemeEntries[dtIdx] else ""
-                val themeName = selectedLabel.uppercase()
+                val themeName =
+                    if (dtIdx in desktopThemeEntries.indices) {
+                        WineThemeManager.Theme.values().getOrNull(dtIdx)?.name ?: "LIGHT"
+                    } else {
+                        "LIGHT"
+                    }
                 // Preserve existing compound value, only replace the theme portion
                 val existing = getShortcutSetting("desktopTheme", container.getDesktopTheme())
                 val parts = existing.split(",").toMutableList()
@@ -2007,22 +2010,18 @@ class ShortcutSettingsComposeDialog private constructor(
         val entries = state.screenSizeEntries.value
         val selectedIdx = state.selectedScreenSize.intValue
         if (selectedIdx !in entries.indices) return Container.DEFAULT_SCREEN_SIZE
-
-        val selectedValue = entries[selectedIdx]
-        return if (selectedValue.equals("custom", ignoreCase = true)) {
-            val w = state.customWidth.value.trim()
-            val h = state.customHeight.value.trim()
-            if (w.matches(Regex("[0-9]+")) && h.matches(Regex("[0-9]+"))) {
-                // Ensure even numbers
-                val width = (w.toInt() / 2) * 2
-                val height = (h.toInt() / 2) * 2
-                "${width}x${height}"
-            } else {
-                Container.DEFAULT_SCREEN_SIZE
+        if (selectedIdx == 0) {
+            val width = state.customWidth.value.trim().toIntOrNull()
+            val height = state.customHeight.value.trim().toIntOrNull()
+            if (width == null || height == null || width <= 0 || height <= 0) {
+                return Container.DEFAULT_SCREEN_SIZE
             }
-        } else {
-            StringUtils.parseIdentifier(selectedValue)
+            return ScreenSizes.format(width, height)
         }
+        return ScreenSizes.sanitize(
+            StringUtils.parseIdentifier(entries[selectedIdx]),
+            Container.DEFAULT_SCREEN_SIZE
+        )
     }
 
     private fun buildWinComponentsString(): String {
@@ -2165,74 +2164,51 @@ class ShortcutSettingsComposeDialog private constructor(
         state.graphicsDriverVersion.value = config["version"] ?: ""
     }
 
-    private fun loadGraphicsDriverVersions(container: Container = shortcut.container) {
-        val versions = mutableListOf<String>()
-        try {
-            val defaults = context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries)
-            for (ver in defaults) {
-                try {
-                    if (com.winlator.cmod.runtime.system.GPUInformation.isDriverSupported(ver, context))
-                        versions.add(ver)
-                } catch (e: Throwable) {
-                    Log.w(TAG, "Error checking driver support: $ver", e)
-                }
-            }
-            try {
-                val adrenoManager = com.winlator.cmod.runtime.content.AdrenotoolsManager(context)
-                val installed = adrenoManager.enumarateInstalledDrivers()
-                if (installed != null) versions.addAll(installed)
-            } catch (e: Throwable) {
-                Log.w(TAG, "Error loading Adrenotools drivers", e)
-            }
-        } catch (e: Throwable) {
-            Log.e(TAG, "Error loading wrapper versions", e)
-        }
-        if (versions.isEmpty()) versions.add("System")
+    private var extensionsRequest = 0
 
-        state.gfxDriverVersionEntries.value = versions
-
+    private fun savedGraphicsDriverConfig(container: Container = shortcut.container): Map<String, String> {
         val configStr = if (shouldUseShortcutOverrides(container))
             getShortcutSetting("graphicsDriverConfig", container.getGraphicsDriverConfig())
         else
             container.getGraphicsDriverConfig()
-        val config = GraphicsDriverConfigUtils.parseGraphicsDriverConfig(configStr)
-        val initialVersion = config["version"] ?: ""
-        if (initialVersion.isNotEmpty()) {
-            val idx = versions.indexOfFirst { it.equals(initialVersion, ignoreCase = true) }
-            if (idx >= 0) state.gfxSelectedDriverVersion.intValue = idx
-        }
+        return GraphicsDriverConfigUtils.parseGraphicsDriverConfig(configStr)
+    }
 
-        loadExtensionsForVersion(state.gfxSelectedDriverVersion.intValue)
+    private fun loadGraphicsDriverVersions(container: Container = shortcut.container) {
+        val savedVersion = savedGraphicsDriverConfig(container)["version"] ?: ""
+        state.gfxDriverVersionEntries.value = listOf(if (savedVersion.isNotEmpty()) savedVersion else "System")
+        state.gfxSelectedDriverVersion.intValue = 0
+        Thread({
+            val versions = com.winlator.cmod.runtime.system.GraphicsDriverCatalog.supportedVersions(context)
+            activity.runOnUiThread {
+                state.gfxDriverVersionEntries.value = versions
+                val idx = versions.indexOfFirst { it.equals(savedVersion, ignoreCase = true) }
+                state.gfxSelectedDriverVersion.intValue = if (idx >= 0) idx else 0
+                loadExtensionsForVersion(state.gfxSelectedDriverVersion.intValue)
+            }
+        }, "GraphicsDriverProbe").start()
     }
 
     private fun loadExtensionsForVersion(versionIndex: Int) {
-        val versions = state.gfxDriverVersionEntries.value
-        val version = versions.getOrElse(versionIndex) { return }
-        try {
-            val extensions = com.winlator.cmod.runtime.system.GPUInformation.enumerateExtensions(version, context)
-            if (extensions != null) {
-                state.gfxAvailableExtensions.value = extensions.toList()
-
-                // On initial load, set blacklisted from config; on version change, clear blacklist
-                val configStr = getShortcutSetting("graphicsDriverConfig", shortcut.container.getGraphicsDriverConfig())
-                val config = GraphicsDriverConfigUtils.parseGraphicsDriverConfig(configStr)
-                val savedVersion = config["version"] ?: ""
-                if (version == savedVersion) {
-                    val bl = config["blacklistedExtensions"] ?: ""
-                    state.gfxBlacklistedExtensions.value = if (bl.isNotEmpty()) bl.split(",").toSet() else emptySet()
-                } else {
-                    state.gfxBlacklistedExtensions.value = emptySet()
-                }
-            } else {
-                state.gfxAvailableExtensions.value = emptyList()
-                state.gfxBlacklistedExtensions.value = emptySet()
+        val version = state.gfxDriverVersionEntries.value.getOrElse(versionIndex) { return }
+        val request = ++extensionsRequest
+        Thread({
+            val extensions = com.winlator.cmod.runtime.system.GraphicsDriverCatalog.extensions(context, version)
+            activity.runOnUiThread {
+                if (request != extensionsRequest) return@runOnUiThread
+                state.gfxAvailableExtensions.value = extensions
+                val config = savedGraphicsDriverConfig()
+                state.gfxBlacklistedExtensions.value =
+                    if (version == (config["version"] ?: "")) {
+                        val bl = config["blacklistedExtensions"] ?: ""
+                        if (bl.isNotEmpty()) bl.split(",").toSet() else emptySet()
+                    } else {
+                        emptySet()
+                    }
             }
-        } catch (e: Throwable) {
-            Log.e(TAG, "Error loading extensions for $version", e)
-            state.gfxAvailableExtensions.value = emptyList()
-            state.gfxBlacklistedExtensions.value = emptySet()
-        }
+        }, "GraphicsDriverExtensions").start()
     }
+
 
     private fun loadDxvkConfigState(container: Container = shortcut.container) {
         val configStr = if (shouldUseShortcutOverrides(container))
@@ -2439,9 +2415,9 @@ class ShortcutSettingsComposeDialog private constructor(
         // Desktop theme is stored as compound "THEME,TYPE,COLOR".
         val desktopThemeArr = state.desktopThemeEntries.value
         if (desktopThemeArr.isNotEmpty()) {
-            val themePart = container.getDesktopTheme().split(",").firstOrNull()?.trim() ?: ""
-            val themeIdx = desktopThemeArr.indexOfFirst { it.equals(themePart, ignoreCase = true) }
-            state.selectedDesktopTheme.intValue = if (themeIdx >= 0) themeIdx else 0
+            state.selectedDesktopTheme.intValue =
+                WineThemeManager.ThemeInfo(container.getDesktopTheme()).theme.ordinal
+                    .coerceIn(0, desktopThemeArr.size - 1)
         }
 
         val directX = mutableListOf<WinComponentItem>()
@@ -2477,7 +2453,10 @@ class ShortcutSettingsComposeDialog private constructor(
             if ((inputType and WinHandler.FLAG_DINPUT_MAPPER_STANDARD.toInt()) == WinHandler.FLAG_DINPUT_MAPPER_STANDARD.toInt()) 0 else 1
         state.shortcutExclusiveXInput.value = container.isExclusiveXInput()
         state.adaptiveJoysticks.value =
-            container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") == "1"
+            container.getExtra(
+                InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                DeviceProfileSettings.adaptiveJoysticksDefaultExtra(context),
+            ) == "1"
         if (!state.shortcutExclusiveXInput.value) {
             state.enableXInput.value = true
             state.enableDInput.value = true
@@ -2491,7 +2470,8 @@ class ShortcutSettingsComposeDialog private constructor(
                 steamLauncherExtra == "1"
             }
             state.useLegacyLauncher.value = container.isUseColdClient || container.isUnpackFiles
-            state.steamOfflineMode.value = container.isSteamOfflineMode
+            state.steamOfflineMode.value = shortcut.getSettingExtra(
+                "steamOfflineMode", if (container.isSteamOfflineMode) "1" else "0") == "1"
             state.runtimePatcher.value = container.isRuntimePatcher
             state.useSteamInput.value = container.getExtra("useSteamInput", "0") == "1"
         }

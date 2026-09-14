@@ -10,334 +10,62 @@
 
 ## WinNative: A Community Built Windows Emulation App for Android
 
-**WinNative** is an advanced, high-performance Windows (x86_64) emulation environment for Android. It bridges the gap between desktop gaming and mobile by unifying the best technologies from **Winlator Bionic** and **Pluvia**.
+**WinNative** is an advanced, high-performance Windows (x86_64) emulation environment for Android,
+unifying the best of **Winlator Bionic** and **Pluvia**. It delivers the full Winlator experience,
+makes it easy to connect your Steam, Epic and GOG libraries, and runs classic console games
+alongside them.
 
-Designed for enthusiasts and power users, WinNative delivers the full Winlator experience while making it easy to connect your Steam, Epic, and GOG game libraries.
+| | |
+| --- | --- |
+| 📦 **Install** | [Releases](https://github.com/WinNative-Emu/WinNative/releases) |
+| 🎮 **Retro consoles** | [docs/RETRO-CONSOLES.md](docs/RETRO-CONSOLES.md) — NES through PlayStation 2 |
+| 🎞️ **Frame generation** | [docs/FRAME-GENERATION.md](docs/FRAME-GENERATION.md) — LSFG and DIS |
+| 🔨 **Build from source** | [docs/BUILDING.md](docs/BUILDING.md) |
+| 🙏 **Credits & licenses** | [CREDITS.md](CREDITS.md) · [EMULATOR_CREDITS.md](EMULATOR_CREDITS.md) |
+| 💬 **Chat** | [Discord](https://discord.gg/uhTkvGfakU) |
 
 ---
 
 ### Installation
 
-1. **Download:** Get the latest APK from the [Releases](https://github.com/WinNative-Emu/WinNative/releases) section.
-2. **Variants:**
-   - `Ludashi`: Forces both Max GPU and CPU clocks on some devices. (Performance Mode trigger).
-   - `Vanilla`: Standard package name for side-loading with other forks.
-   -  `Antutu`: Forces Max GPU clocks on most devices. (antutu benchmark spoof)
-   -  `Pubg`: Standard pubg package name which allows some Game Booster advanced Features.
-3. **Setup:** Launch the app, allow the ImageFS to install, and start adding your games manually or sync your library. 
+Grab the latest APK from [Releases](https://github.com/WinNative-Emu/WinNative/releases), launch
+the app, allow the ImageFS to install, then add games manually or sync your library.
 
----
+All four variants are the same app with a different package name:
 
-### How to Build
-
-**Requirements:** Android Studio, JDK 17, and [Git LFS](https://git-lfs.com). The NDK
-(`27.3.13750724`) and CMake are only needed if you build native cores from source (see below).
-
-1. **Clone with submodules and pull LFS objects** (Required):
-   ```bash
-   git clone --recursive https://github.com/WinNative-Emu/WinNative.git
-   cd WinNative
-   git lfs pull                          # fetches imagefs
-   git submodule update --init --recursive
-   ```
-2. **Build via Android Studio:** Open the `WinNative` directory, let Gradle sync, then select **Build > Build APK(s)**.
-3. **Build via CLI:** Run `./gradlew assembleStandardDebug` (or `.\gradlew.bat` on Windows).
-
-The APK carries no retro console cores. Each core is built from its own fork under the
-[WinNative-Emu](https://github.com/WinNative-Emu) org, and
-[Retro-Consoles](https://github.com/WinNative-Emu/Retro-Consoles) packs every core plus the
-Dolphin and ARMSX2 runtime data into one `retro-consoles.tzst`. The app downloads and
-verifies it on demand from **Settings > Retro > Download console cores**, so a core update
-no longer needs an app release. To change a core, change its fork and re-run the
-Retro-Consoles bundle workflow.
-
----
-
-### Retro Console Support
-
-WinNative can also run classic console games alongside your PC library. Retro games live in the same Library and launch just like PC games, but run on an embedded libretro backend instead of Wine.
-
-Supported systems (bundled cores):
-
-| System | Core | ROM extensions |
-| --- | --- | --- |
-| NES | FCEUmm | `.nes` `.unf` `.unif` |
-| SNES | Snes9x | `.smc` `.sfc` `.swc` `.fig` |
-| Game Boy / Color | Gambatte | `.gb` `.gbc` |
-| Game Boy Advance | mGBA | `.gba` |
-| Genesis / Mega Drive, Master System, Game Gear | Genesis Plus GX | `.gen` `.md` `.smd` `.sms` `.gg` |
-| Nintendo 64 | Mupen64Plus-Next | `.n64` `.z64` `.v64` |
-| PlayStation | Beetle PSX | `.cue` `.chd` `.pbp` `.m3u` `.iso` |
-| PlayStation 2 | ARMSX2 (PCSX2 fork) | `.iso` `.chd` `.cso` `.bin` |
-
-Cores ship **prebuilt** (committed via Git LFS) and are used by default; they are built from
-source with the opt-in flags above (see `cores/` for the libretro cores and
-`armsx2/build-emucore.sh` / `dolphin/build-emucore.sh` for the PS2 and GameCube/Wii cores).
-PlayStation 2 online play is supported through the emulated DEV9 network adapter (see the
-in-game **Online** tab).
-
-**How to use:** In the Library, tap **Add Custom Game** and select a ROM instead of an `.exe`. WinNative detects the console and adds the game to your Library. Tap **Play** to launch it with on-screen touch controls and physical gamepad support; the in-game menu (Back button or on-screen **MENU**) offers save/load state, reset, and fast-forward. PlayStation and PlayStation 2 BIOS files can be imported from **Settings → Retro**.
-
-### Frame Generation
-
-WinNative can interpolate extra frames between the ones your game actually renders.
-Interpolation runs **on the Android side**, inside WinNative's own Vulkan compositor rather than
-inside the Wine container, so it works with any graphics API Wine can drive — DXVK, WineD3D or
-native Vulkan alike.
-
-There are **two engines**, both in the **FG** tab of the session drawer. Pick one — they are
-mutually exclusive, because the compositor drives a single interpolator per frame, and each
-keeps its own settings so switching between them does not disturb the other.
-
-| Engine | Needs | Character |
-| --- | --- | --- |
-| **Lossless Scaling (LSFG)** | Your own copy of Lossless Scaling on Steam | The 25-shader chain from Lossless Scaling, ported to Vulkan |
-| **DIS** | Nothing — ships with the APK | Dense Inverse Search optical flow, fully open source |
-
-#### Lossless Scaling (LSFG)
-
-**You must own [Lossless Scaling](https://store.steampowered.com/) on Steam.** Its shaders are
-not redistributable, so nothing ships with the APK. WinNative reads them out of your own copy of
-`Lossless.dll`, translates them from DXBC to SPIR-V once, and caches the result in app storage.
-The DLL is parsed as data and never executed.
-
-**Setup:** sign in to Steam, install Lossless Scaling, then open **Container Settings → Frame
-Generation**. WinNative finds the DLL automatically from your Steam library; if it can't, use
-**Select Lossless.dll…** to point at it. The LSFG half of the **FG** tab stays disabled until
-the shaders import successfully.
-
-| Control | What it does |
+| Variant | What it's for |
 | --- | --- |
-| Generate Frames | Master toggle |
-| Adaptive Target | Aim for a specific output rate (60/90/120/144/165) instead of a fixed multiplier |
-| Multiplier | 2× / 3× / 4× — generated frames per rendered frame |
-| Flow Scale | 25–100%, resolution of the optical-flow pyramid; lower is cheaper and softer |
-
-#### DIS
-
-**Nothing to buy, nothing to import.** DIS is a complete open-source Dense Inverse Search frame
-generator built into WinNative — twelve compute shaders that ship with the APK — so it works on
-a fresh install with no Steam account and no `Lossless.dll`. Turn it on in the **FG** tab and it
-runs.
-
-| Control | What it does |
-| --- | --- |
-| Generate Frames (DIS) | Master toggle |
-| Resolution Scale | Fast / Balance / Quality — 180 / 252 / 360 pixels on the frame's **shorter** side |
-| Target FPS | Max refresh rate, or a specific one (60/90/120/144/165) |
-| Show flow | Debug view: renders the estimated motion field instead of the frame |
-
-Resolution Scale is stated in pixels rather than as a percentage on purpose: a fixed pixel budget
-costs the same on a 720p container and a 1440p one, whereas the same percentage cost four times
-as much on the larger container without telling the search anything more about the motion. Lower
-is cheaper; higher tracks small or fast-moving detail better.
-
-#### Both engines
-
-The **FPS Limiter** at the bottom of the tab caps the game's own frame rate, from 15 fps upward,
-and applies whichever engine is running.
-
-**What to expect.** Frame generation costs **one extra frame of input latency** — interpolating
-between two frames means holding the newer one back. It also needs spare display refresh:
-generated frames occupy vblanks, so WinNative sizes the multiplier against your panel's refresh
-rate and the game's actual frame rate, and will hand back generated frames rather than take real
-ones from the game. A game already running near your panel's refresh rate has nothing to gain.
-Pairing a multiplier with an FPS limiter that divides the refresh rate evenly (120 Hz with a
-60 fps cap at 2×, or 40 at 3×) gives the most even pacing.
+| `Vanilla` | Standard package name, for side-loading with other forks |
+| `Ludashi` | Forces max GPU **and** CPU clocks on some devices (performance-mode trigger) |
+| `Antutu` | Forces max GPU clocks on most devices (benchmark spoof) |
+| `Pubg` | PUBG package name, which unlocks some Game Booster advanced features |
 
 ---
 
 ### Contributing
 
-We welcome community contributions! Feel free to open a pull request for bug fixes, driver updates, UI improvements, or anything else you'd like to add.
+We welcome community contributions! Feel free to open a pull request for bug fixes, driver
+updates, UI improvements, or anything else you'd like to add.
 
-Please match the existing code style and ensure any AI-assisted code is thoroughly reviewed and tested before submission.
+Please match the existing code style and ensure any AI-assisted code is thoroughly reviewed and
+tested before submission.
 
 ---
 
-### Credits & Acknowledgments
+### Credits
 
-- **Original Winlator** by [brunodev85](https://github.com/brunodev85/winlator)
-- **Winlator Bionic** by [Pipetto-crypto](https://github.com/Pipetto-crypto/winlator)
-- **Pluvia** features by the [Pluvia](https://github.com/oxters168/Pluvia) / [GameNative](https://github.com/utkarshdalal/GameNative) community
-- **Mesa/Turnip** contributions by the [Mesa3D](https://www.mesa3d.org/) team
-- **Goldberg Steam Emulator** by [Mr. Goldberg](https://gitlab.com/Mr_Goldberg/goldberg_emulator), maintained by [Detanup01](https://github.com/Detanup01/gbe_fork)
-- **LibretroDroid** by [Filippo Scognamiglio](https://github.com/Swordfish90/LibretroDroid) (GPL-3.0) — the embedded libretro host for retro console support
-- **libretro / RetroArch** and the individual core authors, built from source: [FCEUmm](https://github.com/libretro/libretro-fceumm), [Snes9x](https://github.com/libretro/snes9x), [Gambatte](https://github.com/libretro/gambatte-libretro), [mGBA](https://github.com/libretro/mgba), [Genesis Plus GX](https://github.com/libretro/Genesis-Plus-GX), [Mupen64Plus-Next](https://github.com/libretro/mupen64plus-libretro-nx), [Beetle PSX](https://github.com/libretro/beetle-psx-libretro)
-- **ARMSX2** by the [ARMSX2](https://github.com/ARMSX2/ARMSX2) team (GPL-3.0) — the PlayStation 2 core, a fork of **[PCSX2](https://github.com/pcsx2/pcsx2)** (GPL-3.0), built from source into `libemucore`. PS2 online play uses PCSX2's DEV9 network adapter
-- **lsfg-vk** by [PancakeTAS](https://github.com/PancakeTAS/lsfg-vk) (GPL-3.0-or-later) — the original Vulkan reimplementation of the Lossless Scaling frame generation chain
-- **LSFG frame generation** by **Camille LaVey** of the [Eden Emulator Project](https://git.eden-emu.dev/eden-emu/eden) (GPL-3.0-or-later) — the Vulkan port of that chain that WinNative's frame generation is derived from. See [Frame generation — what came from Camille LaVey's Eden port](#frame-generation--what-came-from-camille-laveys-eden-port) below
-- **DIS optical flow frame generation** by **qwertypower** ([DEVAR Entertainment LLC](https://github.com/qwertypower)) (GPL-3.0) — a complete open-source implementation of a Dense Inverse Search frame generator, the second frame generation engine in WinNative and the one that needs no shaders from anywhere else. See [DIS frame generation — the fully open-source engine](#dis-frame-generation--the-fully-open-source-engine) below
-- **DIS optical flow** — the algorithm and its reference implementation come from [OpenCV](https://github.com/opencv/opencv) (`DISOpticalFlow`, [LICENSE](https://github.com/opencv/opencv/blob/5.x/LICENSE)), which adopted Till Kroeger's original [OF_DIS](https://github.com/tikroeger/OF_DIS)
-- **DXVK** by [Philip Rebohle and contributors](https://github.com/doitsujin/dxvk) (zlib/libpng) — the `dxbc` shader translator, vendored at `app/src/main/cpp/thirdparty/dxbc` to convert the frame generation shaders to SPIR-V
-- **DirectAudio** by [The412Banner](https://github.com/The412Banner/directaudio) (LGPL-2.1-or-later) — the native Wine → Android AAudio audio driver, and the only audio path in WinNative that carries a working microphone. See [DirectAudio — what came from The412Banner's driver](#directaudio--what-came-from-the412banners-driver) below
-- **Steam Controller support and the visual controller test / binder** by [The412Banner](https://github.com/The412Banner/Bannerlator) (GPL-3.0) — written for **Bannerlator** and ported into WinNative, including the per-family pad artwork. See [Steam Controller — what came from The412Banner's Bannerlator](#steam-controller--what-came-from-the412banners-bannerlator) below
-- **SDL3** by [Sam Lantinga and the SDL contributors](https://github.com/libsdl-org/SDL) (Zlib) — its HIDAPI Steam drivers are what actually read the Steam Controller; the official 3.4.16 Android release AAR is vendored unmodified at `vendor/maven/org/libsdl/android/SDL3/`
-- **Lossless Scaling** (Steam) — the source of the frame generation shaders. They are read from the user's own installed copy at runtime; none are redistributed with WinNative
+WinNative stands on work by **brunodev85** (Winlator), **Pipetto-crypto** (Winlator Bionic), the
+**Pluvia**/**GameNative** community, the **Mesa3D** team, **Mr. Goldberg** and **Detanup01**
+(Goldberg Steam Emulator), **Filippo Scognamiglio** (LibretroDroid) and the **libretro** core
+authors, the **ARMSX2**, **PCSX2** and **Dolphin** teams, **PancakeTAS** (lsfg-vk),
+**Camille LaVey** of the **Eden Emulator Project** (the Vulkan LSFG port this one derives from),
+**qwertypower** of **DEVAR Entertainment LLC** (the open-source DIS engine), **OpenCV** and
+Till Kroeger (the DIS algorithm), **DXVK** (the `dxbc` translator), and **The412Banner**
+(DirectAudio and Steam Controller support), and the **SDL** contributors.
 
-#### Frame generation — what came from Camille LaVey's Eden port
+That list is a summary, not the attribution itself. **[CREDITS.md](CREDITS.md)** carries the full
+acknowledgments, including exactly which files came from which upstream project, and
+**[EMULATOR_CREDITS.md](EMULATOR_CREDITS.md)** carries the per-component license table and the
+GPL corresponding-source statement.
 
-WinNative's frame generation exists because **Camille LaVey**, working in the
-[Eden Emulator Project](https://git.eden-emu.dev/eden-emu/eden), had already solved the hard
-part: getting the Lossless Scaling compute chain running correctly on Vulkan, on mobile GPUs.
-The port here started from that work and still carries it. The Eden Emulator Project copyright
-notices are preserved in every file that derives from it, under GPL-3.0-or-later.
-
-Derived from Camille LaVey's Eden port (jointly with **[lsfg-vk](https://github.com/PancakeTAS/lsfg-vk)**,
-which that port was in turn ported from):
-
-| Source file | What it provides |
-| --- | --- |
-| `lsfg_chain.*` | The shape of the whole chain — which of the 25 shaders run, in what order, and what each stage feeds the next |
-| `lsfg_mipmaps.*` | The flow pyramid the rest of the chain is built on |
-| `lsfg_alpha.*` | Per-level feature extraction, including the batched-barrier dispatch pattern the rest of the chain follows |
-| `lsfg_beta.*` | The coarse flow estimate the refinement stages start from |
-| `lsfg_gamma.*` | Coarse-to-fine flow refinement, one instance per pyramid level |
-| `lsfg_delta.*` | The extra refinement and detail passes on the finest levels |
-| `lsfg_generate.*` | The final warp that produces the interpolated frame |
-| `lsfg_common.*` | The Vulkan plumbing all of the above sit on — image, sampler and buffer wrappers, the barrier builder, the descriptor writer, and the pass/pipeline helper |
-
-Derived from the Eden port specifically:
-
-| Source file | What it provides |
-| --- | --- |
-| `lsfg_pacer.*` | Deciding how many frames to generate per real frame |
-| `lsfg_shaders.*` | Turning the extracted shader blobs into Vulkan shader modules |
-
-Getting the descriptor layouts, barrier placement and dispatch geometry of a 25-shader chain
-right is not something you arrive at by reading the shaders; it is the part that takes the
-debugging. Camille LaVey did that work, and this port would not have been possible without it.
-
-What WinNative added on top is the Windows and Android side of it: reading the shader blobs out
-of a user's own Lossless Scaling install (`lsfg_dll.*`), translating them when only DXBC is
-available (`lsfg_dxbc.*`), the JNI surface (`lsfg_jni.*`), driver probing (`lsfg_probe.*`), and
-wiring the chain into WinNative's compositor and swapchain (`vkr_lsfg.*`).
-
-#### DIS frame generation — the fully open-source engine
-
-WinNative's second frame generator is a complete open-source implementation of **Dense Inverse
-Search** optical flow, contributed by **qwertypower** (DEVAR Entertainment LLC) under GPL-3.0.
-
-Unlike the Lossless Scaling path it depends on nothing the user has to own or install. The whole
-chain ships with the APK as twelve compute shaders and runs in the same Vulkan compositor, so
-frame generation is available on a fresh install with no Steam account and no `Lossless.dll`.
-
-The algorithm is DIS, and its reference implementation is OpenCV's `DISOpticalFlow`
-([OpenCV LICENSE](https://github.com/opencv/opencv/blob/5.x/LICENSE)). OpenCV in turn adopted
-Till Kroeger's original [OF_DIS](https://github.com/tikroeger/OF_DIS). What is original here is
-the Vulkan compute realisation of it — the pyramid, the descriptor and barrier layout, the
-sparse-to-dense step and the pacing — built to run inside a mobile compositor at frame rate.
-
-| Stage | Shaders |
-| --- | --- |
-| Pyramid and gradients | `dis_gradient` |
-| Patch inverse search, coarse to fine | `dis_inverse_search`, `dis_propagate` |
-| Sparse grid to dense flow | `dis_densify` |
-| Variational refinement | `dis_vr_prep`, `dis_vr_d1`, `dis_vr_d2`, `dis_vr_w`, `dis_vr_coef`, `dis_vr_sor`, `dis_vr_add` |
-| Warp to the in-between frame | `dis_interpolate` |
-
-The engine sits behind its own settings — a Fast / Balance / Quality flow resolution and an
-optional target frame rate — kept separate from the Lossless Scaling ones, and the two engines
-are mutually exclusive because the compositor drives one interpolator per frame.
-
-#### Steam Controller — what came from The412Banner's Bannerlator
-
-WinNative's Steam Controller support, the animated controller test panel and the tap-the-pad
-visual binder are **The412Banner's work**, written for
-**[Bannerlator](https://github.com/The412Banner/Bannerlator)** and ported here. The design, the
-SDL3 bridge, the input model, the pad artwork and the hotspot manifest are all his; WinNative's
-own part is the adaptation to this fork's input plumbing (`WinHandler`'s slot machinery, the
-`InputControlsView` binding lane and the Compose settings screen) plus full localization.
-
-Out of the box a Steam Controller is not a gamepad: it presents as a keyboard and mouse
-("lizard mode"), so Android never reports a controller and WinNative's normal `InputDevice` path
-cannot see it. SDL3's HIDAPI Steam drivers speak Valve's protocol instead — over Bluetooth LE or
-USB — keep lizard mode off and parse the reports. Only those drivers are enabled
-(`SDL_HINT_JOYSTICK_HIDAPI=0`, `SDL_HINT_JOYSTICK_HIDAPI_STEAM=1`), so SDL never opens, claims or
-requests USB permission for any other controller, and every non-Valve pad keeps the untouched
-Android input path.
-
-| Piece | What it does |
-| --- | --- |
-| `steamctrl/steam_controller_bridge.cpp` | JNI bridge over SDL3's gamepad API: flat int/float arrays for up to four Valve HIDAPI pads, plus rumble |
-| `SteamControllerBackend` | ~250 Hz poll thread, frame coalescing onto the main thread, the 22-bit button model, trackpad-as-mouse and the back-paddle / "…" bindings |
-| `WinHandler` SDL pads | Seats each pad in the ordinary player-slot machinery under a synthetic device id, shadows the Valve device Android also exposes, and routes rumble back through SDL |
-| `ControllerTestPanel` | The animated pad picture: live button glow, movable stick nubs that glow with deflection, trigger and battery readouts, and the inputs-verified tally (18 on a Steam Controller) |
-| `VisualControllerBinder` | Tap a button on the pad art to rebind it, written into the same profile store the list editor uses |
-| `pad_*.png` | The per-family controller artwork (Xbox 360 / Xbox / DualSense / DualShock 4 / DualShock 3 / Switch Pro / 8BitDo / GameCube / SNES / Steam / Generic) |
-
-Support is **off by default** and lives in *Settings → Input Controls → Steam Controller*. While
-it is off, SDL is never loaded and the normal controller path is byte-for-byte unchanged.
-
-Credit history — every commit below is The412Banner's, in
-[The412Banner/Bannerlator](https://github.com/The412Banner/Bannerlator):
-
-| Commit | Date | Subject |
-| --- | --- | --- |
-| `9ca9bcf` | 2026-08-31 | Controller Test: reuse the visualizer in Settings > Input Controls |
-| `d32a03f` | 2026-08-31 | Controller Test: accurate per-family pad art + smaller in-game popup |
-| `1678f23` | 2026-08-31 | Controller Test: bound the pad picture to a compact size |
-| `4344ef4` | 2026-08-31 | Visual controller binder: tap the pad to remap, in Settings + in-game |
-| `475721e` | 2026-08-31 | Controller pads: pre-rendered PNG art + overlay; Settings test-first; fix live-input arm |
-| `8d2e1e3` | 2026-08-31 | Controller test: movable stick nubs + pinned footer (Identify never clips) |
-| `90a8286` | 2026-08-31 | Controller test: stick nubs glow on deflection + landscape pad-left / metrics-right |
-| `1e0d46f` | 2026-08-31 | Controller test: landscape metrics as a 2x2 grid so all four tiles fit |
-| `9722956` | 2026-08-31 | feat(controller-test): independent OSC/physical profile lanes + live profile lists |
-| `095269d` | 2026-08-31 | Bind screen: add Delete profile + outline/dividers on menus and popup |
-| `b02d981` | 2026-08-31 | Controller test: unify popup-menu styling on outlinedMenuCard; rename Settings card |
-| `b9e6552` | 2026-09-10 | Steam Controller support via SDL3 (opt-in, Input Controls > Device) |
-| `e5b1272` | 2026-09-10 | Steam Controller: fetch pad name/path on the poll thread |
-| `6d3b2a7` | 2026-09-10 | Steam Controller: back buttons, profile bindings, settings test dialog |
-| `d03f6b1` | 2026-09-10 | Steam Controller: make the "…" (Quick Access) button mappable |
-| `3d243e4` | 2026-09-10 | Controller test: count the Steam Controller's "…" button (18 inputs) |
-| `b597711` | 2026-09-10 | Steam Controller: pick which trackpad moves the mouse (right / left / both / off) |
-| `c2acbbd` | 2026-09-10 | Merge branch 'feat/steam-controller-sdl': opt-in Steam Controller support via SDL3 |
-
-Bannerlator is GPL-3.0, the same license as WinNative, and remains so. SDL3 is Zlib-licensed and
-is vendored unmodified; see [`vendor/maven/README.md`](vendor/maven/README.md) and
-[`EMULATOR_CREDITS.md`](EMULATOR_CREDITS.md).
-
-> Steam Controller support, controller test and visual binder by The412Banner
-> (https://github.com/The412Banner/Bannerlator)
-
-#### DirectAudio — what came from The412Banner's driver
-
-WinNative's microphone support exists because **The412Banner** wrote
-**[DirectAudio](https://github.com/The412Banner/directaudio)**, a native Wine → Android AAudio
-mmdevapi driver, and then completed its capture half. Nothing in that driver is WinNative's
-work. We ship his release binaries unmodified and add only the host-side plumbing that selects
-and configures them.
-
-Wine has no AAudio backend upstream. DirectAudio is an original driver whose structure is
-modelled on Wine's `winecoreaudio.drv`, with the CoreAudio device layer replaced by Android
-AAudio — no PulseAudio daemon and no ALSA server anywhere in the path. That is also the reason
-it is the only one of WinNative's three audio stacks that can carry a microphone at all: the
-ALSA aserver protocol has no capture verb (its guest plugin refuses a non-playback PCM
-outright), and the bundled PulseAudio ships no source module, so any capture endpoint winepulse
-advertises would record silence.
-
-| Component | What it provides |
-| --- | --- |
-| `winedirectaudio.drv` (arm64ec + i386 PE) | The mmdevapi driver the guest game loads |
-| `winedirectaudio.so` (bionic unixlib) | The AAudio backend both PE halves share |
-| Render mixer | One shared AAudio output stream, per-voice mixing, adaptive buffering with decay, and a dead-callback watchdog |
-| Capture path *(v1.3.2)* | One shared AAudio `INPUT` stream (48 kHz / float / stereo, `VOICE_COMMUNICATION` preset for platform echo-cancel, noise-suppress and auto-gain), opened lazily on the first capture stream and started only on the first `Start` |
-
-What WinNative added is only the host half: picking the driver build that matches the
-container's Wine ABI and the device's kernel page size, overlaying the three files onto the
-Proton layer, writing the Wine registry key that selects the driver, requesting `RECORD_AUDIO`,
-and exposing the microphone opt-in per container and per shortcut.
-
-The microphone is **off by default and per-container**, which is the driver's own design rather
-than caution on our part: a capture endpoint a game can enumerate but not open makes titles that
-probe the microphone while loading abandon audio init and boot to a black screen (God of War and
-DiRT 3, device-proven upstream). With the gate off the driver is byte-identical to its
-render-only build. WinNative additionally withholds the gate when `RECORD_AUDIO` has not been
-granted, so a denied permission degrades to render-only rather than to an unopenable endpoint.
-
-DirectAudio is licensed **LGPL-2.1-or-later** and remains so. The bundled binaries, their
-checksums, the upstream source offer and the verbatim `COPYING`, `NOTICE` and `AUTHORS` files
-live in [`app/src/main/assets/directaudio/`](app/src/main/assets/directaudio/). Integration
-notes are in [`docs/direct-audio-integration.md`](docs/direct-audio-integration.md).
-
-> DirectAudio by The412Banner (https://github.com/The412Banner/directaudio)
+WinNative is released under the **GNU General Public License v3.0** — see [LICENSE](LICENSE).

@@ -1,7 +1,5 @@
 #version 450
 
-// Variational refinement second derivatives of the averaged image: Ixx, Ixy, Iyy.
-
 precision highp float;
 precision highp int;
 

@@ -16,6 +16,8 @@ import com.winlator.cmod.app.service.DownloadService
 import com.winlator.cmod.app.service.NetworkMonitor
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutUtils
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.steam.data.AppInfo
 import com.winlator.cmod.feature.stores.steam.data.CachedLicense
 import com.winlator.cmod.feature.stores.steam.data.DepotInfo
@@ -475,6 +477,7 @@ internal suspend fun SteamService.Companion.completeAppDownload(
                         "(disk full / permissions?). Game files are on disk but next launch may re-validate.",
                 )
             }
+            runCatching { InstallOwnership.claim(appDirPath, InstallStore.STEAM) }
             recordInstalledBranch(downloadInfo.gameId, downloadInfo.branch)
             runCatching { MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER) }
             runCatching { MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED) }

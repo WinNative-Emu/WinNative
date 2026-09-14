@@ -27,7 +27,7 @@
         <item>Unix Zink</item>
         <item>Windows Zink</item>
     </string-array>
-    <string-array name="wrapper_graphics_driver_version_entries">
+    <string-array name="wrapper_graphics_driver_version_entries" translatable="false">
         <item>System</item>
     </string-array>
     <string-array name="audio_driver_entries">
@@ -48,14 +48,14 @@
         <item>RGBA</item>
         <item>BGRA</item>
     </string-array>
-    <string-array name="ddrawrapper_entries">
+    <string-array name="ddrawrapper_entries" translatable="false">
         <item>CnC-DDraw</item>
         <item>Dd7To9</item>
         <item>ddraw-4.21</item>
         <item>ddraw-11.8</item>
         <item>None</item>
     </string-array>
-    <string-array name="dxvk_version_entries">
+    <string-array name="dxvk_version_entries" translatable="false">
         <item>None</item>
     </string-array>
     <string-array name="device_memory_entries">
@@ -152,7 +152,7 @@
         <item>Essential (Load only essential services)</item>
         <item>Aggressive (Stop services on startup)</item>
     </string-array>
-    <string-array name="vkd3d_version_entries">
+    <string-array name="vkd3d_version_entries" translatable="false">
         <item>None</item>
     </string-array>
     <string-array name="some_lc_all">

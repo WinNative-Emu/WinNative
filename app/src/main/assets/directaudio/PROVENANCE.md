@@ -43,6 +43,33 @@ aarch64-unix/winedirectaudio.so       bionic unixlib — the AAudio backend
 11.0-6 (ABI-interchangeable). `sdk28` is built for 4 KB kernel pages, `sdk35` for
 16 KB — `DirectAudioDriver.pageSizeTag()` picks between them at runtime.
 
+## Picking between the two builds
+
+The two builds differ only in the **mmdevapi unixlib ABI** they were compiled
+against, which is observable in the shipped binary: the `__wine_unix_call_funcs`
+table in `aarch64-unix/winedirectaudio.so` holds **36** entries in the `wine10`
+build and **37** in the `wine11` build. Every Proton ships `winealsa.so` with the
+same table, so `DirectAudioDriver` reads the entry count out of the Proton layer
+and picks the build that matches, rather than parsing a version out of the
+profile name. Measured:
+
+| Proton (arm64ec) | `winealsa.so` entries | build selected |
+| --- | --- | --- |
+| 9.0 (bundled) | 36 | `wine10` |
+| 10.0-4 | 36 | `wine10` |
+| 11.0-x, incl. our 11.0-2 | 37 | `wine11` |
+
+Note the `wine10`/`wine11` names are historical: the wine10 build also serves
+Proton 9.0. A Proton whose table matches neither build is refused and the launch
+falls back to the default audio driver.
+
+The `.drv` PE halves carry no export table in the wine11 build. That is **normal
+for Wine 11** — its own `winealsa.drv` and `winepulse.drv` are byte-for-byte the
+same shape (identical `.text`/`.rdata`/`.pdata` sizes, importing only
+`ucrtbase.dll` and `kernel32.dll`), because in Wine 11 the `.drv` is a generic
+unixlib host and all the driver logic lives in the `.so`. Do not read the missing
+exports as a broken artifact.
+
 ## Source availability (LGPL-2.1 §6)
 
 The corresponding source for these binaries is the upstream repository above at tag

@@ -75,6 +75,19 @@
     <string name="common_ui_shortcut">Comanda rapida</string>
     <string name="common_ui_custom">Personalizat</string>
     <string name="common_ui_about">Despre</string>
+    <string name="about_app_heading">APLICAȚIE</string>
+    <string name="about_app_desc">Detalii de compilare pentru această instalare</string>
+    <string name="about_version">Versiune</string>
+    <string name="about_build_id">ID compilare</string>
+    <string name="about_version_code">Cod versiune</string>
+    <string name="about_variant">Variantă de compilare</string>
+    <string name="about_package">Nume pachet</string>
+    <string name="about_branding_heading">PROTECȚIE MAGAZIN</string>
+    <string name="about_branding_desc">De ce această compilare raportează o altă versiune</string>
+    <string name="about_reported_version_code">Cod versiune raportat</string>
+    <string name="about_branding_explain">Această compilare se instalează ca %1$s, astfel încât dispozitivul să aplice profilul de performanță al aplicației respective. Codul de versiune raportat este mai mare decât orice poate publica Google Play, așa că Play Store nu oferă niciodată o actualizare care ar înlocui WinNative. Versiunea de mai sus este cea reală.</string>
+    <string name="about_copy">Copiază informațiile de compilare</string>
+    <string name="about_copied">Informații de compilare copiate</string>
     <string name="common_ui_back">Inapoi</string>
     <string name="common_ui_apply">Aplica</string>
     <string name="common_ui_save">Salveaza</string>
@@ -125,6 +138,11 @@
     <string name="store_game_update_failed_notice">Actualizarea a eșuat</string>
     <string name="store_game_update_check_failed_notice">Verificarea actualizărilor a eșuat</string>
     <string name="store_game_download_already_active">Acest joc se descarcă deja. Anulează descărcarea curentă înainte de a adăuga DLC.</string>
+    <string name="store_game_branch_label">Versiune</string>
+    <string name="store_game_branch_public">Implicit (public)</string>
+    <string name="store_game_branch_build">Compilarea %1$s</string>
+    <string name="store_game_branch_changed">Versiune setată la %1$s. Descarcă pentru a o aplica.</string>
+    <string name="store_game_branch_switch_installed">Versiune setată la %1$s. Folosește Caută actualizări pentru a schimba fișierele instalate.</string>
     <string name="common_ui_select">Selectează</string>
     <string name="common_ui_select_folder">Selectează folder</string>
     <string name="common_ui_current_folder">Folder curent</string>
@@ -160,10 +178,14 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Obține ilustrații</string>
+    <string name="library_games_store_none_owned">Nicio bibliotecă de magazin nu se potrivește cu acest joc</string>
     <string name="library_games_scraping_artwork">Se obțin…</string>
     <string name="library_games_shortcut_created">Comanda rapida creata</string>
     <string name="library_games_failed_to_create_shortcut">Nu s-a putut crea comanda rapida: %s</string>
     <string name="library_games_install_path">Cale de instalare</string>
+    <string name="library_games_store_change">Schimbă magazinul</string>
+    <string name="library_games_store_switch_label">Magazin</string>
+    <string name="library_games_store_switched">Acum se folosește %1$s pentru acest joc</string>
     <string name="library_games_not_enough_space">Mai este nevoie de %1$s spatiu</string>
     <string name="library_games_download_slash_install">Descarca / Instaleaza</string>
     <string name="library_games_save_management">GESTIONARE SALVARI</string>
@@ -238,6 +260,18 @@
     <string name="stores_accounts_gog_login_failed">Autentificarea GOG a esuat: %1$s</string>
     <string name="stores_accounts_custom_download_path">Cale de descarcare personalizata</string>
     <string name="stores_accounts_custom_download_path_description">O cale de descarcare implicita a fost deja configurata in Setari &gt; Magazine. Daca doresti sa setezi o cale personalizata unica pentru aceasta instalare, apasa Continua.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Stocare externă</string>
+    <string name="external_storage_add_title">Adaugă stocare externă</string>
+    <string name="external_storage_add_subtitle">Instalează jocurile pe o unitate USB sau SD</string>
+    <string name="external_storage_add_invalid">Acel dosar nu se află pe o unitate externă</string>
+    <string name="external_storage_status_connected">Conectată · %1$s liberi</string>
+    <string name="external_storage_status_disconnected">Deconectată</string>
+    <string name="external_storage_download_target_title">Locația descărcării</string>
+    <string name="external_storage_download_target_message">Alege unde va fi instalat acest joc.</string>
+    <string name="external_storage_download_target_internal">Preferă intern</string>
+    <string name="external_storage_download_target_external">Preferă extern</string>
+    <string name="external_storage_download_target_none">Nicio unitate externă conectată</string>
     <string name="stores_accounts_not_signed_in">Neautentificat</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Plecat</string>
@@ -587,6 +621,8 @@ De ex. <b>META</b> pentru <i>tasta META</i>, \n
     <string name="session_drawer_keyboard">Tastatura</string>
     <string name="session_drawer_toggle_fullscreen">Comuta ecran complet</string>
     <string name="session_drawer_show_touchscreen_controls">Arata controalele tactile</string>
+    <string name="input_controls_adaptive_joysticks">Joystick-uri adaptive</string>
+    <string name="input_controls_adaptive_joysticks_summary">Stick-urile rămân ascunse până când atingi zona în care se află</string>
     <string name="session_drawer_magnifier">Lupa</string>
     <string name="session_drawer_logs">Jurnale</string>
     <string name="session_drawer_pip_mode">Mod PiP</string>
@@ -771,6 +807,46 @@ De ex. <b>META</b> pentru <i>tasta META</i>, \n
     <string name="session_gyroscope_deadzone_format">Zona moarta: %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">Sensibilitate: %1$d%%</string>
 
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Dispozitiv</string>
+    <string name="device_profile_heading">PROFIL DISPOZITIV</string>
+    <string name="device_profile_desc">Un profil pentru fiecare dispozitiv, care adaptează aspectele și dimensiunile la acest ecran.</string>
+    <string name="device_profile_change">SCHIMBĂ</string>
+    <string name="device_profile_source_detected">Detectat automat</string>
+    <string name="device_profile_source_manual">Ales manual</string>
+    <string name="device_profile_default">Implicit</string>
+    <string name="device_profile_default_summary">Toate telefoanele și tabletele fără un profil propriu.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Tableta de gaming RedMagic Astra 2, toate modelele regionale.</string>
+    <string name="device_profile_controls_heading">CE SETEAZĂ ACEST PROFIL</string>
+    <string name="device_profile_controls_desc">Valorile implicite pe care profilul le aplică în toată aplicația.</string>
+    <string name="device_profile_feature_input_layouts">Aspecte ale comenzilor</string>
+    <string name="device_profile_feature_input_layouts_summary">Aspectele tactile incluse, poziționate pentru această dimensiune de ecran.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Joystick-uri adaptive</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Valoarea implicită pentru containerele care nu au setat-o niciodată.</string>
+    <string name="device_profile_feature_library_icons">Dimensiuni și rapoarte ale pictogramelor</string>
+    <string name="device_profile_feature_library_icons_summary">Coloanele grilei și forma copertelor în bibliotecă.</string>
+    <string name="device_profile_feature_session_menu">Dimensiuni ale butoanelor din meniul de joc</string>
+    <string name="device_profile_feature_session_menu_summary">Dimensiunea zonelor tactile din meniul de sesiune.</string>
+    <string name="device_profile_feature_shortcut_defaults">Setări de joc recomandate</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Valori implicite per joc, sugerate pentru acest dispozitiv.</string>
+    <string name="device_profile_recommended_on">Recomandat: Activat</string>
+    <string name="device_profile_recommended_off">Recomandat: Dezactivat</string>
+    <string name="device_profile_layouts_stock">Aspecte standard</string>
+    <string name="device_profile_layouts_tuned">Adaptate pentru acest ecran</string>
+    <string name="device_profile_reapply">Reaplică aspectele incluse</string>
+    <string name="device_profile_reapply_desc">Restaurează fiecare aspect inclus pe care nu l-ai modificat.</string>
+    <string name="device_profile_device_heading">ACEST DISPOZITIV</string>
+    <string name="device_profile_device_desc">Elementele după care a fost potrivit profilul.</string>
+    <string name="device_profile_info_model">Model</string>
+    <string name="device_profile_info_board">Placă</string>
+    <string name="device_profile_info_manufacturer">Producător</string>
+    <string name="device_profile_info_screen">Ecran</string>
+    <string name="device_profile_library_wide">Carduri late 3:2 pentru grafică orizontală</string>
+    <string name="device_profile_library_stock">Grilă standard</string>
+    <string name="device_profile_session_square">Butoane de acțiune pătrate</string>
+    <string name="device_profile_session_stock">Dimensiuni standard</string>
+
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Viteza cursorului</string>
     <string name="settings_general_theme">Tema</string>
@@ -864,6 +940,8 @@ De ex. <b>META</b> pentru <i>tasta META</i>, \n
     <string name="settings_debug_no_logs_available">Nu sunt disponibile jurnale de depanare. Activează mai întâi opțiunile de depanare și lansează un joc.</string>
     <string name="settings_debug_capture_failed">Capturarea jurnalelor a eșuat: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Înregistrează erorile, avertismentele și blocările procesului WinNative în fișier</string>
+    <string name="settings_filtered_logs_to_file_title">Jurnal de depanare filtrat</string>
+    <string name="settings_filtered_logs_to_file_desc">Salvaţi jurnalele aplicaţiei într-un fişier, filtrate conform configurării din filtrul de etichete.</string>
     <string name="settings_debug_section_emulation">Emulare</string>
     <string name="settings_debug_section_subsystems">Subsisteme</string>
     <string name="settings_debug_section_tools">Instrumente</string>
@@ -1106,6 +1184,8 @@ Cale instalata:
     <string name="preloader_downloading_cloud">Se descarcă salvările din cloud</string>
     <string name="preloader_syncing_cloud">Se sincronizează salvările din cloud</string>
     <string name="preloader_uploading_cloud">Se încarcă salvările în cloud</string>
+    <string name="preloader_closing_game_waiting">Se închide %1$s — se așteaptă ca jocul să salveze…</string>
+    <string name="preloader_cloud_upload_done">Salvare încărcată în cloud — se finalizează…</string>
     <string name="preloader_checking_cloud">Se verifică salvările din cloud</string>
     <string name="preloader_cloud_sync_retry">%1$s Reîncercare %2$d/%3$d</string>
     <string name="preloader_cloud_downloading">Descărcare Cloud Sync</string>
@@ -1382,10 +1462,12 @@ Cale instalata:
     <string name="preloader_loading_steam_client">Se încarcă clientul Steam</string>
     <string name="preloader_connecting_to_steam">Se conectează la Steam</string>
     <string name="preloader_signing_in_to_steam">Se autentifică în Steam</string>
+    <string name="preloader_signing_in_offline">Se autentifică offline</string>
     <string name="preloader_fetching_game_info">Autentificat — se preiau informațiile jocului</string>
     <string name="preloader_steam_ready">Steam este pregătit</string>
     <string name="preloader_updating_game_info">Se actualizează informațiile jocului</string>
     <string name="preloader_verifying_install">Se verifică instalarea</string>
+    <string name="preloader_checking_install_scripts">Se verifică scripturile de instalare</string>
     <string name="preloader_scanning_redists">Se scanează redistribuibilele</string>
     <string name="preloader_installing_redist_single">Se instalează redistribuibilul</string>
     <string name="preloader_installing_named_redist">Se instalează %1$s</string>
@@ -1393,10 +1475,23 @@ Cale instalata:
     <string name="preloader_redists_ready">Redistribuibile pregătite</string>
     <string name="preloader_no_redists">Nu există redistribuibile de instalat</string>
     <string name="preloader_steam_service_running">Serviciul Steam rulează</string>
+    <string name="preloader_syncing_cloud_saves">Se sincronizează salvările Steam Cloud…</string>
     <string name="preloader_launching_game">Se lansează %1$s</string>
     <string name="preloader_steam_launcher_failed_restaging">Steam Launcher a eșuat — se pregătesc din nou resursele</string>
     <string name="preloader_steam_launcher_start_failed">Steam Launcher nu a putut porni. Se pregătește din nou — relansează</string>
     <string name="preloader_steam_launcher_game_never_started">Steam Launcher a ajuns la joc, dar acesta nu a pornit</string>
+    <string name="steam_cloud_conflict_backing_up">Se face o copie de rezervă a salvării renunțate…</string>
+    <string name="steam_cloud_conflict_waiting">Se așteaptă alegerea ta pentru Steam Cloud…</string>
+    <string name="steam_cloud_conflict_unknown_time">Necunoscut</string>
+    <string name="steam_blocked_title">Steam încă rulează un joc</string>
+    <string name="steam_blocked_running_message">Steam are în continuare %1$s înregistrat ca fiind în rulare dintr-o sesiune anterioară, așa că nu va porni %2$s.\n\nÎl oprești și continui?</string>
+    <string name="steam_blocked_same_game_message">Steam are în continuare %1$s înregistrat ca fiind în rulare dintr-o sesiune anterioară, așa că nu îl va porni din nou.\n\nÎl oprești și continui?</string>
+    <string name="steam_blocked_other_session_message">Contul tău Steam rulează %1$s în altă sesiune, așa că %2$s nu poate porni.\n\nOprești cealaltă sesiune și continui?</string>
+    <string name="steam_blocked_confirm">Oprește și continuă</string>
+    <string name="steam_blocked_unknown_game">alt joc</string>
+    <string name="steam_blocked_declined">Lansare anulată — Steam încă rulează alt joc</string>
+    <string name="steam_blocked_waiting">Se așteaptă ca Steam să oprească celălalt joc…</string>
+    <string name="steam_launch_insecure_warning">Steam a refuzat lansarea securizată — %1$s a pornit fără VAC. Este posibil ca jocul online să nu fie disponibil.</string>
     <!-- Workshop -->
     <string name="workshop_loading_items">Se încarcă elementele Workshop</string>
     <string name="workshop_search_items">Caută elemente Workshop</string>
@@ -1621,9 +1716,6 @@ Cale instalata:
     <string name="cloud_saves_history_cloud_readonly">Doar citire</string>
     <string name="session_drawer_rail_label_record">Înregistrează</string>
     <string name="session_record_failed">Nu s-a putut porni înregistrarea</string>
-    <string name="session_locale_manifest_embedded">Suprascrierea localizării (%1$s) s-ar putea să nu se aplice: acest joc include propriul manifest</string>
-    <string name="session_locale_manifest_embedded_codepage">Suprascrierea localizării a fost ignorată: acest joc își setează propria pagină de coduri (%1$s)</string>
-    <string name="session_locale_manifest_external">Suprascrierea localizării a fost omisă: acest joc vine cu propriul fișier manifest</string>
     <string name="session_record_fps">Rata cadrelor</string>
     <string name="session_record_include_ui">Înregistrează interfața</string>
     <string name="session_record_include_ui_subtitle">Include HUD și comenzile de pe ecran</string>
@@ -1636,6 +1728,53 @@ Cale instalata:
     <string name="steam_chat_setting_stay_running">Rulează în fundal</string>
     <string name="steam_chat_setting_stay_running_desc">Menține chatul activ după ce ieși din WinNative</string>
     <string name="settings_content_refresh">Reîmprospătează</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Jurnalizare aplicatie</string>
+    <string name="settings_debug_application_logging_subtitle">Activeaza jurnalizarea si afiseaza optiunile de jurnalizare</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Jurnal motiv de închidere</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Înregistrează de ce s-a încheiat ultima dată procesul aplicației</string>
+    <string name="settings_debug_crash_log_title">Jurnal de blocări</string>
+    <string name="settings_debug_crash_log_subtitle">Salvează urmele native ale blocărilor (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Jurnal de monitorizare a evenimentelor</string>
+    <string name="settings_debug_event_watch_log_subtitle">Capturează un jurnal de sistem concentrat pe evenimentele de pauză/reluare</string>
+    <string name="settings_debug_log_tag_filter_channel">Filtru de etichete de jurnal</string>
+    <string name="settings_debug_tags_selected_suffix">etichete selectate</string>
+    <string name="settings_debug_manual_text_filter_hint">Filtrează liniile de jurnal după text…</string>
+    <string name="settings_debug_tag_filter_mode">Mod</string>
+    <string name="settings_debug_tag_filter_all">Toate</string>
+    <string name="settings_debug_tag_filter_include">Include</string>
+    <string name="settings_debug_tag_filter_exclude">Exclude</string>
+    <string name="settings_debug_add_custom_tag_hint">Adaugă etichetă personalizată…</string>
+    <string name="settings_debug_no_tags_selected">Nicio etichetă selectată</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Protecție în fundal</string>
+    <string name="settings_other_background_subtitle">Menține sesiunea activă în fundal</string>
+    <string name="settings_other_bg_pause_mode_title">Mod de pauză în fundal</string>
+    <string name="settings_other_bg_pause_all_title">Pune pauză tuturor proceselor</string>
+    <string name="settings_other_bg_pause_all_subtitle">Suspendă toate procesele — economie maximă de baterie (poate cauza probleme).</string>
+    <string name="settings_other_bg_pause_game_only_title">Pune pauză doar jocului</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Suspendă doar procesul jocului activ; celelalte procese și servicii continuă să ruleze.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Pune pauză la tot, cu excepția jocului</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Suspendă toate procesele și serviciile, dar menține procesul jocului activ.</string>
+    <string name="settings_other_bg_auto_pause_title">Pauză automată a sesiunii</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Pune automat sesiunea pe pauză când aplicația trece în fundal sau dispozitivul este blocat.</string>
+    <string name="settings_other_bg_wakelock_title">Activează un wake lock CPU pentru a întări protecția în fundal</string>
+    <string name="settings_other_bg_wakelock_subtitle">Împiedică CPU-ul să intre în somn profund cât timp sesiunea este pe pauză. Crește consumul de baterie, dar poate îmbunătăți persistența și stabilitatea pe dispozitivele cu gestionare agresivă a bateriei.</string>
+    <string name="settings_other_bg_heartbeat_title">Frecvența heartbeat (secunde)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Poate îmbunătăți protecția aplicației în fundal. Valoarea 0 dezactivează funcția. Cu cât valoarea este mai mică, cu atât consumul potențial de baterie este mai mare.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat dezactivat</string>
+    <string name="settings_other_bg_heartbeat_minimum">Minimul este 5 s — va fi corectat la salvare</string>
+    <string name="settings_other_bg_heartbeat_effective">Rulează la fiecare %1$d s</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Sesiunea containerului este pe pauză</string>
+    <string name="fg_keep_alive_notification_content_container_running">O sesiune de container rulează</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Se descarcă și se instalează componente</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Chatul Steam rulează în fundal</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: serviciu activ</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: servicii active</string>
+    <string name="general_and">și</string>
     <string name="settings_retro_title">Retro</string>
     <string name="retro_save_transfer_title">Transferă salvarea</string>
     <string name="retro_save_transfer_message">Importă o salvare locală în acest joc sau exportă salvarea curentă.</string>
@@ -2199,6 +2338,10 @@ Cale instalata:
     <string name="retro_scr_tab_defaults">Implicite</string>
     <string name="retro_scr_tab_credits">Credite</string>
     <string name="settings_support_title">Asistență</string>
+    <string name="support_donate_heading">DONEAZĂ</string>
+    <string name="support_donate_desc">Contribuie la dezvoltarea WinNative. Se deschide în browser.</string>
+    <string name="support_paypal">paypal.me/MaxJividen</string>
+    <string name="support_paypal_desc">PayPal • o singură dată sau recurent</string>
     <string name="support_heading">OBȚINE AJUTOR</string>
     <string name="support_desc">Pune întrebări, raportează probleme sau vezi la ce se lucrează. Fiecare link se deschide în browser.</string>
     <string name="support_winnative_discord_desc">Discord • asistență și dezvoltare</string>
@@ -2524,6 +2667,9 @@ Cale instalata:
     <string name="retro_tab_system">Sistem</string>
     <string name="session_drawer_frame_generation">Generare de cadre</string>
     <string name="session_drawer_frame_generation_enable">Generează cadre</string>
+    <string name="session_drawer_frame_generation_engine_off">Oprit</string>
+    <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
+    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplicator</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Țintă adaptivă</string>
@@ -2531,14 +2677,9 @@ Cale instalata:
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Interpolează între cadrele randate cu Lossless Scaling. Mișcare mai fluidă, dar un cadru suplimentar de latență la intrare.</string>
     <string name="session_drawer_frame_generation_target_note">Urcă spre țintă doar cât timp ajută în mod măsurabil, în loc să păstreze un multiplicator fix.</string>
-    <string name="session_drawer_frame_generation_missing">Instalează Lossless Scaling din setările containerului pentru a folosi generarea de cadre.</string>
-    <string name="session_drawer_dis_frame_generation">Generare de cadre (DIS)</string>
-    <string name="session_drawer_dis_frame_generation_enable">Generează cadre (DIS)</string>
+    <string name="session_drawer_frame_generation_missing">Instalează Lossless Scaling din setările containerului pentru a folosi motorul LSFG. DIS nu necesită nimic în plus.</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolează între cadrele randate cu Dense Inverse Search. Încorporat; fără shadere externe.</string>
-    <string name="session_drawer_frame_generation_blocked_by_dis">Dezactivează generarea de cadre DIS pentru a folosi această opțiune.</string>
-    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Dezactivează generarea de cadre Lossless Scaling pentru a folosi această opțiune.</string>
     <string name="session_drawer_dis_resolution_scale">Scală rezoluție</string>
-    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Rapid</string>
     <string name="session_drawer_dis_preset_balance">Echilibrat</string>
     <string name="session_drawer_dis_preset_quality">Calitate</string>
@@ -2546,6 +2687,8 @@ Cale instalata:
     <string name="session_drawer_dis_target_fps">FPS țintă</string>
     <string name="session_drawer_dis_target_fps_max">Rată de reîmprospătare max.</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
+    <string name="session_drawer_dis_debug_flow">Arată fluxul</string>
+    <string name="session_drawer_dis_debug_flow_note">Desenează vectorii de mișcare estimați de DIS în locul cadrului generat. Doar pentru diagnosticare.</string>
     <string name="frame_generation_preset">Presetare de calitate</string>
     <string name="frame_generation_preset_ultra_performance">Ultra performanță</string>
     <string name="frame_generation_preset_performance">Performanță</string>
@@ -2714,5 +2857,25 @@ Cale instalata:
     <string name="steam_controller_paddle_r5">R5 (dreapta jos)</string>
     <string name="steam_controller_button_qam">… (Acces rapid)</string>
     <string name="steam_controller_restart_required">Are efect la următoarea pornire a unui joc.</string>
+    <string name="update_available_title">Actualizare disponibilă</string>
+    <string name="update_action_update">Actualizează</string>
+    <string name="update_ignore_until_next">Ignoră până la următoarea actualizare</string>
+    <string name="update_no_notes">Nu au fost publicate note de lansare pentru această compilare.</string>
+    <string name="update_apk_notice">Această actualizare modifică aplicația în sine, așa că Android îți va cere să confirmi instalarea. Jocurile, containerele și setările tale se păstrează.</string>
+    <string name="update_up_to_date">WinNative este la zi.</string>
+    <string name="update_unsupported_build">Actualizările din aplicație sunt oferite doar pentru versiunile oficiale semnate.</string>
+    <string name="settings_general_update_channel">Canal de actualizare</string>
+    <string name="settings_general_update_channel_summary">Oficial livrează versiuni testate. Dezvoltare livrează compilări timpurii.</string>
+    <string name="update_channel_official">Oficial</string>
+    <string name="update_channel_development">Dezvoltare</string>
+    <string name="networking_section_title">Rețea</string>
+    <string name="networking_driver">Driver de rețea</string>
+    <string name="networking_driver_winnative">Driver de rețea WinNative</string>
+    <string name="networking_driver_none">Implicit Wine (fără emulare de adaptor)</string>
+    <string name="networking_driver_summary">Oferă programelor Windows o listă reală de adaptoare de rețea, cu adrese MAC stabile. Android ascunde detaliile interfețelor față de aplicații, așa că fără el jocurile și sistemele DRM văd o mașină fără plăci de rețea.</string>
+    <string name="networking_mac">Adresă MAC</string>
+    <string name="networking_mac_summary">Adresa hardware raportată pentru adaptorul principal. Lasă gol pentru adresa automată derivată din dispozitiv.</string>
+    <string name="networking_mac_automatic">Automat: %1$s</string>
+    <string name="networking_mac_invalid">Introdu 12 cifre hexazecimale (de exemplu 3c:5a:b4:12:34:56). Primul octet trebuie să fie unicast și administrat global, deci biții 0 și 1 pe zero; multe jocuri resping adresele administrate local, precum 02:….</string>
 </resources>
 

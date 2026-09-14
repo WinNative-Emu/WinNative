@@ -75,6 +75,19 @@
     <string name="common_ui_shortcut">Skrót</string>
     <string name="common_ui_custom">Własne</string>
     <string name="common_ui_about">O aplikacji</string>
+    <string name="about_app_heading">APLIKACJA</string>
+    <string name="about_app_desc">Szczegóły kompilacji tej instalacji</string>
+    <string name="about_version">Wersja</string>
+    <string name="about_build_id">ID kompilacji</string>
+    <string name="about_version_code">Kod wersji</string>
+    <string name="about_variant">Wariant kompilacji</string>
+    <string name="about_package">Nazwa pakietu</string>
+    <string name="about_branding_heading">OCHRONA SKLEPU</string>
+    <string name="about_branding_desc">Dlaczego ta kompilacja zgłasza inną wersję</string>
+    <string name="about_reported_version_code">Zgłaszany kod wersji</string>
+    <string name="about_branding_explain">Ta kompilacja instaluje się jako %1$s, aby urządzenie zastosowało profil wydajności tamtej aplikacji. Zgłaszany kod wersji jest wyższy niż cokolwiek, co może opublikować Google Play, więc Play Store nigdy nie zaproponuje aktualizacji, która zastąpiłaby WinNative. Wersja powyżej jest tą prawdziwą.</string>
+    <string name="about_copy">Kopiuj informacje o kompilacji</string>
+    <string name="about_copied">Skopiowano informacje o kompilacji</string>
     <string name="common_ui_back">Wstecz</string>
     <string name="common_ui_apply">Zastosuj</string>
     <string name="common_ui_save">Zapisz</string>
@@ -125,6 +138,11 @@
     <string name="store_game_update_failed_notice">Aktualizacja nie powiodła się</string>
     <string name="store_game_update_check_failed_notice">Sprawdzanie aktualizacji nie powiodło się</string>
     <string name="store_game_download_already_active">Ta gra jest już pobierana. Anuluj bieżące pobieranie przed dodaniem DLC.</string>
+    <string name="store_game_branch_label">Wersja</string>
+    <string name="store_game_branch_public">Domyślna (publiczna)</string>
+    <string name="store_game_branch_build">Kompilacja %1$s</string>
+    <string name="store_game_branch_changed">Ustawiono wersję %1$s. Pobierz, aby ją zastosować.</string>
+    <string name="store_game_branch_switch_installed">Ustawiono wersję %1$s. Użyj Sprawdź aktualizacje, aby przełączyć zainstalowane pliki.</string>
     <string name="common_ui_select">Wybierz</string>
     <string name="common_ui_select_folder">Wybierz folder</string>
     <string name="common_ui_current_folder">Bieżący folder</string>
@@ -164,10 +182,14 @@
 
     <!-- Library > Games -->
     <string name="library_games_scrape_artwork">Pobierz grafiki</string>
+    <string name="library_games_store_none_owned">Żadna biblioteka sklepu nie zawiera tej gry</string>
     <string name="library_games_scraping_artwork">Pobieranie</string>
     <string name="library_games_shortcut_created">Skrót utworzony</string>
     <string name="library_games_failed_to_create_shortcut">Nie udało się utworzyć skrótu: %s</string>
     <string name="library_games_install_path">Ścieżka instalacji</string>
+    <string name="library_games_store_change">Zmień sklep</string>
+    <string name="library_games_store_switch_label">Sklep</string>
+    <string name="library_games_store_switched">Ta gra korzysta teraz z %1$s</string>
     <string name="library_games_not_enough_space">Potrzeba jeszcze %1$s miejsca</string>
     <string name="library_games_download_slash_install">Pobierz / Zainstaluj</string>
     <string name="library_games_save_management">ZARZĄDZANIE ZAPISAMI</string>
@@ -242,6 +264,18 @@
     <string name="stores_accounts_gog_login_failed">Logowanie do GOG nie powiodło się: %1$s</string>
     <string name="stores_accounts_custom_download_path">Własna ścieżka pobierania</string>
     <string name="stores_accounts_custom_download_path_description">Domyślna ścieżka pobierania została już skonfigurowana w Ustawienia &gt; Sklepy. Jeśli chcesz ustawić osobną ścieżkę dla tej instalacji, kliknij Kontynuuj.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">Pamięć zewnętrzna</string>
+    <string name="external_storage_add_title">Dodaj pamięć zewnętrzną</string>
+    <string name="external_storage_add_subtitle">Instaluj gry na dysku USB lub karcie SD</string>
+    <string name="external_storage_add_invalid">Ten folder nie znajduje się na dysku zewnętrznym</string>
+    <string name="external_storage_status_connected">Podłączony · wolne %1$s</string>
+    <string name="external_storage_status_disconnected">Odłączony</string>
+    <string name="external_storage_download_target_title">Lokalizacja pobierania</string>
+    <string name="external_storage_download_target_message">Wybierz, gdzie zainstalować tę grę.</string>
+    <string name="external_storage_download_target_internal">Preferuj wewnętrzną</string>
+    <string name="external_storage_download_target_external">Preferuj zewnętrzną</string>
+    <string name="external_storage_download_target_none">Nie podłączono dysku zewnętrznego</string>
     <string name="stores_accounts_not_signed_in">Niezalogowano</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Zaraz wracam</string>
@@ -591,6 +625,8 @@ Np. <b>META</b> dla <i>klawisza META</i>, \n
     <string name="session_drawer_keyboard">Klawiatura</string>
     <string name="session_drawer_toggle_fullscreen">Przełącz pełny ekran</string>
     <string name="session_drawer_show_touchscreen_controls">Pokaż kontrolki dotykowe</string>
+    <string name="input_controls_adaptive_joysticks">Adaptacyjne drążki</string>
+    <string name="input_controls_adaptive_joysticks_summary">Drążki pozostają ukryte, dopóki nie dotkniesz w pobliżu ich położenia</string>
     <string name="session_drawer_magnifier">Lupa</string>
     <string name="session_drawer_logs">Logi</string>
     <string name="session_drawer_pip_mode">Tryb PiP</string>
@@ -777,6 +813,46 @@ Np. <b>META</b> dla <i>klawisza META</i>, \n
     <string name="session_gyroscope_deadzone_format">Martwa strefa: %1$d%%</string>
     <string name="session_gyroscope_sensitivity_format">Czułość: %1$d%%</string>
 
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Urządzenie</string>
+    <string name="device_profile_heading">PROFIL URZĄDZENIA</string>
+    <string name="device_profile_desc">Jeden profil na urządzenie, dostosowujący układy i rozmiary do tego ekranu.</string>
+    <string name="device_profile_change">ZMIEŃ</string>
+    <string name="device_profile_source_detected">Wykryto automatycznie</string>
+    <string name="device_profile_source_manual">Wybrano ręcznie</string>
+    <string name="device_profile_default">Domyślny</string>
+    <string name="device_profile_default_summary">Każdy telefon i tablet bez własnego profilu.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">Tablet do gier RedMagic Astra 2, każdy model regionalny.</string>
+    <string name="device_profile_controls_heading">CO USTAWIA TEN PROFIL</string>
+    <string name="device_profile_controls_desc">Wartości domyślne stosowane przez profil w całej aplikacji.</string>
+    <string name="device_profile_feature_input_layouts">Układy kontrolek wejścia</string>
+    <string name="device_profile_feature_input_layouts_summary">Dołączone układy dotykowe rozmieszczone dla tego rozmiaru ekranu.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Adaptacyjne drążki</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Domyślne dla kontenerów, w których nigdy tego nie ustawiono.</string>
+    <string name="device_profile_feature_library_icons">Rozmiary i proporcje ikon biblioteki</string>
+    <string name="device_profile_feature_library_icons_summary">Kolumny siatki i kształt okładek w bibliotece.</string>
+    <string name="device_profile_feature_session_menu">Rozmiary przycisków menu w grze</string>
+    <string name="device_profile_feature_session_menu_summary">Rozmiary obszarów dotyku w menu sesji.</string>
+    <string name="device_profile_feature_shortcut_defaults">Zalecane ustawienia gry</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Ustawienia domyślne dla gier sugerowane dla tego urządzenia.</string>
+    <string name="device_profile_recommended_on">Zalecane: Włączone</string>
+    <string name="device_profile_recommended_off">Zalecane: Wyłączone</string>
+    <string name="device_profile_layouts_stock">Układy standardowe</string>
+    <string name="device_profile_layouts_tuned">Dostosowane do tego ekranu</string>
+    <string name="device_profile_reapply">Zastosuj ponownie dołączone układy</string>
+    <string name="device_profile_reapply_desc">Przywraca każdy dołączony układ, którego nie edytowałeś.</string>
+    <string name="device_profile_device_heading">TO URZĄDZENIE</string>
+    <string name="device_profile_device_desc">Do czego dopasowano profil.</string>
+    <string name="device_profile_info_model">Model</string>
+    <string name="device_profile_info_board">Płyta</string>
+    <string name="device_profile_info_manufacturer">Producent</string>
+    <string name="device_profile_info_screen">Ekran</string>
+    <string name="device_profile_library_wide">Szerokie karty 3:2 dla grafik poziomych</string>
+    <string name="device_profile_library_stock">Siatka standardowa</string>
+    <string name="device_profile_session_square">Kwadratowe przyciski akcji</string>
+    <string name="device_profile_session_stock">Rozmiary standardowe</string>
+
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Prędkość kursora</string>
     <string name="settings_general_theme">Motyw</string>
@@ -870,6 +946,8 @@ Np. <b>META</b> dla <i>klawisza META</i>, \n
     <string name="settings_debug_no_logs_available">Brak dostępnych logów debugowania. Najpierw włącz opcje debugowania i uruchom grę.</string>
     <string name="settings_debug_capture_failed">Nie udało się przechwycić logów: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Zapisuj błędy, ostrzeżenia i awarie procesu WinNative do pliku</string>
+    <string name="settings_filtered_logs_to_file_title">Filtrowany dziennik debugowania</string>
+    <string name="settings_filtered_logs_to_file_desc">Zapisz dzienniki aplikacji do pliku, przefiltrowane zgodnie z konfiguracją filtra tagów.</string>
     <string name="settings_debug_section_emulation">Emulacja</string>
     <string name="settings_debug_section_subsystems">Podsystemy</string>
     <string name="settings_debug_section_tools">Narzędzia</string>
@@ -1112,6 +1190,8 @@ Zainstalowana ścieżka:
     <string name="preloader_downloading_cloud">Pobieranie zapisów z chmury</string>
     <string name="preloader_syncing_cloud">Synchronizacja zapisów z chmury</string>
     <string name="preloader_uploading_cloud">Przesyłanie zapisów do chmury</string>
+    <string name="preloader_closing_game_waiting">Zamykanie %1$s — oczekiwanie na zapis gry…</string>
+    <string name="preloader_cloud_upload_done">Przesłano zapis do chmury — kończenie…</string>
     <string name="preloader_checking_cloud">Sprawdzanie zapisów w chmurze</string>
     <string name="preloader_cloud_sync_retry">%1$s Próba %2$d/%3$d</string>
     <string name="preloader_cloud_downloading">Pobieranie synchronizacji chmury</string>
@@ -1388,10 +1468,12 @@ Zainstalowana ścieżka:
     <string name="preloader_loading_steam_client">Ładowanie klienta Steam</string>
     <string name="preloader_connecting_to_steam">Łączenie ze Steam</string>
     <string name="preloader_signing_in_to_steam">Logowanie do Steam</string>
+    <string name="preloader_signing_in_offline">Logowanie w trybie offline</string>
     <string name="preloader_fetching_game_info">Zalogowano — pobieranie informacji o grze</string>
     <string name="preloader_steam_ready">Steam gotowy</string>
     <string name="preloader_updating_game_info">Aktualizowanie informacji o grze</string>
     <string name="preloader_verifying_install">Weryfikowanie instalacji</string>
+    <string name="preloader_checking_install_scripts">Sprawdzanie skryptów instalacyjnych</string>
     <string name="preloader_scanning_redists">Skanowanie pakietów redystrybucyjnych</string>
     <string name="preloader_installing_redist_single">Instalowanie pakietu redystrybucyjnego</string>
     <string name="preloader_installing_named_redist">Instalowanie %1$s</string>
@@ -1399,10 +1481,23 @@ Zainstalowana ścieżka:
     <string name="preloader_redists_ready">Pakiety redystrybucyjne gotowe</string>
     <string name="preloader_no_redists">Brak pakietów redystrybucyjnych do zainstalowania</string>
     <string name="preloader_steam_service_running">Usługa Steam działa</string>
+    <string name="preloader_syncing_cloud_saves">Synchronizacja zapisów Steam Cloud…</string>
     <string name="preloader_launching_game">Uruchamianie %1$s</string>
     <string name="preloader_steam_launcher_failed_restaging">Steam Launcher nie powiódł się — ponowne przygotowywanie zasobów</string>
     <string name="preloader_steam_launcher_start_failed">Steam Launcher nie mógł się uruchomić. Ponowne przygotowywanie — uruchom ponownie</string>
     <string name="preloader_steam_launcher_game_never_started">Steam Launcher dotarł do gry, ale gra się nie uruchomiła</string>
+    <string name="steam_cloud_conflict_backing_up">Tworzenie kopii zapasowej odrzuconego zapisu…</string>
+    <string name="steam_cloud_conflict_waiting">Oczekiwanie na Twój wybór Steam Cloud…</string>
+    <string name="steam_cloud_conflict_unknown_time">Nieznana</string>
+    <string name="steam_blocked_title">Steam nadal ma uruchomioną grę</string>
+    <string name="steam_blocked_running_message">Steam wciąż widzi %1$s jako uruchomioną z wcześniejszej sesji, więc %2$s się nie uruchomi.\n\nZatrzymać ją i kontynuować?</string>
+    <string name="steam_blocked_same_game_message">Steam wciąż widzi %1$s jako uruchomioną z wcześniejszej sesji, więc nie uruchomi jej ponownie.\n\nZatrzymać ją i kontynuować?</string>
+    <string name="steam_blocked_other_session_message">Na Twoim koncie Steam trwa gra w %1$s w innej sesji, więc %2$s nie może się uruchomić.\n\nZatrzymać tamtą sesję i kontynuować?</string>
+    <string name="steam_blocked_confirm">Zatrzymaj i kontynuuj</string>
+    <string name="steam_blocked_unknown_game">inną grę</string>
+    <string name="steam_blocked_declined">Anulowano uruchamianie — Steam nadal ma uruchomioną inną grę</string>
+    <string name="steam_blocked_waiting">Oczekiwanie, aż Steam zatrzyma tamtą grę…</string>
+    <string name="steam_launch_insecure_warning">Steam odmówił bezpiecznego uruchomienia — %1$s uruchomiono bez VAC. Gra online może być niedostępna.</string>
     <!-- Workshop -->
     <string name="workshop_loading_items">Ładowanie elementów Workshop</string>
     <string name="workshop_search_items">Szukaj elementów Workshop</string>
@@ -1628,9 +1723,6 @@ Zainstalowana ścieżka:
     <string name="cloud_saves_history_cloud_readonly">Tylko do odczytu</string>
     <string name="session_drawer_rail_label_record">Nagrywaj</string>
     <string name="session_record_failed">Nie można rozpocząć nagrywania</string>
-    <string name="session_locale_manifest_embedded">Zmiana ustawień regionalnych (%1$s) może nie zadziałać: ta gra zawiera własny manifest</string>
-    <string name="session_locale_manifest_embedded_codepage">Zignorowano zmianę ustawień regionalnych: ta gra ustawia własną stronę kodową (%1$s)</string>
-    <string name="session_locale_manifest_external">Pominięto zmianę ustawień regionalnych: ta gra zawiera własny plik manifestu</string>
     <string name="session_record_fps">Częstotliwość klatek</string>
     <string name="session_record_include_ui">Nagrywaj interfejs</string>
     <string name="session_record_include_ui_subtitle">Uwzględnij HUD i elementy sterujące na ekranie</string>
@@ -1643,6 +1735,53 @@ Zainstalowana ścieżka:
     <string name="steam_chat_setting_stay_running">Uruchom w tle</string>
     <string name="steam_chat_setting_stay_running_desc">Pozostaw czat aktywny po zamknięciu WinNative</string>
     <string name="settings_content_refresh">Odśwież</string>
+
+    <!-- Settings > Debug -->
+    <string name="settings_debug_application_logging_title">Rejestrowanie aplikacji</string>
+    <string name="settings_debug_application_logging_subtitle">Włącz rejestrowanie i pokaż opcje rejestrowania</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Log przyczyny zamknięcia</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Zapisuje, dlaczego proces aplikacji został ostatnio zakończony</string>
+    <string name="settings_debug_crash_log_title">Log awarii</string>
+    <string name="settings_debug_crash_log_subtitle">Zapisuj ślady natywnych awarii (tombstone)</string>
+    <string name="settings_debug_event_watch_log_title">Log obserwacji zdarzeń</string>
+    <string name="settings_debug_event_watch_log_subtitle">Rejestruje log systemowy wokół zdarzeń pauzy/wznowienia</string>
+    <string name="settings_debug_log_tag_filter_channel">Filtr tagów logu</string>
+    <string name="settings_debug_tags_selected_suffix">wybranych tagów</string>
+    <string name="settings_debug_manual_text_filter_hint">Filtruj linie logu po tekście…</string>
+    <string name="settings_debug_tag_filter_mode">Tryb</string>
+    <string name="settings_debug_tag_filter_all">Wszystkie</string>
+    <string name="settings_debug_tag_filter_include">Uwzględnij</string>
+    <string name="settings_debug_tag_filter_exclude">Wyklucz</string>
+    <string name="settings_debug_add_custom_tag_hint">Dodaj własny tag…</string>
+    <string name="settings_debug_no_tags_selected">Nie wybrano tagów</string>
+    <!-- Settings > Other: Background Protection -->
+    <string name="settings_other_section_background">Ochrona w tle</string>
+    <string name="settings_other_background_subtitle">Utrzymuj sesję aktywną w tle</string>
+    <string name="settings_other_bg_pause_mode_title">Tryb pauzy w tle</string>
+    <string name="settings_other_bg_pause_all_title">Wstrzymaj wszystkie procesy</string>
+    <string name="settings_other_bg_pause_all_subtitle">Wstrzymuje wszystkie procesy — maksymalna oszczędność baterii (może powodować problemy).</string>
+    <string name="settings_other_bg_pause_game_only_title">Wstrzymaj tylko grę</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Wstrzymuje tylko proces aktywnej gry; pozostałe procesy i usługi działają dalej.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Wstrzymaj wszystko oprócz gry</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Wstrzymuje wszystkie procesy i usługi, ale pozostawia proces gry aktywny.</string>
+    <string name="settings_other_bg_auto_pause_title">Automatyczna pauza sesji</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Automatycznie wstrzymuje sesję, gdy aplikacja przechodzi w tło lub urządzenie jest zablokowane.</string>
+    <string name="settings_other_bg_wakelock_title">Włącz wake lock CPU, aby wzmocnić ochronę w tle</string>
+    <string name="settings_other_bg_wakelock_subtitle">Zapobiega przechodzeniu procesora w głęboki sen, gdy sesja jest wstrzymana. Zwiększa zużycie baterii, ale może poprawić trwałość i stabilność na urządzeniach z agresywnym zarządzaniem baterią.</string>
+    <string name="settings_other_bg_heartbeat_title">Częstotliwość heartbeat (sekundy)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">Może poprawić ochronę aplikacji w tle. Wartość 0 wyłącza funkcję. Im niższa wartość, tym większe potencjalne zużycie baterii.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat wyłączony</string>
+    <string name="settings_other_bg_heartbeat_minimum">Minimum to 5 s — zostanie skorygowane przy zapisie</string>
+    <string name="settings_other_bg_heartbeat_effective">Wykonuje się co %1$d s</string>
+    <!-- Notifications (keep-alive service) -->
+    <string name="fg_keep_alive_notification_content_container_paused">Sesja kontenera jest wstrzymana</string>
+    <string name="fg_keep_alive_notification_content_container_running">Trwa sesja kontenera</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Pobieranie i instalowanie komponentów</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Czat Steam działa w tle</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">: usługa aktywna</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">: usługi aktywne</string>
+    <string name="general_and">i</string>
     <string name="settings_retro_title">Retro</string>
     <string name="retro_save_transfer_title">Przenieś zapis</string>
     <string name="retro_save_transfer_message">Zaimportuj lokalny zapis do tej gry lub wyeksportuj bieżący zapis.</string>
@@ -2206,6 +2345,10 @@ Zainstalowana ścieżka:
     <string name="retro_scr_tab_defaults">Domyślne</string>
     <string name="retro_scr_tab_credits">Autorzy</string>
     <string name="settings_support_title">Wsparcie</string>
+    <string name="support_donate_heading">WESPRZYJ</string>
+    <string name="support_donate_desc">Wesprzyj rozwój WinNative. Otwiera się w przeglądarce.</string>
+    <string name="support_paypal">paypal.me/MaxJividen</string>
+    <string name="support_paypal_desc">PayPal • jednorazowo lub cyklicznie</string>
     <string name="support_heading">UZYSKAJ POMOC</string>
     <string name="support_desc">Zadawaj pytania, zgłaszaj problemy lub sprawdź, nad czym trwają prace. Każdy odnośnik otwiera się w przeglądarce.</string>
     <string name="support_winnative_discord_desc">Discord • wsparcie i rozwój</string>
@@ -2531,6 +2674,9 @@ Zainstalowana ścieżka:
     <string name="retro_tab_system">System</string>
     <string name="session_drawer_frame_generation">Generowanie klatek</string>
     <string name="session_drawer_frame_generation_enable">Generuj klatki</string>
+    <string name="session_drawer_frame_generation_engine_off">Wył.</string>
+    <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
+    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
     <string name="session_drawer_frame_generation_multiplier">Mnożnik</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Cel adaptacyjny</string>
@@ -2538,14 +2684,9 @@ Zainstalowana ścieżka:
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Interpoluje między wyrenderowanymi klatkami przy użyciu Lossless Scaling. Płynniejszy ruch, ale jedna dodatkowa klatka opóźnienia sterowania.</string>
     <string name="session_drawer_frame_generation_target_note">Zwiększa się w kierunku celu tylko wtedy, gdy przynosi to mierzalną korzyść, zamiast utrzymywać stały mnożnik.</string>
-    <string name="session_drawer_frame_generation_missing">Zainstaluj Lossless Scaling w ustawieniach kontenera, aby korzystać z generowania klatek.</string>
-    <string name="session_drawer_dis_frame_generation">Generowanie klatek (DIS)</string>
-    <string name="session_drawer_dis_frame_generation_enable">Generuj klatki (DIS)</string>
+    <string name="session_drawer_frame_generation_missing">Zainstaluj Lossless Scaling w ustawieniach kontenera, aby korzystać z silnika LSFG. DIS nie wymaga niczego dodatkowego.</string>
     <string name="session_drawer_dis_frame_generation_note">Interpoluje między wyrenderowanymi klatkami przy użyciu Dense Inverse Search. Wbudowane; nie wymaga zewnętrznych shaderów.</string>
-    <string name="session_drawer_frame_generation_blocked_by_dis">Wyłącz generowanie klatek DIS, aby z tego skorzystać.</string>
-    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Wyłącz generowanie klatek Lossless Scaling, aby z tego skorzystać.</string>
     <string name="session_drawer_dis_resolution_scale">Skala rozdzielczości</string>
-    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Szybko</string>
     <string name="session_drawer_dis_preset_balance">Zrównoważony</string>
     <string name="session_drawer_dis_preset_quality">Jakość</string>
@@ -2553,6 +2694,8 @@ Zainstalowana ścieżka:
     <string name="session_drawer_dis_target_fps">Docelowe FPS</string>
     <string name="session_drawer_dis_target_fps_max">Maks. częstotliwość odświeżania</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
+    <string name="session_drawer_dis_debug_flow">Pokaż przepływ</string>
+    <string name="session_drawer_dis_debug_flow_note">Rysuje wektory ruchu szacowane przez DIS zamiast wygenerowanej klatki. Tylko do diagnostyki.</string>
     <string name="frame_generation_preset">Ustawienie jakości</string>
     <string name="frame_generation_preset_ultra_performance">Ultra wydajność</string>
     <string name="frame_generation_preset_performance">Wydajność</string>
@@ -2721,5 +2864,25 @@ Zainstalowana ścieżka:
     <string name="steam_controller_paddle_r5">R5 (prawy dolny)</string>
     <string name="steam_controller_button_qam">… (Szybki dostęp)</string>
     <string name="steam_controller_restart_required">Zmiana zacznie obowiązywać przy następnym uruchomieniu gry.</string>
+    <string name="update_available_title">Dostępna aktualizacja</string>
+    <string name="update_action_update">Aktualizuj</string>
+    <string name="update_ignore_until_next">Ignoruj do następnej aktualizacji</string>
+    <string name="update_no_notes">Dla tej kompilacji nie opublikowano informacji o wydaniu.</string>
+    <string name="update_apk_notice">Ta aktualizacja zmienia samą aplikację, więc Android poprosi o potwierdzenie instalacji. Twoje gry, kontenery i ustawienia zostaną zachowane.</string>
+    <string name="update_up_to_date">WinNative jest aktualny.</string>
+    <string name="update_unsupported_build">Aktualizacje w aplikacji są dostępne tylko w oficjalnych podpisanych wydaniach.</string>
+    <string name="settings_general_update_channel">Kanał aktualizacji</string>
+    <string name="settings_general_update_channel_summary">Kanał Oficjalny dostarcza przetestowane wydania. Rozwojowy dostarcza wczesne kompilacje.</string>
+    <string name="update_channel_official">Oficjalny</string>
+    <string name="update_channel_development">Rozwojowy</string>
+    <string name="networking_section_title">Sieć</string>
+    <string name="networking_driver">Sterownik sieciowy</string>
+    <string name="networking_driver_winnative">Sterownik sieciowy WinNative</string>
+    <string name="networking_driver_none">Domyślny Wine (bez emulacji kart sieciowych)</string>
+    <string name="networking_driver_summary">Udostępnia programom Windows prawdziwą listę kart sieciowych ze stabilnymi adresami MAC. Android ukrywa przed aplikacjami szczegóły interfejsów, więc bez tego gry i DRM widzą komputer bez żadnych kart sieciowych.</string>
+    <string name="networking_mac">Adres MAC</string>
+    <string name="networking_mac_summary">Adres sprzętowy zgłaszany dla głównej karty sieciowej. Pozostaw puste, aby użyć adresu wyprowadzonego automatycznie z urządzenia.</string>
+    <string name="networking_mac_automatic">Automatyczny: %1$s</string>
+    <string name="networking_mac_invalid">Wprowadź 12 cyfr szesnastkowych (na przykład 3c:5a:b4:12:34:56). Pierwszy bajt musi być unicastowy i administrowany globalnie, czyli z wyzerowanymi bitami 0 i 1; wiele gier odrzuca adresy administrowane lokalnie, takie jak 02:….</string>
 </resources>
 

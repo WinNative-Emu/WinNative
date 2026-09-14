@@ -5,6 +5,7 @@ enum class Store {
     EPIC,
     GOG,
     STEAM,
+    ITCH,
 }
 
 /** Session-lifecycle events that can surface from any store integration to the UI. */

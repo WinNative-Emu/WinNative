@@ -3711,8 +3711,6 @@ private fun SteamSection(state: GameSettingsStateHolder) {
         }
     }
 
-    val offlineModeAvailable = state.steamLauncher.value || state.useLegacyLauncher.value
-
     SubsectionLabel(stringResource(R.string.steam_section_real_client))
     Spacer(Modifier.height(8.dp))
     SettingGroup {
@@ -3733,16 +3731,14 @@ private fun SteamSection(state: GameSettingsStateHolder) {
         SettingCheckbox(
             label = stringResource(R.string.shortcuts_properties_steam_offline_mode),
             checked = state.steamOfflineMode.value,
-            onCheckedChange = { state.steamOfflineMode.value = it },
-            enabled = offlineModeAvailable
+            onCheckedChange = { state.steamOfflineMode.value = it }
         )
         Spacer(Modifier.height(4.dp))
         Text(
             stringResource(R.string.shortcuts_properties_steam_offline_mode_description),
             color = TextDim,
             fontSize = 11.sp,
-            lineHeight = 16.sp,
-            modifier = Modifier.alpha(if (offlineModeAvailable) 1f else 0.4f)
+            lineHeight = 16.sp
         )
     }
 

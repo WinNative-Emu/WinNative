@@ -184,6 +184,10 @@
     <string name="library_games_shortcut_created">Shortcut created</string>
     <string name="library_games_failed_to_create_shortcut">Failed to create shortcut: %s</string>
     <string name="library_games_install_path">Install Path</string>
+    <string name="library_games_store_change">Change Store</string>
+    <string name="library_games_store_switch_label">Store</string>
+    <string name="library_games_store_none_owned">No store libraries match this game</string>
+    <string name="library_games_store_switched">Now using %1$s for this game</string>
     <string name="library_games_not_enough_space">Need %1$s more space</string>
     <string name="library_games_download_slash_install">Download / Install</string>
     <string name="library_games_save_management">SAVE MANAGEMENT</string>
@@ -258,6 +262,18 @@
     <string name="stores_accounts_gog_login_failed">GOG Login failed: %1$s</string>
     <string name="stores_accounts_custom_download_path">Custom Download Path</string>
     <string name="stores_accounts_custom_download_path_description">A default download path has already been configured in Settings &gt; Stores. If you wish to set a unique custom path for this specific installation, click Proceed.</string>
+    <!-- External Storage -->
+    <string name="external_storage_section_title">External Storage</string>
+    <string name="external_storage_add_title">Add External Storage</string>
+    <string name="external_storage_add_subtitle">Install games to a USB or SD drive</string>
+    <string name="external_storage_add_invalid">That folder is not on an external drive</string>
+    <string name="external_storage_status_connected">Connected · %1$s free</string>
+    <string name="external_storage_status_disconnected">Disconnected</string>
+    <string name="external_storage_download_target_title">Download Location</string>
+    <string name="external_storage_download_target_message">Choose where this game is installed.</string>
+    <string name="external_storage_download_target_internal">Internal Preferred</string>
+    <string name="external_storage_download_target_external">External Preferred</string>
+    <string name="external_storage_download_target_none">No external drive connected</string>
     <string name="stores_accounts_not_signed_in">Not signed in</string>
     <string name="stores_accounts_status_online">Online</string>
     <string name="stores_accounts_status_away">Away</string>
@@ -421,7 +437,7 @@
     <string name="steam_launcher_real_client">Steam Launcher</string>
     <string name="steam_launcher_real_client_description">Run the game through the in-Wine Steam Launcher (recommended). Disables other Steam launch modes.</string>
     <string name="shortcuts_properties_steam_offline_mode">Steam Offline Mode</string>
-    <string name="shortcuts_properties_steam_offline_mode_description">Plays without touching Steam Cloud, so this game\'s saves stay on this device and it still starts with no connection. Turn it off to resume Steam Cloud; if the local and cloud saves differ you are asked which one to keep.</string>
+    <string name="shortcuts_properties_steam_offline_mode_description">Signs in to Steam using the credentials this container already cached and never touches Steam Cloud, so this game\'s saves stay on this device. WinNative turns this on by itself whenever the device has no connection. Sign in once while online first, or Steam will have nothing cached to sign in against. Turn it off to resume Steam Cloud; if the local and cloud saves differ you are asked which one to keep.</string>
     <string name="shortcuts_properties_reset">Reset Properties</string>
     <string name="shortcuts_properties_updated_at">Shortcut Updated at %1$s</string>
     <string name="shortcuts_properties_properties_reset">Properties reset successfully.</string>
@@ -493,6 +509,7 @@
     <string name="container_config_processor_affinity">Processor Affinity</string>
     <string name="container_config_processor_affinity_32bit">Processor Affinity (32-bit apps)</string>
     <string name="container_config_audio_driver">Audio Driver</string>
+    <string name="directaudio_unavailable">DirectAudio is not available for this Wine version; using PulseAudio</string>
     <string name="container_config_direct_audio_mic">Microphone (DirectAudio)</string>
     <string name="container_config_direct_audio_mic_help">Lets a game record from your device microphone, for in-game voice chat. Some titles that check for a microphone while loading will fail to start with this on — turn it on only for a game that needs it.</string>
     <string name="container_config_win_components">Win Components</string>
@@ -854,6 +871,9 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_sgsr_edge_sharpness">Edge Sharpness</string>
     <string name="session_drawer_frame_generation">Frame Generation</string>
     <string name="session_drawer_frame_generation_enable">Generate Frames</string>
+    <string name="session_drawer_frame_generation_engine_off">Off</string>
+    <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
+    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplier</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Adaptive Target</string>
@@ -874,14 +894,9 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="frame_generation_preset_quality_note" formatted="false">Motion estimated at full resolution. Highest cost; use it only when the game has GPU headroom to spare.</string>
     <string name="session_drawer_frame_generation_note">Interpolates between rendered frames with Lossless Scaling. Smoother motion, but one extra frame of input latency.</string>
     <string name="session_drawer_frame_generation_target_note">Climbs toward the target only while it measurably helps, instead of holding a fixed multiplier.</string>
-    <string name="session_drawer_frame_generation_missing">Install Lossless Scaling in container settings to use frame generation.</string>
-    <string name="session_drawer_dis_frame_generation">Frame Generation (DIS)</string>
-    <string name="session_drawer_dis_frame_generation_enable">Generate Frames (DIS)</string>
+    <string name="session_drawer_frame_generation_missing">Install Lossless Scaling in container settings to use the LSFG engine. DIS needs nothing extra.</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolates between rendered frames with Dense Inverse Search. Built into the app; no external shaders required.</string>
-    <string name="session_drawer_frame_generation_blocked_by_dis">Turn off DIS frame generation to use this.</string>
-    <string name="session_drawer_dis_frame_generation_blocked_by_lsfg">Turn off Lossless Scaling frame generation to use this.</string>
     <string name="session_drawer_dis_resolution_scale">Resolution Scale</string>
-    <string name="session_drawer_dis_resolution_scale_value">%1$d%%</string>
     <string name="session_drawer_dis_preset_fast">Fast</string>
     <string name="session_drawer_dis_preset_balance">Balance</string>
     <string name="session_drawer_dis_preset_quality">Quality</string>
@@ -890,6 +905,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_dis_target_fps_max">Max refresh rate</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">Show flow</string>
+    <string name="session_drawer_dis_debug_flow_note">Draws the motion vectors DIS estimates instead of the generated frame. Diagnostic only.</string>
     <string name="settings_frame_generation_title">Frame Generation</string>
     <string name="settings_frame_generation_importing">Looking for Lossless Scaling…</string>
     <string name="settings_frame_generation_ready">Lossless Scaling shaders ready.</string>
@@ -1068,9 +1084,6 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_record_started">Recording started</string>
     <string name="session_record_saved">Recording saved to WinNative/Recordings</string>
     <string name="session_record_failed">Couldn\'t start recording</string>
-    <string name="session_locale_manifest_embedded">Locale override (%1$s) may not apply: this game embeds its own manifest</string>
-    <string name="session_locale_manifest_embedded_codepage">Locale override ignored: this game sets its own code page (%1$s)</string>
-    <string name="session_locale_manifest_external">Locale override skipped: this game ships its own manifest file</string>
     <string name="session_record_settings_title">Record Settings</string>
     <string name="session_record_fps">Frame Rate</string>
     <string name="session_record_resolution">Resolution</string>
@@ -1230,6 +1243,46 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_gyroscope_mouse_scale">Mouse Scale</string>
     <string name="session_gyroscope_mouse_sensitivity_format">Mouse Scale: %1$d%%</string>
 
+    <!-- Settings > Device Profile -->
+    <string name="device_profile_nav_title">Device</string>
+    <string name="device_profile_heading">DEVICE PROFILE</string>
+    <string name="device_profile_desc">One profile per device, tuning layouts and sizes to this screen.</string>
+    <string name="device_profile_change">CHANGE</string>
+    <string name="device_profile_source_detected">Detected automatically</string>
+    <string name="device_profile_source_manual">Chosen manually</string>
+    <string name="device_profile_default">Default</string>
+    <string name="device_profile_default_summary">Every phone and tablet without a profile of its own.</string>
+    <string name="device_profile_astra_2">Astra 2</string>
+    <string name="device_profile_astra_2_summary">RedMagic Astra 2 gaming tablet, every regional model.</string>
+    <string name="device_profile_controls_heading">WHAT THIS PROFILE SETS</string>
+    <string name="device_profile_controls_desc">Defaults the profile applies across the app.</string>
+    <string name="device_profile_feature_input_layouts">Input control layouts</string>
+    <string name="device_profile_feature_input_layouts_summary">Bundled touch layouts placed for this screen size.</string>
+    <string name="device_profile_feature_adaptive_joysticks">Adaptive joysticks</string>
+    <string name="device_profile_feature_adaptive_joysticks_summary">Default for containers that have never set it.</string>
+    <string name="device_profile_feature_library_icons">Library icon sizes and ratios</string>
+    <string name="device_profile_feature_library_icons_summary">Grid columns and cover shape in the library.</string>
+    <string name="device_profile_feature_session_menu">In-game menu button sizes</string>
+    <string name="device_profile_feature_session_menu_summary">Touch target sizes in the session drawer.</string>
+    <string name="device_profile_feature_shortcut_defaults">Recommended game settings</string>
+    <string name="device_profile_feature_shortcut_defaults_summary">Per-game defaults suggested for this device.</string>
+    <string name="device_profile_recommended_on">Recommended: On</string>
+    <string name="device_profile_recommended_off">Recommended: Off</string>
+    <string name="device_profile_layouts_stock">Stock layouts</string>
+    <string name="device_profile_layouts_tuned">Tuned for this screen</string>
+    <string name="device_profile_reapply">Re-apply bundled layouts</string>
+    <string name="device_profile_reapply_desc">Restores every bundled layout you have not edited.</string>
+    <string name="device_profile_device_heading">THIS DEVICE</string>
+    <string name="device_profile_device_desc">What the profile was matched against.</string>
+    <string name="device_profile_info_model">Model</string>
+    <string name="device_profile_info_board">Board</string>
+    <string name="device_profile_info_manufacturer">Manufacturer</string>
+    <string name="device_profile_info_screen">Screen</string>
+    <string name="device_profile_library_wide">Wide 3:2 cards for landscape artwork</string>
+    <string name="device_profile_library_stock">Stock grid</string>
+    <string name="device_profile_session_square">Square action buttons</string>
+    <string name="device_profile_session_stock">Stock sizes</string>
+
     <!-- Settings > General -->
     <string name="settings_general_cursor_speed">Cursor Speed</string>
     <string name="settings_general_theme">Theme</string>
@@ -1288,20 +1341,24 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <!-- Settings > Debug -->
     <string name="settings_debug_wine_debug_channel">Wine Debug Channel</string>
     <string name="settings_debug_title">Debug</string>
-    <string name="settings_retro_title">Retro</string>
-    <string name="retro_save_transfer_title">Transfer Save</string>
-    <string name="retro_save_transfer_message">Import a local save file to this game, or export this game\'s current save.</string>
-    <string name="retro_save_transfer_import">Import Save</string>
-    <string name="retro_save_transfer_export">Export Save</string>
-    <string name="retro_save_transfer_import_ok">Save imported</string>
-    <string name="retro_save_transfer_import_failed">Could not import save</string>
-    <string name="retro_save_transfer_export_ok">Save exported</string>
-    <string name="retro_save_transfer_export_failed">Could not export save</string>
-    <string name="retro_save_transfer_none">No save exists yet for this game</string>
-    <string name="retro_cheats_title">Cheats</string>
-    <string name="retro_cheats_hardcore_blocked">Cheats are disabled in Hardcore mode</string>
-    <string name="retro_ps2_coming_soon">PlayStation 2 support is coming soon</string>
-    <string name="retro_rom_missing">Game file not found</string>
+    <string name="settings_debug_application_logging_title">Application logging</string>
+    <string name="settings_debug_application_logging_subtitle">Turn on logging and show the logging options</string>
+    <string name="settings_debug_logcat_title">Logcat</string>
+    <string name="settings_debug_exit_reason_log_title">Exit reason log</string>
+    <string name="settings_debug_exit_reason_log_subtitle">Record why the app process last terminated</string>
+    <string name="settings_debug_crash_log_title">Crash log</string>
+    <string name="settings_debug_crash_log_subtitle">Save native crash tombstone traces</string>
+    <string name="settings_debug_event_watch_log_title">Event watch log</string>
+    <string name="settings_debug_event_watch_log_subtitle">Capture a focused system log around pause/resume events</string>
+    <string name="settings_debug_log_tag_filter_channel">Log tag filter</string>
+    <string name="settings_debug_tags_selected_suffix">tags selected</string>
+    <string name="settings_debug_manual_text_filter_hint">Filter log lines by text…</string>
+    <string name="settings_debug_tag_filter_mode">Mode</string>
+    <string name="settings_debug_tag_filter_all">All</string>
+    <string name="settings_debug_tag_filter_include">Include</string>
+    <string name="settings_debug_tag_filter_exclude">Exclude</string>
+    <string name="settings_debug_add_custom_tag_hint">Add custom tag…</string>
+    <string name="settings_debug_no_tags_selected">No tags selected</string>
     <string name="settings_debug_wine_logs_title">Enable Wine Debug Logs</string>
     <string name="settings_debug_wine_logs_subtitle">Write Wine debug output to file</string>
     <string name="settings_debug_box_logs_title">Enable Box86/64 Logs</string>
@@ -1339,6 +1396,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_debug_no_logs_available">No debug logs available. Enable debugging options first and launch a game.</string>
     <string name="settings_debug_capture_failed">Failed to capture logs: %1$s</string>
     <string name="settings_debug_log_to_file_desc">Log WinNative process errors, warnings and crashes to file</string>
+    <string name="settings_filtered_logs_to_file_title">Filtered Debug Log</string>
+    <string name="settings_filtered_logs_to_file_desc">Save the app’s logs to a file, filtered according to what is configured in the tag filter.</string>
     <string name="settings_debug_section_emulation">Emulation</string>
     <string name="settings_debug_section_subsystems">Subsystems</string>
     <string name="settings_debug_section_tools">Tools</string>
@@ -1346,6 +1405,20 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_debug_no_channels_available">No channels available</string>
     <string name="settings_debug_channel_toggle_hint">Tap to toggle channels. Enabled channels are included in Wine debug output.</string>
     <string name="settings_debug_remove_channel_desc">Remove %1$s</string>
+    <string name="settings_retro_title">Retro</string>
+    <string name="retro_save_transfer_title">Transfer Save</string>
+    <string name="retro_save_transfer_message">Import a local save file to this game, or export this game\'s current save.</string>
+    <string name="retro_save_transfer_import">Import Save</string>
+    <string name="retro_save_transfer_export">Export Save</string>
+    <string name="retro_save_transfer_import_ok">Save imported</string>
+    <string name="retro_save_transfer_import_failed">Could not import save</string>
+    <string name="retro_save_transfer_export_ok">Save exported</string>
+    <string name="retro_save_transfer_export_failed">Could not export save</string>
+    <string name="retro_save_transfer_none">No save exists yet for this game</string>
+    <string name="retro_cheats_title">Cheats</string>
+    <string name="retro_cheats_hardcore_blocked">Cheats are disabled in Hardcore mode</string>
+    <string name="retro_ps2_coming_soon">PlayStation 2 support is coming soon</string>
+    <string name="retro_rom_missing">Game file not found</string>
 
     <string name="settings_other_language_title">Language</string>
     <string name="settings_other_language_summary">Choose the display language</string>
@@ -1360,6 +1433,25 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="settings_other_update_check_cooldown">Please wait %1$ds before checking again</string>
     <string name="settings_other_persistable_permission_failed">Unable to take persistable permissions: %1$s</string>
     <string name="settings_other_keep_app_open">Please keep the app open while this finishes.</string>
+
+    <string name="settings_other_section_background">Background Protection</string>
+    <string name="settings_other_background_subtitle">Keep session alive while in background</string>
+    <string name="settings_other_bg_pause_mode_title">Background pause mode</string>
+    <string name="settings_other_bg_pause_all_title">Pause all processes</string>
+    <string name="settings_other_bg_pause_all_subtitle">Suspends all processes — Maximum battery saving (May cause issues).</string>
+    <string name="settings_other_bg_pause_game_only_title">Pause only the game</string>
+    <string name="settings_other_bg_pause_game_only_subtitle">Suspends only the active game process; other processes and services stay running.</string>
+    <string name="settings_other_bg_pause_all_except_game_title">Pause all except the game</string>
+    <string name="settings_other_bg_pause_all_except_game_subtitle">Suspends all processes and services but keeps the game process active.</string>
+    <string name="settings_other_bg_auto_pause_title">Auto pause session</string>
+    <string name="settings_other_bg_auto_pause_subtitle">Auto pause the session when the app is in the background or the device is locked.</string>
+    <string name="settings_other_bg_wakelock_title">Enable a CPU wake lock to enhance background protection</string>
+    <string name="settings_other_bg_wakelock_subtitle">Prevents the CPU from deep-sleeping while the session is paused. Increases battery usage but may improve persistence and stability on aggressive OEMs.</string>
+    <string name="settings_other_bg_heartbeat_title">Heartbeat frequency (seconds)</string>
+    <string name="settings_other_bg_heartbeat_subtitle">It can improve background app protection. A value of 0 disables the feature. The lower the value, the higher the potential battery consumption.</string>
+    <string name="settings_other_bg_heartbeat_disabled">Heartbeat disabled</string>
+    <string name="settings_other_bg_heartbeat_minimum">Minimum is 5 s — will be clamped on save</string>
+    <string name="settings_other_bg_heartbeat_effective">Runs every %1$d s</string>
 
     <!-- Settings > Content Packages -->
     <string name="settings_content_install">Install Content</string>
@@ -1681,11 +1773,13 @@ Installed path:
     <string name="preloader_launching">Launching</string>
     <string name="preloader_closing">Closing %1$s</string>
     <string name="preloader_preparing_steam_environment">Preparing Steam environment</string>
+    <string name="preloader_launch_failed">Launch failed: %1$s</string>
     <string name="preloader_starting_wine">Starting Wine</string>
     <string name="preloader_starting_steam_launcher">Starting Steam Launcher</string>
     <string name="preloader_loading_steam_client">Loading Steam client</string>
     <string name="preloader_connecting_to_steam">Connecting to Steam</string>
     <string name="preloader_signing_in_to_steam">Signing in to Steam</string>
+    <string name="preloader_signing_in_offline">Signing in offline</string>
     <string name="preloader_fetching_game_info">Signed in — fetching game info</string>
     <string name="preloader_steam_ready">Steam ready</string>
     <string name="preloader_updating_game_info">Updating game info</string>
@@ -1840,6 +1934,14 @@ Installed path:
     <string name="file_manager_rename_failed">Rename failed</string>
     <string name="file_manager_create_folder_failed">Create folder failed</string>
     <string name="settings_content_refresh">Refresh</string>
+    <!-- Notifications -->
+    <string name="fg_keep_alive_notification_content_container_paused">Container session is paused</string>
+    <string name="fg_keep_alive_notification_content_container_running">There is a container session running</string>
+    <string name="fg_keep_alive_notification_content_downloading_installing">Downloading and installing components</string>
+    <string name="fg_keep_alive_notification_content_steam_chat_running">Steam chat running in background</string>
+    <string name="fg_keep_alive_notification_content_store_service_active">": service is active"</string>
+    <string name="fg_keep_alive_notification_content_store_services_active">": services are active"</string>
+    <string name="general_and">and</string>
 
     <!-- ===== Retro console menus (auto-externalized) ===== -->
     <!-- PS2 in-game overlay menu -->

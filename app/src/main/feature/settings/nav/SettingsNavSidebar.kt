@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.TabletAndroid
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.VideogameAsset
 import androidx.compose.material.icons.outlined.ViewInAr
@@ -95,6 +96,7 @@ private val InterFamily = FontFamily(Font(R.font.inter_medium, FontWeight.Medium
 // ─── Navigation model ───────────────────────────────────────────────
 
 enum class NavSection {
+    DEVICE,
     ACCOUNTS,
     SYSTEM,
     TOOLS,
@@ -108,6 +110,12 @@ enum class SettingsNavItem(
     val titleRes: Int,
     val section: NavSection,
 ) {
+    DEVICE_PROFILE(
+        R.id.main_menu_device_profile,
+        Icons.Outlined.TabletAndroid,
+        R.string.device_profile_nav_title,
+        NavSection.DEVICE,
+    ),
     GOOGLE(R.id.main_menu_google, Icons.Outlined.AccountCircle, R.string.google_cloud_google, NavSection.ACCOUNTS),
     STORES(R.id.main_menu_stores, Icons.Outlined.ShoppingBag, R.string.stores_accounts_title, NavSection.ACCOUNTS),
     CONTAINERS(R.id.main_menu_containers, Icons.Outlined.ViewInAr, R.string.common_ui_containers, NavSection.SYSTEM),

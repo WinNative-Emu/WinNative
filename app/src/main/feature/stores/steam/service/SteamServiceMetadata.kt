@@ -16,6 +16,8 @@ import com.winlator.cmod.app.service.DownloadService
 import com.winlator.cmod.app.service.NetworkMonitor
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutUtils
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.steam.data.AppInfo
 import com.winlator.cmod.feature.stores.steam.data.CachedLicense
 import com.winlator.cmod.feature.stores.steam.data.DepotInfo
@@ -223,6 +225,7 @@ internal fun SteamService.Companion.getTrustedInstalledAppInfo(appId: Int): AppI
     val dirPath = getAppDirPath(appId)
     val dir = File(dirPath)
     if (!dir.isDirectory) return null
+    if (InstallOwnership.isForeign(dirPath, InstallStore.STEAM)) return null
     if (!MarkerUtils.hasMarker(dirPath, Marker.DOWNLOAD_COMPLETE_MARKER)) return null
 
     // Backfill the durable install path once (metadata present now) so recognition survives eviction.
@@ -240,6 +243,7 @@ internal fun SteamService.Companion.getTrustedInstalledAppInfo(appId: Int): AppI
 internal fun SteamService.Companion.tryRecoverInstalledAppInfo(appId: Int): AppInfo? {
     val dirPath = getAppDirPath(appId)
     if (dirPath.isBlank()) return null
+    if (InstallOwnership.isForeign(dirPath, InstallStore.STEAM)) return null
     val hasCompleteMarker = MarkerUtils.hasMarker(dirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
     val hasInProgressMarker = MarkerUtils.hasMarker(dirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
     if (!hasCompleteMarker || hasInProgressMarker) return null

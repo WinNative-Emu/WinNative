@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item type="id" name="FLXServerDisplay" />
+    <item type="id" name="main_menu_device_profile" />
     <item type="id" name="main_menu_google" />
     <item type="id" name="main_menu_stores" />
     <item type="id" name="main_menu_containers" />

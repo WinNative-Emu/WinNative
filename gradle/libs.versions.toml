@@ -33,6 +33,7 @@ xz = "1.12"
 commonsCompress = "1.28.0"
 spotless = "8.5.1"
 workManager = "2.11.2"
+lifecycleProcess = "2.9.0"  # New = compilation errors / gradle plugin update requirement.
 
 [libraries]
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
@@ -81,6 +82,7 @@ coreKtx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 playServicesGamesV2 = { module = "com.google.android.gms:play-services-games-v2", version.ref = "playGames" }
 xz = { module = "org.tukaani:xz", version.ref = "xz" }
 workRuntimeKtx = { module = "androidx.work:work-runtime-ktx", version.ref = "workManager" }
+lifecycleProcess = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

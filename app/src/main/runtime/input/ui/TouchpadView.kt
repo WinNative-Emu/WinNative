@@ -73,8 +73,10 @@ class TouchpadView(
     private var activeTouchHandler: ((MotionEvent) -> Boolean)? = null
     private val longPressHandler = Handler(Looper.getMainLooper())
     private var longPressActive = false
+    private val isInputSuspended: Boolean get() = (context as? XServerDisplayActivity)?.isInputSuspended ?: false
     private val longPressRunnable = Runnable {
         if (tapToClickEnabled && numFingers.toInt() == 1 && fingers[0] != null && fingers[0]!!.travelDistance() < MAX_TAP_TRAVEL_DISTANCE) {
+            if (isInputSuspended) return@Runnable
             longPressActive = true
             if (xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
                 xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
@@ -180,6 +182,10 @@ class TouchpadView(
         if (action == MotionEvent.ACTION_DOWN || activeTouchHandler == null) {
             activeTouchHandler = selectTouchHandler()
         }
+
+        // Block gestures that don't lead to the side menu while input is suspended
+        if (isInputSuspended && (rtsGesturesEnabled || screenTouchMode != MODE_TRACKPAD)) return true
+
         val result = activeTouchHandler!!(event)
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
             activeTouchHandler = null
@@ -203,6 +209,7 @@ class TouchpadView(
     }
 
     private fun handleStylusHoverEvent(event: MotionEvent): Boolean {
+        if (isInputSuspended) return false
         if (event.actionMasked == MotionEvent.ACTION_HOVER_MOVE) {
             val transformedPoint = XForm.transformPoint(xform, event.x, event.y)
             xServer.injectPointerMove(transformedPoint[0].toInt(), transformedPoint[1].toInt())
@@ -212,6 +219,7 @@ class TouchpadView(
     }
 
     private fun handleStylusEvent(event: MotionEvent): Boolean {
+        if (isInputSuspended) return true
         val action = event.actionMasked
         val buttonState = event.buttonState
         when (action) {
@@ -305,6 +313,7 @@ class TouchpadView(
             }
             MotionEvent.ACTION_MOVE -> {
                 if (event.isFromSource(8194)) {
+                    if (isInputSuspended) return true
                     val transformedPoint = XForm.transformPoint(xform, event.x, event.y)
                     if (xServer.isRelativeMouseMovement) {
                         xServer.winHandler.mouseEvent(MouseEventFlags.MOVE, transformedPoint[0].toInt(), transformedPoint[1].toInt(), 0)
@@ -344,6 +353,7 @@ class TouchpadView(
     }
 
     private fun handleTouchscreenEvent(event: MotionEvent): Boolean {
+        if (isInputSuspended) return true
         val action = event.actionMasked
         val ignorePointerId = event.getPointerId(event.actionIndex)
         if (action != MotionEvent.ACTION_MOVE && (ignorePointerId >= MAX_FINGERS || pointerIdsToIgnore.contains(ignorePointerId))) return true
@@ -377,20 +387,24 @@ class TouchpadView(
             lastTapTransX = tx
             lastTapTransY = ty
         }
-        xServer.injectPointerMove(tx, ty)
-        if (event.pointerCount == 1 && tapToClickEnabled) xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT)
+        if (!isInputSuspended) {
+            xServer.injectPointerMove(tx, ty)
+            if (event.pointerCount == 1 && tapToClickEnabled) xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT)
+        }
     }
 
     private fun handleTouchMove(event: MotionEvent) {
+        if (isInputSuspended) return
         val transformedPoint = XForm.transformPoint(xform, event.x, event.y)
         xServer.injectPointerMove(transformedPoint[0].toInt(), transformedPoint[1].toInt())
     }
 
     private fun handleTouchUp(event: MotionEvent) {
-        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
+        if (!isInputSuspended) xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
     }
 
     private fun handleTwoFingerScroll(event: MotionEvent) {
+        if (isInputSuspended) return
         val activeFingers = fingers.filterNotNull()
         if (activeFingers.size < 2) return
         val finger1 = activeFingers[0]
@@ -404,7 +418,7 @@ class TouchpadView(
     }
 
     private fun handleTwoFingerTap(event: MotionEvent) {
-        if (event.pointerCount == 2 && tapToClickEnabled) {
+        if (event.pointerCount == 2 && tapToClickEnabled && !isInputSuspended) {
             if (xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
                 xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
             }
@@ -418,7 +432,7 @@ class TouchpadView(
             when (numFingers.toInt()) {
                 1 -> {
                     if (simTouchScreen) {
-                        postDelayed({ if (continueClick) xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT) }, CLICK_DELAYED_TIME.toLong())
+                        postDelayed({ if (continueClick && !isInputSuspended) xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT) }, CLICK_DELAYED_TIME.toLong())
                     } else if (finger1.isTap()) {
                         pressPointerButtonLeft(finger1)
                     }
@@ -443,6 +457,7 @@ class TouchpadView(
         if (finger1.travelDistance() >= MAX_TAP_TRAVEL_DISTANCE) {
             longPressHandler.removeCallbacks(longPressRunnable)
         }
+        if (isInputSuspended) return
         var skipPointerMove = false
         val finger2 = if (numFingers.toInt() == 2) findSecondFinger(finger1) else null
         if (finger2 != null) {
@@ -489,6 +504,7 @@ class TouchpadView(
     }
 
     private fun pressPointerButtonLeft(finger: Finger) {
+        if (isInputSuspended) return
         if (pointerButtonLeftEnabled && !xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
             xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT)
             fingerPointerButtonLeft = finger
@@ -496,6 +512,7 @@ class TouchpadView(
     }
 
     private fun pressPointerButtonRight(finger: Finger) {
+        if (isInputSuspended) return
         if (pointerButtonRightEnabled && !xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_RIGHT)) {
             xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT)
             fingerPointerButtonRight = finger
@@ -503,6 +520,10 @@ class TouchpadView(
     }
 
     private fun releasePointerButtonLeft(finger: Finger) {
+        if (isInputSuspended) {
+            fingerPointerButtonLeft = null
+            return
+        }
         if (pointerButtonLeftEnabled && finger == fingerPointerButtonLeft && xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
             postDelayed({
                 xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
@@ -512,6 +533,10 @@ class TouchpadView(
     }
 
     private fun releasePointerButtonRight(finger: Finger) {
+        if (isInputSuspended) {
+            fingerPointerButtonRight = null
+            return
+        }
         if (pointerButtonRightEnabled && finger == fingerPointerButtonRight && xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_RIGHT)) {
             postDelayed({
                 xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT)
@@ -538,6 +563,7 @@ class TouchpadView(
 
     fun onExternalMouseEvent(event: MotionEvent): Boolean {
         if (!event.isFromSource(8194)) return false
+        if (isInputSuspended) return true
         resetTouchscreenTimeout()
         val actionButton = event.actionButton
         when (event.action) {
