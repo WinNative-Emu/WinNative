@@ -119,7 +119,7 @@ WinNative's second frame generator is a complete open-source implementation of *
 Search** optical flow, contributed by **qwertypower** (DEVAR Entertainment LLC) under GPL-3.0.
 
 Unlike the Lossless Scaling path it depends on nothing the user has to own or install. The whole
-chain ships with the APK as twelve compute shaders and runs in the same Vulkan compositor, so
+chain ships with the APK as fourteen compute shaders and runs in the same Vulkan compositor, so
 frame generation is available on a fresh install with no Steam account and no `Lossless.dll`.
 
 The algorithm is DIS, and its reference implementation is OpenCV's `DISOpticalFlow`

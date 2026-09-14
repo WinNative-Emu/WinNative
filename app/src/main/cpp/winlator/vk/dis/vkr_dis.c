@@ -60,6 +60,10 @@
 #define DIS_VR_ZETA 0.1f
 #define DIS_VR_EPS 0.001f
 
+// Fewest SOR sweeps a level that still runs the solver gets.
+#define DIS_VR_SOR_FLOOR 2u
+
+
 #define DIS_SET_SAMPLERS 5u
 #define DIS_SET_STORAGE 1u
 #define DIS_SHARED_SETS_PER_LEVEL 6u
@@ -1430,10 +1434,26 @@ uint32_t vkr_dis_plan(VkrDis* d, uint32_t capacity, uint64_t source_frames) {
     return (uint32_t)d->planned_gen;
 }
 
+// Solver budget for one level. The refinement is a red-black SOR, and the
+// number of sweeps a SOR needs scales with how far information has to travel
+// across the grid - a level is half the size per axis, so it reaches the same
+// relative distance in fewer sweeps. Spending the finest level's sweep count on
+// every level buys nothing numerically and costs a dispatch and a barrier each.
+static void dis_vr_budget(const DisRefine* refine, uint32_t l, uint32_t* fixed_point,
+                          uint32_t* sor) {
+    *fixed_point = l == 0 ? refine->vr_fixed_point : 1u;
+    const uint32_t s = refine->vr_sor > l ? refine->vr_sor - l : DIS_VR_SOR_FLOOR;
+    *sor = s < DIS_VR_SOR_FLOOR ? DIS_VR_SOR_FLOOR : s;
+}
+
 static void dis_vr_level(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_t l,
                          uint32_t lw, uint32_t lh, const DisRefine* refine, bool full) {
     const uint32_t gw = (lw + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE;
     const uint32_t gh = (lh + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE;
+
+    uint32_t vr_fixed_point = 0;
+    uint32_t vr_sor = 0;
+    dis_vr_budget(refine, l, &vr_fixed_point, &vr_sor);
 
     vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_prep.pipeline);
     vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
@@ -1454,7 +1474,7 @@ static void dis_vr_level(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_t
         vkd.CmdDispatch(cmd, gw, gh, 1);
         dis_compute_barrier(cmd);
 
-        for (uint32_t k = 0; k < refine->vr_fixed_point; k++) {
+        for (uint32_t k = 0; k < vr_fixed_point; k++) {
             DisVrWPC wpc;
             wpc.alpha2 = DIS_VR_ALPHA * 0.5f;
             wpc.eps2 = DIS_VR_EPS * DIS_VR_EPS;
@@ -1479,7 +1499,7 @@ static void dis_vr_level(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_t
             vkd.CmdDispatch(cmd, gw, gh, 1);
             dis_compute_barrier(cmd);
 
-            for (uint32_t it = 0; it < refine->vr_sor; it++) {
+            for (uint32_t it = 0; it < vr_sor; it++) {
                 DisVrSorPC spc;
                 spc.omega = DIS_VR_OMEGA;
                 spc.parity = 0;

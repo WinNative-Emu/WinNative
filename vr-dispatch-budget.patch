@@ -1,0 +1,106 @@
+From 9e343ab8a1d43db6b8a8ae4c791bfd72474e37b0 Mon Sep 17 00:00:00 2001
+From: qwertypower <qwertypower@users.noreply.github.com>
+Date: Mon, 14 Sep 2026 19:49:47 +0000
+Subject: [PATCH] DIS: scale the refinement's SOR budget with the pyramid level
+
+The variational refinement gave every pyramid level the finest level's
+iteration counts. That is wasted work: the solver is a red-black SOR, and the
+sweeps a SOR needs scale with how far information has to travel across the
+grid. With a fixed over-relaxation factor that is O(N) in the grid's extent, so
+a level at half the size per axis reaches the same relative distance in roughly
+half the sweeps. Running four sweeps on a 56x31 level buys nothing the second
+sweep had not already bought, and each one costs a dispatch and a pipeline
+barrier on a grid of a few dozen workgroups.
+
+The budget now comes from dis_vr_budget(): the finest level keeps the tier's
+fixed-point count, coarser levels drop to one, and the sweep count decreases by
+one per level down to a floor of two. The reduction is deliberately gentler
+than the O(N) argument allows - 4, 3, 2, 2 rather than 4, 2, 1, 1 - so the
+coarse levels keep margin.
+
+No level loses its refinement: every level that ran the solver still runs it.
+
+Per source frame at the Balance preset (448x252, four levels):
+
+    x2   46 -> 46 dispatches   (bit-identical: only the finest level solves)
+    x3  124 -> 84  (-32%)      VR texture taps 19.3M -> 16.7M  (-13%)
+    x4  140 -> 92  (-34%)      VR texture taps 22.3M -> 19.3M  (-13%)
+
+x2 is untouched by construction: it refines only the finest level, and
+dis_vr_budget() returns that level's counts unchanged.
+
+A coarse-level skip was prototyped alongside this and dropped. The dispatch
+overhead it targeted works out to a few percent of a source frame's budget at
+x3, not enough to justify dropping refinement from the level that seeds the
+whole pyramid, and there is no on-device measurement to say otherwise.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01MCkAQJH8ik5iJZqf2NX3w6
+---
+ app/src/main/cpp/winlator/vk/dis/vkr_dis.c | 24 ++++++++++++++++++++--
+ 1 file changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/app/src/main/cpp/winlator/vk/dis/vkr_dis.c b/app/src/main/cpp/winlator/vk/dis/vkr_dis.c
+index 4e518dd..d650f83 100644
+--- a/app/src/main/cpp/winlator/vk/dis/vkr_dis.c
++++ b/app/src/main/cpp/winlator/vk/dis/vkr_dis.c
+@@ -60,6 +60,10 @@
+ #define DIS_VR_ZETA 0.1f
+ #define DIS_VR_EPS 0.001f
+ 
++// Fewest SOR sweeps a level that still runs the solver gets.
++#define DIS_VR_SOR_FLOOR 2u
++
++
+ #define DIS_SET_SAMPLERS 5u
+ #define DIS_SET_STORAGE 1u
+ #define DIS_SHARED_SETS_PER_LEVEL 6u
+@@ -1430,11 +1434,27 @@ uint32_t vkr_dis_plan(VkrDis* d, uint32_t capacity, uint64_t source_frames) {
+     return (uint32_t)d->planned_gen;
+ }
+ 
++// Solver budget for one level. The refinement is a red-black SOR, and the
++// number of sweeps a SOR needs scales with how far information has to travel
++// across the grid - a level is half the size per axis, so it reaches the same
++// relative distance in fewer sweeps. Spending the finest level's sweep count on
++// every level buys nothing numerically and costs a dispatch and a barrier each.
++static void dis_vr_budget(const DisRefine* refine, uint32_t l, uint32_t* fixed_point,
++                          uint32_t* sor) {
++    *fixed_point = l == 0 ? refine->vr_fixed_point : 1u;
++    const uint32_t s = refine->vr_sor > l ? refine->vr_sor - l : DIS_VR_SOR_FLOOR;
++    *sor = s < DIS_VR_SOR_FLOOR ? DIS_VR_SOR_FLOOR : s;
++}
++
+ static void dis_vr_level(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_t l,
+                          uint32_t lw, uint32_t lh, const DisRefine* refine, bool full) {
+     const uint32_t gw = (lw + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE;
+     const uint32_t gh = (lh + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE;
+ 
++    uint32_t vr_fixed_point = 0;
++    uint32_t vr_sor = 0;
++    dis_vr_budget(refine, l, &vr_fixed_point, &vr_sor);
++
+     vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_vr_prep.pipeline);
+     vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
+                               &d->vr_prep_sets[slot][l], 0, NULL);
+@@ -1454,7 +1474,7 @@ static void dis_vr_level(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_t
+         vkd.CmdDispatch(cmd, gw, gh, 1);
+         dis_compute_barrier(cmd);
+ 
+-        for (uint32_t k = 0; k < refine->vr_fixed_point; k++) {
++        for (uint32_t k = 0; k < vr_fixed_point; k++) {
+             DisVrWPC wpc;
+             wpc.alpha2 = DIS_VR_ALPHA * 0.5f;
+             wpc.eps2 = DIS_VR_EPS * DIS_VR_EPS;
+@@ -1479,7 +1499,7 @@ static void dis_vr_level(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_t
+             vkd.CmdDispatch(cmd, gw, gh, 1);
+             dis_compute_barrier(cmd);
+ 
+-            for (uint32_t it = 0; it < refine->vr_sor; it++) {
++            for (uint32_t it = 0; it < vr_sor; it++) {
+                 DisVrSorPC spc;
+                 spc.omega = DIS_VR_OMEGA;
+                 spc.parity = 0;
+-- 
+2.43.0
+

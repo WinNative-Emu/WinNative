@@ -29,7 +29,7 @@ the shaders import successfully.
 ## DIS
 
 **Nothing to buy, nothing to import.** DIS is a complete open-source Dense Inverse Search frame
-generator built into WinNative — twelve compute shaders that ship with the APK — so it works on
+generator built into WinNative — fourteen compute shaders that ship with the APK — so it works on
 a fresh install with no Steam account and no `Lossless.dll`. Turn it on in the **FG** tab and it
 runs.
 

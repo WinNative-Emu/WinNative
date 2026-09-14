@@ -7,6 +7,43 @@ precision highp int;
 
 #define DIS_MAX_MATCH_RMS 36.0
 
+// How much better the zero vector has to explain the block than whatever the
+// search settled on, as a ratio of RMS residuals, before it is taken instead.
+//
+// Static HUD, menus and map overlays sit on top of moving content and are
+// pixel-identical between frames, but the search has no notion of "did not
+// move": it starts from the coarser level, which carries the motion of whatever
+// surrounds the overlay, and Gauss-Newton refines from there. Gauss-Newton is a
+// local optimiser, and inside a smooth overlay the initialisation sits in a
+// local basin it never leaves - measured on a synthetic overlay over a
+// background panning four pixels, it stays at 3.9 px and leaves a residual of
+// RMS 24, while the zero vector leaves 0. The overlay is warped in the
+// generated frames and snapped back by the next real one, which is the flicker.
+//
+// The test is a ratio, not an absolute threshold, and that is what makes it
+// work. An absolute one has to sit near the noise floor, and on the same
+// synthetic scene it stopped firing entirely once frame noise reached an RMS of
+// 3. The ratio separates the cases by two orders of magnitude and holds from
+// noiseless up to an RMS of 6:
+//
+//     overlay interior       ratio 0.00 - 0.32   ->  zero taken
+//     overlay edge block     ratio 0.39 - 0.46   ->  zero taken
+//     background, 4 px pan   ratio 2.1  - 1e7    ->  kept
+//     background, 0.7 px pan ratio 2.7           ->  kept
+//     background, 0.3 px pan ratio 1.1           ->  kept
+//
+// 0.5 means zero has to be twice as good in RMS terms. The nearest thing on the
+// other side is a third of a pixel of real motion at 1.1, so there is room.
+//
+// A flat region that IS moving also qualifies, because a featureless block
+// matches itself anywhere. That costs nothing: there is nothing in it to see
+// move, and the structured blocks around it still carry the real motion.
+#define DIS_ZERO_MATCH_RATIO 0.5
+
+// Below this displacement, in texels, the search already landed on zero and
+// there is nothing for the test to change; skip its 64 samples.
+#define DIS_ZERO_TEST_MIN_PX 0.5
+
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform sampler2D lastLumaMap;
@@ -124,11 +161,46 @@ void main() {
 
     bool unmatched = prevSSD * N_INV > DIS_MAX_MATCH_RMS * DIS_MAX_MATCH_RMS;
 
-    if (any(isnan(flow)) || any(isinf(flow)) || clamped || unmatched ||
-        length(flow - initialFlow) > patchSize) {
+    const bool reverted = any(isnan(flow)) || any(isinf(flow)) || clamped || unmatched ||
+                          length(flow - initialFlow) > patchSize;
+    if (reverted) {
         flow = initialFlow;
     }
 
+    // Does the block explain itself better by not moving at all? Only asked when
+    // the search claims a displacement, and only when it was not thrown out
+    // above - prevSSD belongs to the searched vector, so once that has been
+    // replaced by the coarse estimate there is nothing valid to compare against.
+    float zeroSsd = -1.0;
+    if (!reverted && dot(flow, flow) > DIS_ZERO_TEST_MIN_PX * DIS_ZERO_TEST_MIN_PX) {
+        float zsd = 0.0;
+        float zsd2 = 0.0;
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                vec2 tc = (vec2(pix) + vec2(i, j) + 0.5) * invImageSize;
+                float diff = textureLod(nextLumaMap, tc, 0.0).x - lastImageData[i * 8 + j];
+                zsd += diff;
+                zsd2 += diff * diff;
+            }
+        }
+        float zssd = zsd2 - zsd * zsd / N;
+        // Compared as sums of squares, so the RMS ratio is squared here and no
+        // square root is taken. prevSSD of exactly zero is a perfect match that
+        // only an equally perfect zero can tie, and the comparison handles it
+        // without a divide.
+        if (zssd <= prevSSD * (DIS_ZERO_MATCH_RATIO * DIS_ZERO_MATCH_RATIO)) {
+            flow = vec2(0.0);
+            zeroSsd = zssd;
+        }
+    }
+
     flow *= invImageSize;
-    imageStore(sparseFlowMap, pixSparse, vec4(flow, -1.0, 1.0));
+    // .z is the mean-normalized SSD of the stored vector, or -1 for "not scored
+    // with that metric". The zero test measures exactly the metric the
+    // propagation passes use, on the same reference block, so when zero wins its
+    // score is carried forward: propagation then compares a neighbour's moving
+    // vector against a real, and very low, incumbent score instead of having to
+    // re-derive one, which is what keeps the surrounding motion from being
+    // propagated into the overlay.
+    imageStore(sparseFlowMap, pixSparse, vec4(flow, zeroSsd, 1.0));
 }
