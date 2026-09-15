@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 
 public final class SteamControllerNavigation implements SteamControllerBackend.Listener {
   private final Consumer<KeyEvent> dispatch;
+  private final boolean trackpadNavigation;
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final Map<Integer, Set<Integer>> pads = new HashMap<>();
   private final Map<Integer, Long> held = new HashMap<>();
@@ -21,7 +22,12 @@ public final class SteamControllerNavigation implements SteamControllerBackend.L
   private int generation;
 
   public SteamControllerNavigation(Consumer<KeyEvent> dispatch) {
+    this(dispatch, true);
+  }
+
+  public SteamControllerNavigation(Consumer<KeyEvent> dispatch, boolean trackpadNavigation) {
     this.dispatch = dispatch;
+    this.trackpadNavigation = trackpadNavigation;
   }
 
   public boolean hasControllers() { return !pads.isEmpty(); }
@@ -44,6 +50,7 @@ public final class SteamControllerNavigation implements SteamControllerBackend.L
   @Override public void onSteamPadState(ExternalController pad, boolean guide, boolean quickAccess, int[] pressed) {
     Set<Integer> keys = new HashSet<>();
     for (int key : pressed) {
+      if (!trackpadNavigation && (key == KeyEvent.KEYCODE_BUTTON_6 || key == KeyEvent.KEYCODE_BUTTON_7)) continue;
       switch (key) {
         case KeyEvent.KEYCODE_BUTTON_1:
         case KeyEvent.KEYCODE_BUTTON_2: key = KeyEvent.KEYCODE_BUTTON_L1; break;
@@ -56,8 +63,8 @@ public final class SteamControllerNavigation implements SteamControllerBackend.L
       keys.add(key);
     }
     addDirection(keys, pad.state.thumbLX, pad.state.thumbLY);
-    if (pad.steamLeftTouch) addDirection(keys, pad.steamLeftX * 2 - 1, pad.steamLeftY * 2 - 1);
-    if (pad.steamRightTouch) addDirection(keys, pad.steamRightX * 2 - 1, pad.steamRightY * 2 - 1);
+    if (trackpadNavigation && pad.steamLeftTouch) addDirection(keys, pad.steamLeftX * 2 - 1, pad.steamLeftY * 2 - 1);
+    if (trackpadNavigation && pad.steamRightTouch) addDirection(keys, pad.steamRightX * 2 - 1, pad.steamRightY * 2 - 1);
     if (pad.state.triggerL > 0.5f) keys.add(KeyEvent.KEYCODE_BUTTON_L2);
     if (pad.state.triggerR > 0.5f) keys.add(KeyEvent.KEYCODE_BUTTON_R2);
     pads.put(pad.getDeviceId(), keys);

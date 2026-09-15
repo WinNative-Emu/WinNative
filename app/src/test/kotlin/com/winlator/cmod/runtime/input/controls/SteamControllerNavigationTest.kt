@@ -55,6 +55,15 @@ class SteamControllerNavigationTest {
         navigation.clear()
     }
 
+    @Test fun mouseTrackpadDoesNotAlsoNavigateOrActivateFocusedButton() {
+        val mouseNavigation = SteamControllerNavigation({ events.add(it) }, false)
+        pad.steamRightTouch = true
+        pad.steamRightX = 0.9f
+        mouseNavigation.onSteamPadState(pad, false, false, intArrayOf(KeyEvent.KEYCODE_BUTTON_6, KeyEvent.KEYCODE_BUTTON_7))
+        assertTrue(events.isEmpty())
+        mouseNavigation.clear()
+    }
+
     @Test fun launchingActivityDuringDispatchCancelsRemainingHeldInputs() {
         lateinit var router: SteamControllerNavigation
         var downs = 0

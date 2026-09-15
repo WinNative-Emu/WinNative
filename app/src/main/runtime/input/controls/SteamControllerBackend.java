@@ -119,7 +119,7 @@ public final class SteamControllerBackend {
 
   private final Activity activity;
   private final Listener listener;
-  private final int trackpadMode;
+  private int trackpadMode;
   private final Binding[] paddleBindings = new Binding[PADDLE_COUNT];
   private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -320,6 +320,14 @@ public final class SteamControllerBackend {
     if (Looper.myLooper() != Looper.getMainLooper()) {
       throw new IllegalStateException("Steam Controller lifecycle must run on the main thread");
     }
+  }
+
+  public void setTrackpadMouseMode(int mode) {
+    requireMainThread();
+    int next = mode >= TRACKPAD_MOUSE_OFF && mode <= TRACKPAD_MOUSE_BOTH ? mode : TRACKPAD_MOUSE_RIGHT;
+    if (trackpadMode == next) return;
+    for (int i = 0; i < pads.size(); i++) releaseTrackpads(pads.valueAt(i));
+    trackpadMode = next;
   }
 
   public void publishCurrentState() {
@@ -694,7 +702,7 @@ public final class SteamControllerBackend {
     if ((previous == 0) != (next == 0)) listener.onSteamPadMouseButton(secondary, next > 0);
   }
 
-  private void releaseHeld(Pad pad) {
+  private void releaseTrackpads(Pad pad) {
     pad.right.down = false;
     pad.left.down = false;
     if (pad.right.clickDown) {
@@ -705,6 +713,10 @@ public final class SteamControllerBackend {
       pad.left.clickDown = false;
       setMouseButtonDown(trackpadMode == TRACKPAD_MOUSE_BOTH, false);
     }
+  }
+
+  private void releaseHeld(Pad pad) {
+    releaseTrackpads(pad);
     for (int i = 0; i < PADDLE_COUNT; i++) {
       Binding target = paddleBindings[i];
       if (pad.paddleDown[i] && target != Binding.NONE && !target.isGamepad())

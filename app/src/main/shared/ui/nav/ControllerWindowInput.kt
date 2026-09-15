@@ -13,11 +13,15 @@ internal object ControllerWindowInput {
         return { windows.remove(reference) }
     }
 
-    fun dispatch(event: KeyEvent): Boolean {
+    fun focusedWindow(): Window? {
         windows.removeAll { it.get() == null }
-        val window = windows.asReversed().firstNotNullOfOrNull { reference ->
+        return windows.asReversed().firstNotNullOfOrNull { reference ->
             reference.get()?.takeIf { it.decorView.hasWindowFocus() && it.decorView.isShown }
-        } ?: return false
+        }
+    }
+
+    fun dispatch(event: KeyEvent): Boolean {
+        val window = focusedWindow() ?: return false
         window.callback?.dispatchKeyEvent(event)
         return true
     }
