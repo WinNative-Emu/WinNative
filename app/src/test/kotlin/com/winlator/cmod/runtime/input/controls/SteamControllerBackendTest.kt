@@ -97,7 +97,7 @@ class SteamControllerBackendTest {
     @After fun cleanup() {
         backends.forEach { it.stop() }
         transports.forEach { it.allowShutdown.countDown() }
-        await { transports.all { it.releases == 1 } }
+        await { transports.all { it.releases == it.setupCount } }
         activity.finish()
     }
 
@@ -129,6 +129,53 @@ class SteamControllerBackendTest {
         while (transport.polled.get() < 2 && System.nanoTime() < deadline) Thread.sleep(5)
         await { events.states.size >= 3 }
         assertEquals(listOf(emptyList<Int>(), listOf(KeyEvent.KEYCODE_BUTTON_A), emptyList<Int>()), events.states)
+    }
+
+    @Test fun returningFromControlsEditorRestoresGameInputAfterEditorShutdown() {
+        val gameEvents = Events()
+        val gameTransport = FakeTransport()
+        val game = start(gameEvents, gameTransport)
+        await { gameEvents.connected == 1 }
+        game.stop()
+
+        val editorEvents = Events()
+        val editorTransport = FakeTransport().apply { allowShutdown = CountDownLatch(1) }
+        val editor = start(editorEvents, editorTransport)
+        await { editorEvents.connected == 1 }
+        assertEquals(1, gameEvents.disconnected)
+        editor.stop()
+
+        val resumedEvents = Events()
+        val resumedTransport = FakeTransport()
+        val resumed = start(resumedEvents, resumedTransport)
+        assertTrue(editorTransport.shutdownStarted.await(2, TimeUnit.SECONDS))
+        assertEquals(0, resumedTransport.setupCount)
+        editorTransport.allowShutdown.countDown()
+        await { resumedEvents.connected == 1 }
+        assertEquals(1, editorTransport.releases)
+        resumedTransport.reports.add(1 to ((1 shl 0) or (1 shl 17)))
+        await { resumedEvents.states.lastOrNull()?.contains(KeyEvent.KEYCODE_BUTTON_A) == true }
+        assertEquals(listOf(Binding.KEY_SPACE to true), resumedEvents.bindings)
+        resumed.rumble(-1001, 100, 100, 100)
+        await { resumedTransport.rumbleThread != null }
+    }
+
+    @Test fun leavingEditorBeforeItAcquiresSdlDoesNotLoseGameOwnership() {
+        val gameTransport = FakeTransport().apply { allowShutdown = CountDownLatch(1) }
+        val game = start(transport = gameTransport)
+        await { gameTransport.setupCount == 1 }
+        game.stop()
+        val editorTransport = FakeTransport()
+        val editor = start(transport = editorTransport)
+        editor.stop()
+        val resumedEvents = Events()
+        val resumedTransport = FakeTransport()
+        start(resumedEvents, resumedTransport)
+        gameTransport.allowShutdown.countDown()
+        await { resumedEvents.connected == 1 }
+        assertEquals(0, editorTransport.setupCount)
+        assertEquals(0, editorTransport.releases)
+        assertEquals(1, resumedTransport.setupCount)
     }
 
     @Test fun stopReleasesPaddlesAndTouchpadClick() {

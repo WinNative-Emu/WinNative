@@ -346,6 +346,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private OnExtractFileListener onExtractFileListener;
     private WinHandler winHandler;
     private com.winlator.cmod.runtime.input.controls.SteamControllerBackend steamControllerBackend;
+    private boolean steamControllerSessionReady;
     private ComposeView controllerTestComposeView;
     private final ExternalController controllerTestController = new ExternalController();
     private boolean controllerTestGuideDown = false;
@@ -3248,7 +3249,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     public void onResume() {
         super.onResume();
         steamInputForeground = true;
-        if (steamControllerBackend != null) steamControllerBackend.publishCurrentState();
         com.winlator.cmod.feature.stores.steam.service.GameSessionState.setInGame(this, true);
         applyPreferredRefreshRate();
         registerGyroSensorIfEnabled();
@@ -3268,6 +3268,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             if (activeProfile != null) showInputControls(activeProfile);
             else startTouchscreenTimeout();
             evaluateControllerAutoHide();
+        }
+
+        if (!cleaningUp) {
+            startSteamControllerSupport();
+            refreshSteamControllerInput();
         }
 
         startTime = System.currentTimeMillis();
@@ -3316,6 +3321,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         steamInputForeground = false;
         refreshSteamControllerInput();
+        stopSteamControllerSupport();
         super.onPause();
         stopSystemFrameGenPolling();
         if (systemFrameGenMonitor != null) systemFrameGenMonitor.stop();
@@ -8621,7 +8627,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         winHandler.start();
         com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.setDialogOpen(false);
-        runOnUiThread(this::startSteamControllerSupport);
+        runOnUiThread(() -> {
+            steamControllerSessionReady = true;
+            startSteamControllerSupport();
+        });
         if (wineRequestHandler != null) wineRequestHandler.start();
 
         dxwrapperConfig = null;
@@ -10184,6 +10193,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void startSteamControllerSupport() {
+        if (!steamControllerSessionReady || !steamInputForeground) return;
         if (steamControllerBackend != null || winHandler == null) return;
         if (isFinishing() || isDestroyed() || activityDestroyed.get()) return;
         if (!com.winlator.cmod.runtime.input.controls.SteamControllerPrefs.isEnabled(this)) return;
