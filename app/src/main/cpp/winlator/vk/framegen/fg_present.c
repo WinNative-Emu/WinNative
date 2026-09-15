@@ -25,10 +25,6 @@
 
 #define FG_FRAMES_IN_FLIGHT 2u
 
-// Both engines cap at the same number of in-between frames, so the target ring,
-// the per-generation semaphores and the swapchain sizing below are shared. If
-// the two ever diverge this is the line that has to grow to the larger of them,
-// hence the check rather than a comment.
 #if VKR_DIS_MAX_GENERATIONS > VKR_LSFG_MAX_GENERATIONS
 #define FG_MAX_GENERATIONS VKR_DIS_MAX_GENERATIONS
 #else
@@ -103,9 +99,6 @@ struct FgPresenter {
     AImageReader_ImageListener listener;
     ANativeWindow* producer;
 
-    // Exactly one of these is live at a time; the other stays NULL. Switching
-    // engines tears the old one down rather than keeping both resident, because
-    // each owns a full set of pipelines plus a pyramid the size of the frame.
     VkrLsfg* lsfg;
     VkrDis* dis;
     uint32_t active_engine;
@@ -702,27 +695,11 @@ static void fg_image_available(void* context, AImageReader* reader) {
     pthread_mutex_unlock(&fg->lock);
 }
 
-// ---------------------------------------------------------------------------
-// Engine plumbing
-//
-// The presenter talks to whichever interpolator is selected through this shim.
-// Everything below it - pacing, acquiring, compositing, presenting - is
-// engine-agnostic, so adding DIS beside LSFG meant giving six calls a branch
-// here rather than growing a second copy of the present loop.
-// ---------------------------------------------------------------------------
-
-// DIS is configured with an absolute target frame rate: it has no notion of a
-// multiplier, because it measures the guest's rate itself and works out how many
-// outputs fit in one source interval. When the user picked a multiplier rather
-// than a target we turn it into one here, so the shared multiplier/target
-// setting keeps the same meaning whichever engine is running.
 static uint32_t fg_dis_target(uint32_t multiplier, uint32_t target_rate, float source_rate) {
     if (target_rate != 0) return target_rate;
     if (multiplier > 1 && source_rate > 1.0f) {
         return (uint32_t)(source_rate * (float)multiplier + 0.5f);
     }
-    // Guest rate not known yet: leave it at zero and let DIS fall back to the
-    // panel's refresh rate, which is the ceiling the multiplier would hit anyway.
     return 0;
 }
 
@@ -751,10 +728,6 @@ static void fg_engine_release(FgPresenter* fg) {
     }
 }
 
-// Brings up the engine named by fg->active_engine. Returns false only when that
-// engine cannot run at all - LSFG without its shader blobs, DIS without the
-// compute pipelines. The caller decides what that means: at create time it
-// aborts, at switch time it falls back to the engine that was already working.
 static bool fg_engine_acquire(FgPresenter* fg) {
     if (fg->active_engine == FG_ENGINE_DIS) {
         if (fg->dis) return true;
@@ -799,8 +772,6 @@ static void fg_apply_config(FgPresenter* fg) {
 
     if (engine != fg->active_engine) {
         const uint32_t previous = fg->active_engine;
-        // Both engines own images the in-flight command buffers are still
-        // reading, so the swap has to happen on an idle device.
         vkDeviceWaitIdle(fg->device);
         fg_engine_release(fg);
         fg->active_engine = engine;
@@ -844,8 +815,6 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
 
     uint32_t planned = 0;
     if (fg->active_engine == FG_ENGINE_DIS) {
-        // DIS derives the guest rate from the frame counter it is handed, so it
-        // needs no equivalent of set_guest_extent.
         planned = vkr_dis_plan(fg->dis, capacity, fg->source_frames);
     } else if (fg->lsfg) {
         vkr_lsfg_set_guest_extent(fg->lsfg, source->width, source->height);
@@ -902,8 +871,6 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
     fg_blit(f->cmd, source->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, source->width,
             source->height, composite->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             fg->extent.width, fg->extent.height);
-    // LSFG samples the composite, DIS blits out of it, so the write above has to
-    // be made visible to transfer reads as well as to shader reads.
     fg_barrier(f->cmd, composite->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
@@ -922,15 +889,9 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
     for (uint32_t g = 0; g < gen_count; g++) {
         FgTarget* generated = &fg->targets[FG_FRAMES_IN_FLIGHT + g];
         if (fg->active_engine == FG_ENGINE_DIS) {
-            // No letterbox bars in this architecture - the presenter composites
-            // the guest frame over the whole target - so there is no base image
-            // to carry the strips over from, and DIS writes every pixel itself.
             vkr_dis_generate_into(fg->dis, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
                                   generated->view, fg->extent.width, fg->extent.height,
                                   VK_NULL_HANDLE);
-            // DIS finishes by blitting its result into the target; the blit to
-            // the swapchain just below reads it back, and one transfer does not
-            // see another's writes without this.
             fg_barrier(f->cmd, generated->image, VK_IMAGE_LAYOUT_GENERAL,
                        VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
                        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -1054,10 +1015,6 @@ static void fg_reset_swapchain(FgPresenter* fg) {
 static bool fg_prepare_chain(FgPresenter* fg) {
     if (fg->active_engine == FG_ENGINE_DIS) {
         if (!fg->dis) return false;
-        // DIS was written for the renderer's composite, where the scene sits in a
-        // letterboxed sub-rect and flow must not be estimated across the static
-        // bars. The presenter has no bars - it scales the guest frame over the
-        // whole target - so the content rect here is simply the full extent.
         const VkrDisContentRect content = {0, 0, fg->extent.width, fg->extent.height};
         if (!vkr_dis_needs_rebuild(fg->dis, fg->extent.width, fg->extent.height, fg->target_format,
                                    content)) {
@@ -1249,10 +1206,6 @@ FgPresenter* fg_create(JNIEnv* env, jobject context, const char* driver_name,
     if (!fg_create_targets(fg)) goto fail;
 
     if (!fg_engine_acquire(fg)) {
-        // The engine the user picked cannot run here. Rather than failing frame
-        // generation outright, fall back to the other one: a DIS-only device and
-        // a device with no Lossless Scaling shaders are both real cases, and in
-        // either the remaining engine still does the job.
         const uint32_t fallback =
             fg->active_engine == FG_ENGINE_DIS ? FG_ENGINE_LSFG : FG_ENGINE_DIS;
         FG_LOGW("%s unavailable; trying %s", fg_engine_name(fg->active_engine),

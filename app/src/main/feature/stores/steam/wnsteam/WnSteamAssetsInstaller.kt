@@ -229,6 +229,15 @@ object WnSteamAssetsInstaller {
         }
         steamDir.mkdirs()
 
+        val credentialFiles = rescueSteamCredentialState(sharedSteam, steamDir)
+        if (credentialFiles > 0) {
+            Timber.tag(TAG).i(
+                "ensureRealSteamDir: restored %d Steam sign-in file(s) from the shared store — " +
+                    "these carry the licence cache and offline logon ticket that let a game " +
+                    "start with no network",
+                credentialFiles)
+        }
+
         val sharedUserdata = File(sharedSteam, "userdata")
         if (!sharedUserdata.isDirectory) return
         val realUserdata = File(steamDir, "userdata").apply { mkdirs() }
@@ -243,28 +252,90 @@ object WnSteamAssetsInstaller {
                 if (!appIdName.all { it.isDigit() }) return@forEach
                 val destAccountDir = File(realUserdata, accountDir.name)
                 val destAppDir = File(destAccountDir, appIdName)
-                val destAlreadyPopulated = destAppDir.isDirectory &&
-                    destAppDir.walkTopDown().filter { it.isFile }.any()
-                if (destAlreadyPopulated) return@forEach
                 try {
-                    appDir.copyRecursively(destAppDir, overwrite = true)
-                    val n = destAppDir.walkTopDown().filter { it.isFile }.count()
-                    rescuedFiles += n
-                    rescuedApps += 1
-                    Timber.tag(TAG).i(
-                        "ensureRealSteamDir: rescued %d file(s) for app %s from shared store",
-                        n, appIdName)
+                    val copied = refreshNewestWins(appDir, destAppDir)
+                    if (copied > 0) {
+                        rescuedFiles += copied
+                        rescuedApps += 1
+                        Timber.tag(TAG).i(
+                            "ensureRealSteamDir: refreshed %d file(s) for app %s from shared store",
+                            copied, appIdName)
+                    }
                 } catch (e: Exception) {
                     Timber.tag(TAG).e(e,
-                        "ensureRealSteamDir: failed to rescue userdata for app %s", appIdName)
+                        "ensureRealSteamDir: failed to refresh userdata for app %s", appIdName)
                 }
             }
         }
         if (rescuedApps > 0) {
             Timber.tag(TAG).i(
-                "ensureRealSteamDir: rescued userdata for %d app(s), %d total file(s)",
+                "ensureRealSteamDir: refreshed userdata for %d app(s), %d total file(s)",
                 rescuedApps, rescuedFiles)
         }
+    }
+
+    private fun refreshNewestWins(srcDir: File, dstDir: File): Int {
+        var copied = 0
+        srcDir.walkTopDown().filter { it.isFile }.forEach { src ->
+            val dst = File(dstDir, src.relativeTo(srcDir).path)
+            if (dst.isFile && dst.lastModified() >= src.lastModified()) return@forEach
+            dst.parentFile?.mkdirs()
+            src.copyTo(dst, overwrite = true)
+            dst.setLastModified(src.lastModified())
+            copied += 1
+        }
+        return copied
+    }
+
+    private val APPINFO_CACHE_FILES = listOf("appinfo.vdf", "packageinfo.vdf")
+
+    private fun rescueSteamCredentialState(sharedSteam: File, steamDir: File): Int {
+        var copied = 0
+        try {
+            val sharedConfig = File(sharedSteam, "config")
+            if (sharedConfig.isDirectory) {
+                copied += refreshNewestWins(sharedConfig, File(steamDir, "config"))
+            }
+            sharedSteam.listFiles()?.forEach { f ->
+                if (!f.isFile || !f.name.startsWith("ssfn")) return@forEach
+                val dst = File(steamDir, f.name)
+                if (dst.isFile && dst.lastModified() >= f.lastModified()) return@forEach
+                f.copyTo(dst, overwrite = true)
+                dst.setLastModified(f.lastModified())
+                copied += 1
+            }
+            val sharedUserdata = File(sharedSteam, "userdata")
+            if (sharedUserdata.isDirectory) {
+                sharedUserdata.listFiles()?.forEach { accountDir ->
+                    if (!accountDir.isDirectory) return@forEach
+                    val srcConfig = File(accountDir, "config")
+                    if (!srcConfig.isDirectory) return@forEach
+                    val dstConfig = File(steamDir, "userdata/${accountDir.name}/config")
+                    copied += refreshNewestWins(srcConfig, dstConfig)
+                }
+            }
+            val sharedAppCache = File(sharedSteam, "appcache")
+            if (sharedAppCache.isDirectory) {
+                val dstAppCache = File(steamDir, "appcache")
+                APPINFO_CACHE_FILES.forEach { name ->
+                    val src = File(sharedAppCache, name)
+                    if (!src.isFile || src.length() == 0L) return@forEach
+                    val dst = File(dstAppCache, name)
+                    if (dst.isFile && dst.lastModified() >= src.lastModified()) return@forEach
+                    dstAppCache.mkdirs()
+                    src.copyTo(dst, overwrite = true)
+                    dst.setLastModified(src.lastModified())
+                    copied += 1
+                    Timber.tag(TAG).i(
+                        "ensureRealSteamDir: restored appcache/%s (%d KiB) — LaunchApp reports " +
+                            "MissingConfig with no network unless this is present",
+                        name, src.length() / 1024)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "ensureRealSteamDir: failed to restore Steam sign-in state")
+        }
+        return copied
     }
 
     fun installSteamclientBridgeIntoContainer(context: Context, container: Container): Boolean {

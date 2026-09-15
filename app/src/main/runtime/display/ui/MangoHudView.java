@@ -477,7 +477,11 @@ public class MangoHudView extends View {
   }
 
   public void setOutputFrameSource(FrameRating.OutputFrameSource source) {
+    if (this.outputFrameSource == source) return;
     this.outputFrameSource = source;
+    synchronized (frameLock) {
+      resetOutputSamplesLocked();
+    }
   }
 
   public void setFrameGenerationActive(boolean active) {

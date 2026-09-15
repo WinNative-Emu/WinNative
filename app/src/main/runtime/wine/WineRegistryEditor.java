@@ -15,14 +15,24 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class WineRegistryEditor implements Closeable {
   private static final String TAG = "WineRegistryEditor";
+  private static final ConcurrentHashMap<String, ReentrantLock> FILE_LOCKS =
+      new ConcurrentHashMap<>();
+
+  private static final java.util.Set<String> SHARED_REGISTRY_FILES =
+      new java.util.HashSet<>(java.util.Arrays.asList("system.reg", "user.reg", "userdef.reg"));
+
   private final File file;
   private final File cloneFile;
+  private final ReentrantLock fileLock;
+  private boolean closed = false;
   private boolean modified = false;
   private boolean createKeyIfNotExist = true;
   private int lastParentKeyPosition = 0;
@@ -46,14 +56,34 @@ public class WineRegistryEditor implements Closeable {
 
   public WineRegistryEditor(File file) {
     this.file = file;
-    cloneFile =
-        FileUtils.createTempFile(file.getParentFile(), FileUtils.getBasename(file.getPath()));
-    if (!file.isFile()) {
-      try {
-        cloneFile.createNewFile();
-      } catch (IOException e) {
-      }
-    } else FileUtils.copy(file, cloneFile);
+    this.fileLock = lockFor(file);
+    this.fileLock.lock();
+    File clone = null;
+    try {
+      clone =
+          FileUtils.createTempFile(file.getParentFile(), FileUtils.getBasename(file.getPath()));
+      if (!file.isFile()) {
+        try {
+          clone.createNewFile();
+        } catch (IOException e) {
+        }
+      } else FileUtils.copy(file, clone);
+    } catch (RuntimeException | Error e) {
+      this.fileLock.unlock();
+      throw e;
+    }
+    cloneFile = clone;
+  }
+
+  public static ReentrantLock lockFor(File file) {
+    if (!SHARED_REGISTRY_FILES.contains(file.getName())) return new ReentrantLock();
+    String key;
+    try {
+      key = file.getCanonicalPath();
+    } catch (IOException e) {
+      key = file.getAbsolutePath();
+    }
+    return FILE_LOCKS.computeIfAbsent(key, unused -> new ReentrantLock());
   }
 
   private static String escape(String str) {
@@ -73,9 +103,15 @@ public class WineRegistryEditor implements Closeable {
 
   @Override
   public void close() {
-    if (modified && cloneFile.exists()) {
-      cloneFile.renameTo(file);
-    } else cloneFile.delete();
+    if (closed) return;
+    closed = true;
+    try {
+      if (modified && cloneFile.exists()) {
+        cloneFile.renameTo(file);
+      } else cloneFile.delete();
+    } finally {
+      if (fileLock.isHeldByCurrentThread()) fileLock.unlock();
+    }
   }
 
   private void resetLastParentKeyPositionIfNeed(String newKey) {

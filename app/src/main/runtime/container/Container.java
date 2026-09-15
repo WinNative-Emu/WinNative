@@ -1,5 +1,6 @@
 package com.winlator.cmod.runtime.container;
 
+import com.winlator.cmod.runtime.system.ProcessHelper;
 import android.os.Environment;
 
 import com.winlator.cmod.runtime.compat.box64.Box64Preset;
@@ -32,7 +33,7 @@ public class Container {
     public static final String DEFAULT_DXWRAPPER = "dxvk+vkd3d";
     public static final String DEFAULT_DXWRAPPERCONFIG = "version=,async=1,asyncCache=1" + ",vkd3dVersion=None,vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=4096" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG =
-            "vulkanVersion=1.4" + ";version=" + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";presentMode=mailbox" + ";syncFrame=0" + ";disablePresentWait=0" + ";resourceType=auto" + ";bcnEmulation=auto" + ";bcnEmulationType=compute" + ";bcnEmulationCache=0" + ";gpuName=Device" + ";transcoder=cpu" + ";quality=low";
+            "vulkanVersion=1.4" + ";version=" + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";presentMode=mailbox" + ";syncFrame=0" + ";disablePresentWait=0" + ";resourceType=auto" + ";bcnEmulation=auto" + ";bcnEmulationType=compute" + ";bcnEmulationCache=0" + ";gpuName=Device" + ";transcoder=cpu" + ";astcTranscoding=off";
     public static final String DEFAULT_DDRAWRAPPER = "none";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=0,directmusic=0,directshow=0,directplay=0,xaudio=0,dinput8=1,vcrun2010=1";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,xaudio=1,dinput8=1,vcrun2010=1";
@@ -307,7 +308,7 @@ public class Container {
         this.rootDir = rootDir;
     }
 
-    public void setExtraData(JSONObject extraData) {
+    public synchronized void setExtraData(JSONObject extraData) {
         this.extraData = extraData;
     }
 
@@ -319,7 +320,7 @@ public class Container {
         return getExtra(key, "");
     }
 
-    public String getExtra(String name, String fallback) {
+    public synchronized String getExtra(String name, String fallback) {
         try {
             return extraData != null && extraData.has(name) ? extraData.getString(name) : fallback;
         }
@@ -328,7 +329,7 @@ public class Container {
         }
     }
 
-    public void putExtra(String name, Object value) {
+    public synchronized void putExtra(String name, Object value) {
         if (extraData == null) extraData = new JSONObject();
         try {
             if (value != null) {
@@ -419,7 +420,17 @@ public class Container {
         };
     }
 
+    private final Object saveLock = new Object();
+
     public void saveData() {
+        synchronized (saveLock) {
+            String serialized = serializeData();
+            if (serialized == null) return;
+            FileUtils.writeStringAtomic(getConfigFile(), serialized);
+        }
+    }
+
+    private synchronized String serializeData() {
         try {
             JSONObject data = new JSONObject();
             data.put("id", id);
@@ -449,7 +460,7 @@ public class Container {
             data.put("fexcoreVersion", fexcoreVersion);
             data.put("box64Preset", box64Preset);
             data.put("desktopTheme", desktopTheme);
-            data.put("extraData", extraData);
+            data.put("extraData", snapshotExtraData());
             data.put("midiSoundFont", midiSoundFont);
             data.put("lc_all", lc_all);
             data.put("launchBionicSteam", launchBionicSteam);
@@ -462,9 +473,25 @@ public class Container {
             data.put("runtimePatcher", runtimePatcher);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
-            FileUtils.writeString(getConfigFile(), data.toString());
+            return data.toString();
         }
-        catch (JSONException e) {}
+        catch (Exception e) {
+            android.util.Log.e("Container", "Failed to serialize container " + id, e);
+            return null;
+        }
+    }
+
+    private JSONObject snapshotExtraData() {
+        JSONObject copy = new JSONObject();
+        if (extraData == null) return copy;
+        for (Iterator<String> it = extraData.keys(); it.hasNext(); ) {
+            String key = it.next();
+            try {
+                copy.put(key, extraData.get(key));
+            }
+            catch (JSONException e) {}
+        }
+        return copy;
     }
 
 
@@ -654,6 +681,13 @@ public class Container {
                 }
             }
 
+            if (data.has("cpuListWoW64")) {
+                String savedWoW64 = data.getString("cpuListWoW64");
+                if (savedWoW64.equals(legacyUpperHalfCPUList()) && !savedWoW64.equals(getFallbackCPUListWoW64())) {
+                    data.remove("cpuListWoW64");
+                }
+            }
+
             if (data.has("graphicsDriver")) {
                 String graphicsDriver = data.getString("graphicsDriver");
                 if (graphicsDriver.equals("turnip-zink") || graphicsDriver.equals("turnip")) {
@@ -704,11 +738,16 @@ public class Container {
         return cpuList;
     }
 
-    public static String getFallbackCPUListWoW64() {
+    private static String legacyUpperHalfCPUList() {
         String cpuList = "";
         int numProcessors = Runtime.getRuntime().availableProcessors();
         for (int i = numProcessors / 2; i < numProcessors; i++) cpuList += (!cpuList.isEmpty() ? "," : "")+i;
         return cpuList;
+    }
+
+    public static String getFallbackCPUListWoW64() {
+        String cpuList = ProcessHelper.getPerformanceCPUList();
+        return !cpuList.isEmpty() ? cpuList : getFallbackCPUList();
     }
 
     // Check if a specific environment variable exists

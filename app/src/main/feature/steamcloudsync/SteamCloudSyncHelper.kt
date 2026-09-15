@@ -42,7 +42,12 @@ object SteamCloudSyncHelper {
 
     @JvmStatic
     fun isOfflineMode(shortcut: Shortcut?): Boolean =
-        shortcut != null && shortcut.getExtra("offline_mode", "0") == "1"
+        shortcut != null &&
+            (shortcut.getExtra("offline_mode", "0") == "1" ||
+                shortcut.getSettingExtra(
+                    "steamOfflineMode",
+                    if (shortcut.container?.isSteamOfflineMode == true) "1" else "0",
+                ) == "1")
 
     @JvmStatic
     fun forceDownloadOnContainerSwap(

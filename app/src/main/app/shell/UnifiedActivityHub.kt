@@ -76,6 +76,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -157,6 +158,9 @@ import com.winlator.cmod.app.db.PluviaDatabase
 import com.winlator.cmod.app.service.DownloadService
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.app.update.UpdateService
+import com.winlator.cmod.feature.library.LibraryStoreLinks
+import com.winlator.cmod.feature.library.LibraryStoreOption
+import com.winlator.cmod.feature.library.LibraryStoreTransfer
 import com.winlator.cmod.feature.settings.InputControlsFragment
 import com.winlator.cmod.feature.settings.SettingsFocusZone
 import com.winlator.cmod.feature.settings.SettingsHost
@@ -168,6 +172,7 @@ import com.winlator.cmod.feature.shortcuts.LibraryShortcutArtwork
 import com.winlator.cmod.feature.shortcuts.ShortcutBroadcastReceiver
 import com.winlator.cmod.feature.shortcuts.ShortcutSettingsComposeDialog
 import com.winlator.cmod.feature.shortcuts.ShortcutsFragment
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.common.StoreArtworkCache
 import com.winlator.cmod.feature.stores.epic.data.EpicCredentials
 import com.winlator.cmod.feature.stores.epic.data.EpicGame
@@ -190,6 +195,7 @@ import com.winlator.cmod.feature.stores.gog.service.GOGManifestSizes
 import com.winlator.cmod.feature.stores.gog.service.GOGService
 import com.winlator.cmod.feature.stores.gog.service.GOGUpdateInfo
 import com.winlator.cmod.feature.stores.gog.ui.auth.GOGOAuthActivity
+import com.winlator.cmod.feature.stores.itch.service.ItchLibrary
 import com.winlator.cmod.feature.stores.itch.ui.auth.ItchLoginActivity
 import com.winlator.cmod.feature.stores.steam.SteamLoginActivity
 import com.winlator.cmod.feature.stores.steam.data.DepotInfo
@@ -261,6 +267,8 @@ import kotlin.math.roundToInt
 private val StoreTabKeys = setOf("steam", "epic", "gog", "itch")
 private val HeaderCollapseTriggerDistance = 24.dp
 private const val HeaderRevealFraction = 0.5f
+private val TabLabelAutoSize =
+    TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.sp, stepSize = 0.5.sp)
 
 @Composable
 internal fun UnifiedActivity.UnifiedHub() {
@@ -1607,9 +1615,10 @@ internal fun UnifiedActivity.TopBar(
                                 ) {
                                     Text(
                                         text = tab.label.uppercase(),
+                                        modifier = Modifier.padding(horizontal = 6.dp),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 13.sp,
+                                        autoSize = TabLabelAutoSize,
                                         maxLines = 1,
                                         color = textColor,
                                     )
@@ -1983,6 +1992,13 @@ internal fun UnifiedActivity.TopBar(
     } // end Column
 }
 
+private data class ShortcutScanResult(
+    val shortcuts: List<Shortcut>,
+    val customApps: List<SteamApp>,
+    val badges: Map<Int, String>,
+    val storagePaths: Map<Int, String>,
+)
+
 @Composable
 internal fun UnifiedActivity.LibraryCarousel(
     isLoggedIn: Boolean,
@@ -1998,9 +2014,12 @@ internal fun UnifiedActivity.LibraryCarousel(
     isControllerConnected: Boolean = false,
 ) {
     val context = LocalContext.current
+    val libraryScope = rememberCoroutineScope()
 
     var cachedShortcuts by remember { mutableStateOf<List<Shortcut>>(emptyList()) }
     var customApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
+    var customStoragePathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    val externalStorageState by com.winlator.cmod.feature.storage.ExternalStorage.state.collectAsState()
     var localLibraryRefreshKey by remember { mutableIntStateOf(0) }
     var shortcutsLoaded by remember { mutableStateOf(false) }
     var pullRefreshing by remember { mutableStateOf(false) }
@@ -2025,6 +2044,7 @@ internal fun UnifiedActivity.LibraryCarousel(
                     }
                     val allShortcuts = cm.loadShortcuts()
                     val badges = HashMap<Int, String>()
+                    val storagePaths = HashMap<Int, String>()
                     val apps =
                         allShortcuts
                             .mapNotNull { shortcut ->
@@ -2053,26 +2073,39 @@ internal fun UnifiedActivity.LibraryCarousel(
                                         ),
                                     )?.let { badges[customId] = it.id }
 
+                                val gameDir =
+                                    shortcut.getExtra(
+                                        "game_install_path",
+                                        shortcut.getExtra("custom_game_folder", ""),
+                                    )
+                                val storagePath =
+                                    sequenceOf(
+                                        gameDir,
+                                        shortcut.getExtra("custom_exe", ""),
+                                        shortcut.getExtra(
+                                            com.winlator.cmod.feature.retro.RetroShortcuts.KEY_ROM,
+                                            "",
+                                        ),
+                                    ).firstOrNull { it.isNotBlank() }
+                                if (storagePath != null) storagePaths[customId] = storagePath
+
                                 SteamApp(
                                     id = customId,
                                     name = displayName,
                                     developer = "Custom",
-                                    gameDir =
-                                        shortcut.getExtra(
-                                            "game_install_path",
-                                            shortcut.getExtra("custom_game_folder", ""),
-                                        ),
+                                    gameDir = gameDir,
                                 )
                             }
 
-                    Triple(allShortcuts, apps, badges)
+                    ShortcutScanResult(allShortcuts, apps, badges, storagePaths)
                 }
             }.getOrNull()
 
         if (shortcutScanResult != null) {
-            cachedShortcuts = shortcutScanResult.first
-            customApps = shortcutScanResult.second
-            retroLibrarySystemIds.value = shortcutScanResult.third
+            cachedShortcuts = shortcutScanResult.shortcuts
+            customApps = shortcutScanResult.customApps
+            customStoragePathByAppId = shortcutScanResult.storagePaths
+            retroLibrarySystemIds.value = shortcutScanResult.badges
         }
 
         shortcutsLoaded = true
@@ -2083,6 +2116,7 @@ internal fun UnifiedActivity.LibraryCarousel(
     var installedApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
     var stableInstalledApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
     var gogByPseudoId by remember { mutableStateOf<Map<Int, GOGGame>>(emptyMap()) }
+    var libraryStoreLinks by remember { mutableStateOf(LibraryStoreLinkResult()) }
     var epicByPseudoId by remember { mutableStateOf<Map<Int, EpicGame>>(emptyMap()) }
     var stableGogByPseudoId by remember { mutableStateOf<Map<Int, GOGGame>>(emptyMap()) }
     var stableEpicByPseudoId by remember { mutableStateOf<Map<Int, EpicGame>>(emptyMap()) }
@@ -2102,7 +2136,16 @@ internal fun UnifiedActivity.LibraryCarousel(
     var libraryLoaded by remember { mutableStateOf(false) }
     // Suppress transient empty states before background recomputation starts.
     val scanInputToken =
-        remember(steamApps, epicApps, gogApps, customApps, libraryRefreshKey, localLibraryRefreshKey) { Any() }
+        remember(
+            steamApps,
+            epicApps,
+            gogApps,
+            customApps,
+            customStoragePathByAppId,
+            externalStorageState.connectivityKey,
+            libraryRefreshKey,
+            localLibraryRefreshKey,
+        ) { Any() }
     var processedScanToken by remember { mutableStateOf<Any?>(null) }
 
     LaunchedEffect(scanInputToken) {
@@ -2137,7 +2180,130 @@ internal fun UnifiedActivity.LibraryCarousel(
                         gameDir = gog.installPath,
                     )
                 }
-            val merged = (steamInstalled + customApps + mappedEpic + mappedGog).distinctBy { it.id }
+            val installedRows =
+                steamInstalled.map { steam ->
+                    LibraryStoreOption(
+                        store = InstallStore.STEAM,
+                        libraryId = steam.id,
+                        storeGameId = steam.id.toString(),
+                        title = steam.name,
+                        installPath = runCatching { SteamService.getAppDirPath(steam.id) }.getOrDefault(""),
+                        isInstalled = true,
+                    )
+                } +
+                    epicInstalled.map { epic ->
+                        LibraryStoreOption(
+                            store = InstallStore.EPIC,
+                            libraryId = 2000000000 + epic.id,
+                            storeGameId = epic.id.toString(),
+                            title = epic.title,
+                            installPath = epic.installPath,
+                            isInstalled = true,
+                        )
+                    } +
+                    gogInstalled.map { gog ->
+                        LibraryStoreOption(
+                            store = InstallStore.GOG,
+                            libraryId = gogPseudoId(gog.id),
+                            storeGameId = gog.id,
+                            title = gog.title,
+                            installPath = gog.installPath,
+                            isInstalled = true,
+                        )
+                    }
+            val customRows =
+                customApps.map { custom ->
+                    LibraryStoreOption(
+                        store = InstallStore.ITCH,
+                        libraryId = custom.id,
+                        storeGameId = custom.id.toString(),
+                        title = custom.name,
+                        installPath = custom.gameDir.orEmpty(),
+                        isInstalled = true,
+                    )
+                }
+            val steamInstalledIds = steamInstalled.map { it.id }.toSet()
+            val ownedEntries =
+                steamApps.map { steam ->
+                    LibraryStoreOption(
+                        store = InstallStore.STEAM,
+                        libraryId = steam.id,
+                        storeGameId = steam.id.toString(),
+                        title = steam.name,
+                        installPath = "",
+                        isInstalled = steam.id in steamInstalledIds,
+                    )
+                } +
+                    epicApps.map { epic ->
+                        LibraryStoreOption(
+                            store = InstallStore.EPIC,
+                            libraryId = 2000000000 + epic.id,
+                            storeGameId = epic.id.toString(),
+                            title = epic.title,
+                            installPath = epic.installPath,
+                            isInstalled = epic.isInstalled,
+                        )
+                    } +
+                    gogApps.map { gog ->
+                        LibraryStoreOption(
+                            store = InstallStore.GOG,
+                            libraryId = gogPseudoId(gog.id),
+                            storeGameId = gog.id,
+                            title = gog.title,
+                            installPath = gog.installPath,
+                            isInstalled = gog.isInstalled,
+                        )
+                    }
+            val itchInstalls =
+                runCatching {
+                    ItchLibrary.all(context).map { itch ->
+                        LibraryStoreOption(
+                            store = InstallStore.ITCH,
+                            libraryId = 0,
+                            storeGameId = itch.id.toString(),
+                            title = itch.title,
+                            installPath = itch.installPath,
+                            isInstalled = true,
+                        )
+                    }
+                }.getOrDefault(emptyList())
+
+            val shortcutSourceByPath =
+                cachedShortcuts
+                    .mapNotNull { shortcut ->
+                        val dir = shortcut.getExtra("game_install_path").orEmpty()
+                        if (dir.isBlank()) return@mapNotNull null
+                        val store =
+                            InstallStore.fromId(LibraryShortcutUtils.inferGameSource(shortcut))
+                                ?: return@mapNotNull null
+                        LibraryStoreLinks.pathKey(dir) to store
+                    }.toMap()
+
+            val storeLinks =
+                computeLibraryStoreLinks(
+                    installedRows = installedRows,
+                    customRows = customRows,
+                    ownedEntries = ownedEntries,
+                    itchInstalls = itchInstalls,
+                    shortcutSourceByPath = shortcutSourceByPath,
+                    preferredStoreOf = { key -> LibraryStoreLinks.preferredStore(context, key) },
+                )
+
+            val externalSnapshot = externalStorageState
+            val customStoragePaths = customStoragePathByAppId
+            val storeInstallPaths =
+                installedRows.associate { row -> row.libraryId to row.installPath }
+            val merged =
+                (steamInstalled + customApps + mappedEpic + mappedGog)
+                    .distinctBy { it.id }
+                    .filterNot { it.id in storeLinks.hiddenLibraryIds }
+                    .filterNot { app ->
+                        val path =
+                            customStoragePaths[app.id]
+                                ?: storeInstallPaths[app.id]?.takeIf { it.isNotBlank() }
+                                ?: app.gameDir.orEmpty()
+                        externalSnapshot.isOnDisconnectedDrive(path)
+                    }
             val sorted =
                 merged.sortedByDescending { app ->
                     val searchKey =
@@ -2154,6 +2320,7 @@ internal fun UnifiedActivity.LibraryCarousel(
                 epicByPseudoId = epicMap
                 mergedInstalledApps = merged
                 installedApps = sorted
+                libraryStoreLinks = storeLinks
                 if (sorted.isNotEmpty()) {
                     stableInstalledApps = sorted
                     stableGogByPseudoId = gogMap
@@ -2472,6 +2639,23 @@ internal fun UnifiedActivity.LibraryCarousel(
     var selectedGogGameForSettings by remember { mutableStateOf<GOGGame?>(null) }
     var detailApp by remember { mutableStateOf<SteamApp?>(null) }
     var detailGogGame by remember { mutableStateOf<GOGGame?>(null) }
+    var detailStoreOptions by remember { mutableStateOf<List<LibraryStoreOption>>(emptyList()) }
+    var detailActiveStore by remember { mutableStateOf<InstallStore?>(null) }
+    var detailInstallPath by remember { mutableStateOf("") }
+
+    LaunchedEffect(detailApp?.id, libraryStoreLinks) {
+        val id = detailApp?.id
+        if (id == null) {
+            detailStoreOptions = emptyList()
+            detailActiveStore = null
+            detailInstallPath = ""
+            return@LaunchedEffect
+        }
+        if (!libraryStoreLinks.installPathByLibraryId.containsKey(id)) return@LaunchedEffect
+        detailStoreOptions = libraryStoreLinks.optionsByLibraryId[id].orEmpty()
+        detailActiveStore = libraryStoreLinks.activeStoreByLibraryId[id]
+        detailInstallPath = libraryStoreLinks.installPathByLibraryId[id].orEmpty()
+    }
     val gridState = rememberLazyGridState()
     val carouselState = rememberLazyListState()
     val activity = LocalContext.current as? UnifiedActivity
@@ -2804,10 +2988,73 @@ internal fun UnifiedActivity.LibraryCarousel(
         LibraryGameDetailDialog(
             app = detailApp!!,
             gogGame = detailGogGame,
+            storeOptions = detailStoreOptions,
+            activeStore = detailActiveStore,
+            onSelectStore = { target ->
+                val current = detailStoreOptions.firstOrNull { it.store == detailActiveStore }
+                val installPath = detailInstallPath
+                detailActiveStore = target.store
+                libraryScope.launch {
+                    val rebound =
+                        withContext(Dispatchers.IO) {
+                            LibraryStoreTransfer.switchStore(context, installPath, current, target)
+                            resolveStoreRow(target, customApps)
+                        }
+                    if (rebound != null) {
+                        detailApp = rebound.first
+                        detailGogGame = rebound.second
+                    }
+                    localLibraryRefreshKey++
+                    com.winlator.cmod.shared.ui.toast.WinToast.show(
+                        context,
+                        context.getString(
+                            R.string.library_games_store_switched,
+                            libraryStoreDisplayName(
+                                target.store,
+                                context.getString(R.string.itch_store_title),
+                            ),
+                        ),
+                    )
+                }
+            },
             onDismissRequest = {
                 detailApp = null
                 detailGogGame = null
             },
         )
+    }
+}
+
+private suspend fun UnifiedActivity.resolveStoreRow(
+    target: LibraryStoreOption,
+    customApps: List<SteamApp>,
+): Pair<SteamApp, GOGGame?>? {
+    val db = PluviaDatabase.getInstance()
+    return when (target.store) {
+        InstallStore.STEAM ->
+            target.storeGameId.toIntOrNull()?.let { db.steamAppDao().findApp(it) }?.let { it to null }
+
+        InstallStore.EPIC ->
+            target.storeGameId.toIntOrNull()?.let { db.epicGameDao().getById(it) }?.let { epic ->
+                SteamApp(
+                    id = 2000000000 + epic.id,
+                    name = epic.title,
+                    developer = epic.developer,
+                    gameDir = epic.installPath,
+                ) to null
+            }
+
+        InstallStore.GOG ->
+            db.gogGameDao().getById(target.storeGameId)?.let { gog ->
+                SteamApp(
+                    id = gogPseudoId(gog.id),
+                    name = gog.title,
+                    developer = gog.developer,
+                    gameDir = gog.installPath,
+                ) to gog
+            }
+
+        InstallStore.ITCH ->
+            customApps.firstOrNull { it.id == target.libraryId }?.let { it to null }
     }
 }

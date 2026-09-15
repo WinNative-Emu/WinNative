@@ -56,6 +56,13 @@ static const int kVtUser_BGameConnectTokensAvailable = 130;
 static const int kVtUser_BUpdateAppOwnershipTicket = 69; // bool(AppId_t, bool bOnlyIfStale, bool bIsDepot)
 static const int kVtUser_GetAppOwnershipTicketLength = 103; // uint32(AppId_t)
 
+static const char* const kOfflineEResultLegend =
+    "(1=OK 2=Fail 3=NoConnection 15=AccessDenied/parental-signature "
+    "18=AccountNotFound/no-cached-settings 19=InvalidSteamID/no-licence-cache "
+    "55=RemoteCallFailed)";
+static const int kOfflineLogonWaitMsDefault = 15000;
+static const int kNetDownLogonWaitMsDefault = 15000;
+
 static const int kOwnershipWaitMsDefault = 20000;
 static const int kTicketWaitMsDefault = 15000;
 static const int kAppInfoWaitMsDefault   = 8000;
@@ -68,6 +75,12 @@ static const int kVtUtils_SetAppIDForCurrentPipe   = 18;
 static const int kVtUtils_GetAppID                = 19;
 static const int kVtUser_RequestEncryptedAppTicket = 120;
 static const int kVtUser_GetEncryptedAppTicket     = 121;
+static const int kVtUser_CanLogonOffline          = 214;
+static const int kVtUser_LogOnOffline             = 215;
+static const int kVtUser_ValidateOfflineLogonTicket = 216;
+static const int kVtUser_SetAccountNameForCachedCredentialLogin = 50;
+static const int kVtUser_GetLogonState            = 5;
+static const int kVtUtils_SetOfflineMode          = 16;
 static const int kVtUser_BIsOtherSessionPlaying   = 220;
 static const int kVtUser_BKickOtherPlayingSession = 221;
 
@@ -264,22 +277,114 @@ static void seed_active_process_registry(uint32_t our_pid, uint32_t steam_accoun
              our_pid, steam_account_id);
 }
 
-static void stage_steam_config(void) {
+static bool account_name_is_plain(const char* account) {
+    if (!account || !*account) return false;
+    for (const char* p = account; *p; ++p) {
+        unsigned char c = (unsigned char) *p;
+        if (c < 0x20 || c == '"' || c == '\\' || c == 0x7f) return false;
+    }
+    return true;
+}
+
+static bool read_text_file(const char* path, std::string& out) {
+    HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
+                           OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return false;
+    out.clear();
+    char buf[4096];
+    DWORD got = 0;
+    while (ReadFile(h, buf, (DWORD) sizeof(buf), &got, NULL) && got > 0) out.append(buf, got);
+    CloseHandle(h);
+    return true;
+}
+
+static bool write_text_file(const char* path, const char* data, size_t len) {
+    HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, NULL,
+                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return false;
+    DWORD written = 0;
+    if (len > 0) WriteFile(h, data, (DWORD) len, &written, NULL);
+    CloseHandle(h);
+    return len == 0 || written == (DWORD) len;
+}
+
+static std::string steam_account_entry(const char* account, uint64_t steamId, const char* indent) {
+    char buf[512];
+    snprintf(buf, sizeof(buf),
+             "%s\"%s\"\n%s{\n%s\t\"SteamID\"\t\t\"%llu\"\n%s}\n",
+             indent, account, indent, indent, (unsigned long long) steamId, indent);
+    return std::string(buf);
+}
+
+static std::string steam_config_seed(const char* account, uint64_t steamId) {
+    std::string entry = steam_account_entry(account, steamId, "\t\t\t\t\t");
+    std::string out =
+        "\"InstallConfigStore\"\n"
+        "{\n"
+        "\t\"Software\"\n"
+        "\t{\n"
+        "\t\t\"Valve\"\n"
+        "\t\t{\n"
+        "\t\t\t\"Steam\"\n"
+        "\t\t\t{\n"
+        "\t\t\t\t\"Accounts\"\n"
+        "\t\t\t\t{\n";
+    out += entry;
+    out +=
+        "\t\t\t\t}\n"
+        "\t\t\t}\n"
+        "\t\t}\n"
+        "\t}\n"
+        "}\n";
+    return out;
+}
+
+static void stage_steam_config(const char* account, uint64_t steamId) {
     const char* cfgDir = "C:\\Program Files (x86)\\Steam\\config";
     CreateDirectoryA(cfgDir, NULL);
-    const char* files[2] = {
-        "C:\\Program Files (x86)\\Steam\\config\\config.vdf",
-        "C:\\Program Files (x86)\\Steam\\config\\local.vdf",
-    };
-    for (int i = 0; i < 2; ++i) {
-        DWORD attr = GetFileAttributesA(files[i]);
-        if (attr == INVALID_FILE_ATTRIBUTES) {
-            HANDLE h = CreateFileA(files[i], GENERIC_WRITE, 0, NULL,
-                                   CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (h != INVALID_HANDLE_VALUE) {
-                CloseHandle(h);
-                log_line("[wn-launcher] staged empty %s", files[i]);
+    const char* configVdf = "C:\\Program Files (x86)\\Steam\\config\\config.vdf";
+    const char* localVdf  = "C:\\Program Files (x86)\\Steam\\config\\local.vdf";
+
+    const bool haveSeed = account_name_is_plain(account) && steamId != 0;
+    std::string existing;
+    const bool present = read_text_file(configVdf, existing);
+    const bool blank = !present || existing.find_first_not_of(" \t\r\n") == std::string::npos;
+
+    if (blank) {
+        std::string seed = haveSeed ? steam_config_seed(account, steamId) : std::string();
+        if (write_text_file(configVdf, seed.c_str(), seed.size())) {
+            log_line("[wn-launcher] staged %s (%s) — IClientUser.Accounts\\<name>\\SteamID is "
+                     "what SetAccountNameForCachedCredentialLogin resolves for an offline "
+                     "sign-in", configVdf,
+                     haveSeed ? "seeded with the signed-in account" : "empty, no creds published");
+        }
+    } else if (haveSeed) {
+        const std::string quoted = std::string("\"") + account + "\"";
+        if (existing.find(quoted) != std::string::npos) {
+            log_line("[wn-launcher] %s already carries an Accounts entry for %s", configVdf, account);
+        } else {
+            size_t at = existing.find("\"Accounts\"");
+            size_t brace = at == std::string::npos ? std::string::npos : existing.find('{', at);
+            if (brace != std::string::npos) {
+                std::string merged = existing;
+                merged.insert(brace + 1, "\n" + steam_account_entry(account, steamId, "\t\t\t\t\t"));
+                if (write_text_file(configVdf, merged.c_str(), merged.size())) {
+                    log_line("[wn-launcher] injected Accounts\\%s\\SteamID into the existing %s",
+                             account, configVdf);
+                }
+            } else {
+                log_line("[wn-launcher] %s has no Accounts block and is not empty — left untouched, "
+                         "offline sign-in may not resolve a SteamID", configVdf);
             }
+        }
+    }
+
+    if (GetFileAttributesA(localVdf) == INVALID_FILE_ATTRIBUTES) {
+        HANDLE h = CreateFileA(localVdf, GENERIC_WRITE, 0, NULL,
+                               CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (h != INVALID_HANDLE_VALUE) {
+            CloseHandle(h);
+            log_line("[wn-launcher] staged empty %s", localVdf);
         }
     }
 }
@@ -1167,6 +1272,70 @@ static void prewarm_encrypted_app_ticket(void* engine, int hUser, int pipe, uint
             log_line("[wn-launcher] appticket: pipe app context restored to %u", priorApp);
         }
     }
+}
+
+static bool offline_licence_cache_present(uint64_t steamId, char* pathOut, size_t pathLen) {
+    snprintf(pathOut, pathLen,
+             "C:\\Program Files (x86)\\Steam\\userdata\\%u\\config\\licensecache",
+             (uint32_t)(steamId & 0xFFFFFFFFu));
+    WIN32_FILE_ATTRIBUTE_DATA fad;
+    if (!GetFileAttributesExA(pathOut, GetFileExInfoStandard, &fad)) return false;
+    return fad.nFileSizeLow != 0 || fad.nFileSizeHigh != 0;
+}
+
+static bool offline_parental_settings_present(uint64_t steamId, char* pathOut, size_t pathLen) {
+    snprintf(pathOut, pathLen,
+             "C:\\Program Files (x86)\\Steam\\userdata\\%u\\config\\localconfig.vdf",
+             (uint32_t)(steamId & 0xFFFFFFFFu));
+    std::string body;
+    if (!read_text_file(pathOut, body)) return false;
+    return body.find("ParentalSettings") != std::string::npos
+        && body.find("Signature") != std::string::npos;
+}
+
+static void log_offline_readiness(void* engine, int hUser, int pipe, const char* account,
+                                  uint64_t steamId) {
+    char cachePath[MAX_PATH];
+    bool licences = offline_licence_cache_present(steamId, cachePath, sizeof(cachePath));
+    log_line("[wn-launcher] offline-readiness: licence cache %s (%s)",
+             licences ? "present" : "MISSING", cachePath);
+    char parentalPath[MAX_PATH];
+    bool parental = offline_parental_settings_present(steamId, parentalPath, sizeof(parentalPath));
+    log_line("[wn-launcher] offline-readiness: cached parental settings %s (%s) — without the "
+             "Valve-signed ParentalSettings\\Settings + ParentalSettings\\Signature pair "
+             "LogOnOffline returns EResult 18 no matter what else is cached",
+             parental ? "present" : "MISSING", parentalPath);
+    std::string installCfg;
+    if (read_text_file("C:\\Program Files (x86)\\Steam\\config\\config.vdf", installCfg)
+        && installCfg.find("NoSavePersonalInfo") != std::string::npos) {
+        log_line("[wn-launcher] offline-readiness: config.vdf carries NoSavePersonalInfo — Steam "
+                 "refuses to cache the parental settings that LogOnOffline requires, so offline "
+                 "sign-in can never work in this prefix");
+    }
+    if (!engine || !account || !*account) return;
+    void** engine_vt = *(void***) engine;
+    typedef void* (WN_THISCALL *GetIClientUserFn)(void* self, int hUser, int hPipe);
+    void* getUserP = engine_vt[kVtEngine_GetIClientUser];
+    if (!is_exec_ptr(getUserP)) return;
+    void* iuser = ((GetIClientUserFn) getUserP)(engine, hUser, pipe);
+    if (!iuser || !interface_looks_valid(iuser, kVtUser_BIsSubscribedApp)) return;
+    void** iuser_vt = *(void***) iuser;
+    int ticketRc = -1;
+    void* validP = iuser_vt[kVtUser_ValidateOfflineLogonTicket];
+    if (is_exec_ptr(validP)) {
+        typedef int (WN_THISCALL *ValidateOfflineTicketFn)(void* self, const char* account);
+        ticketRc = ((ValidateOfflineTicketFn) validP)(iuser, account);
+    }
+    int canRc = -1;
+    void* canP = iuser_vt[kVtUser_CanLogonOffline];
+    if (is_exec_ptr(canP)) {
+        typedef int (WN_THISCALL *CanLogonOfflineFn)(void* self);
+        canRc = ((CanLogonOfflineFn) canP)(iuser);
+    }
+    log_line("[wn-launcher] offline-readiness: ValidateOfflineLogonTicket=%d CanLogonOffline=%d "
+             "%s — this prefix %s survive a later launch with no network",
+             ticketRc, canRc, kOfflineEResultLegend,
+             (licences && canRc == 1) ? "should" : "will NOT");
 }
 
 static void log_active_process_registry(const char* when) {
@@ -2518,7 +2687,7 @@ int main(int argc, char** argv) {
     CreateDirectoryA("C:\\Program Files (x86)", NULL);
     CreateDirectoryA(kSteamDir, NULL);
 
-    stage_steam_config();
+    stage_steam_config(user, steamId);
     seed_active_process_registry(GetCurrentProcessId(), (uint32_t)(steamId & 0xFFFFFFFFu));
     stage_app_manifest(appId, gameExe);
 
@@ -2674,7 +2843,119 @@ int main(int argc, char** argv) {
         return 5;
     }
 
-    if (user && *user && token && *token && steamId != 0) {
+    const bool netDown = env_int("WN_STEAM_NET_DOWN", 0) != 0;
+    const bool offlineMode = env_int("WN_STEAM_OFFLINE", 0) != 0 || netDown;
+    bool offlineLogonOk = false;
+    void* offlineUtils = NULL;
+    void* offlineUser = NULL;
+    if (offlineMode) {
+        log_line("[wn-launcher] Steam Offline Mode is on for this shortcut (%s) — signing in "
+                 "against the credentials cached in this prefix and skipping every cloud sync "
+                 "this session", netDown ? "the device has no network" : "user setting");
+        void** engine_vt = *(void***) engine;
+        typedef void* (WN_THISCALL *GetIClientUserFn)(void* self, int hUser, int hPipe);
+        void* getUserP = engine_vt[kVtEngine_GetIClientUser];
+        void* iuser = is_exec_ptr(getUserP)
+            ? ((GetIClientUserFn) getUserP)(engine, hUser, pipe) : NULL;
+        log_line("[wn-launcher] IClientEngine.GetIClientUser -> %p", iuser);
+        offlineUser = iuser;
+        if (iuser) {
+            void** iuser_vt = *(void***) iuser;
+            if (user && *user && token && *token
+                && is_exec_ptr(iuser_vt[kVtUser_SetLoginToken])) {
+                typedef void (WN_THISCALL *SetLoginTokenFn)(void* self, const char* token,
+                                                            const char* account);
+                ((SetLoginTokenFn) iuser_vt[kVtUser_SetLoginToken])(iuser, token, user);
+                log_line("[wn-launcher] SetLoginToken(account=%s) — account name and token "
+                         "seeded for the offline sign-in", user);
+            }
+            if (user && *user
+                && is_exec_ptr(iuser_vt[kVtUser_SetAccountNameForCachedCredentialLogin])) {
+                typedef bool (WN_THISCALL *SetAccountNameFn)(void* self, const char* account,
+                                                             bool requireCached);
+                bool nameRc = ((SetAccountNameFn)
+                    iuser_vt[kVtUser_SetAccountNameForCachedCredentialLogin])(iuser, user, true);
+                log_line("[wn-launcher] SetAccountNameForCachedCredentialLogin(%s) -> %d "
+                         "(resolves the cached SteamID that LogOnOffline requires)",
+                         user, nameRc ? 1 : 0);
+            } else {
+                log_line("[wn-launcher] SetAccountNameForCachedCredentialLogin slot not "
+                         "executable — LogOnOffline will very likely report InvalidSteamID");
+            }
+            if (user && *user && is_exec_ptr(iuser_vt[kVtUser_BHasCachedCreds])) {
+                typedef bool (WN_THISCALL *BHasCachedCredsFn)(void* self, const char* account);
+                log_line("[wn-launcher] BHasCachedCredentials(%s) -> %d "
+                         "(0 means config.vdf/local.vdf carry no ConnectCache entry for this "
+                         "account in this prefix)",
+                         user, ((BHasCachedCredsFn) iuser_vt[kVtUser_BHasCachedCreds])(
+                             iuser, user) ? 1 : 0);
+            }
+            typedef void* (WN_THISCALL *GetIClientUtilsFn)(void* self, int hPipe);
+            void* getUtilsP = engine_vt[kVtEngine_GetIClientUtils];
+            offlineUtils = is_exec_ptr(getUtilsP)
+                ? ((GetIClientUtilsFn) getUtilsP)(engine, pipe) : NULL;
+            if (offlineUtils) {
+                void** utils_vt = *(void***) offlineUtils;
+                void* setOffP = utils_vt[kVtUtils_SetOfflineMode];
+                if (is_exec_ptr(setOffP)) {
+                    typedef void (WN_THISCALL *SetOfflineModeFn)(void* self, bool offline);
+                    ((SetOfflineModeFn) setOffP)(offlineUtils, true);
+                    log_line("[wn-launcher] IClientUtils.SetOfflineMode(true)");
+                }
+            }
+            void* validP = iuser_vt[kVtUser_ValidateOfflineLogonTicket];
+            if (user && *user && is_exec_ptr(validP)) {
+                typedef int (WN_THISCALL *ValidateOfflineTicketFn)(void* self,
+                                                                   const char* account);
+                log_line("[wn-launcher] ValidateOfflineLogonTicket(%s) -> EResult=%d "
+                         "(1=OK — a Valve-signed offline ticket is cached for this account)",
+                         user, ((ValidateOfflineTicketFn) validP)(iuser, user));
+            }
+            void* canP = iuser_vt[kVtUser_CanLogonOffline];
+            if (is_exec_ptr(canP)) {
+                typedef int (WN_THISCALL *CanLogonOfflineFn)(void* self);
+                log_line("[wn-launcher] CanLogonOffline -> EResult=%d %s",
+                         ((CanLogonOfflineFn) canP)(iuser), kOfflineEResultLegend);
+            }
+            void* logonP = iuser_vt[kVtUser_LogOnOffline];
+            if (is_exec_ptr(logonP)) {
+                typedef int (WN_THISCALL *LogOnOfflineFn)(void* self, bool bOfflineMode);
+                int rc = ((LogOnOfflineFn) logonP)(iuser, true);
+                offlineLogonOk = (rc == 1);
+                log_line("[wn-launcher] LogOnOffline(true) -> EResult=%d %s", rc,
+                         kOfflineEResultLegend);
+            } else {
+                log_line("[wn-launcher] LogOnOffline slot not executable");
+            }
+        }
+        if (!offlineLogonOk) {
+            log_line("[wn-launcher] offline sign-in unavailable — this prefix has never "
+                     "completed an online Steam sign-in, so it carries no licence cache and no "
+                     "offline logon ticket (both are minted by Steam's servers). %s",
+                     "Falling back to the normal sign-in so the prefix picks them up for "
+                     "next time; cloud saves stay off for this session.");
+            if (offlineUtils) {
+                void** utils_vt = *(void***) offlineUtils;
+                void* setOffP = utils_vt[kVtUtils_SetOfflineMode];
+                if (is_exec_ptr(setOffP)) {
+                    typedef void (WN_THISCALL *SetOfflineModeFn)(void* self, bool offline);
+                    ((SetOfflineModeFn) setOffP)(offlineUtils, false);
+                    log_line("[wn-launcher] IClientUtils.SetOfflineMode(false) — undone for the "
+                             "fallback sign-in");
+                }
+            }
+        }
+    }
+
+    const bool wantOnlineLogon = (!offlineMode || !offlineLogonOk)
+        && user && *user && token && *token && steamId != 0;
+    if (wantOnlineLogon && netDown) {
+        log_line("[wn-launcher] the device reports no validated network and the offline "
+                 "sign-in did not take — trying the refresh-token logon anyway on a short "
+                 "budget, because Android withholds NET_CAPABILITY_VALIDATED from plenty of "
+                 "networks that Steam can still reach");
+    }
+    if (wantOnlineLogon) {
         void** engine_vt = *(void***) engine;
         typedef void* (WN_THISCALL *GetIClientUserFn)(void* self, int hUser, int hPipe);
         GetIClientUserFn getIClientUser = (GetIClientUserFn)
@@ -2691,13 +2972,13 @@ int main(int argc, char** argv) {
                 log_line("[wn-launcher] BHasCachedCredentials(%s) -> %d", user, cached ? 1 : 0);
             }
             if (is_exec_ptr(iuser_vt[kVtUser_SetLoginToken])) {
-                typedef int (WN_THISCALL *SetLoginTokenFn)(void* self, const char* token,
-                                               const char* account);
+                typedef void (WN_THISCALL *SetLoginTokenFn)(void* self, const char* token,
+                                                const char* account);
                 SetLoginTokenFn setLoginToken = (SetLoginTokenFn)
                     iuser_vt[kVtUser_SetLoginToken];
-                int tokRc = setLoginToken(iuser, token, user);
-                log_line("[wn-launcher] SetLoginToken(tokenLen=%d, account=%s) -> %d",
-                         (int) strlen(token), user, tokRc);
+                setLoginToken(iuser, token, user);
+                log_line("[wn-launcher] SetLoginToken(tokenLen=%d, account=%s)",
+                         (int) strlen(token), user);
 
                 typedef void* (WN_THISCALL *GetSteamIDFn)(void* self, void* outBuf);
                 GetSteamIDFn getSteamID = (GetSteamIDFn)
@@ -2728,7 +3009,7 @@ int main(int argc, char** argv) {
                 }
             }
         }
-    } else {
+    } else if (!offlineMode || !offlineLogonOk) {
         log_line("[wn-launcher] no creds — skipping refresh-token logon "
                  "(game may run in offline / no-auth mode)");
     }
@@ -2739,7 +3020,26 @@ int main(int argc, char** argv) {
     int  connFailEResult = 0;
     int  polls = 0;
     if (bLoggedOn) {
-        const int kMaxPolls = 600;  // 600 * 100ms = 60s
+        const bool noLogonDispatched = !offlineLogonOk && !wantOnlineLogon;
+        int maxPolls;
+        if (offlineMode && offlineLogonOk) {
+            maxPolls = env_int("WN_STEAM_OFFLINE_LOGON_WAIT_MS", kOfflineLogonWaitMsDefault) / 100;
+        } else if (noLogonDispatched) {
+            maxPolls = netDown ? 5 : 100;
+        } else if (netDown) {
+            maxPolls = env_int("WN_STEAM_NETDOWN_LOGON_WAIT_MS", kNetDownLogonWaitMsDefault) / 100;
+        } else {
+            maxPolls = 600;
+        }
+        const int kMaxPolls = maxPolls;
+        if (noLogonDispatched) {
+            log_line("[wn-launcher] no logon was dispatched (no usable cached credentials and no "
+                     "refresh token) — polling Steam_BLoggedOn only %dx100ms, in case the client "
+                     "signs itself in from cached credentials", kMaxPolls);
+        } else if (netDown) {
+            log_line("[wn-launcher] the device reports no validated network — capping the "
+                     "sign-in wait at %dx100ms", kMaxPolls);
+        }
         char cbBuf[64] = {0};
         for (; polls < kMaxPolls; ++polls) {
             if (bGetCallback && freeLastCallback) {
@@ -2768,18 +3068,37 @@ int main(int argc, char** argv) {
             }
             if (bLoggedOn(pipe, hUser)) {
                 loggedOn = true;
-                log_line("[wn-launcher] Steam_BLoggedOn=true after %dx100ms",
-                         polls + 1);
-                wn_launcher_arm_clean_shutdown(lsc, pipe, hUser, "C:\\wn-launcher.log");
-                cleanShutdownArmed = true;
+                log_line("[wn-launcher] Steam_BLoggedOn=true after %dx100ms (%s)",
+                         polls + 1,
+                         (offlineMode && offlineLogonOk) ? "offline sign-in" : "online sign-in");
                 break;
             }
-            if (sawConnFail && (connFailEResult == 5 ||
+            if (offlineMode && offlineLogonOk && offlineUser) {
+                void** offline_vt = *(void***) offlineUser;
+                void* stateP = offline_vt[kVtUser_GetLogonState];
+                if (is_exec_ptr(stateP)) {
+                    typedef int (WN_THISCALL *GetLogonStateFn)(void* self);
+                    int logonState = ((GetLogonStateFn) stateP)(offlineUser);
+                    if (logonState == 4) {
+                        loggedOn = true;
+                        log_line("[wn-launcher] IClientUser.GetLogonState=4 after %dx100ms "
+                                 "(offline sign-in complete)", polls + 1);
+                        break;
+                    }
+                }
+            }
+            if (sawConnFail && (netDown ||
+                                connFailEResult == 5 ||
                                 connFailEResult == 15 ||
                                 connFailEResult == 84)) {
-                log_line("[wn-launcher] hard auth failure (EResult=%d) — "
+                log_line("[wn-launcher] hard logon failure (EResult=%d) — "
                          "skipping remaining logon wait", connFailEResult);
                 break;
+            }
+            if (polls != 0 && polls % 50 == 0) {
+                log_line("[wn-launcher] still waiting for the %s sign-in to finish (%ds of %ds)",
+                         (offlineMode && offlineLogonOk) ? "offline" : "online",
+                         polls / 10, kMaxPolls / 10);
             }
             Sleep(100);
         }
@@ -2791,10 +3110,37 @@ int main(int argc, char** argv) {
                  polls, sawConnected ? 1 : 0, sawConnFail ? 1 : 0);
     }
 
-    if (loggedOn && engine && appId != 0) {
+    wn_launcher_arm_clean_shutdown(lsc, pipe, hUser, "C:\\wn-launcher.log");
+    cleanShutdownArmed = true;
+
+    const bool noSteamNetwork = (offlineMode && offlineLogonOk) || (netDown && !sawConnected);
+    if (noSteamNetwork) {
+        log_line("[wn-launcher] treating this session as having no Steam connection "
+                 "(offlineLogonOk=%d netDown=%d sawConnected=%d) — anything that can only come "
+                 "from a CM is skipped", offlineLogonOk ? 1 : 0, netDown ? 1 : 0,
+                 sawConnected ? 1 : 0);
+    }
+
+    if (offlineMode && offlineLogonOk) {
+        seed_active_process_registry(GetCurrentProcessId(),
+                                     (uint32_t)(steamId & 0xFFFFFFFFu));
+        log_line("[wn-launcher] re-seeded HKCU ActiveProcess after the offline sign-in "
+                 "(CreateGlobalUser zeroes ActiveUser and only an online logon rewrites it)");
+    }
+
+    const bool ownershipUsable = loggedOn && !(offlineMode && offlineLogonOk);
+    if (ownershipUsable && engine && appId != 0) {
         sync_app_ownership(engine, hUser, pipe, appId, bGetCallback, freeLastCallback);
         prewarm_encrypted_app_ticket(engine, hUser, pipe, appId, bGetCallback,
                                      freeLastCallback);
+    } else if (offlineMode && offlineLogonOk && appId != 0) {
+        log_line("[wn-launcher] ownership sync skipped — app ownership tickets are minted by "
+                 "Steam's servers and are never cached on disk, so offline there is nothing to "
+                 "wait for; multiplayer that needs GetAuthSessionTicket will not work offline");
+    }
+
+    if (loggedOn && !offlineMode && engine && user && *user) {
+        log_offline_readiness(engine, hUser, pipe, user, steamId);
     }
 
 
@@ -2804,8 +3150,13 @@ int main(int argc, char** argv) {
         log_line("[wn-launcher] WN_STEAM_SKIP_APPINFO set — not refreshing appinfo "
                  "(LaunchApp will use whatever the client already has)");
     }
+    if (noSteamNetwork && !skipAppInfo && appId != 0) {
+        log_line("[wn-launcher] no Steam connection — skipping the appinfo refresh, "
+                 "AppInfoUpdateComplete_t is only ever delivered by a CM "
+                 "(LaunchApp uses the cached appinfo)");
+    }
 
-    if (loggedOn && engine && appId != 0 && !skipAppInfo) {
+    if (loggedOn && engine && appId != 0 && !skipAppInfo && !noSteamNetwork) {
         void** engine_vt = *(void***) engine;
         typedef void* (WN_THISCALL *GetIClientAppsFn)(void* self, int hUser, int hPipe);
         GetIClientAppsFn getApps = (GetIClientAppsFn)
@@ -2924,10 +3275,17 @@ int main(int argc, char** argv) {
 
     // Pull cloud saves + set the teardown cloud context now, so the exit upload
     // has a baseline to diff.
-    const bool agentCloud = env_int("WN_STEAM_AGENT_CLOUD", 1) != 0;
+    const bool cloudEnvOn = env_int_signed("WN_STEAM_AGENT_CLOUD", 1) != 0;
+    const bool agentCloud = cloudEnvOn && !offlineMode;
     if (loggedOn && engine && appId != 0 && agentCloud) {
         wn_launcher_set_cloud_context(engine, hUser, pipe, appId);
         wn_launcher_cloud_run(engine, hUser, pipe, appId, 0, 120000);
+    } else if (offlineMode && engine && appId != 0) {
+        log_line("[wn-launcher] cloud: launch download skipped — Steam Offline Mode keeps local "
+                 "saves off the cloud until the shortcut goes back online");
+    } else if (!cloudEnvOn && engine && appId != 0) {
+        log_line("[wn-launcher] cloud: launch download skipped — cloud saves are turned off "
+                 "for this shortcut");
     } else if (loggedOn && engine && appId != 0) {
         log_line("[wn-launcher] cloud: agent-side sync disabled "
                  "(RemoteStorage vtable slots unvalidated on this steamclient build); "
@@ -3169,6 +3527,19 @@ int main(int argc, char** argv) {
             if (eAppError == 9 /* MissingConfig */) {
                 // appinfo not landed — re-prime, settle, retry fast (nothing launched).
                 // "never appeared … retrying" wording disarms the Android watchdog.
+                const bool cmLandedLate = !offlineLogonOk && bLoggedOn && bLoggedOn(pipe, hUser);
+                if (noSteamNetwork && !cmLandedLate) {
+                    log_line("[wn-launcher] LaunchApp: \"%s\" never appeared — MissingConfig, and "
+                             "appinfo cannot be refreshed with no Steam connection; starting the "
+                             "game directly instead of retrying", exeName);
+                    launchFailureReason = "appinfo unavailable offline";
+                    break;
+                }
+                if (noSteamNetwork && cmLandedLate) {
+                    log_line("[wn-launcher] LaunchApp: MissingConfig, and the sign-in landed after "
+                             "the poll budget expired — the client does have a Steam connection "
+                             "after all, so refreshing appinfo and retrying");
+                }
                 if (retryApps && is_exec_ptr(requestAppInfoP)) {
                     typedef bool (WN_THISCALL *RequestAppInfoUpdateFn)(void* self,
                                                        uint32_t* appIds, int count);

@@ -48,6 +48,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.content.FileProvider;
 import androidx.compose.ui.platform.ComposeView;
 import androidx.core.view.WindowInsetsCompat;
+import com.winlator.cmod.app.config.DeviceProfileSettings;
 import com.winlator.cmod.BuildConfig;
 import com.winlator.cmod.feature.leaderboard.SessionRecordingController;
 import com.winlator.cmod.feature.stores.steam.enums.Marker;
@@ -80,6 +81,7 @@ import com.winlator.cmod.runtime.compat.SteamBridge;
 import com.winlator.cmod.runtime.content.ContentProfile;
 import com.winlator.cmod.runtime.content.ContentsManager;
 import com.winlator.cmod.runtime.content.AdrenotoolsManager;
+import com.winlator.cmod.runtime.system.LogManager;
 import com.winlator.cmod.shared.android.AppUtils;
 import com.winlator.cmod.shared.android.AppTerminationHelper;
 import com.winlator.cmod.shared.ui.toast.WinToast;
@@ -97,6 +99,7 @@ import com.winlator.cmod.shared.ui.dialog.PreloaderDialog;
 import com.winlator.cmod.runtime.system.ProcessHelper;
 import com.winlator.cmod.runtime.system.SessionKeepAliveService;
 import com.winlator.cmod.shared.android.RefreshRateUtils;
+import com.winlator.cmod.shared.android.ScreenSizes;
 import com.winlator.cmod.shared.util.StringUtils;
 import com.winlator.cmod.shared.io.TarCompressorUtils;
 import com.winlator.cmod.runtime.display.renderer.EffectComposer;
@@ -136,6 +139,10 @@ import com.winlator.cmod.shared.math.Mathf;
 import com.winlator.cmod.shared.math.XForm;
 import com.winlator.cmod.runtime.audio.midi.MidiHandler;
 import com.winlator.cmod.runtime.audio.midi.MidiManager;
+import com.winlator.cmod.shared.framegen.FrameGenEngine;
+import com.winlator.cmod.runtime.display.framegen.SystemFrameGenDetector;
+import com.winlator.cmod.runtime.display.framegen.SystemFrameGenMonitor;
+import com.winlator.cmod.runtime.display.framegen.SystemFrameGenState;
 import com.winlator.cmod.runtime.display.renderer.VulkanRenderer;
 import com.winlator.cmod.runtime.display.ui.FrameRating;
 import com.winlator.cmod.runtime.display.ui.MagnifierView;
@@ -190,16 +197,17 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import cn.sherlock.com.sun.media.sound.SF2Soundbank;
 import static com.winlator.cmod.runtime.display.XServerDisplayUtils.*;
+import timber.log.Timber;
 
 public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         implements SelfManagedOrientationActivity {
@@ -301,6 +309,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private String zinkMode = Container.DEFAULT_ZINK_MODE;
     private HashMap<String, String> graphicsDriverConfig;
     private String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
+    private Boolean directAudioAvailable;
     private String emulator = Container.DEFAULT_EMULATOR;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private String dxwrapper = Container.DEFAULT_DXWRAPPER;
@@ -310,6 +319,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private final EnvVars envVars = new EnvVars();
     // True when the chosen launch exe differs from Steam's configured entry: launcher skips Steam LaunchApp and CreateProcess'es the selected exe directly. Recomputed per launch.
     private boolean wnSteamDirectExeOverride = false;
+    private volatile boolean planWWrapperArgsResolved = false;
+    private volatile boolean backgroundSessionEnabled = false;
     private int wnSteamLaunchOption = -1;
     private String wnSteamUserArgs = "";
     private boolean firstTimeBoot = false;
@@ -334,6 +345,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     };
     private OnExtractFileListener onExtractFileListener;
     private WinHandler winHandler;
+    private com.winlator.cmod.runtime.input.controls.SteamControllerBackend steamControllerBackend;
+    private boolean steamControllerSessionReady;
+    private ComposeView controllerTestComposeView;
+    private final ExternalController controllerTestController = new ExternalController();
+    private boolean controllerTestGuideDown = false;
+    private boolean steamInputForeground = false;
     private WineRequestHandler wineRequestHandler;
     private float globalCursorSpeed = 1.0f;
     private MagnifierView magnifierView;
@@ -356,8 +373,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private static final String UTF8_ACTIVE_CODEPAGE_MANIFEST = codePageManifest(UTF8_MANIFEST_MARKER, "UTF-8");
     private static final Pattern ACTIVE_CODE_PAGE_PATTERN =
         Pattern.compile("<activeCodePage[^>]*>([^<]*)</activeCodePage>", Pattern.CASE_INSENSITIVE);
-    // Shown once the game window is up; a toast raised during setup would sit behind the preloader dialog.
-    private final AtomicReference<String> pendingLocaleManifestWarning = new AtomicReference<>();
     private int frameRatingWindowId = -1;
     private android.net.wifi.WifiManager.MulticastLock multicastLock;
     private final float[] xform = XForm.getInstance();
@@ -376,6 +391,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             drawerStickHandler.postDelayed(this, 110);
         }
     };
+
+    private final Runnable stopEventWatchTask = LogManager::stopEventWatch;
 
     private void fireDrawerStickDir(int dir) {
         if (drawerStateHolder == null) return;
@@ -444,6 +461,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private boolean isAnyControllerConnected() {
+        if (winHandler != null && winHandler.hasSdlPads()) return true;
         for (int id : android.view.InputDevice.getDeviceIds()) {
             android.view.InputDevice dev = android.view.InputDevice.getDevice(id);
             if (dev != null && ExternalController.isGameController(dev)) return true;
@@ -468,10 +486,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private String frameGenCachePath = null;
     private float frameGenRefreshRate = 0f;
     private boolean disFrameGenEnabled = false;
-    // Optical-flow processing resolution for DIS, as the length of the frame's
-    // SHORTER side in pixels. On a 720-tall frame the three presets are the old
-    // 25% / 35% / 50%, but stated this way the pyramid costs the same on any
-    // container resolution instead of ballooning on tall ones.
+    private SystemFrameGenMonitor systemFrameGenMonitor = null;
+    private boolean systemFrameGenSupported = false;
+    private boolean systemFrameGenHudEnabled = false;
+    private boolean systemFrameGenProbeRunning = false;
+    private int systemFrameGenMultiplier = 1;
+    private int systemFrameGenIdleProbes = 0;
+    private Runnable systemFrameGenPollRunnable = null;
+    private static final long SYSTEM_FRAME_GEN_POLL_MS = 2000L;
+    private static final int SYSTEM_FRAME_GEN_IDLE_PROBES = 3;
+    private String systemFrameGenSignal = "";
     private static final int[] DIS_FLOW_MIN_SIDES = {180, 252, 360};
     private static final int DIS_FRAME_GEN_SCALE_DEFAULT = 180;
 
@@ -599,6 +623,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     private boolean isDarkMode;
     private boolean enableLogsMenu;
+    private boolean autoPauseContainer;
+    private static final String TAG = "XServerDisplayActivity";
 
     private GuestProgramLauncherComponent guestProgramLauncherComponent;
     private EnvVars overrideEnvVars;
@@ -763,7 +789,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private String containerAdaptiveJoysticks() {
-        return container != null ? container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") : "0";
+        String fallback = DeviceProfileSettings.adaptiveJoysticksDefaultExtra(this);
+        return container != null
+                ? container.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, fallback)
+                : fallback;
     }
 
     private boolean isAdaptiveJoysticksEnabled() {
@@ -821,12 +850,24 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         frameGenFlowScale = clampFrameGenFlowScale(
                 parseSettingInt(getFrameGenSetting("frameGenFlowScale", containerFlowScale), 70));
 
-        if (frameGenEnabled
-                || !com.winlator.cmod.runtime.display.lsfg.LosslessScaling.isInstalled(this)) {
+        if (frameGenEnabled) {
             int result = com.winlator.cmod.feature.library.LosslessAutoImport.INSTANCE.sync(this).getResult();
             if (result != com.winlator.cmod.feature.library.LosslessAutoImport.RESULT_READY) {
                 Log.i("XServerDisplayActivity", "Lossless shader sync at launch: result=" + result);
             }
+        } else if (!com.winlator.cmod.runtime.display.lsfg.LosslessScaling.isInstalled(this)) {
+            new Thread(() -> {
+                int discovery = com.winlator.cmod.feature.library.LosslessAutoImport.INSTANCE
+                        .sync(this).getResult();
+                Log.i("XServerDisplayActivity",
+                        "Lossless shader discovery (frame generation off): result=" + discovery);
+                runOnUiThread(() -> {
+                    if (frameGenCachePath != null || isFinishing() || isDestroyed()) return;
+                    java.io.File found = com.winlator.cmod.runtime.display.lsfg.LosslessScaling
+                            .resolveCacheFile(this, true);
+                    if (found != null) frameGenCachePath = found.getAbsolutePath();
+                });
+            }, "LosslessDiscovery").start();
         }
 
         java.io.File cache = com.winlator.cmod.runtime.display.lsfg.LosslessScaling
@@ -864,9 +905,30 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void syncFrameGenerationHud() {
-        boolean active = (frameGenEnabled && frameGenCachePath != null) || disFrameGenEnabled;
-        FrameRating.OutputFrameSource source =
-                (frameGenEnabled || disFrameGenEnabled) ? frameGenOutputSource : null;
+        boolean ourFrameGen = (frameGenEnabled && frameGenCachePath != null) || disFrameGenEnabled;
+        boolean systemFrameGen = !ourFrameGen && systemFrameGenHudEnabled;
+        boolean active = ourFrameGen || systemFrameGen;
+
+        FrameRating.OutputFrameSource source;
+        if (ourFrameGen || frameGenEnabled || disFrameGenEnabled) {
+            source = frameGenOutputSource;
+        } else if (systemFrameGen) {
+            source = ensureSystemFrameGenMonitor();
+        } else {
+            source = null;
+        }
+
+        if (systemFrameGen) {
+            SystemFrameGenMonitor monitor = ensureSystemFrameGenMonitor();
+            if (monitor.isRunning()) {
+                monitor.setMultiplier(systemFrameGenMultiplier);
+            } else {
+                monitor.start(systemFrameGenMultiplier);
+            }
+        } else if (systemFrameGenMonitor != null) {
+            systemFrameGenMonitor.stop();
+        }
+
         if (frameRating != null) {
             frameRating.setOutputFrameSource(source);
             frameRating.setFrameGenerationActive(active);
@@ -875,6 +937,89 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             mangoHud.setOutputFrameSource(source);
             mangoHud.setFrameGenerationActive(active);
         }
+    }
+
+    private SystemFrameGenMonitor ensureSystemFrameGenMonitor() {
+        if (systemFrameGenMonitor == null) {
+            systemFrameGenMonitor = new SystemFrameGenMonitor(
+                    () -> {
+                        VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
+                        return renderer != null ? renderer.getPresentedFrameCount() : 0L;
+                    },
+                    () -> {
+                        android.view.Display display = getDisplayCompat();
+                        return display != null ? display.getRefreshRate() : 0f;
+                    },
+                    System::nanoTime);
+        }
+        return systemFrameGenMonitor;
+    }
+
+    private void refreshSystemFrameGenState() {
+        if (!systemFrameGenSupported || systemFrameGenProbeRunning) return;
+        systemFrameGenProbeRunning = true;
+        new Thread(() -> {
+            SystemFrameGenState state;
+            try {
+                state = SystemFrameGenDetector.detect();
+            } catch (Exception e) {
+                Log.w("XServerDisplayActivity", "System frame generation probe failed", e);
+                state = null;
+            }
+            SystemFrameGenState result = state;
+            runOnUiThread(() -> {
+                systemFrameGenProbeRunning = false;
+                if (activityDestroyed.get() || result == null) return;
+                applySystemFrameGenState(result);
+            });
+        }, "SystemFrameGenProbe").start();
+    }
+
+    private void applySystemFrameGenState(SystemFrameGenState state) {
+        if (!state.getSignal().equals(systemFrameGenSignal)) {
+            systemFrameGenSignal = state.getSignal();
+            Log.i("XServerDisplayActivity", "System frame generation signal: "
+                    + (systemFrameGenSignal.isEmpty() ? "none" : systemFrameGenSignal)
+                    + " multiplier=" + state.getMultiplier());
+        }
+        if (state.getActive()) {
+            systemFrameGenIdleProbes = 0;
+            systemFrameGenMultiplier = state.getMultiplier();
+        } else {
+            systemFrameGenIdleProbes++;
+        }
+
+        boolean settled = state.getActive() || systemFrameGenIdleProbes >= SYSTEM_FRAME_GEN_IDLE_PROBES;
+        if (!settled) return;
+        if (!state.getActive()) systemFrameGenMultiplier = state.getMultiplier();
+
+        if (systemFrameGenHudEnabled == state.getActive()) {
+            syncFrameGenerationHud();
+            return;
+        }
+        systemFrameGenHudEnabled = state.getActive();
+        syncFrameGenerationHud();
+        applyPreferredRefreshRate();
+    }
+
+    private void startSystemFrameGenPolling() {
+        if (!systemFrameGenSupported || systemFrameGenPollRunnable != null) return;
+        systemFrameGenPollRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (activityDestroyed.get()) return;
+                SystemFrameGenDetector.invalidate();
+                refreshSystemFrameGenState();
+                handler.postDelayed(this, SYSTEM_FRAME_GEN_POLL_MS);
+            }
+        };
+        handler.postDelayed(systemFrameGenPollRunnable, SYSTEM_FRAME_GEN_POLL_MS);
+    }
+
+    private void stopSystemFrameGenPolling() {
+        if (systemFrameGenPollRunnable == null) return;
+        handler.removeCallbacks(systemFrameGenPollRunnable);
+        systemFrameGenPollRunnable = null;
     }
 
     private final FrameRating.OutputFrameSource frameGenOutputSource =
@@ -1116,9 +1261,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private static int clampDisFrameGenScale(int value) {
-        // Anything at or below 100 was written by the old percentage setting; read
-        // it as a fraction of a 720-tall frame so existing containers migrate to
-        // the nearest preset instead of collapsing to a 25-pixel pyramid.
         int minSide = (value > 0 && value <= 100) ? value * 720 / 100 : value;
         int best = DIS_FRAME_GEN_SCALE_DEFAULT;
         int bestDelta = Integer.MAX_VALUE;
@@ -1335,7 +1477,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 if (renderer != null) renderer.setFrameGenerationRefreshRate(refreshRate);
                 return;
             }
-            RefreshRateUtils.applyPreferredRefreshRate(this, getRefreshRateOverride(), runtimeFpsLimit);
+            int pacedFpsLimit = systemFrameGenHudEnabled ? 0 : runtimeFpsLimit;
+            RefreshRateUtils.applyPreferredRefreshRate(this, getRefreshRateOverride(), pacedFpsLimit);
         };
 
         if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -1402,6 +1545,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         syncFrameGenerationRefreshRate();
 
+        SystemFrameGenDetector.invalidate();
+        refreshSystemFrameGenState();
+
         // Sync the in-drawer slider ceiling, but only if the drawer was opened (otherwise the next open rebuilds state fresh).
         if (maxChanged && drawerStateHolder != null) {
             renderDrawerMenu();
@@ -1462,7 +1608,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         boolean bootExeChanged = !(incomingBootExe != null ? incomingBootExe : "").equals(currentBootExe);
 
         if (shortcutChanged || shortcutUuidChanged || containerChanged || bootExeChanged) {
-            Log.d("XServerDisplayActivity", "onNewIntent: launch target changed, cleaning up before recreation");
+            LogManager.log(TAG, "onNewIntent: launch target changed, cleaning up before recreation", this);
             switchLaunchTargetAfterCleanup(intent);
         }
     }
@@ -1554,7 +1700,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     private void switchLaunchTargetAfterCleanup(Intent intent) {
         if (!switchLaunchInProgress.compareAndSet(false, true)) {
-            Log.d("XServerDisplayActivity", "Switch launch already in progress; ignoring duplicate target intent");
+            LogManager.log(TAG, "Switch launch already in progress; ignoring duplicate target intent", this);
             return;
         }
 
@@ -1571,7 +1717,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             performForcedSessionCleanup("switch launch target");
             runOnUiThread(() -> {
                 if (isFinishing() || isDestroyed()) {
-                    Log.w("XServerDisplayActivity", "Switch cleanup finished after activity was destroyed");
+                    LogManager.logW(TAG, "Switch cleanup finished after activity was destroyed", null, this);
                     return;
                 }
                 setIntent(relaunchIntent);
@@ -1586,7 +1732,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         super.onCreate(savedInstanceState);
         AppUtils.hideSystemUI(this);
         AppUtils.keepScreenOn(this);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+
+        // SHOW THE CONTAINER/GAME ON TOP OF LOCK SCREEN
+        // Completely disabled, because the purpose of this code was to prevent the container
+        // from being killed by the OS, but it didn’t work. And it became a nuisance.
+        /*if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
         } else {
@@ -1603,18 +1753,25 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     km.requestDismissKeyguard(this, null);
                 }
             } catch (Throwable t) {
-                Log.w("XServerDisplayActivity",
+                Log.w(TAG,
                     "requestDismissKeyguard failed: " + t.getMessage());
             }
-        }
+        }*/
+
         DebugFragment.Companion.cleanupSharedLogs();
         com.winlator.cmod.runtime.system.LogManager.prepareForNewSession(this);
 
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        ProcessHelper.setBackgroundPauseMode(
+                ProcessHelper.getBackgroundPauseMode().fromPrefValue(
+                        preferences.getString("background_pause_mode", ProcessHelper.getBackgroundPauseMode().GAME_ONLY.getPrefValue())
+                )
+        );
+
         com.winlator.cmod.runtime.system.ApplicationLogGate.refresh(this);
         applyPreferredRefreshRate();
         launchedFromPinnedShortcut = isPinnedShortcutLaunchIntent(getIntent());
-        
+
         setContentView(R.layout.xserver_display_activity);
         xServerDisplayFrame = new FrameLayout(this);
         xServerDisplayFrame.setId(R.id.FLXServerDisplay);
@@ -1636,7 +1793,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 multicastLock.acquire();
             }
         } catch (Exception e) {
-            Log.w("XServerDisplayActivity", "Failed to acquire MulticastLock", e);
+            Log.w(TAG, "Failed to acquire MulticastLock", e);
         }
 
         dualSeriesBattery = preferences.getBoolean(FrameRating.PREF_HUD_DUAL_SERIES_BATTERY, false);
@@ -1648,6 +1805,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         preferences.edit().putBoolean("show_touchscreen_controls_enabled", true).apply();
         boolean isOpenWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", false);
         boolean isShareAndroidClipboard = preferences.getBoolean("share_android_clipboard", false);
+        autoPauseContainer = preferences.getBoolean("enable_auto_pause_when_background", false);
 
         winHandler = new WinHandler(this);
         winHandlerStopped.set(false);
@@ -1696,11 +1854,17 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         registerDisplayChangeListener();
 
+        systemFrameGenSupported = SystemFrameGenDetector.isVendorDevice();
+        if (systemFrameGenSupported) {
+            Log.i(TAG, "Vendor frame generation possible on this device");
+            refreshSystemFrameGenState();
+        }
+
         hideControlsRunnable = () -> {
             if (!isMouseDisabled && xServer != null && xServer.getRenderer() != null
                     && xServer.getRenderer().isCursorVisible()) {
                 xServer.getRenderer().setCursorVisible(false);
-                Log.d("XServerDisplayActivity", "Mouse cursor hidden after inactivity.");
+                Log.d(TAG, "Mouse cursor hidden after inactivity.");
             }
         };
 
@@ -1810,7 +1974,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             String dataPath = resolveDesktopPathFromUri(launchData);
             if (dataPath != null && !dataPath.isEmpty()) {
                 shortcutPath = dataPath;
-                Log.d("XServerDisplayActivity", "Resolved shortcut path from VIEW data: " + shortcutPath);
+                Log.d(TAG, "Resolved shortcut path from VIEW data: " + shortcutPath);
             }
         }
 
@@ -1882,13 +2046,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         container = containerManager.getContainerById(containerId);
 
         if (container == null) {
-            Log.e("XServerDisplayActivity", "Failed to retrieve container with ID: " + containerId);
+            LogManager.logE("XServerDisplayActivity", "Failed to retrieve container with ID: " + containerId, null, this);
             finish();
             return;
         }
 
         if (!containerManager.activateContainer(container)) {
-            Log.e("XServerDisplayActivity", "Failed to activate container with ID: " + containerId);
+            LogManager.logE("XServerDisplayActivity", "Failed to activate container with ID: " + containerId, null, this);
             finish();
             return;
         }
@@ -2015,12 +2179,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 if (newContainerId != container.id) {
                     container = containerManager.getContainerById(newContainerId);
                     if (container == null) {
-                        Log.e("XServerDisplayActivity", "Failed to retrieve overridden container with ID: " + newContainerId);
+                        LogManager.logE(TAG, "Failed to retrieve overridden container with ID: " + newContainerId, null, this);
                         finish();
                         return;
                     }
                     if (!containerManager.activateContainer(container)) {
-                        Log.e("XServerDisplayActivity", "Failed to activate overridden container with ID: " + newContainerId);
+                        LogManager.logE(TAG, "Failed to activate overridden container with ID: " + newContainerId, null, this);
                         finish();
                         return;
                     }
@@ -2203,7 +2367,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     startupSelection + "'");
         }
 
-        this.graphicsDriverConfig = GraphicsDriverConfigUtils.parseGraphicsDriverConfig(graphicsDriverConfig);
+        this.graphicsDriverConfig =
+                GraphicsDriverConfigUtils.parseGraphicsDriverConfig(Container.DEFAULT_GRAPHICSDRIVERCONFIG);
+        this.graphicsDriverConfig.putAll(
+                GraphicsDriverConfigUtils.parseGraphicsDriverConfig(graphicsDriverConfig));
         this.dxwrapperConfig = DXVKConfigUtils.parseConfig(dxwrapperConfig);
         Log.i("XServerDisplayActivity", "Launch DX wrapper selected: dxwrapper='" +
                 dxwrapper + "' dxvkVersion='" + this.dxwrapperConfig.get("version") +
@@ -2228,12 +2395,20 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         showLaunchPreloader(getString(R.string.preloader_initializing));
 
         // Dependency-install sessions must not become background/reattachable sessions.
-        if (!isDependencyInstall && preferences.getBoolean("enable_background_session", false)) {
+        backgroundSessionEnabled = !isDependencyInstall
+                && preferences.getBoolean("enable_background_session", false);
+        if (backgroundSessionEnabled) {
             SessionKeepAliveService.startSession(this);
         }
 
         inputControlsManager = new InputControlsManager(this);
         gestureProfileManager = new GestureProfileManager(this);
+        String sanitizedScreenSize = ScreenSizes.sanitize(screenSize, Container.DEFAULT_SCREEN_SIZE);
+        if (!sanitizedScreenSize.equals(screenSize)) {
+            Log.w("XServerDisplayActivity", "Unusable screen size '" + screenSize +
+                    "', falling back to '" + sanitizedScreenSize + "'");
+            screenSize = sanitizedScreenSize;
+        }
         sgsrBaseScreenSize = screenSize;
         String effectiveScreenSize =
                 SGSRResolutionUtils.applyRenderScale(screenSize, sgsrEnabled, sgsrUpscaleMode);
@@ -2268,8 +2443,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             if (activeProfile != null) showInputControls(activeProfile);
                             else startTouchscreenTimeout();
                         }
-                        String localeWarning = pendingLocaleManifestWarning.getAndSet(null);
-                        if (localeWarning != null) WinToast.show(XServerDisplayActivity.this, localeWarning);
                     });
                     if (startFullscreenStretched) {
                         timeoutHandler.post(() -> {
@@ -2349,88 +2522,94 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 simulateConfirmInputControlsDialog();
             }
             Executors.newSingleThreadExecutor().execute(() -> {
-                boolean sessionToReuse = SessionKeepAliveService.isSessionActive() &&
-                        SessionKeepAliveService.getActiveEnvironment() != null &&
-                        SessionKeepAliveService.getActiveXServer() != null;
+                try {
+                    boolean sessionToReuse = SessionKeepAliveService.isSessionActive() &&
+                            SessionKeepAliveService.getActiveEnvironment() != null &&
+                            SessionKeepAliveService.getActiveXServer() != null;
 
-                UpdateService.INSTANCE.cancelPostGameCheck();
+                    UpdateService.INSTANCE.cancelPostGameCheck();
 
-                if (!sessionToReuse) {
-                    if (isSteamShortcut()) {
-                        try {
-                            setSteamClientVisibility(true, isColdClientEnabledForShortcut());
-                        } catch (Throwable t) {
-                            Log.w("XServerDisplayActivity",
-                                    "Failed to select Steam client store before cloud sync", t);
+                    if (!sessionToReuse) {
+                        if (isSteamShortcut()) {
+                            try {
+                                setSteamClientVisibility(true, isColdClientEnabledForShortcut());
+                            } catch (Throwable t) {
+                                Log.w("XServerDisplayActivity",
+                                        "Failed to select Steam client store before cloud sync", t);
+                            }
                         }
-                    }
 
-                    // Parallel prep (cloud sync + Steam prefix DLL/asset setup), joined before setupXEnvironment so the launcher sees a complete prefix.
-                    java.util.concurrent.ExecutorService prepExec =
-                            java.util.concurrent.Executors.newFixedThreadPool(2);
-                    java.util.concurrent.Future<?> cloudFuture = prepExec.submit(() -> {
-                        try {
-                            if (steamCloudHandledByAgent()) {
-                                Log.i("XServerDisplayActivity",
-                                        "Steam cloud pre-launch sync skipped — the Steam Launcher "
-                                                + "agent runs RunAutoCloudOnAppLaunch inside the "
-                                                + "prefix");
-                            } else {
-                                SteamLaunchCloudSync.syncBeforeLaunch(
+                        // Parallel prep (cloud sync + Steam prefix DLL/asset setup), joined before setupXEnvironment so the launcher sees a complete prefix.
+                        java.util.concurrent.ExecutorService prepExec =
+                                java.util.concurrent.Executors.newFixedThreadPool(2);
+                        java.util.concurrent.Future<?> cloudFuture = prepExec.submit(() -> {
+                            try {
+                                if (steamCloudHandledByAgent()) {
+                                    Log.i("XServerDisplayActivity",
+                                            "Steam cloud pre-launch sync skipped — the Steam Launcher "
+                                                    + "agent runs RunAutoCloudOnAppLaunch inside the "
+                                                    + "prefix");
+                                } else {
+                                    SteamLaunchCloudSync.syncBeforeLaunch(
+                                            this, shortcut, isCloudSyncEnabledForShortcut(),
+                                            this::showLaunchPreloader);
+                                }
+                                EpicLaunchCloudSync.syncBeforeLaunch(
                                         this, shortcut, isCloudSyncEnabledForShortcut(),
                                         this::showLaunchPreloader);
+                                GogLaunchCloudSync.syncBeforeLaunch(
+                                        this, shortcut, isCloudSyncEnabledForShortcut(),
+                                        this::showLaunchPreloader);
+                            } catch (Throwable t) {
+                                Log.w("XServerDisplayActivity",
+                                        "Pre-launch cloud sync failed", t);
                             }
-                            EpicLaunchCloudSync.syncBeforeLaunch(
-                                    this, shortcut, isCloudSyncEnabledForShortcut(),
-                                    this::showLaunchPreloader);
-                            GogLaunchCloudSync.syncBeforeLaunch(
-                                    this, shortcut, isCloudSyncEnabledForShortcut(),
-                                    this::showLaunchPreloader);
+                        });
+                        java.util.concurrent.Future<?> steamFuture = isSteamShortcut()
+                                ? prepExec.submit(() -> {
+                                    try {
+                                        setupSteamGameFiles();
+                                    } catch (Throwable t) {
+                                        Log.w("XServerDisplayActivity",
+                                                "Pre-launch Steam game setup failed", t);
+                                    }
+                                })
+                                : null;
+                        prepExec.shutdown();
+
+                        if (preloaderDialog != null && isSteamShortcut()) {
+                            preloaderDialog.setStepOnUiThread(R.string.preloader_preparing_steam_environment);
+                        }
+                        setupWineSystemFiles();
+                        extractGraphicsDriverFiles();
+                        resolveAudioDriver();
+                        changeWineAudioDriver();
+
+                        try {
+                            if (steamFuture != null) steamFuture.get();
                         } catch (Throwable t) {
                             Log.w("XServerDisplayActivity",
-                                    "Pre-launch cloud sync failed", t);
+                                    "Steam game setup wait interrupted", t);
                         }
-                    });
-                    java.util.concurrent.Future<?> steamFuture = isSteamShortcut()
-                            ? prepExec.submit(() -> {
-                                try {
-                                    setupSteamGameFiles();
-                                } catch (Throwable t) {
-                                    Log.w("XServerDisplayActivity",
-                                            "Pre-launch Steam game setup failed", t);
-                                }
-                            })
-                            : null;
-                    prepExec.shutdown();
-
-                    if (preloaderDialog != null && isSteamShortcut()) {
-                        preloaderDialog.setStepOnUiThread(R.string.preloader_preparing_steam_environment);
+                        try {
+                            cloudFuture.get();
+                        } catch (Throwable t) {
+                            Log.w("XServerDisplayActivity",
+                                    "Cloud sync wait interrupted", t);
+                        }
+                    } else {
+                        Log.i("XServerDisplayActivity", "Skipping pre-game setup for active background session");
+                        applyPreferredRefreshRate();
+                        resolveAudioDriver();
                     }
-                    setupWineSystemFiles();
-                    extractGraphicsDriverFiles();
-                    changeWineAudioDriver();
 
                     try {
-                        if (steamFuture != null) steamFuture.get();
-                    } catch (Throwable t) {
-                        Log.w("XServerDisplayActivity",
-                                "Steam game setup wait interrupted", t);
+                        setupXEnvironment();
+                    } catch (PackageManager.NameNotFoundException e) {
+                        throw new RuntimeException(e);
                     }
-                    try {
-                        cloudFuture.get();
-                    } catch (Throwable t) {
-                        Log.w("XServerDisplayActivity",
-                                "Cloud sync wait interrupted", t);
-                    }
-                } else {
-                    Log.i("XServerDisplayActivity", "Skipping pre-game setup for active background session");
-                    applyPreferredRefreshRate();
-                }
-
-                try {
-                    setupXEnvironment();
-                } catch (PackageManager.NameNotFoundException e) {
-                    throw new RuntimeException(e);
+                } catch (Throwable t) {
+                    reportLaunchFailure(t);
                 }
             });
         };
@@ -3069,6 +3248,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     @Override
     public void onResume() {
         super.onResume();
+        steamInputForeground = true;
         com.winlator.cmod.feature.stores.steam.service.GameSessionState.setInGame(this, true);
         applyPreferredRefreshRate();
         registerGyroSensorIfEnabled();
@@ -3090,12 +3270,19 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             evaluateControllerAutoHide();
         }
 
+        if (!cleaningUp) {
+            startSteamControllerSupport();
+            refreshSteamControllerInput();
+        }
+
         startTime = System.currentTimeMillis();
         handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
 
         if (!cleaningUp && !isPaused) {
-            ProcessHelper.resumeAllWineProcesses();
-            SessionKeepAliveService.onResumeSession(this);
+            if (autoPauseContainer) {
+                // Move heavy proc-walk to background
+                new Thread(ProcessHelper::resumeAllWineProcesses, "WineProcessResumer").start();
+            }
         }
 
         if (taskManagerPaneVisible && taskManagerTimer == null) {
@@ -3103,11 +3290,41 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
 
         if (externalDisplayController != null) externalDisplayController.start();
+
+        if (systemFrameGenSupported) {
+            SystemFrameGenDetector.invalidate();
+            refreshSystemFrameGenState();
+            syncFrameGenerationHud();
+            startSystemFrameGenPolling();
+        }
+
+        SessionKeepAliveService.onResumeSession(this);
+        LogManager.log(TAG, "Session resumed", getApplicationContext());
+        if (!isInPictureInPictureMode()) {
+            // Cancel any pending stop task and re-schedule it
+            handler.removeCallbacks(stopEventWatchTask);
+            handler.postDelayed(stopEventWatchTask, 8000);
+        }
     }
 
     @Override
     public void onPause() {
+        if (!isInPictureInPictureMode()) {
+            // Cancel the scheduled stop immediately so it doesn't kill
+            // the watcher we are about to start below.
+            handler.removeCallbacks(stopEventWatchTask);
+            // Move heavy proc-walk to background
+            new Thread(() -> LogManager.startEventWatch(getApplicationContext(), "XServerDisplayActivity.onPause"), "EventWatchStart").start();
+        }
+        LogManager.log(TAG, "Session paused; entering background", getApplicationContext());
+        SessionKeepAliveService.onPauseSession(this);
+
+        steamInputForeground = false;
+        refreshSteamControllerInput();
+        stopSteamControllerSupport();
         super.onPause();
+        stopSystemFrameGenPolling();
+        if (systemFrameGenMonitor != null) systemFrameGenMonitor.stop();
         isVolumeUpPressed = false;
         isVolumeDownPressed = false;
         guideHoldPending = false;
@@ -3121,6 +3338,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         boolean cleaningUp = exitRequested.get() || sessionCleanupStarted.get() || activityDestroyed.get();
 
         if (!cleaningUp && !isInPictureInPictureMode()) {
+            if (autoPauseContainer) {
+                // Move heavy proc-walk to background
+                new Thread(ProcessHelper::pauseAllWineProcesses, "WineProcessPauser").start();
+            }
+
             if (environment != null) {
                 environment.onPause();
                 xServerView.onPause();
@@ -3145,6 +3367,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
 
         if (externalDisplayController != null) externalDisplayController.stop();
+    }
+
+    @Override
+    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+        SessionKeepAliveService.setPipMode(isInPictureInPictureMode);
     }
 
     @Override
@@ -3269,12 +3497,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (!isSteamShortcut() || winHandler == null) return false;
 
         if (!steamExitWatchRunning.compareAndSet(false, true)) {
-            Log.d("XServerDisplayActivity", "Steam exit watch already running; ignoring duplicate termination callback");
+            LogManager.log(TAG, "Steam exit watch already running; ignoring duplicate termination callback", this);
             return true;
         }
 
-        Log.d("XServerDisplayActivity",
-                "Steam wrapper terminated with status " + status + "; watching Wine processes before exiting");
+        LogManager.log(TAG,
+                "Steam wrapper terminated with status " + status + "; watching Wine processes before exiting", this);
 
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
@@ -3307,18 +3535,18 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             }
                         }
 
-                        Log.d("XServerDisplayActivity", "Steam exit watch snapshot: " + activeNames);
+                        LogManager.log(TAG, "Steam exit watch snapshot: " + activeNames, this);
 
                         long now = System.currentTimeMillis();
                         if (hasNonCoreProcess) {
                             lastNonCoreSeenAt = now;
                         } else if (lastNonCoreSeenAt > 0L && now - lastNonCoreSeenAt >= STEAM_TERMINATION_POLL_MS) {
-                            Log.d("XServerDisplayActivity", "Steam/game processes drained; exiting session");
+                            LogManager.log(TAG, "Steam/game processes drained; exiting session", this);
                             requestExitOnUiThread("steam/game processes drained");
                             return;
                         } else if (lastNonCoreSeenAt < 0L && now - startTime >= STEAM_TERMINATION_GRACE_MS) {
-                            Log.d("XServerDisplayActivity",
-                                    "No non-core Steam/game process appeared after wrapper exit; exiting session");
+                            LogManager.log(TAG,
+                                    "No non-core Steam/game process appeared after wrapper exit; exiting session", this);
                             requestExitOnUiThread("steam wrapper exited without spawning a game");
                             return;
                         }
@@ -3328,12 +3556,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 }
 
                 if (!exitRequested.get() && !activityDestroyed.get()) {
-                    Log.d("XServerDisplayActivity", "Steam exit watch timed out; exiting session");
+                    LogManager.log(TAG, "Steam exit watch timed out; exiting session", this);
                     requestExitOnUiThread("steam exit watch timed out");
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                Log.w("XServerDisplayActivity", "Steam exit watch interrupted", e);
+                LogManager.logW(TAG, "Steam exit watch interrupted", e, this);
                 if (!exitRequested.get() && !activityDestroyed.get()) {
                     requestExitOnUiThread("steam exit watch interrupted");
                 }
@@ -3347,29 +3575,29 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     private void cleanupLingeringSessionProcesses(String reason) {
         if (SessionKeepAliveService.isSessionActive()) {
-            Log.d("XServerDisplayActivity", "Skipping lingering process cleanup from " + reason + " — session is active in background");
+            LogManager.log(TAG, "Skipping lingering process cleanup from " + reason + " — session is active in background", this);
             return;
         }
         ArrayList<String> before = ProcessHelper.listRunningWineProcesses();
         if (before.isEmpty()) return;
 
-        Log.w("XServerDisplayActivity", "Cleaning lingering session processes before " + reason + ": "
-                + ProcessHelper.listRunningWineProcessDetails());
+        LogManager.logW(TAG, "Cleaning lingering session processes before " + reason + ": "
+                + ProcessHelper.listRunningWineProcessDetails(), null, this);
         ArrayList<String> remaining = ProcessHelper.terminateSessionProcessesAndWait(2000, true);
         ProcessHelper.drainDeadChildren("pre-launch cleanup");
         ProcessHelper.scheduleDeadChildReapSweep("pre-launch cleanup", 2000, 200);
         if (!remaining.isEmpty()) {
-            Log.e("XServerDisplayActivity", "Session cleanup still has remaining processes after " + reason + ": "
-                    + ProcessHelper.listRunningWineProcessDetails());
+            LogManager.logE(TAG, "Session cleanup still has remaining processes after " + reason + ": "
+                    + ProcessHelper.listRunningWineProcessDetails(), null, this);
         } else {
-            Log.i("XServerDisplayActivity", "No lingering session processes remain after " + reason);
+            LogManager.logI(TAG, "No lingering session processes remain after " + reason, this);
         }
     }
 
     private void requestExitOnUiThread(String reason) {
         runOnUiThread(() -> {
             if (activityDestroyed.get() || isFinishing() || isDestroyed()) {
-                Log.d("XServerDisplayActivity", "Skipping exit request after teardown: " + reason);
+                LogManager.log(TAG, "Skipping exit request after teardown: " + reason, this);
                 return;
             }
             exit();
@@ -3378,15 +3606,15 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     private boolean beginSessionCleanup(String trigger) {
         if (sessionCleanupStarted.compareAndSet(false, true)) {
-            Log.d("XServerDisplayActivity", "Starting session cleanup from " + trigger);
+            LogManager.log(TAG, "Starting session cleanup from " + trigger, this);
             try {
                 if (perfController != null) perfController.stop();
             } catch (Throwable t) {
-                Log.w("XServerDisplayActivity", "perfController.stop() failed", t);
+                Timber.w(t, "perfController.stop() failed");
             }
             return true;
         }
-        Log.d("XServerDisplayActivity", "Session cleanup already in progress; ignoring " + trigger);
+        LogManager.log(TAG, "Session cleanup already in progress; ignoring " + trigger, this);
         return false;
     }
 
@@ -3453,14 +3681,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         WinHandler handler = winHandler;
         if (handler == null) return;
         if (!winHandlerStopped.compareAndSet(false, true)) {
-            Log.d("XServerDisplayActivity", "WinHandler already stopped; ignoring duplicate request from " + trigger);
+            LogManager.log(TAG, "WinHandler already stopped; ignoring duplicate request from " + trigger, this);
             return;
         }
 
         try {
             handler.stop();
         } catch (Exception e) {
-            Log.e("XServerDisplayActivity", "Failed to stop WinHandler from " + trigger, e);
+            LogManager.logE("XServerDisplayActivity", "Failed to stop WinHandler from " + trigger, e, this);
         }
     }
 
@@ -3620,13 +3848,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     private void performForcedSessionCleanup(String trigger) {
         if (!beginSessionCleanup(trigger)) {
-            Log.d("XServerLeakCheck", "Forced session cleanup already ran; skipping duplicate request from " + trigger);
+            LogManager.log("XServerLeakCheck", "Forced session cleanup already ran; skipping duplicate request from " + trigger, this);
             return;
         }
 
-        Log.w("XServerLeakCheck", "Starting forced session cleanup from " + trigger);
-        Log.d("XServerLeakCheck", "Forced cleanup initial process snapshot: "
-                + ProcessHelper.listRunningWineProcessDetails());
+        LogManager.logW("XServerLeakCheck", "Starting forced session cleanup from " + trigger, null, this);
+        LogManager.log("XServerLeakCheck", "Forced cleanup initial process snapshot: "
+                + ProcessHelper.listRunningWineProcessDetails(), this);
 
         try {
             if (playtimePrefs != null) {
@@ -3665,8 +3893,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
             try {
                 stopWinHandler("forced cleanup (" + trigger + ")");
+                LogManager.log("XServerLeakCheck", "Calling [stopWinHandler]", this);
             } catch (Exception e) {
-                Log.e("XServerLeakCheck", "Failed to stop WinHandler during forced cleanup", e);
+                LogManager.logW("XServerLeakCheck", "Failed to stop WinHandler during forced cleanup", e, this);
             }
 
             try {
@@ -3686,6 +3915,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 if (environment != null) {
                     environment.stopEnvironmentComponents();
                     environment = null;
+                    SessionKeepAliveService.clearActiveSession();
                 }
             } catch (Exception e) {
                 Log.e("XServerLeakCheck", "Failed to stop environment during forced cleanup", e);
@@ -3708,11 +3938,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     private void exit() {
         if (activityDestroyed.get() || isFinishing() || isDestroyed()) {
-            Log.d("XServerDisplayActivity", "Ignoring exit() on torn-down activity");
+            LogManager.log(TAG, "Ignoring exit() on torn-down activity", this);
             return;
         }
         if (!exitRequested.compareAndSet(false, true)) {
-            Log.d("XServerDisplayActivity", "Exit already in progress; ignoring duplicate request");
+            LogManager.log(TAG, "Exit already in progress; ignoring duplicate request", this);
             return;
         }
 
@@ -3740,14 +3970,15 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     ProcessHelper.drainDeadChildren("activity exit cleanup");
                     ProcessHelper.scheduleDeadChildReapSweep("activity exit cleanup", 4000, 200);
                     if (!remaining.isEmpty()) {
-                        Log.e("XServerDisplayActivity", "Exit cleanup still has remaining session processes: " + remaining);
+                        Log.e(TAG, "Exit cleanup still has remaining session processes: " + remaining);
                     }
                     if (environment != null) {
                         environment.stopEnvironmentComponents();
                         environment = null;
+                        SessionKeepAliveService.clearActiveSession();
                     }
-                    Log.d("XServerDisplayActivity", "Process snapshot after environment stop: "
-                            + ProcessHelper.listRunningWineProcessDetails());
+                    LogManager.log(TAG, "Process snapshot after environment stop: "
+                            + ProcessHelper.listRunningWineProcessDetails(), this);
                     stopXServer("exit");
                     wineRequestHandler = null;
                     midiHandler = null;
@@ -3770,13 +4001,43 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             return;
         }
 
+        // ToDo: Find a way to avoid stealing focus from the user without causing crashes, ANRs, or session re-starts when opening the app again
+        //  after use 'Exit' in the notification.
+        // If the app is already in the background (e.g. the user pressed Exit
+        // from the notification while using another app), just finish this
+        // Activity without starting UnifiedActivity — doing so would bring
+        // WinNative in front of whatever the user was doing.
+        if (SessionKeepAliveService.isAppInBackground() && SessionKeepAliveService.exitingFromNotification) {
+            // Navigate to the main screen to guarantee a clean back stack regardless
+            // of how this activity was originally launched, then immediately push the task
+            // back so we don't steal the foreground.
+            startUnifiedActivity();
+            // Suppress the transition animation — without this, there is a brief
+            // visible flash of UnifiedActivity before the task goes to the back.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0);
+            } else {
+                overridePendingTransition(0, 0);
+            }
+            // Send the task to the back *without* finishing — CLEAR_TOP will finish
+            // XServerDisplayActivity and surface UnifiedActivity naturally, all
+            // while the task stays behind whatever the user was doing.
+            moveTaskToBack(true);
+            finish();
+            return;
+        }
+
         returnToUnifiedActivity();
     }
 
-    private void returnToUnifiedActivity() {
+    private void startUnifiedActivity() {
         Intent intent = new Intent(this, UnifiedActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);
+    }
+
+    private void returnToUnifiedActivity() {
+        startUnifiedActivity();
         finish();
     }
 
@@ -3798,7 +4059,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             return;
         }
 
-        if (!isCloudSyncEnabledForShortcut() || com.winlator.cmod.feature.sync.CloudSyncHelper.isOfflineMode(shortcut)) {
+        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()) {
             onComplete.run();
             return;
         }
@@ -3936,7 +4197,34 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private boolean isOfflineModeForShortcut() {
-        return shortcut != null && "1".equals(shortcut.getExtra("offline_mode", "0"));
+        if (shortcut == null) return false;
+        if ("1".equals(shortcut.getExtra("offline_mode", "0"))) return true;
+        return isSteamShortcut() && isSteamOfflineModeForShortcut();
+    }
+
+    private boolean isSteamOfflineModeForShortcut() {
+        if (shortcut == null) return false;
+        return parseBoolean(getShortcutSetting("steamOfflineMode",
+                container != null && container.isSteamOfflineMode() ? "1" : "0"));
+    }
+
+    private boolean hasValidatedInternet() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return true;
+            android.net.Network active = cm.getActiveNetwork();
+            if (active == null) return false;
+            android.net.NetworkCapabilities caps = cm.getNetworkCapabilities(active);
+            if (caps == null) return false;
+            return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    && caps.hasCapability(
+                            android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        } catch (Exception e) {
+            Log.w("XServerDisplayActivity",
+                    "Could not read the network state; assuming this device is online", e);
+            return true;
+        }
     }
 
     private static final boolean STEAM_AGENT_CLOUD_ENABLED = true;
@@ -4237,6 +4525,21 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 cachedPreloaderSubtitle,
                 Math.max(0, Math.min(100, percent))
         );
+    }
+
+    private void reportLaunchFailure(Throwable t) {
+        Log.e("XServerDisplayActivity", "Launch failed before the game window appeared", t);
+        LogManager.log(TAG, "Launch failed: " + t, this);
+        if (preloaderDialog != null) preloaderDialog.closeOnUiThread();
+        stopWnLauncherStatusTailer();
+        if (activityDestroyed.get() || isFinishing() || isDestroyed()) return;
+        String reason = t.getMessage();
+        if (reason == null || reason.isEmpty()) reason = t.getClass().getSimpleName();
+        final String message = reason;
+        runOnUiThread(() -> {
+            if (activityDestroyed.get() || isFinishing() || isDestroyed()) return;
+            WinToast.show(this, getString(R.string.preloader_launch_failed, message));
+        });
     }
 
     private void stopWnLauncherStatusTailer() {
@@ -4671,6 +4974,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     @Override
     protected void onDestroy() {
         activityDestroyed.set(true);
+        stopSteamControllerSupport();
+        hideControllerTestDialog();
+        stopSystemFrameGenPolling();
+        if (systemFrameGenMonitor != null) {
+            systemFrameGenMonitor.stop();
+            systemFrameGenMonitor = null;
+        }
         if (reshadeLiveHandler != null) {
             reshadeLiveHandler.removeCallbacks(reshadeLiveWriteTask);
             reshadeLiveHandler.post(reshadeLiveWriteTask);
@@ -4717,6 +5027,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (exitRequested.get()) {
             SessionKeepAliveService.stopSession(this);
         }
+        LogManager.stopEventWatch();
 
         super.onDestroy();
         if (!switchLaunchInProgress.get()) {
@@ -4743,7 +5054,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             Log.w(tag, "Environment not null — components may not have been stopped");
         }
         if (winHandler != null && winHandler.getSocket() != null && !winHandler.getSocket().isClosed()) {
-            Log.e(tag, "WinHandler socket still open");
+            LogManager.logE(tag, "WinHandler socket still open", null, this);
         }
         if (wineRequestHandler != null && wineRequestHandler.getServerSocket() != null && !wineRequestHandler.getServerSocket().isClosed()) {
             Log.e(tag, "WineRequestHandler server socket still open");
@@ -4919,6 +5230,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         List<String> gestureProfileNames = new ArrayList<>();
         int gestureSelectedIndex = 0;
         try {
+            if (gestureProfileManager == null) gestureProfileManager = new GestureProfileManager(this);
             gestureProfileNames = gestureProfileManager.getProfileNames();
             gestureSelectedIndex = Math.max(0, gestureProfileManager.indexOfProfile(selectedGestureProfileId()));
         } catch (Throwable t) {
@@ -5406,11 +5718,15 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
                     @Override
                     public void onFrameGenEnabledChanged(boolean enabled) {
-                        if (enabled && frameGenCachePath == null) return;
-                        // One interpolator per frame: the other engine has to be
-                        // switched off deliberately, not silently under the user.
-                        if (enabled && disFrameGenEnabled) return;
-                        frameGenEnabled = enabled;
+                        onFrameGenEngineSelected(enabled ? FrameGenEngine.LSFG : FrameGenEngine.OFF);
+                    }
+
+                    @Override
+                    public void onFrameGenEngineSelected(FrameGenEngine engine) {
+                        boolean lsfg = engine == FrameGenEngine.LSFG;
+                        if (lsfg && frameGenCachePath == null) return;
+                        frameGenEnabled = lsfg;
+                        disFrameGenEnabled = engine == FrameGenEngine.DIS;
                         applyFrameGenerationLive();
                     }
 
@@ -5434,12 +5750,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
                     @Override
                     public void onDisFrameGenEnabledChanged(boolean enabled) {
-                        // The renderer drives one interpolator at a time, so the two
-                        // engines are mutually exclusive rather than fighting over
-                        // the composite chain.
-                        if (enabled && frameGenEnabled) return;
-                        disFrameGenEnabled = enabled;
-                        applyFrameGenerationLive();
+                        onFrameGenEngineSelected(enabled ? FrameGenEngine.DIS : FrameGenEngine.OFF);
                     }
 
                     @Override
@@ -5824,6 +6135,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     }
 
                     @Override
+                    public void onControllerTestClick() {
+                        if (drawerStateHolder != null) drawerStateHolder.closeDrawer();
+                        showControllerTestDialog();
+                    }
+
+                    @Override
                     public void onInputControlsEditClick() {
                         ControlsProfile activeProfile = inputControlsView != null ? inputControlsView.getProfile() : null;
                         Intent intent = new Intent(XServerDisplayActivity.this, UnifiedActivity.class);
@@ -6011,6 +6328,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         @Override
                         public void onDrawerOpened() {
                             releasePointerCapture();
+                            refreshSteamControllerInput();
                             if (winHandler != null) {
                                 winHandler.neutralizeControllers();
                             }
@@ -6024,6 +6342,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
                         @Override
                         public void onDrawerClosed() {
+                            refreshSteamControllerInput();
                             drawerStickHandler.removeCallbacks(drawerStickRepeat);
                             drawerStickDir = 0;
                             if (hudCardExpanded) {
@@ -6568,15 +6887,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             case R.id.main_menu_pause:
                 if (isPaused) {
                     ProcessHelper.resumeAllWineProcesses();
-                    SessionKeepAliveService.onResumeSession(this);
                 }
                 else {
                     ProcessHelper.pauseAllWineProcesses();
-                    SessionKeepAliveService.onPauseSession(this);
                     if (touchpadView != null) touchpadView.resetInputState();
                     if (inputControlsView != null) inputControlsView.cancelActiveTouches();
                 }
                 isPaused = !isPaused;
+                refreshSteamControllerInput();
                 renderDrawerMenu();
                 break;
             case R.id.main_menu_pip_mode:
@@ -6927,6 +7245,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
         else if (!hasFocus) {
             releasePointerCapture();
+        }
+
+        if (!hasFocus) {
+            if (touchpadView != null) touchpadView.resetInputState();
+            if (inputControlsView != null) inputControlsView.cancelActiveTouches();
+        } else if (winHandler != null) {
+            winHandler.resyncGamepadState();
         }
     }
 
@@ -7282,6 +7607,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             String dxvkWrapper = "dxvk-" + currentDXWrapperConfig.get("version");
             String vkd3dWrapper = "vkd3d-" + currentDXWrapperConfig.get("vkd3dVersion");
             String ddrawrapper = currentDXWrapperConfig.get("ddrawrapper");
+            if (ddrawrapper == null || ddrawrapper.isEmpty()) {
+                ddrawrapper = Container.DEFAULT_DDRAWRAPPER;
+            }
             Log.i("XServerDisplayActivity", "Launch DX wrapper files selected: dxvk='" +
                     dxvkWrapper + "' vkd3d='" + vkd3dWrapper + "' ddrawrapper='" +
                     ddrawrapper + "'");
@@ -7368,7 +7696,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (shortcut != null) {
             String shortcutInputType = shortcut.getSettingExtra("inputType", "");
             if (!shortcutInputType.isEmpty()) {
-                inputType = Byte.parseByte(shortcutInputType);
+                inputType = parseSettingInt(shortcutInputType, inputType);
             }
         }
         boolean dinputEnabled = (inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT;
@@ -7558,7 +7886,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             XEnvironment existingEnv = SessionKeepAliveService.getActiveEnvironment();
             XServer existingXServer = SessionKeepAliveService.getActiveXServer();
             if (existingEnv != null && existingXServer != null) {
-                Log.i("XServerDisplayActivity", "Re-attaching to existing background session environment");
+                Log.i(TAG, "Re-attaching to existing background session environment");
                 this.environment = existingEnv;
                 this.xServer = existingXServer;
                 this.environment.setContext(this);
@@ -7573,6 +7901,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 winHandler.markSessionInitialized();
 
                 this.guestProgramLauncherComponent = environment.getComponent(GuestProgramLauncherComponent.class);
+
+                // Recovery sweep: ensure everything is resumed and protected after re-attaching.
+                // This prevents a frozen guest if the app was killed while the container was paused.
+                ProcessHelper.resumeAllWineProcesses();
+                ProcessHelper.protectAllWineProcesses();
+
                 return;
             }
         }
@@ -7705,7 +8039,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                                     container.isNeedsUnpacking(),
                                     currentUnpackFiles);
                         } catch (Exception e) {
-                            Log.e("XServerDisplayActivity", "preUnpack failed", e);
+                            Log.e(TAG, "preUnpack failed", e);
                         }
                     });
                 } else if ("GOG".equals(prereqGameSource) || "EPIC".equals(prereqGameSource)) {
@@ -7714,7 +8048,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             installMonoIfNeeded(guestProgramLauncherComponent);
                             installGeckoIfNeeded(guestProgramLauncherComponent);
                         } catch (Exception e) {
-                            Log.e("XServerDisplayActivity", "preUnpack failed", e);
+                            Log.e(TAG, "preUnpack failed", e);
                         }
                     });
                 }
@@ -7761,15 +8095,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     )
             );
         } else if (DirectAudioDriver.INSTANCE.isSelected(audioDriver)) {
-            // No daemon to start; the driver talks AAudio from Wine's unixlib.
-            // wineInfo matches imageFs.winePath, so the ABI follows the layer being written.
-            String daWineVersion =
-                    wineInfo != null ? wineInfo.fullVersion() : container.getWineVersion();
-            if (!DirectAudioDriver.INSTANCE.install(this, imageFs, daWineVersion)) {
-                Log.w("XServerDisplayActivity", "DirectAudio install failed for wine '"
-                        + daWineVersion + "'; audio may be silent");
-            }
-
             boolean micRequested = DirectAudioDriver.INSTANCE.isMicEnabled(
                     getShortcutSetting(
                             DirectAudioDriver.EXTRA_MIC,
@@ -7890,13 +8215,19 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             .PrefManager.INSTANCE.getSteamUserSteamId64());
                     String planWTok = com.winlator.cmod.feature.stores.steam.utils
                             .PrefManager.INSTANCE.getRefreshToken();
-                    if (planWTok != null && !planWTok.isEmpty()
-                            && planWUser != null && !planWUser.isEmpty()
+                    if (planWUser != null && !planWUser.isEmpty()
                             && !planWSid.equals("0")
                             && bsAppId > 0) {
                         envVars.put("WN_STEAM_USERNAME", planWUser);
                         envVars.put("WN_STEAM_STEAMID", planWSid);
-                        envVars.put("WN_STEAM_TOKEN", planWTok);
+                        if (planWTok != null && !planWTok.isEmpty()) {
+                            envVars.put("WN_STEAM_TOKEN", planWTok);
+                        } else {
+                            Log.w("XServerDisplayActivity",
+                                    "Steam Launcher: no cached refresh token — the agent can "
+                                    + "only sign in against the Steam credentials this container "
+                                    + "already cached, which is the offline path");
+                        }
                         envVars.put("WN_STEAM_APPID", String.valueOf(bsAppId));
                         // Pass language for native launcher ACF UserConfig/MountedConfig
                         String acfLang = PrefManager.INSTANCE.getContainerLanguage();
@@ -8072,12 +8403,28 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             Log.w("XServerDisplayActivity",
                                     "Steam Launcher: Could not query depot data", depotIgnored);
                         }
-                        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()) {
+                        boolean netDown = !hasValidatedInternet();
+                        boolean steamOffline = isSteamOfflineModeForShortcut() || netDown;
+                        if (!isCloudSyncEnabledForShortcut() || isOfflineModeForShortcut()
+                                || steamOffline) {
                             envVars.put("WN_STEAM_AGENT_CLOUD", "0");
                             Log.i("XServerDisplayActivity",
                                     "Steam Launcher: WN_STEAM_AGENT_CLOUD=0 — cloud saves are "
-                                    + "turned off for this shortcut, so the agent skips "
-                                    + "RunAutoCloudOnAppLaunch and RunAutoCloudOnAppExit");
+                                    + "turned off for this shortcut, so the agent skips both "
+                                    + "the launch download and the exit upload");
+                        }
+                        if (netDown) {
+                            envVars.put("WN_STEAM_NET_DOWN", "1");
+                            Log.i("XServerDisplayActivity",
+                                    "Steam Launcher: WN_STEAM_NET_DOWN=1 — this device has no "
+                                    + "validated internet connection, so the agent signs in "
+                                    + "offline and never waits on Steam's servers");
+                        }
+                        if (steamOffline) {
+                            envVars.put("WN_STEAM_OFFLINE", "1");
+                            Log.i("XServerDisplayActivity",
+                                    "Steam Launcher: WN_STEAM_OFFLINE=1 — the agent signs in "
+                                    + "offline and never touches Steam Cloud for this session");
                         }
                         if (wnSteamLaunchOption >= 0) {
                             envVars.put("WN_STEAM_LAUNCH_OPTION", String.valueOf(wnSteamLaunchOption));
@@ -8112,16 +8459,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                                 "Steam Launcher: token+identity published (user=" + planWUser
                                 + " sid=" + planWSid
                                 + " appId=" + bsAppId
-                                + " tokenLen=" + planWTok.length() + ")");
+                                + " tokenLen=" + (planWTok == null ? 0 : planWTok.length()) + ")");
                     } else {
                         Log.w("XServerDisplayActivity",
-                                "Steam Launcher: refresh token / user / steamId missing "
+                                "Steam Launcher: user / steamId / appId missing "
                                 + "(user='" + planWUser + "' sidIsZero="
                                 + planWSid.equals("0") + " tokenEmpty="
                                 + (planWTok == null || planWTok.isEmpty())
                                 + " bsAppId=" + bsAppId
                                 + ") — launcher will refuse to start; "
-                                + "sign into Steam first");
+                                + "sign into Steam once while online first");
                     }
                 }
             } catch (Exception e) {
@@ -8200,7 +8547,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                                 return kotlin.Unit.INSTANCE;
                             });
                 wnLauncherStatusTailer.start();
-                wnLauncherDrivesDismiss.set(true);
+                wnLauncherDrivesDismiss.set(planWWrapperArgsResolved);
                 Log.i("XServerDisplayActivity",
                         "Steam Launcher: status tailer attached to " + launcherLog.getPath());
             } catch (Exception e) {
@@ -8216,7 +8563,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 getShortcutSetting(NetworkingSettings.EXTRA_MAC, container.getExtra(NetworkingSettings.EXTRA_MAC, "")));
         guestProgramLauncherComponent.setEnvVars(envVars);
         guestProgramLauncherComponent.setTerminationCallback((status) -> {
-            Log.d("XServerDisplayActivity", "Guest process terminated with status: " + status);
+            LogManager.log(TAG, "Guest process [" + guestProgramLauncherComponent.getGuestExecutable() + "] terminated with status: " + status, this);
             stopWnLauncherStatusTailer();
 
             if (isDependencyInstall) {
@@ -8274,13 +8621,18 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 preloaderDialog.setStepOnUiThread(R.string.preloader_starting_wine);
             }
             environment.startEnvironmentComponents();
-            if (!isDependencyInstall) {
+            if (backgroundSessionEnabled) {
                 SessionKeepAliveService.setActiveEnvironment(environment);
                 SessionKeepAliveService.setActiveXServer(xServer);
             }
         }
 
         winHandler.start();
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.setDialogOpen(false);
+        runOnUiThread(() -> {
+            steamControllerSessionReady = true;
+            startSteamControllerSupport();
+        });
         if (wineRequestHandler != null) wineRequestHandler.start();
 
         dxwrapperConfig = null;
@@ -8400,7 +8752,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             }
 
             String simTouchScreen = shortcut.getExtra("simTouchScreen");
-            screenTouchMode = Integer.parseInt(shortcut.getExtra("screenTouchMode", simTouchScreen.equals("1") ? "1" : "0"));
+            int touchModeFallback = simTouchScreen.equals("1") ? 1 : 0;
+            screenTouchMode = parseSettingInt(
+                    shortcut.getExtra("screenTouchMode", String.valueOf(touchModeFallback)),
+                    touchModeFallback);
+            if (screenTouchMode < 0 || screenTouchMode > 2) screenTouchMode = touchModeFallback;
             touchpadView.setScreenTouchMode(screenTouchMode);
             if (winHandler != null) winHandler.setScreenTouchStickActive(screenTouchMode == 2);
             rtsGesturesEnabled = shortcut.getExtra("rtsGestures", "0").equals("1");
@@ -8687,13 +9043,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 if (!embeddedCodePage.isEmpty()) {
                     Log.w("ContainerLaunch", "Game exe embeds activeCodePage " + embeddedCodePage
                             + "; the external " + localeName + " manifest is ignored for " + gamePath);
-                    pendingLocaleManifestWarning.set(getString(
-                            R.string.session_locale_manifest_embedded_codepage, embeddedCodePage));
                 } else {
                     Log.w("ContainerLaunch", "Game exe has an embedded manifest; the external "
                             + localeName + " activeCodePage manifest may be ignored for " + gamePath);
-                    pendingLocaleManifestWarning.set(getString(
-                            R.string.session_locale_manifest_embedded, localeName));
                 }
             }
 
@@ -8702,7 +9054,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             if (current != null && !current.contains(LOCALE_MANIFEST_MARKER)
                     && !current.contains(UTF8_MANIFEST_MARKER)) {
                 Log.w("ContainerLaunch", "Game ships its own manifest, not overriding: " + manifestFile);
-                pendingLocaleManifestWarning.set(getString(R.string.session_locale_manifest_external));
                 return;
             }
             if (FileUtils.writeString(manifestFile, manifest)) {
@@ -9155,6 +9506,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         inputControlsView.invalidate();
         if (winHandler != null) {
+            winHandler.representVirtualGamepad();
             winHandler.sendGamepadState();
         }
         startTouchscreenTimeout();
@@ -9208,9 +9560,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         if (firstTimeBoot) {
             Log.d("XServerDisplayActivity", "First time container boot, re-extracting libs");
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers" + ".tzst", rootDir);
-            // extra_libs.tzst handled by the version-aware block below (covers first boot too).
         }
 
         // safe to re-extract: the tzst holds only usr/lib/*.so + usr/share/vulkan/*, no home/drive_c
@@ -9247,19 +9597,29 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         boolean wantGamenative = "wrapper-gamenative".equals(graphicsDriver);
         File leegaoMarker = new File(rootDir, "usr/lib/.wrapper_leegao");
         File gamenativeMarker = new File(rootDir, "usr/lib/.wrapper_gamenative");
-        if (wantLeegao) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper-leegao.tzst", rootDir);
-            try { leegaoMarker.createNewFile(); } catch (IOException ignored) {}
-            gamenativeMarker.delete();
-        } else if (wantGamenative) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper-gamenative.tzst", rootDir);
-            try { gamenativeMarker.createNewFile(); } catch (IOException ignored) {}
-            leegaoMarker.delete();
-        } else if (leegaoMarker.exists() || gamenativeMarker.exists()) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers" + ".tzst", rootDir);
-            leegaoMarker.delete();
-            gamenativeMarker.delete();
+        File wrapperStateMarker = new File(rootDir, "usr/lib/.wrapper_state");
+        String wantedWrapperState =
+                (wantLeegao ? "leegao" : wantGamenative ? "gamenative" : "stock")
+                        + ":" + AppUtils.getVersionCode(this);
+        String installedWrapperState = "";
+        if (wrapperStateMarker.isFile()) {
+            String raw = FileUtils.readString(wrapperStateMarker);
+            if (raw != null) installedWrapperState = raw.trim();
+        }
+        if (!wantedWrapperState.equals(installedWrapperState)) {
+            Log.i("GraphicsDriverExtraction", "Wrapper state " + installedWrapperState
+                    + " -> " + wantedWrapperState + ", extracting");
+            String wrapperAsset = wantLeegao ? "graphics_driver/wrapper-leegao.tzst"
+                    : wantGamenative ? "graphics_driver/wrapper-gamenative.tzst"
+                    : "graphics_driver/wrapper.tzst";
+            if (TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, wrapperAsset, rootDir)) {
+                FileUtils.writeString(wrapperStateMarker, wantedWrapperState);
+                leegaoMarker.delete();
+                gamenativeMarker.delete();
+            } else {
+                Log.w("GraphicsDriverExtraction", "Extraction of " + wrapperAsset + " failed");
+                wrapperStateMarker.delete();
+            }
         }
 
         // libgallium_wgl.dll is present only while Windows Zink is installed — use as marker.
@@ -9392,8 +9752,17 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (wantGamenative) {
             String transcoder = graphicsDriverConfig.get("transcoder");
             envVars.put("WRAPPER_BCN_GPU", "gpu".equalsIgnoreCase(transcoder) ? "1" : "0");
-            String wrapperQuality = graphicsDriverConfig.get("quality");
-            envVars.put("WRAPPER_ASTC_BLOCK", "high".equalsIgnoreCase(wrapperQuality) ? "4x4" : "8x8");
+
+            String astcTranscoding = graphicsDriverConfig.get("astcTranscoding");
+            if (isSupportedAstcBlockSize(astcTranscoding)) {
+                envVars.put("WRAPPER_BCN_ASTC", "1");
+                envVars.put("WRAPPER_ASTC_BLOCK", astcTranscoding);
+                Log.i("XServerDisplayActivity", "ASTC transcoding on: block size " + astcTranscoding);
+            }
+            else {
+                envVars.put("WRAPPER_BCN_ASTC", "0");
+                Log.i("XServerDisplayActivity", "ASTC transcoding off");
+            }
         }
 
         String bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache");
@@ -9401,17 +9770,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     }
 
+    private static boolean isSupportedAstcBlockSize(String blockSize) {
+        return "4x4".equals(blockSize) || "8x8".equals(blockSize);
+    }
+
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
         handleDrawerEdgeSwipe(event);
-
-        // Drop paused input after the drawer edge-swipe check to avoid ANRs.
-        if (isInputSuspended() && (drawerStateHolder == null ||
-                (!drawerStateHolder.isDrawerOpen() && !drawerStateHolder.isPaneOpen()))) {
-
-            return true;
-        }
-
         return super.dispatchTouchEvent(event);
     }
 
@@ -9512,9 +9877,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             }
             return true;
         }
-        if (isInputSuspended() && (drawerStateHolder == null ||
-                (!drawerStateHolder.isDrawerOpen() && !drawerStateHolder.isPaneOpen()))) {
-
+        if (isSteamControllerShadowEvent(event.getDevice())) return true;
+        if (controllerTestComposeView != null
+                && com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.isActive()
+                && consumeControllerTestMotionEvent(event)) {
             return true;
         }
 
@@ -9556,55 +9922,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (drawerStateHolder != null && (drawerStateHolder.isDrawerOpen() || drawerStateHolder.isPaneOpen())
-                && ExternalController.isGameController(event.getDevice())) {
-            drawerStateHolder.updateControllerConnected(true);
-            int kc = event.getKeyCode();
-            boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
-            if (kc == KeyEvent.KEYCODE_BUTTON_MODE) {
-                // Menu open: a fresh press closes it; suppress the tail of the hold that opened it.
-                if (down && event.getEventTime() - guideMenuOpenedAt > GUIDE_HOLD_TAIL_MS) {
-                    guideMenuOpenedAt = 0L;
-                    handleNavigationBackPressed();
-                }
-                return true;
-            }
-            if (kc == KeyEvent.KEYCODE_BUTTON_B) {
-                if (down) handleNavigationBackPressed();
-                return true;
-            }
-            if (down) {
-                if (!drawerStateHolder.isPaneOpen()) {
-                    if (kc == KeyEvent.KEYCODE_DPAD_LEFT) {
-                        drawerStateHolder.menuNavLeft();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                        drawerStateHolder.menuNavRight();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_UP) {
-                        drawerStateHolder.menuNavUp();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_DOWN) {
-                        drawerStateHolder.menuNavDown();
-                    } else if (kc == KeyEvent.KEYCODE_BUTTON_A || kc == KeyEvent.KEYCODE_DPAD_CENTER) {
-                        drawerStateHolder.menuActivate();
-                    }
-                } else {
-                    if (kc == KeyEvent.KEYCODE_DPAD_UP) {
-                        drawerStateHolder.paneNavUp();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_DOWN) {
-                        drawerStateHolder.paneNavDown();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_LEFT) {
-                        drawerStateHolder.paneNavLeft();
-                    } else if (kc == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                        drawerStateHolder.paneNavRight();
-                    } else if (kc == KeyEvent.KEYCODE_BUTTON_A || kc == KeyEvent.KEYCODE_DPAD_CENTER) {
-                        drawerStateHolder.paneActivate();
-                    } else if (kc == KeyEvent.KEYCODE_BUTTON_X) {
-                        drawerStateHolder.paneSecondary();
-                    }
-                }
-            }
+        if (isSteamControllerShadowEvent(event.getDevice())) return true;
+        if (ExternalController.isGameController(event.getDevice())
+                && handleControllerMenuKey(event.getKeyCode(), event.getAction() == KeyEvent.ACTION_DOWN, event.getEventTime())) return true;
+        if (controllerTestComposeView != null
+                && com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.isActive()
+                && consumeControllerTestKeyEvent(event)) {
             return true;
         }
-        if (isInputSuspended()) return super.dispatchKeyEvent(event);
         if (ExternalController.isGameController(event.getDevice())) {
             cancelMousePointerTimeout();
             if (touchpadView != null) {
@@ -9655,7 +9980,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             return true;
         }
 
-
         if (event.getAction() == KeyEvent.ACTION_DOWN &&
                 (event.getKeyCode() == KeyEvent.KEYCODE_HOME ||
                  event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_SELECT)) {
@@ -9665,11 +9989,316 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return super.dispatchKeyEvent(event);
     }
 
+    private boolean handleControllerMenuKey(int kc, boolean down, long eventTime) {
+        if (drawerStateHolder == null || (!drawerStateHolder.isDrawerOpen() && !drawerStateHolder.isPaneOpen())) return false;
+        drawerStateHolder.updateControllerConnected(true);
+        if (kc == KeyEvent.KEYCODE_BUTTON_MODE) {
+            // Menu open: a fresh press closes it; suppress the tail of the hold that opened it.
+            if (down && eventTime - guideMenuOpenedAt > GUIDE_HOLD_TAIL_MS) {
+                guideMenuOpenedAt = 0L;
+                handleNavigationBackPressed();
+            }
+            return true;
+        }
+        if (kc == KeyEvent.KEYCODE_BUTTON_B) {
+            if (down) handleNavigationBackPressed();
+            return true;
+        }
+        if (down) {
+            if (!drawerStateHolder.isPaneOpen()) {
+                if (kc == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    drawerStateHolder.menuNavLeft();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    drawerStateHolder.menuNavRight();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_UP) {
+                    drawerStateHolder.menuNavUp();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    drawerStateHolder.menuNavDown();
+                } else if (kc == KeyEvent.KEYCODE_BUTTON_A || kc == KeyEvent.KEYCODE_DPAD_CENTER) {
+                    drawerStateHolder.menuActivate();
+                }
+            } else {
+                if (kc == KeyEvent.KEYCODE_DPAD_UP) {
+                    drawerStateHolder.paneNavUp();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    drawerStateHolder.paneNavDown();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    drawerStateHolder.paneNavLeft();
+                } else if (kc == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    drawerStateHolder.paneNavRight();
+                } else if (kc == KeyEvent.KEYCODE_BUTTON_A || kc == KeyEvent.KEYCODE_DPAD_CENTER) {
+                    drawerStateHolder.paneActivate();
+                } else if (kc == KeyEvent.KEYCODE_BUTTON_X) {
+                    drawerStateHolder.paneSecondary();
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean hasSteamControllerGuideBinding(ExternalController pad) {
+        ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+        ExternalController mapped = profile != null ? profile.getController(pad.getId()) : null;
+        return mapped != null && mapped.getControllerBinding(KeyEvent.KEYCODE_BUTTON_MODE) != null;
+    }
+
+    private final java.util.Map<Integer, java.util.Set<Integer>> steamMenuKeys = new java.util.HashMap<>();
+
+    private void handleSteamMenuInput(ExternalController pad, int[] pressedKeyCodes) {
+        java.util.Set<Integer> pressed = new java.util.HashSet<>();
+        for (int keyCode : pressedKeyCodes) pressed.add(keyCode);
+        java.util.Set<Integer> previous = steamMenuKeys.put(pad.getDeviceId(), pressed);
+        if (previous == null) previous = java.util.Collections.emptySet();
+        if (!steamInputForeground || controllerTestComposeView != null) return;
+        boolean menuOpen = drawerStateHolder != null && (drawerStateHolder.isDrawerOpen() || drawerStateHolder.isPaneOpen());
+        if (menuOpen) {
+            for (int keyCode : pressed) {
+                if (!previous.contains(keyCode)) handleControllerMenuKey(keyCode, true, SystemClock.uptimeMillis());
+            }
+            int dir = pad.state.thumbLX < -0.5f ? 1 : pad.state.thumbLX > 0.5f ? 2
+                    : pad.state.thumbLY < -0.5f ? 3 : pad.state.thumbLY > 0.5f ? 4 : 0;
+            if (dir != drawerStickDir) {
+                drawerStickDir = dir;
+                drawerStickHandler.removeCallbacks(drawerStickRepeat);
+                if (dir != 0) {
+                    fireDrawerStickDir(dir);
+                    drawerStickHandler.postDelayed(drawerStickRepeat, 350);
+                }
+            }
+        } else if (!previous.contains(KeyEvent.KEYCODE_BUTTON_MODE) && pressed.contains(KeyEvent.KEYCODE_BUTTON_MODE)
+                && !hasSteamControllerGuideBinding(pad)) {
+            guideHoldPending = true;
+            handler.removeCallbacks(guideHoldOpenRunnable);
+            handler.postDelayed(guideHoldOpenRunnable, GUIDE_HOLD_OPEN_MS);
+        }
+        if (previous.contains(KeyEvent.KEYCODE_BUTTON_MODE) && !pressed.contains(KeyEvent.KEYCODE_BUTTON_MODE)) {
+            guideHoldPending = false;
+            handler.removeCallbacks(guideHoldOpenRunnable);
+        }
+    }
+
+    public InputControlsManager getControllerTestProfileManager() {
+        return inputControlsManager;
+    }
+
+    public void applyControllerTestProfile(ControlsProfile profile) {
+        if (profile == null) return;
+        showInputControls(profile);
+        renderDrawerMenu();
+    }
+
+    public void reloadControllerTestBindings() {
+        if (inputControlsView == null) return;
+        ControlsProfile profile = inputControlsView.getProfile();
+        if (profile != null) showInputControls(profile);
+        refreshSteamControllerInput();
+    }
+
+    private void showControllerTestDialog() {
+        if (controllerTestComposeView != null) return;
+        android.view.ViewGroup root = findViewById(android.R.id.content);
+        if (root == null) return;
+        ComposeView view = new ComposeView(this);
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.onIdentify =
+                this::identifyControllerTestPad;
+        ControllerTestHost.attach(view, this, this::hideControllerTestDialog);
+        root.addView(
+                view,
+                new android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+        controllerTestComposeView = view;
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.setDialogOpen(true);
+        refreshSteamControllerInput();
+    }
+
+    private void hideControllerTestDialog() {
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.setDialogOpen(false);
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.onIdentify = null;
+        if (controllerTestComposeView == null) return;
+        android.view.ViewParent parent = controllerTestComposeView.getParent();
+        if (parent instanceof android.view.ViewGroup) {
+            ((android.view.ViewGroup) parent).removeView(controllerTestComposeView);
+        }
+        controllerTestComposeView = null;
+        refreshSteamControllerInput();
+    }
+
+    private void publishControllerTestSnapshot(android.view.InputDevice device) {
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.publish(
+                controllerTestController, device, controllerTestGuideDown);
+    }
+
+    private boolean consumeControllerTestKeyEvent(KeyEvent event) {
+        android.view.InputDevice device = event.getDevice();
+        if (!ExternalController.isGameController(device)) return false;
+        if (event.getRepeatCount() == 0) {
+            prepareControllerTestController(device);
+            if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE) {
+                controllerTestGuideDown = event.getAction() == KeyEvent.ACTION_DOWN;
+            }
+            controllerTestController.updateStateFromKeyEvent(event);
+            publishControllerTestSnapshot(device);
+        }
+        return true;
+    }
+
+    private boolean consumeControllerTestMotionEvent(MotionEvent event) {
+        android.view.InputDevice device = event.getDevice();
+        if (!ExternalController.isGameController(device)) return false;
+        prepareControllerTestController(device);
+        if (controllerTestController.updateStateFromMotionEvent(event)) {
+            publishControllerTestSnapshot(device);
+        }
+        return true;
+    }
+
+    private void identifyControllerTestPad() {
+        int deviceId = com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.currentDeviceId();
+        if (deviceId == Integer.MIN_VALUE) deviceId = controllerTestController.getDeviceId();
+        if (steamControllerBackend != null
+                && deviceId <= com.winlator.cmod.runtime.input.controls.SteamControllerBackend.DEVICE_ID_BASE) {
+            steamControllerBackend.rumble(deviceId, 0xFFFF, 0xFFFF, 320);
+            return;
+        }
+        android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
+        android.os.Vibrator vibrator = device != null ? device.getVibrator() : null;
+        if (vibrator == null || !vibrator.hasVibrator()) return;
+        vibrator.vibrate(
+                android.os.VibrationEffect.createOneShot(
+                        320L, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+    }
+
+    private void prepareControllerTestController(android.view.InputDevice device) {
+        if (device == null || controllerTestController.getDeviceId() == device.getId()) return;
+        controllerTestController.state.clear();
+        controllerTestController.setDeviceId(device.getId());
+        controllerTestController.setId(device.getDescriptor());
+        controllerTestController.setName(device.getName());
+        controllerTestController.setTriggerType(ExternalController.TRIGGER_IS_BOTH);
+        controllerTestGuideDown = false;
+    }
+
+    private boolean isSteamControllerInputEnabled() {
+        return steamInputForeground && !isInputSuspended() && controllerTestComposeView == null
+                && !activityDestroyed.get() && (drawerStateHolder == null
+                || (!drawerStateHolder.isDrawerOpen() && !drawerStateHolder.isPaneOpen()));
+    }
+
+    private void refreshSteamControllerInput() {
+        if (steamControllerBackend == null) return;
+        if (!isSteamControllerInputEnabled()) {
+            if (inputControlsView != null) inputControlsView.releaseSteamPadInputs();
+            if (winHandler != null) winHandler.neutralizeControllers();
+        }
+        steamControllerBackend.publishCurrentState();
+    }
+
+    private void startSteamControllerSupport() {
+        if (!steamControllerSessionReady || !steamInputForeground) return;
+        if (steamControllerBackend != null || winHandler == null) return;
+        if (isFinishing() || isDestroyed() || activityDestroyed.get()) return;
+        if (!com.winlator.cmod.runtime.input.controls.SteamControllerPrefs.isEnabled(this)) return;
+        int trackpadMode =
+                com.winlator.cmod.runtime.input.controls.SteamControllerPrefs.getTrackpadMouseMode(this);
+        com.winlator.cmod.runtime.input.controls.Binding[] paddles =
+                com.winlator.cmod.runtime.input.controls.SteamControllerPrefs.getPaddleBindings(this);
+        com.winlator.cmod.runtime.input.controls.SteamControllerBackend backend =
+                new com.winlator.cmod.runtime.input.controls.SteamControllerBackend(
+                        this, trackpadMode, paddles,
+                        new com.winlator.cmod.runtime.input.controls.SteamControllerBackend.Listener() {
+            @Override
+            public boolean isSteamPadInputEnabled() {
+                return isSteamControllerInputEnabled();
+            }
+
+            @Override
+            public boolean hasSteamPadBinding(ExternalController pad, int keyCode) {
+                ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+                ExternalController mapped = profile != null ? profile.getController(pad.getId()) : null;
+                return mapped != null && mapped.getControllerBinding(keyCode) != null;
+            }
+
+            @Override
+            public void onSteamPadConnected(ExternalController pad) {
+                if (winHandler != null) winHandler.onSdlPadConnected(pad);
+            }
+
+            @Override
+            public void onSteamPadDisconnected(ExternalController pad) {
+                java.util.Set<Integer> held = steamMenuKeys.remove(pad.getDeviceId());
+                if (held != null && held.contains(KeyEvent.KEYCODE_BUTTON_MODE)) {
+                    guideHoldPending = false;
+                    handler.removeCallbacks(guideHoldOpenRunnable);
+                }
+                drawerStickHandler.removeCallbacks(drawerStickRepeat);
+                drawerStickDir = 0;
+                com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.disconnect(pad.getDeviceId());
+                if (inputControlsView != null) inputControlsView.onSteamPadDisconnected(pad);
+                if (winHandler != null) winHandler.onSdlPadDisconnected(pad);
+            }
+
+            @Override
+            public void onSteamPadState(ExternalController pad, boolean guideDown,
+                                        boolean quickAccessDown, int[] pressedKeyCodes) {
+                com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.publishSteamPad(
+                        pad, guideDown, quickAccessDown);
+                handleSteamMenuInput(pad, pressedKeyCodes);
+                if (!isSteamControllerInputEnabled()) return;
+                if (inputControlsView != null
+                        && inputControlsView.onSteamPadState(pad, pressedKeyCodes)) return;
+                if (winHandler != null) winHandler.sendGamepadState(pad);
+            }
+
+            @Override
+            public void onSteamPadGyro(ExternalController pad, float x, float y, float z, long timestampNanos) {
+                com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.publishSteamGyro(pad, x, y, z);
+                if (winHandler != null && isSteamControllerInputEnabled()) {
+                    winHandler.updateSteamGyroData(pad, x, y, timestampNanos);
+                }
+            }
+
+            @Override
+            public void onSteamPadBinding(
+                    com.winlator.cmod.runtime.input.controls.Binding binding, boolean down) {
+                if (down && !isSteamControllerInputEnabled()) return;
+                if (inputControlsView != null) inputControlsView.handleInputEvent(binding, down);
+            }
+
+            @Override
+            public void onSteamPadMouseMove(int dx, int dy) {
+                if (!isSteamControllerInputEnabled()) return;
+                if (winHandler != null) winHandler.steamPadMouseMove(dx, dy);
+            }
+
+            @Override
+            public void onSteamPadMouseButton(boolean secondary, boolean down) {
+                if (down && !isSteamControllerInputEnabled()) return;
+                if (winHandler != null) winHandler.steamPadMouseButton(secondary, down);
+            }
+        });
+        if (!backend.start()) return;
+        steamControllerBackend = backend;
+        winHandler.setSteamControllerBackend(backend);
+    }
+
+    private void stopSteamControllerSupport() {
+        if (steamControllerBackend == null) return;
+        if (winHandler != null) winHandler.setSteamControllerBackend(null);
+        steamControllerBackend.stop();
+        steamControllerBackend = null;
+    }
+
+    private boolean isSteamControllerShadowEvent(android.view.InputDevice device) {
+        return steamControllerBackend != null && winHandler != null && winHandler.hasSdlPads()
+                && device != null
+                && device.getVendorId()
+                        == com.winlator.cmod.runtime.input.controls.SteamControllerBackend.VALVE_VENDOR_ID;
+    }
+
     public InputControlsView getInputControlsView() {
         return inputControlsView;
     }
-
-    private static final String TAG = "DXWrapperExtraction";
 
     private static final String[] DXWRAPPER_DLLS = {
             "d3d10.dll", "d3d10_1.dll", "d3d10core.dll",
@@ -9709,9 +10338,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (dxwrapper.contains("dxvk")) {
             Log.d(TAG, "Extracting DXVK wrapper files, version: " + dxwrapper);
 
-            String dxvkWrapper = dxwrapper.split(";")[0];
-            String vkd3dWrapper = dxwrapper.split(";")[1];
-            String ddrawrapper = dxwrapper.split(";")[2];
+            String[] wrapperFields = dxwrapper.split(";", -1);
+            String dxvkWrapper = wrapperFields.length > 0 ? wrapperFields[0] : "";
+            String vkd3dWrapper = wrapperFields.length > 1 ? wrapperFields[1] : "";
+            String ddrawrapper = wrapperFields.length > 2 && !wrapperFields[2].isEmpty()
+                    ? wrapperFields[2] : Container.DEFAULT_DDRAWRAPPER;
             
             if (hasSelectedDxvkWrapper(dxvkWrapper)) {
                 ContentProfile dxvkProfile = contentsManager.getProfileByEntryName(dxvkWrapper);
@@ -9882,6 +10513,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 int appId = Integer.parseInt(shortcut.getExtra("app_id"));
                 // Reset per launch; set below once the launch exe is resolved.
                 wnSteamDirectExeOverride = false;
+                planWWrapperArgsResolved = false;
                 wnSteamLaunchOption = -1;
                 wnSteamUserArgs = "";
                 String steamExtraArgs = appendSteamJoinConnect(
@@ -9995,6 +10627,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             }
                             args = "\"C:\\Program Files (x86)\\Steam\\" + wrapperExe
                                     + "\" \"" + launchArg + "\"" + steamExtraArgs;
+                            planWWrapperArgsResolved = planW;
                             Log.d("XServerDisplayActivity",
                                     "Bionic Steam launch via " + wrapperExe
                                     + " (planW=" + planW + "): " + steamGameExe
@@ -11198,11 +11831,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         // Any installed Mono is kept as-is; prefix repair clears the marker to force a reinstall.
         String installedVersion = container.getExtra("mono_version", null);
         if (installedVersion != null) {
-            Log.d("XServerDisplayActivity", "Mono v" + installedVersion + " already installed in container " + container.id + ", skipping");
+            Log.d(TAG, "Mono v" + installedVersion + " already installed in container " + container.id + ", skipping");
             return true;
         }
         if (hasInstalledComponentPrefix("mono")) {
-            Log.d("XServerDisplayActivity", "Mono already installed via components in container " + container.id + ", skipping");
+            Log.d(TAG, "Mono already installed via components in container " + container.id + ", skipping");
             return true;
         }
 
@@ -11210,13 +11843,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         String requiredVersion = SteamClientManager.detectRequiredMonoVersion(this, winePath);
         if (requiredVersion == null) {
-            Log.w("XServerDisplayActivity", "Could not detect required Mono version, skipping");
+            Log.w(TAG, "Could not detect required Mono version, skipping");
             return false;
         }
 
         String monoWinePath = SteamClientManager.getMonoMsiWinePath(this, winePath);
         if (monoWinePath == null) {
-            Log.w("XServerDisplayActivity", "Mono MSI not available (no internet?), will retry next launch");
+            Log.w(TAG, "Mono MSI not available (no internet?), will retry next launch");
             return false;
         }
 
@@ -11226,22 +11859,22 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 java.util.regex.Pattern.compile("wine-mono-(\\d+\\.\\d+\\.\\d+)").matcher(monoWinePath);
         if (monoMsiMatcher.find()) actualVersion = monoMsiMatcher.group(1);
         if (!actualVersion.equals(requiredVersion)) {
-            Log.w("XServerDisplayActivity", "Mono fallback: required v" + requiredVersion
+            Log.w(TAG, "Mono fallback: required v" + requiredVersion
                     + " but installing v" + actualVersion + " (" + monoWinePath + ")");
         }
 
         try {
-            Log.d("XServerDisplayActivity", "Installing Wine Mono v" + actualVersion
+            Log.d(TAG, "Installing Wine Mono v" + actualVersion
                     + " (" + monoWinePath + ") in container " + container.id + "...");
             String monoCmd = "wine msiexec /i " + monoWinePath + " && wineserver -k";
             launcher.execShellCommand(monoCmd);
             container.putExtra("mono_installed", "true");
             container.putExtra("mono_version", actualVersion);
             container.saveData();
-            Log.d("XServerDisplayActivity", "Mono v" + actualVersion + " installed in container " + container.id);
+            Log.d(TAG, "Mono v" + actualVersion + " installed in container " + container.id);
             return true;
         } catch (Exception e) {
-            Log.w("XServerDisplayActivity", "Mono msiexec failed, will retry next launch", e);
+            Log.w(TAG, "Mono msiexec failed, will retry next launch", e);
             return false;
         }
     }
@@ -11257,12 +11890,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private void installGeckoIfNeeded(GuestProgramLauncherComponent launcher) {
         String installedGecko = container.getExtra("gecko_version", null);
         if (installedGecko != null) {
-            Log.d("XServerDisplayActivity", "Gecko v" + installedGecko + " already installed in container "
+            Log.d(TAG, "Gecko v" + installedGecko + " already installed in container "
                     + container.id + ", skipping");
             return;
         }
         if (hasInstalledComponentPrefix("gecko")) {
-            Log.d("XServerDisplayActivity", "Gecko already installed via components in container "
+            Log.d(TAG, "Gecko already installed via components in container "
                     + container.id + ", skipping");
             return;
         }
@@ -11270,12 +11903,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         java.util.List<String> geckoWinePaths = SteamClientManager.getGeckoMsiWinePaths(this);
         if (geckoWinePaths.size() < 2) {
-            Log.w("XServerDisplayActivity", "Gecko MSIs not available (no internet?), will retry next launch");
+            Log.w(TAG, "Gecko MSIs not available (no internet?), will retry next launch");
             return;
         }
 
         try {
-            Log.d("XServerDisplayActivity", "Installing Wine Gecko v" + geckoVersion
+            Log.d(TAG, "Installing Wine Gecko v" + geckoVersion
                     + " in container " + container.id + "...");
             StringBuilder geckoCmd = new StringBuilder();
             for (String p : geckoWinePaths) {
@@ -11286,9 +11919,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             launcher.execShellCommand(geckoCmd.toString());
             container.putExtra("gecko_version", geckoVersion);
             container.saveData();
-            Log.d("XServerDisplayActivity", "Gecko v" + geckoVersion + " installed in container " + container.id);
+            Log.d(TAG, "Gecko v" + geckoVersion + " installed in container " + container.id);
         } catch (Exception e) {
-            Log.w("XServerDisplayActivity", "Gecko msiexec failed, will retry next launch", e);
+            Log.w(TAG, "Gecko msiexec failed, will retry next launch", e);
         }
     }
 
@@ -11784,6 +12417,17 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void forceHideSteamRegistry(File registryFile, File backupFile, String... keys) {
+        java.util.concurrent.locks.ReentrantLock registryLock =
+                WineRegistryEditor.lockFor(registryFile);
+        registryLock.lock();
+        try {
+            forceHideSteamRegistryLocked(registryFile, backupFile, keys);
+        } finally {
+            registryLock.unlock();
+        }
+    }
+
+    private void forceHideSteamRegistryLocked(File registryFile, File backupFile, String... keys) {
         String rawRegistry = FileUtils.readString(registryFile);
         if (rawRegistry == null) rawRegistry = "";
 
@@ -11826,6 +12470,17 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void hideRegistrySubtrees(File registryFile, File backupFile, String... keys) {
+        java.util.concurrent.locks.ReentrantLock registryLock =
+                WineRegistryEditor.lockFor(registryFile);
+        registryLock.lock();
+        try {
+            hideRegistrySubtreesLocked(registryFile, backupFile, keys);
+        } finally {
+            registryLock.unlock();
+        }
+    }
+
+    private void hideRegistrySubtreesLocked(File registryFile, File backupFile, String... keys) {
         String rawRegistry = FileUtils.readString(registryFile);
         if (rawRegistry == null) rawRegistry = "";
 
@@ -11845,6 +12500,17 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void restoreRegistrySubtrees(File registryFile, File backupFile, String... keys) {
+        java.util.concurrent.locks.ReentrantLock registryLock =
+                WineRegistryEditor.lockFor(registryFile);
+        registryLock.lock();
+        try {
+            restoreRegistrySubtreesLocked(registryFile, backupFile, keys);
+        } finally {
+            registryLock.unlock();
+        }
+    }
+
+    private void restoreRegistrySubtreesLocked(File registryFile, File backupFile, String... keys) {
         String rawRegistry = FileUtils.readString(registryFile);
         if (rawRegistry == null) rawRegistry = "";
 
@@ -12579,6 +13245,26 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return overrideEnvVars;
     }
 
+    private boolean ensureDirectAudioInstalled() {
+        if (directAudioAvailable != null) return directAudioAvailable;
+        String wineIdentifier =
+                wineInfo != null ? wineInfo.identifier() : container.getWineVersion();
+        directAudioAvailable = DirectAudioDriver.INSTANCE.install(this, imageFs, wineIdentifier);
+        Log.d("XServerDisplayActivity", "DirectAudio install for wine '" + wineIdentifier
+                + "' available=" + directAudioAvailable);
+        return directAudioAvailable;
+    }
+
+    private void resolveAudioDriver() {
+        if (!DirectAudioDriver.INSTANCE.isSelected(audioDriver)) return;
+        if (ensureDirectAudioInstalled()) return;
+        Log.w("XServerDisplayActivity", "DirectAudio is unavailable for this container; falling back to "
+                + Container.DEFAULT_AUDIO_DRIVER + " so mmdevapi keeps a loadable backend");
+        audioDriver = Container.DEFAULT_AUDIO_DRIVER;
+        runOnUiThread(() -> android.widget.Toast.makeText(
+                this, R.string.directaudio_unavailable, android.widget.Toast.LENGTH_LONG).show());
+    }
+
     private void changeWineAudioDriver() {
         if (!audioDriver.equals(container.getExtra("audioDriver"))) {
             File rootDir = imageFs.getRootDir();
@@ -12627,14 +13313,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
     }
 
-    // Background service processes have no windows and never pass through
-    // assignTaskAffinity. One complete pass over the guest process list at the
-    // first window map pins every matching instance BY PID (by-name requests
-    // can't address duplicates like the two winedevice hosts). Children spawned
-    // afterwards inherit their parent's mask, so a single early pass keeps the
-    // policy without ever re-sending — manual task manager changes stick.
-    // Services go to the efficiency cores (lower half), shell/UI to the 64-bit
-    // list, winhandler to all cores.
     private void pinServiceAffinity() {
         if (serviceAffinityStarted || winHandler == null) return;
         serviceAffinityStarted = true;
@@ -12642,8 +13320,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             final WinHandler wh = winHandler;
             if (wh == null) return;
             int coreCount = Runtime.getRuntime().availableProcessors();
-            final int littleMask = ProcessHelper.getAffinityMask(0, coreCount / 2);
             final int fullMask = ProcessHelper.getAffinityMask(0, coreCount);
+            final int efficiencyMask = ProcessHelper.getEfficiencyCoreMask();
+            final int littleMask = efficiencyMask != 0 ? efficiencyMask : fullMask;
             final CountDownLatch latch = new CountDownLatch(1);
             final OnGetProcessInfoListener previous = wh.getOnGetProcessInfoListener();
             final OnGetProcessInfoListener pinner = (index, numProcesses, processInfo) -> {
@@ -12682,9 +13361,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return 0;
     }
 
-    // _NET_WM_WOW64 can be absent on 32-bit guest windows, so when the two masks
-    // differ, resolve the wow64 flag from the guest process list and apply once.
-    // The window property is only the fallback if the guest doesn't answer.
     private void applyGuestResolvedAffinity(final int pid, final boolean windowSaysWoW64) {
         synchronized (guestAffinityCheckedPids) {
             if (!guestAffinityCheckedPids.add(pid)) return;

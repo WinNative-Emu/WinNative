@@ -103,9 +103,10 @@ object ItchService {
         context: Context,
         game: ItchGame,
         upload: ItchUpload,
+        installPathOverride: String? = null,
     ) {
         start(context)
-        manager?.enqueue(game, upload)
+        manager?.enqueue(game, upload, installPathOverride)
     }
 
     fun installPath(
@@ -199,7 +200,11 @@ object ItchService {
         val dir = File(entry.installPath)
         val check =
             com.winlator.cmod.feature.stores.common.StoreInstallPathSafety
-                .checkInstallDirDelete(context, dir.absolutePath)
+                .checkInstallDirDelete(
+                    context,
+                    dir.absolutePath,
+                    owner = com.winlator.cmod.feature.stores.common.InstallStore.ITCH,
+                )
         if (!check.allowed) {
             Timber.w("[Itch] refusing to delete ${dir.absolutePath}: ${check.reason}")
             return false

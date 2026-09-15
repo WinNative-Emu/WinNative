@@ -107,6 +107,29 @@ public abstract class FileUtils {
     return false;
   }
 
+  private static final java.util.concurrent.atomic.AtomicLong ATOMIC_WRITE_SEQ =
+      new java.util.concurrent.atomic.AtomicLong();
+
+  public static boolean writeStringAtomic(File file, String data) {
+    File dir = file.getParentFile();
+    if (dir != null && !dir.isDirectory() && !dir.mkdirs()) return writeString(file, data);
+    File staging = new File(dir, file.getName() + ".tmp."
+        + Long.toHexString(Thread.currentThread().getId()) + "."
+        + Long.toHexString(ATOMIC_WRITE_SEQ.incrementAndGet()));
+    try (BufferedWriter bw = new BufferedWriter(new FileWriter(staging))) {
+      bw.write(data);
+      bw.flush();
+    } catch (IOException e) {
+      staging.delete();
+      Log.w("FileUtils", "writeStringAtomic: staging write failed for " + file.getPath(), e);
+      return false;
+    }
+    if (staging.renameTo(file)) return true;
+    staging.delete();
+    Log.w("FileUtils", "writeStringAtomic: rename failed for " + file.getPath(), null);
+    return false;
+  }
+
   public static void symlink(File linkTarget, File linkFile) {
     symlink(linkTarget.getAbsolutePath(), linkFile.getAbsolutePath());
   }

@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.util.JsonReader;
 import android.util.Log;
 import androidx.preference.PreferenceManager;
+import com.winlator.cmod.app.config.DeviceProfileSettings;
 import com.winlator.cmod.app.config.SettingsConfig;
 import com.winlator.cmod.shared.android.AppUtils;
 import com.winlator.cmod.shared.io.FileUtils;
@@ -25,7 +26,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class InputControlsManager {
-  private static final int ASSET_PROFILE_SYNC_REVISION = 8;
+  private static final int ASSET_PROFILE_SYNC_REVISION = 13;
+  private static final String ASSET_PROFILES_DIR = "inputcontrols/profiles";
   public static final int LAST_BUILTIN_PROFILE_ID = 8;
   public static final int VIRTUAL_GAMEPAD_BUILTIN_ID = 3;
   public static final int GAMEHUB_LAYOUT_BUILTIN_ID = 7;
@@ -107,6 +109,35 @@ public class InputControlsManager {
     return profiles;
   }
 
+  private static String assetProfilesDir(String deviceToken) {
+    if (deviceToken == null || deviceToken.isEmpty()) return ASSET_PROFILES_DIR;
+    return ASSET_PROFILES_DIR + "-" + deviceToken;
+  }
+
+  private static String[] listAssetProfiles(AssetManager assetManager, String dir) {
+    String[] names;
+    try {
+      names = assetManager.list(dir);
+    } catch (IOException e) {
+      return null;
+    }
+    if (names == null) return null;
+    ArrayList<String> icps = new ArrayList<>();
+    for (String name : names) if (name.toLowerCase(Locale.ROOT).endsWith(".icp")) icps.add(name);
+    return icps.isEmpty() ? null : icps.toArray(new String[0]);
+  }
+
+  private static boolean isPristine(File workingFile, File backupFile) {
+    if (!workingFile.isFile()) return true;
+    if (!backupFile.isFile()) return false;
+    return FileUtils.contentEquals(workingFile, backupFile);
+  }
+
+  public void resyncAssetProfiles() {
+    profilesLoaded = false;
+    loadProfiles(false);
+  }
+
   private void copyAssetProfilesIfNeeded() {
     InputControlsManager.getProfilesDir(context);
 
@@ -114,35 +145,53 @@ public class InputControlsManager {
     int newVersion = AppUtils.getVersionCode(context);
     int oldVersion = preferences.getInt("inputcontrols_app_version", 0);
     int oldSyncRevision = preferences.getInt("inputcontrols_asset_sync_revision", 0);
-    if (oldVersion == newVersion && oldSyncRevision >= ASSET_PROFILE_SYNC_REVISION) return;
-    preferences
-        .edit()
-        .putInt("inputcontrols_app_version", newVersion)
-        .putInt("inputcontrols_asset_sync_revision", ASSET_PROFILE_SYNC_REVISION)
-        .apply();
+    String deviceToken = DeviceProfileSettings.assetProfilesToken(context);
+    String oldDeviceToken = preferences.getString("inputcontrols_asset_device_profile", null);
+    boolean deviceChanged = !deviceToken.equals(oldDeviceToken);
+    if (oldVersion == newVersion
+        && oldSyncRevision >= ASSET_PROFILE_SYNC_REVISION
+        && !deviceChanged) return;
 
     for (int id : RETIRED_PROFILE_IDS) {
       ControlsProfile.getProfileFile(context, id).delete();
       getBackupFile(context, id).delete();
     }
-    for (int id : REFRESHED_PROFILE_IDS) {
-      ControlsProfile.getProfileFile(context, id).delete();
+    if (oldVersion != newVersion || oldSyncRevision < ASSET_PROFILE_SYNC_REVISION) {
+      for (int id : REFRESHED_PROFILE_IDS) {
+        ControlsProfile.getProfileFile(context, id).delete();
+      }
     }
 
-    try {
-      AssetManager assetManager = context.getAssets();
-      String[] assetFiles = assetManager.list("inputcontrols/profiles");
-      if (assetFiles == null) return;
-      for (String assetFile : assetFiles) {
-        String assetPath = "inputcontrols/profiles/" + assetFile;
-        ControlsProfile originProfile = loadProfile(context, assetManager.open(assetPath));
-        if (originProfile == null) continue;
-        File workingFile = ControlsProfile.getProfileFile(context, originProfile.id);
-        if (!workingFile.isFile()) FileUtils.copy(context, assetPath, workingFile);
-        FileUtils.copy(context, assetPath, getBackupFile(context, originProfile.id));
-      }
-    } catch (IOException e) {
+    AssetManager assetManager = context.getAssets();
+    String assetDir = assetProfilesDir(deviceToken);
+    String[] assetFiles = listAssetProfiles(assetManager, assetDir);
+    if (assetFiles == null && !assetDir.equals(ASSET_PROFILES_DIR)) {
+      assetDir = ASSET_PROFILES_DIR;
+      assetFiles = listAssetProfiles(assetManager, assetDir);
     }
+    if (assetFiles == null) return;
+
+    for (String assetFile : assetFiles) {
+      String assetPath = assetDir + "/" + assetFile;
+      ControlsProfile originProfile;
+      try (InputStream inStream = assetManager.open(assetPath)) {
+        originProfile = loadProfile(context, inStream);
+      } catch (IOException e) {
+        continue;
+      }
+      if (originProfile == null) continue;
+      File workingFile = ControlsProfile.getProfileFile(context, originProfile.id);
+      File backupFile = getBackupFile(context, originProfile.id);
+      if (isPristine(workingFile, backupFile)) FileUtils.copy(context, assetPath, workingFile);
+      FileUtils.copy(context, assetPath, backupFile);
+    }
+
+    preferences
+        .edit()
+        .putInt("inputcontrols_app_version", newVersion)
+        .putInt("inputcontrols_asset_sync_revision", ASSET_PROFILE_SYNC_REVISION)
+        .putString("inputcontrols_asset_device_profile", deviceToken)
+        .apply();
   }
 
   public void loadProfiles(boolean ignoreTemplates) {

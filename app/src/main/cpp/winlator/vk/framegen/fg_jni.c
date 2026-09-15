@@ -8,13 +8,6 @@
 
 #define FG_FN(name) Java_com_winlator_cmod_shared_framegen_FrameGenNative_##name
 
-// The Java side carries one integer for "frame generation quality", and the two
-// engines want that number in different units - LSFG a percentage of the frame,
-// DIS the flow buffer's shorter side in pixels. Rather than widen the JNI
-// signature and every caller with it, the two live in disjoint ranges of the
-// same field: 1..999 is an LSFG percentage, FG_DIS_QUALITY_TAG + n is DIS with a
-// shorter side of n pixels. Neither engine can ever read the other's value, so
-// switching between them leaves each one's setting exactly as the user left it.
 #define FG_DIS_QUALITY_TAG 1000
 
 static void fg_split_quality(jint quality, uint32_t* engine, float* flow, uint32_t* dis_min_side) {

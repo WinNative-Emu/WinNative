@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatDialog
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import com.winlator.cmod.app.config.DeviceProfileSettings
 import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings
 import com.winlator.cmod.shared.ui.nav.PANE_DIR_ACTIVATE
 import com.winlator.cmod.shared.ui.nav.PaneNavWindowHandlers
@@ -52,6 +53,7 @@ import com.winlator.cmod.feature.settings.WineD3DConfigUtils
 import com.winlator.cmod.shared.android.AppUtils
 import com.winlator.cmod.shared.android.DirectoryPickerDialog
 import com.winlator.cmod.shared.android.RefreshRateUtils
+import com.winlator.cmod.shared.android.ScreenSizes
 import com.winlator.cmod.shared.ui.toast.WinToast
 import com.winlator.cmod.shared.io.AssetPaths
 import com.winlator.cmod.runtime.wine.EnvVars
@@ -102,6 +104,7 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
     private val dialog: Dialog
     private val nav = GameSettingsNav()
     private var restorePaneNav: (() -> Unit)? = null
+    private var activityObserver: DefaultLifecycleObserver? = null
     private val state = GameSettingsStateHolder()
     private val manager = ContainerManager(context)
     private val contentsManager = ContentsManager(context)
@@ -147,6 +150,8 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             // path as Save/Cancel and still fires onFinished (important for
             // the setup wizard launcher that blocks on UnifiedActivity finishing).
             setOnDismissListener {
+                activityObserver?.let { (activity as LifecycleOwner).lifecycle.removeObserver(it) }
+                activityObserver = null
                 restorePaneNav?.invoke()
                 restorePaneNav = null
                 AppUtils.hideKeyboard(activity)
@@ -192,11 +197,14 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         }
         dialog.setContentView(composeView)
 
-        (activity as LifecycleOwner).lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onDestroy(owner: LifecycleOwner) {
-                if (dialog.isShowing) dialog.dismiss()
+        val observer =
+            object : DefaultLifecycleObserver {
+                override fun onDestroy(owner: LifecycleOwner) {
+                    if (dialog.isShowing) dialog.dismiss()
+                }
             }
-        })
+        activityObserver = observer
+        (activity as LifecycleOwner).lifecycle.addObserver(observer)
 
         loadContentsAsync()
     }
@@ -440,7 +448,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             state.enableDInput.value = true
         }
         state.adaptiveJoysticks.value =
-            c?.getExtra(InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS, "0") == "1"
+            c?.getExtra(
+                InputControlsView.EXTRA_ADAPTIVE_JOYSTICKS,
+                DeviceProfileSettings.adaptiveJoysticksDefaultExtra(context),
+            ).let { it ?: DeviceProfileSettings.adaptiveJoysticksDefaultExtra(context) } == "1"
 
         state.fullscreenStretched.value = c?.isFullscreenStretched() ?: false
         state.useUnixLibs.value = c?.isUseUnixLibs() ?: true
@@ -498,29 +509,34 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         val themeInfo = WineThemeManager.ThemeInfo(desktopThemeValue)
         state.desktopBackgroundColor.value = String.format("#%06X", themeInfo.backgroundColor and 0x00FFFFFF)
 
-        // Mouse warp override lives in .wine/user.reg, not on the container.
-        var mouseWarp = "disable"
-        val rootDir = c?.getRootDir()
-        if (rootDir != null) {
-            val userRegFile = File(rootDir, ".wine/user.reg")
-            if (userRegFile.exists()) {
-                try {
-                    WineRegistryEditor(userRegFile).use { reg ->
-                        mouseWarp = reg.getStringValue(
-                            "Software\\Wine\\DirectInput",
-                            "MouseWarpOverride",
-                            "disable"
-                        )
-                    }
-                } catch (e: Throwable) {
-                    Log.w(TAG, "Error reading MouseWarpOverride", e)
-                }
-            }
-        }
-        pendingMouseWarpValue = mouseWarp.lowercase()
     }
 
     private var pendingMouseWarpValue = "disable"
+
+    private fun readMouseWarpOverride(): String {
+        val rootDir = container?.getRootDir() ?: return "disable"
+        val userRegFile = File(rootDir, ".wine/user.reg")
+        if (!userRegFile.exists()) return "disable"
+        val value =
+            try {
+                WineRegistryEditor(userRegFile).use { reg ->
+                    reg.getStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", "disable")
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "Error reading MouseWarpOverride", e)
+                "disable"
+            }
+        return value.lowercase()
+    }
+
+    private fun applyMouseWarpOverride(value: String) {
+        pendingMouseWarpValue = value
+        state.selectedMouseWarpOverride.intValue = when (value) {
+            "enable" -> 1
+            "force" -> 2
+            else -> 0
+        }
+    }
 
     private fun loadResourceArrays() {
         val c = container
@@ -689,23 +705,28 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
     }
 
     private fun loadContentsAsync() {
-        Executors.newSingleThreadExecutor().execute {
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
+            val mouseWarp = readMouseWarpOverride()
             try {
                 contentsManager.syncContents()
-                activity.runOnUiThread {
-                    try {
-                        populateContentsDependentData()
-                    } finally {
-                        state.isLoaded.value = true
-                    }
-                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error syncing contents", e)
-                activity.runOnUiThread {
+            }
+            activity.runOnUiThread {
+                try {
+                    if (dialog.isShowing) {
+                        applyMouseWarpOverride(mouseWarp)
+                        populateContentsDependentData()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error populating container settings", e)
+                } finally {
                     state.isLoaded.value = true
                 }
             }
         }
+        executor.shutdown()
     }
 
     private fun populateContentsDependentData() {
@@ -1029,10 +1050,6 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
 
     private fun writeFrameGenExtras(c: Container) {
         c.putExtra("frameGen", if (state.frameGenEnabled.value) "1" else "0")
-        // The compositor drives one interpolator per frame. This dialog only
-        // exposes the Lossless Scaling engine, so turning it on here has to clear
-        // DIS - otherwise the container keeps both flags set, the session picks
-        // DIS on load, and the switch the user just flipped appears to do nothing.
         if (state.frameGenEnabled.value) c.putExtra("disFrameGen", "0")
         c.putExtra("frameGenMultiplier", state.frameGenMultiplier.intValue.coerceIn(2, 4).toString())
         c.putExtra("frameGenTargetRate", state.frameGenTargetRate.intValue.coerceAtLeast(0).toString())
@@ -1267,8 +1284,10 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             context.resources.getStringArray(R.array.bcn_emulation_cache_entries).toList()
         state.gfxTranscoderEntries.value =
             context.resources.getStringArray(R.array.wrapper_transcoder_entries).toList()
-        state.gfxQualityEntries.value =
-            context.resources.getStringArray(R.array.wrapper_quality_entries).toList()
+        state.gfxAstcTranscodingEntries.value =
+            context.resources.getStringArray(R.array.wrapper_astc_transcoding_entries).toList()
+        state.gfxAstcTranscodingValues.value =
+            context.resources.getStringArray(R.array.wrapper_astc_transcoding_values).toList()
 
         val gpuNames = mutableListOf("Device")
         try {
@@ -1296,74 +1315,54 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         selectByValue(state.gfxBcnEmulationTypeEntries.value, config.get("bcnEmulationType") ?: "compute", state.gfxSelectedBcnEmulationType)
         selectByValue(state.gfxBcnEmulationCacheEntries.value, config.get("bcnEmulationCache") ?: "0", state.gfxSelectedBcnEmulationCache)
         selectByValue(state.gfxTranscoderEntries.value, config.get("transcoder") ?: "cpu", state.gfxSelectedTranscoder)
-        selectByValue(state.gfxQualityEntries.value, config.get("quality") ?: "low", state.gfxSelectedQuality)
+        selectByValue(state.gfxAstcTranscodingValues.value, config.get("astcTranscoding") ?: "off", state.gfxSelectedAstcTranscoding)
         state.gfxSyncFrame.value = config.get("syncFrame") == "1"
         state.gfxDisablePresentWait.value = config.get("disablePresentWait") == "1"
         state.graphicsDriverVersion.value = config.get("version") ?: ""
     }
 
-    private fun loadGraphicsDriverVersions() {
-        val versions = mutableListOf<String>()
-        try {
-            val defaults = context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries)
-            for (ver in defaults) {
-                try {
-                    if (com.winlator.cmod.runtime.system.GPUInformation.isDriverSupported(ver, context))
-                        versions.add(ver)
-                } catch (e: Throwable) {
-                    Log.w(TAG, "Driver support check failed: $ver", e)
-                }
-            }
-            try {
-                val adreno = com.winlator.cmod.runtime.content.AdrenotoolsManager(context)
-                val installed = adreno.enumarateInstalledDrivers()
-                if (installed != null) versions.addAll(installed)
-            } catch (e: Throwable) {
-                Log.w(TAG, "Error loading Adrenotools drivers", e)
-            }
-        } catch (e: Throwable) {
-            Log.e(TAG, "Error loading wrapper versions", e)
-        }
-        if (versions.isEmpty()) versions.add("System")
-        state.gfxDriverVersionEntries.value = versions
+    private var extensionsRequest = 0
 
-        val configStr2 = container?.getGraphicsDriverConfig() ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG
-        val config = GraphicsDriverConfigUtils.parseGraphicsDriverConfig(configStr2)
-        val initialVersion = config.get("version") ?: ""
-        if (initialVersion.isNotEmpty()) {
-            val idx = versions.indexOfFirst { it.equals(initialVersion, ignoreCase = true) }
-            if (idx >= 0) state.gfxSelectedDriverVersion.intValue = idx
+    private fun savedGraphicsDriverConfig() =
+        GraphicsDriverConfigUtils.parseGraphicsDriverConfig(
+            container?.getGraphicsDriverConfig() ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG,
+        )
+
+    private fun loadGraphicsDriverVersions() {
+        val savedVersion = savedGraphicsDriverConfig().get("version") ?: ""
+        state.gfxDriverVersionEntries.value = listOf(if (savedVersion.isNotEmpty()) savedVersion else "System")
+        state.gfxSelectedDriverVersion.intValue = 0
+        scope.launch {
+            val versions = withContext(Dispatchers.IO) {
+                com.winlator.cmod.runtime.system.GraphicsDriverCatalog.supportedVersions(context)
+            }
+            state.gfxDriverVersionEntries.value = versions
+            val idx = versions.indexOfFirst { it.equals(savedVersion, ignoreCase = true) }
+            state.gfxSelectedDriverVersion.intValue = if (idx >= 0) idx else 0
+            loadExtensionsForVersion(state.gfxSelectedDriverVersion.intValue)
         }
-        loadExtensionsForVersion(state.gfxSelectedDriverVersion.intValue)
     }
 
     private fun loadExtensionsForVersion(versionIndex: Int) {
-        val versions = state.gfxDriverVersionEntries.value
-        val version = versions.getOrElse(versionIndex) { return }
-        try {
-            val extensions = com.winlator.cmod.runtime.system.GPUInformation.enumerateExtensions(version, context)
-            if (extensions != null) {
-                state.gfxAvailableExtensions.value = extensions.toList()
-                val configStr = container?.getGraphicsDriverConfig() ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG
-                val config = GraphicsDriverConfigUtils.parseGraphicsDriverConfig(configStr)
-                val savedVersion = config.get("version") ?: ""
-                if (version == savedVersion) {
-                    val bl = config.get("blacklistedExtensions") ?: ""
-                    state.gfxBlacklistedExtensions.value =
-                        if (bl.isNotEmpty()) bl.split(",").toSet() else emptySet()
-                } else {
-                    state.gfxBlacklistedExtensions.value = emptySet()
-                }
-            } else {
-                state.gfxAvailableExtensions.value = emptyList()
-                state.gfxBlacklistedExtensions.value = emptySet()
+        val version = state.gfxDriverVersionEntries.value.getOrElse(versionIndex) { return }
+        val request = ++extensionsRequest
+        scope.launch {
+            val extensions = withContext(Dispatchers.IO) {
+                com.winlator.cmod.runtime.system.GraphicsDriverCatalog.extensions(context, version)
             }
-        } catch (e: Throwable) {
-            Log.e(TAG, "Error loading extensions for $version", e)
-            state.gfxAvailableExtensions.value = emptyList()
-            state.gfxBlacklistedExtensions.value = emptySet()
+            if (request != extensionsRequest) return@launch
+            state.gfxAvailableExtensions.value = extensions
+            val config = savedGraphicsDriverConfig()
+            state.gfxBlacklistedExtensions.value =
+                if (version == (config.get("version") ?: "")) {
+                    val bl = config.get("blacklistedExtensions") ?: ""
+                    if (bl.isNotEmpty()) bl.split(",").toSet() else emptySet()
+                } else {
+                    emptySet()
+                }
         }
     }
+
 
     private fun initialDxWrapperConfig(): String =
         container?.getDXWrapperConfig()
@@ -1459,14 +1458,14 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         val bcnEmulationType = state.gfxBcnEmulationTypeEntries.value.getOrElse(state.gfxSelectedBcnEmulationType.intValue) { "compute" }
         val bcnEmulationCache = state.gfxBcnEmulationCacheEntries.value.getOrElse(state.gfxSelectedBcnEmulationCache.intValue) { "0" }
         val transcoder = state.gfxTranscoderEntries.value.getOrElse(state.gfxSelectedTranscoder.intValue) { "cpu" }
-        val quality = state.gfxQualityEntries.value.getOrElse(state.gfxSelectedQuality.intValue) { "low" }
+        val astcTranscoding = state.gfxAstcTranscodingValues.value.getOrElse(state.gfxSelectedAstcTranscoding.intValue) { "off" }
         return "vulkanVersion=$vulkanVersion;version=$version;blacklistedExtensions=$blacklisted;" +
             "maxDeviceMemory=$maxDeviceMemory;presentMode=$presentMode;syncFrame=$syncFrame;" +
             "disablePresentWait=$disablePresentWait;resourceType=$resourceType;" +
             "bcnEmulation=$bcnEmulation;bcnEmulationType=$bcnEmulationType;" +
             "bcnEmulationCache=$bcnEmulationCache;gpuName=$gpuName;" +
             "compositorPresentMode=$compositorPresentMode;" +
-            "transcoder=$transcoder;quality=$quality"
+            "transcoder=$transcoder;astcTranscoding=$astcTranscoding"
     }
 
     private fun buildDxvkConfigFromState(): String {
@@ -1540,19 +1539,16 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
 
     private fun selectScreenSize(screenSize: String) {
         val entries = state.screenSizeEntries.value
-        val idx = entries.indexOfFirst {
-            StringUtils.parseIdentifier(it) == StringUtils.parseIdentifier(screenSize)
-        }
-        if (idx >= 0) {
+        val normalized = ScreenSizes.sanitize(screenSize, Container.DEFAULT_SCREEN_SIZE)
+        val idx = entries.indexOfFirst { StringUtils.parseIdentifier(it) == normalized }
+        if (idx > 0) {
             state.selectedScreenSize.intValue = idx
-        } else {
-            state.selectedScreenSize.intValue = 0 // "Custom"
-            val parts = screenSize.split("x")
-            if (parts.size == 2) {
-                state.customWidth.value = parts[0]
-                state.customHeight.value = parts[1]
-            }
+            return
         }
+        state.selectedScreenSize.intValue = 0
+        val parts = normalized.split("x")
+        state.customWidth.value = parts[0]
+        state.customHeight.value = parts[1]
     }
 
     /** Selected rate, or null for "Default" — stored as key absence so it falls through to the phone's auto rate. */
@@ -1568,16 +1564,18 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         val entries = state.screenSizeEntries.value
         val idx = state.selectedScreenSize.intValue
         if (idx !in entries.indices) return Container.DEFAULT_SCREEN_SIZE
-        val selectedValue = entries[idx]
-        return if (selectedValue.equals("custom", ignoreCase = true)) {
-            val w = state.customWidth.value.trim()
-            val h = state.customHeight.value.trim()
-            if (w.matches(Regex("[0-9]+")) && h.matches(Regex("[0-9]+"))) {
-                val width = (w.toInt() / 2) * 2
-                val height = (h.toInt() / 2) * 2
-                "${width}x${height}"
-            } else Container.DEFAULT_SCREEN_SIZE
-        } else StringUtils.parseIdentifier(selectedValue)
+        if (idx == 0) {
+            val width = state.customWidth.value.trim().toIntOrNull()
+            val height = state.customHeight.value.trim().toIntOrNull()
+            if (width == null || height == null || width <= 0 || height <= 0) {
+                return Container.DEFAULT_SCREEN_SIZE
+            }
+            return ScreenSizes.format(width, height)
+        }
+        return ScreenSizes.sanitize(
+            StringUtils.parseIdentifier(entries[idx]),
+            Container.DEFAULT_SCREEN_SIZE
+        )
     }
 
     private fun buildWinComponentsString(): String {
@@ -1616,7 +1614,12 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
     private fun buildDesktopThemeString(): String {
         val themeEntries = state.desktopThemeEntries.value
         val themeIdx = state.selectedDesktopTheme.intValue
-        val theme = if (themeIdx in themeEntries.indices) themeEntries[themeIdx].uppercase() else "LIGHT"
+        val theme =
+            if (themeIdx in themeEntries.indices) {
+                WineThemeManager.Theme.values().getOrNull(themeIdx)?.name ?: "LIGHT"
+            } else {
+                "LIGHT"
+            }
 
         val typeIdx = state.selectedDesktopBackgroundType.intValue
         val type = WineThemeManager.BackgroundType.values().getOrNull(typeIdx)?.name ?: "IMAGE"

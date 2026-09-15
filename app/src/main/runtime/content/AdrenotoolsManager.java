@@ -133,6 +133,7 @@ public class AdrenotoolsManager {
     }
     
     public void removeDriver(String adrenoToolsDriverId) {
+        com.winlator.cmod.runtime.system.GraphicsDriverCatalog.invalidate();
         Log.d("AdrenotoolsManager", "Removing driver " + adrenoToolsDriverId);
         File driverPath = new File(adrenotoolsContentDir, adrenoToolsDriverId);
         reloadContainers(adrenoToolsDriverId);
@@ -198,6 +199,7 @@ public class AdrenotoolsManager {
      * detect that a remote GitHub asset with that filename is already installed.
      */
     public String installDriver(Uri driverUri, String sourceAssetName) {
+        com.winlator.cmod.runtime.system.GraphicsDriverCatalog.invalidate();
         File tmpDir = new File(adrenotoolsContentDir, "tmp");
         if (tmpDir.exists()) tmpDir.delete();
         tmpDir.mkdirs();

@@ -158,6 +158,7 @@ import com.winlator.cmod.app.db.PluviaDatabase
 import com.winlator.cmod.app.service.DownloadService
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.app.update.UpdateService
+import com.winlator.cmod.feature.library.LibraryStoreOption
 import com.winlator.cmod.feature.settings.InputControlsFragment
 import com.winlator.cmod.feature.settings.SettingsFocusZone
 import com.winlator.cmod.feature.settings.SettingsHost
@@ -169,6 +170,7 @@ import com.winlator.cmod.feature.shortcuts.LibraryShortcutArtwork
 import com.winlator.cmod.feature.shortcuts.ShortcutBroadcastReceiver
 import com.winlator.cmod.feature.shortcuts.ShortcutSettingsComposeDialog
 import com.winlator.cmod.feature.shortcuts.ShortcutsFragment
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.common.StoreArtworkCache
 import com.winlator.cmod.feature.stores.epic.data.EpicCredentials
 import com.winlator.cmod.feature.stores.epic.data.EpicGame
@@ -1707,6 +1709,9 @@ internal fun UnifiedActivity.GOGGameSettingsDialog(
 internal fun UnifiedActivity.LibraryGameDetailDialog(
     app: SteamApp,
     gogGame: GOGGame? = null,
+    storeOptions: List<LibraryStoreOption> = emptyList(),
+    activeStore: InstallStore? = null,
+    onSelectStore: (LibraryStoreOption) -> Unit = {},
     onDismissRequest: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -1987,6 +1992,17 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
     val totalPlaytime = playtimePrefs.getLong("${searchKey}_playtime", 0L)
     val playCount = playtimePrefs.getInt("${searchKey}_play_count", 0)
 
+    val itchStoreName = stringResource(R.string.itch_store_title)
+    val launchStoreOptions =
+        remember(storeOptions, itchStoreName) {
+            storeOptions.map { option ->
+                LaunchStoreOption(
+                    id = option.store.id,
+                    label = libraryStoreDisplayName(option.store, itchStoreName),
+                )
+            }
+        }
+
     val sourceLabel =
         when {
             isGog -> "GOG"
@@ -2003,31 +2019,22 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
             else -> "Steam"
         }
 
-    // Install path
-    val installPath =
-        remember(app, gogGame) {
+    val installPath by produceState("", app, gogGame, epicGame) {
+        value =
             when {
-                isGog -> {
-                    gogGame!!.installPath
-                }
-
-                isEpic -> {
-                    epicGame?.installPath ?: ""
-                }
-
-                isCustom -> {
-                    app.gameDir
-                }
-
-                else -> {
-                    try {
-                        SteamService.getAppDirPath(app.id)
-                    } catch (_: Exception) {
-                        ""
+                isGog -> gogGame!!.installPath
+                isEpic -> epicGame?.installPath ?: ""
+                isCustom -> app.gameDir
+                else ->
+                    withContext(Dispatchers.IO) {
+                        try {
+                            SteamService.getAppDirPath(app.id)
+                        } catch (_: Exception) {
+                            ""
+                        }
                     }
-                }
             }
-        }
+    }
 
     // Install size (computed async)
     val installSizeText by produceState<String?>(initialValue = null, key1 = installPath) {
@@ -2552,6 +2559,13 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                                 appName = launchAppName,
                                 subtitle = subtitle,
                                 sourceLabel = sourceLabel,
+                                storeOptions = launchStoreOptions,
+                                selectedStoreId = activeStore?.id.orEmpty(),
+                                onSelectStore = { storeId ->
+                                    storeOptions
+                                        .firstOrNull { it.store.id == storeId }
+                                        ?.let(onSelectStore)
+                                },
                                 heroImageUrl = heroImageUrl,
                                 customHeroImageCacheKey = customHeroImageCacheKey,
                                 releaseDateEpochSeconds = app.releaseDate,

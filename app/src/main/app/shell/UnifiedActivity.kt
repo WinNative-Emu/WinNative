@@ -635,6 +635,8 @@ class UnifiedActivity :
 
         UpdateService.startHourlyLoop(this)
         processPendingRetroCloudBackup()
+        com.winlator.cmod.feature.storage.ExternalStorage
+            .refresh()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -989,6 +991,7 @@ class UnifiedActivity :
     override fun onCreate(savedInstanceState: Bundle?) {
         instance = this
         super.onCreate(savedInstanceState)
+
         if (!SetupWizardActivity.isSetupComplete(this) || !ImageFs.find(this).isUpToDate) {
             startActivity(
                 Intent(this, SetupWizardActivity::class.java)
@@ -1016,6 +1019,7 @@ class UnifiedActivity :
                         com.winlator.cmod.feature.stores.common.Store.EPIC -> "Epic"
                         com.winlator.cmod.feature.stores.common.Store.GOG -> "GOG"
                         com.winlator.cmod.feature.stores.common.Store.STEAM -> "Steam"
+                        com.winlator.cmod.feature.stores.common.Store.ITCH -> "Itch.io"
                     }
                 when (event) {
                     is com.winlator.cmod.feature.stores.common.StoreSessionEvent.SessionExpired -> {

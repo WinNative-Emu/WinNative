@@ -1,0 +1,444 @@
+--- a/android-project/app/src/main/java/org/libsdl/app/HIDDeviceBLESteamController.java
++++ b/android-project/app/src/main/java/org/libsdl/app/HIDDeviceBLESteamController.java
+@@ -30,16 +30,18 @@
+ 
+     private static final String TAG = "hidapi";
+     private HIDDeviceManager mManager;
++    private volatile boolean mShutdown;
+     private BluetoothDevice mDevice;
+     private int mDeviceId;
+-    private BluetoothGatt mGatt;
+-    private boolean mIsRegistered = false;
+-    private boolean mIsConnected = false;
++    private volatile BluetoothGatt mGatt;
++    private volatile boolean mIsRegistered = false;
++    private volatile boolean mIsConnected = false;
++    private boolean mAwaitingMtu;
+     private boolean mIsChromebook = false;
+     private boolean mIsReconnecting = false;
+     private boolean mHasEnabledNotifications = false;
+     private boolean mHasSeenInputUpdate = false;
+-    private boolean mFrozen = false;
++    private volatile boolean mFrozen = false;
+     private LinkedList<GattOperation> mOperations;
+     GattOperation mCurrentOperation = null;
+     private Handler mHandler;
+@@ -109,8 +111,10 @@
+         }
+ 
+         public void run() {
+-            // This is executed in main thread
+-            BluetoothGattCharacteristic chr;
++            mResult = false;
++            if (mGatt == null) return;
++            BluetoothGattCharacteristic chr = getCharacteristic(mUuid);
++            if (chr == null) return;
+ 
+             switch (mOp) {
+                 case CHR_READ:
+@@ -152,7 +156,7 @@
+                                 return;
+                             }
+ 
+-                            mGatt.setCharacteristicNotification(chr, true);
++                            if (!mGatt.setCharacteristicNotification(chr, true)) return;
+                             cccd.setValue(value);
+                             if (!mGatt.writeDescriptor(cccd)) {
+                                 Log.e(TAG, "Unable to write descriptor " + mUuid.toString());
+@@ -205,6 +209,8 @@
+         mHandler = new Handler(Looper.getMainLooper());
+ 
+         mGatt = connectGatt();
++        mHandler.postDelayed(mSetupTimeout, 20000);
++        mHandler.post(() -> { if (!mShutdown && mGatt == null) failConnection(); });
+         mHasEnabledNotifications = false;
+         mHasSeenInputUpdate = false;
+         // final HIDDeviceBLESteamController finalThis = this;
+@@ -336,6 +342,8 @@
+ 
+     private void setRegistered() {
+         mIsRegistered = true;
++        mHandler.removeCallbacks(mSetupTimeout);
++        mManager.bluetoothDeviceReady(mDevice);
+     }
+ 
+     private boolean probeService(HIDDeviceBLESteamController controller) {
+@@ -420,7 +428,15 @@
+     //////////////////////////////////////////////////////////////////////////////////////////////////////
+     //////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
++    private void failConnection() {
++        if (mShutdown) return;
++        HIDDeviceManager manager = mManager;
++        manager.disconnectBluetoothDevice(mDevice);
++        manager.retryBluetoothDevice(mDevice);
++    }
++
+     private void finishCurrentGattOperation() {
++        mHandler.removeCallbacks(mOperationTimeout);
+         GattOperation op = null;
+         synchronized (mOperations) {
+             if (mCurrentOperation != null) {
+@@ -433,13 +449,18 @@
+ 
+             // Our operation failed, let's add it back to the beginning of our queue.
+             if (!result) {
+-                mOperations.addFirst(op);
++                failConnection();
++                return;
+             }
+         }
+         executeNextGattOperation();
+     }
+ 
++    private final Runnable mOperationTimeout = this::failConnection;
++    private final Runnable mSetupTimeout = () -> { if (!mIsRegistered) failConnection(); };
++
+     private void executeNextGattOperation() {
++        if (mShutdown) return;
+         synchronized (mOperations) {
+             if (mCurrentOperation != null)
+                 return;
+@@ -459,8 +480,18 @@
+                             return;
+                         }
+ 
+-                        mCurrentOperation.run();
+-                        // now wait for the GATT callback and when it comes, finish this operation
++                        try {
++                            mCurrentOperation.run();
++                        } catch (RuntimeException failure) {
++                            Log.e(TAG, "Bluetooth operation failed", failure);
++                            failConnection();
++                            return;
++                        }
++                        if (!mCurrentOperation.finish()) {
++                            failConnection();
++                            return;
++                        }
++                        mHandler.postDelayed(mOperationTimeout, 5000);
+                     }
+                 }
+             };
+@@ -477,6 +508,11 @@
+     }
+ 
+     private void queueGattOperation(GattOperation op) {
++        if (Looper.myLooper() != Looper.getMainLooper()) {
++            mHandler.post(() -> queueGattOperation(op));
++            return;
++        }
++        if (mShutdown || op.mGatt != mGatt) return;
+         synchronized (mOperations) {
+             mOperations.add(op);
+         }
+@@ -500,7 +536,7 @@
+         mHandler.postDelayed(new Runnable() {
+             @Override
+             public void run() {
+-                if (!finalThis.mHasEnabledNotifications) {
++                if (!finalThis.mShutdown && !finalThis.mHasEnabledNotifications) {
+ 
+                     if (finalThis.mHasSeenInputUpdate) {
+                         // Amazon Five devices may have enabled notifications on the input characteristic and not given us a callback. If we've seen
+@@ -535,8 +571,17 @@
+ 
+     @Override
+     public void onConnectionStateChange(BluetoothGatt g, int status, int newState) {
++        if (Looper.myLooper() != Looper.getMainLooper()) {
++            mHandler.post(() -> onConnectionStateChange(g, status, newState));
++            return;
++        }
++        if (mShutdown || g != mGatt) return;
+         //Log.v(TAG, "onConnectionStateChange status=" + status + " newState=" + newState);
+         mIsReconnecting = false;
++        if (status != BluetoothGatt.GATT_SUCCESS || newState == BluetoothProfile.STATE_DISCONNECTED) {
++            failConnection();
++            return;
++        }
+         if (newState == 2) {
+             mIsConnected = true;
+             // Run directly, without GattOperation
+@@ -544,7 +589,7 @@
+                 mHandler.post(new Runnable() {
+                     @Override
+                     public void run() {
+-                        mGatt.discoverServices();
++                        if (!mShutdown && mGatt != null && !mGatt.discoverServices()) failConnection();
+                     }
+                 });
+             }
+@@ -558,33 +603,34 @@
+ 
+     @Override
+     public void onServicesDiscovered(BluetoothGatt gatt, int status) {
++        if (Looper.myLooper() != Looper.getMainLooper()) {
++            mHandler.post(() -> onServicesDiscovered(gatt, status));
++            return;
++        }
++        if (mShutdown || gatt != mGatt) return;
+         //Log.v(TAG, "onServicesDiscovered status=" + status);
+-        if (status == 0) {
+-            if (gatt.getServices().size() == 0) {
+-                Log.v(TAG, "onServicesDiscovered returned zero services; something has gone horribly wrong down in Android's Bluetooth stack.");
+-                mIsReconnecting = true;
+-                mIsConnected = false;
+-                gatt.disconnect();
+-                mGatt = connectGatt(false);
+-            } else {
+-                if (getProductId() == TRITON_BLE_PID) {
+-                    // Android will not properly play well with Data Length Extensions without manually requesting a large MTU,
+-                    // and Triton controllers require DLE support.
+-                    //
+-                    // 517 is basically a "magic number" as far as Android's bluetooth code is concerned, so do not change
+-                    // this value. It is functionally "please enable data length extensions" on some Android builds.
+-                    mGatt.requestMtu(517);
+-                }
+-
+-                probeService(this);
+-            }
++        if (status != BluetoothGatt.GATT_SUCCESS || gatt.getServices().isEmpty()) {
++            failConnection();
++            return;
++        }
++        if (getProductId() == TRITON_BLE_PID) {
++            mAwaitingMtu = true;
++            if (!gatt.requestMtu(517)) failConnection();
++        } else if (!probeService(this)) {
++            failConnection();
+         }
+     }
+ 
+     @Override
+     public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
++        if (Looper.myLooper() != Looper.getMainLooper()) {
++            mHandler.post(() -> onCharacteristicRead(gatt, characteristic, status));
++            return;
++        }
++        if (mShutdown || gatt != mGatt) return;
+         //Log.v(TAG, "onCharacteristicRead status=" + status + " uuid=" + characteristic.getUuid());
+ 
++        if (status != BluetoothGatt.GATT_SUCCESS) { failConnection(); return; }
+         if (characteristic.getUuid().equals(reportCharacteristic) && !mFrozen) {
+             mManager.HIDDeviceReportResponse(getId(), characteristic.getValue());
+         }
+@@ -594,8 +640,14 @@
+ 
+     @Override
+     public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
++        if (Looper.myLooper() != Looper.getMainLooper()) {
++            mHandler.post(() -> onCharacteristicWrite(gatt, characteristic, status));
++            return;
++        }
++        if (mShutdown || gatt != mGatt) return;
+         //Log.v(TAG, "onCharacteristicWrite status=" + status + " uuid=" + characteristic.getUuid());
+ 
++        if (status != BluetoothGatt.GATT_SUCCESS) { failConnection(); return; }
+         if (characteristic.getUuid().equals(reportCharacteristic)) {
+             // Only register controller with the native side once it has been fully configured
+             if (!isRegistered()) {
+@@ -610,17 +662,29 @@
+ 
+     @Override
+     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+-    // Enable this for verbose logging of controller input reports
+-        //Log.v(TAG, "onCharacteristicChanged uuid=" + characteristic.getUuid() + " data=" + HexDump.dumpHexString(characteristic.getValue()));
+-
+-        if (characteristic.getUuid().equals(mInputCharacteristic) && !mFrozen) {
+-            mHasSeenInputUpdate = true;
+-            mManager.HIDDeviceInputReport(getId(), characteristic.getValue());
+-        }
++        onCharacteristicChanged(gatt, characteristic, characteristic.getValue());
++    }
++
++    @Override
++    public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, byte[] value) {
++        byte[] report = value == null ? null : value.clone();
++        UUID uuid = characteristic.getUuid();
++        mHandler.post(() -> {
++            if (mShutdown || gatt != mGatt || report == null || mFrozen) return;
++            if (uuid.equals(mInputCharacteristic)) {
++                mHasSeenInputUpdate = true;
++                mManager.HIDDeviceInputReport(getId(), report);
++            }
++        });
+     }
+ 
+     @Override
+     public void onDescriptorRead(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
++        if (Looper.myLooper() != Looper.getMainLooper()) {
++            mHandler.post(() -> onDescriptorRead(gatt, descriptor, status));
++            return;
++        }
++        if (mShutdown || gatt != mGatt) return;
+         //Log.v(TAG, "onDescriptorRead status=" + status);
+     }
+ 
+@@ -648,9 +712,15 @@
+ 
+     @Override
+     public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
++        if (Looper.myLooper() != Looper.getMainLooper()) {
++            mHandler.post(() -> onDescriptorWrite(gatt, descriptor, status));
++            return;
++        }
++        if (mShutdown || gatt != mGatt) return;
+         BluetoothGattCharacteristic chr = descriptor.getCharacteristic();
+         //Log.v(TAG, "onDescriptorWrite status=" + status + " uuid=" + chr.getUuid() + " descriptor=" + descriptor.getUuid());
+ 
++        if (status != BluetoothGatt.GATT_SUCCESS) { failConnection(); return; }
+         if (chr.getUuid().equals(mInputCharacteristic)) {
+             mHasEnabledNotifications = true;
+             enableValveMode();
+@@ -661,17 +731,34 @@
+ 
+     @Override
+     public void onReliableWriteCompleted(BluetoothGatt gatt, int status) {
++        if (Looper.myLooper() != Looper.getMainLooper()) {
++            mHandler.post(() -> onReliableWriteCompleted(gatt, status));
++            return;
++        }
++        if (mShutdown || gatt != mGatt) return;
+         //Log.v(TAG, "onReliableWriteCompleted status=" + status);
+     }
+ 
+     @Override
+     public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
++        if (Looper.myLooper() != Looper.getMainLooper()) {
++            mHandler.post(() -> onReadRemoteRssi(gatt, rssi, status));
++            return;
++        }
++        if (mShutdown || gatt != mGatt) return;
+         //Log.v(TAG, "onReadRemoteRssi status=" + status);
+     }
+ 
+     @Override
+     public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
+-        //Log.v(TAG, "onMtuChanged status=" + status);
++        if (Looper.myLooper() != Looper.getMainLooper()) {
++            mHandler.post(() -> onMtuChanged(gatt, mtu, status));
++            return;
++        }
++        if (mShutdown || gatt != mGatt) return;
++        if (!mAwaitingMtu) return;
++        mAwaitingMtu = false;
++        if (status != BluetoothGatt.GATT_SUCCESS || !probeService(this)) failConnection();
+     }
+ 
+     //////////////////////////////////////////////////////////////////////////////////////////////////////
+@@ -697,7 +784,8 @@
+             return mProductId;
+         }
+ 
+-        if (mDevice.getName().startsWith("Steam Ctrl")) {
++        String name = mDevice.getName();
++        if (name != null && name.startsWith("Steam Ctrl")) {
+             // We're a newer Triton device
+             mProductId = TRITON_BLE_PID;
+         } else {
+@@ -741,17 +829,18 @@
+ 
+     @Override
+     public int writeReport(byte[] report, boolean feature) {
++        if (mShutdown || report == null || report.length == 0) return -1;
+         if (!isRegistered()) {
+             Log.e(TAG, "Attempted writeReport before Steam Controller is registered!");
+             if (mIsConnected) {
+-                probeService(this);
++                mHandler.post(() -> { if (!mShutdown) probeService(this); });
+             }
+             return -1;
+         }
+ 
+         if (feature) {
+             // We need to skip the first byte, as that doesn't go over the air
+-            byte[] actual_report = Arrays.copyOfRange(report, 1, report.length - 1);
++            byte[] actual_report = Arrays.copyOfRange(report, 1, report.length);
+             //Log.v(TAG, "writeFeatureReport " + HexDump.dumpHexString(actual_report));
+             writeCharacteristic(reportCharacteristic, actual_report);
+             return report.length;
+@@ -768,7 +857,7 @@
+                 int reportId = report[0] & 0xFF;
+                 BluetoothGattCharacteristic targetedReportCharacteristic = mOutputReportChars.get(reportId);
+                 if (targetedReportCharacteristic != null) {
+-                    byte[] actual_report = Arrays.copyOfRange(report, 1, report.length - 1);
++                    byte[] actual_report = Arrays.copyOfRange(report, 1, report.length);
+                     //Log.v(TAG, "writeOutputReport 0x" + Integer.toString(reportId, 16) + " " + HexDump.dumpHexString(report));
+                     writeCharacteristic(targetedReportCharacteristic.getUuid(), actual_report);
+                     return report.length;
+@@ -783,10 +872,11 @@
+ 
+     @Override
+     public boolean readReport(byte[] report, boolean feature) {
++        if (mShutdown) return false;
+         if (!isRegistered()) {
+             Log.e(TAG, "Attempted readReport before Steam Controller is registered!");
+             if (mIsConnected) {
+-                probeService(this);
++                mHandler.post(() -> { if (!mShutdown) probeService(this); });
+             }
+             return false;
+         }
+@@ -813,6 +903,13 @@
+     public void shutdown() {
+         close();
+ 
++        mShutdown = true;
++        mFrozen = true;
++        mHandler.removeCallbacksAndMessages(null);
++        synchronized (mOperations) {
++            mCurrentOperation = null;
++            mOperations.clear();
++        }
+         BluetoothGatt g = mGatt;
+         if (g != null) {
+             g.disconnect();
+@@ -822,7 +919,6 @@
+         mManager = null;
+         mIsRegistered = false;
+         mIsConnected = false;
+-        mOperations.clear();
+     }
+ 
+ }
+--- a/android-project/app/src/main/java/org/libsdl/app/HIDDeviceManager.java
++++ b/android-project/app/src/main/java/org/libsdl/app/HIDDeviceManager.java
+@@ -51,6 +51,28 @@
+     }
+ 
+     private Context mContext;
++    private volatile boolean mClosed;
++    private final Handler mRetryHandler = new Handler(Looper.getMainLooper());
++    private final HashMap<BluetoothDevice, Integer> mRetryCounts = new HashMap<>();
++
++    void retryBluetoothDevice(BluetoothDevice device) {
++        if (mClosed) return;
++        int attempts = mRetryCounts.containsKey(device) ? mRetryCounts.get(device) : 0;
++        if (attempts >= 3) return;
++        mRetryCounts.put(device, attempts + 1);
++        mRetryHandler.postDelayed(() -> {
++            if (mClosed) return;
++            try {
++                if (device.getBondState() == BluetoothDevice.BOND_BONDED) connectBluetoothDevice(device);
++            } catch (SecurityException failure) {
++                Log.w(TAG, "Bluetooth permission revoked", failure);
++            }
++        }, 1000L * (attempts + 1));
++    }
++
++    void bluetoothDeviceReady(BluetoothDevice device) {
++        mRetryCounts.remove(device);
++    }
+     private HashMap<Integer, HIDDevice> mDevicesById = new HashMap<Integer, HIDDevice>();
+     private HashMap<BluetoothDevice, HIDDeviceBLESteamController> mBluetoothDevices = new HashMap<BluetoothDevice, HIDDeviceBLESteamController>();
+     private int mNextDeviceId = 0;
+@@ -549,6 +571,9 @@
+     }
+ 
+     private void close() {
++        mClosed = true;
++        mRetryHandler.removeCallbacksAndMessages(null);
++        mRetryCounts.clear();
+         shutdownUSB();
+         shutdownBluetooth();
+         synchronized (this) {

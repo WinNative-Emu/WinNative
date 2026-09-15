@@ -480,8 +480,9 @@ class GameSettingsStateHolder {
     val gfxSelectedBcnEmulationCache = mutableIntStateOf(0)
     val gfxTranscoderEntries = mutableStateOf<List<String>>(emptyList())
     val gfxSelectedTranscoder = mutableIntStateOf(0)
-    val gfxQualityEntries = mutableStateOf<List<String>>(emptyList())
-    val gfxSelectedQuality = mutableIntStateOf(0)
+    val gfxAstcTranscodingEntries = mutableStateOf<List<String>>(emptyList())
+    val gfxAstcTranscodingValues = mutableStateOf<List<String>>(emptyList())
+    val gfxSelectedAstcTranscoding = mutableIntStateOf(0)
     val gfxSyncFrame = mutableStateOf(false)
     val gfxDisablePresentWait = mutableStateOf(false)
 
@@ -2246,10 +2247,10 @@ private fun GraphicsDriverConfigCard(
                         }
                         Box(Modifier.weight(1f)) {
                             SettingDropdown(
-                                label = stringResource(R.string.container_graphics_quality),
-                                entries = state.gfxQualityEntries.value,
-                                selectedIndex = state.gfxSelectedQuality.intValue,
-                                onSelected = { state.gfxSelectedQuality.intValue = it }
+                                label = stringResource(R.string.container_graphics_astc_transcoding),
+                                entries = state.gfxAstcTranscodingEntries.value,
+                                selectedIndex = state.gfxSelectedAstcTranscoding.intValue,
+                                onSelected = { state.gfxSelectedAstcTranscoding.intValue = it }
                             )
                         }
                     }
@@ -3702,13 +3703,11 @@ private fun ReshadeCatalogRow(
 @Composable
 private fun SteamSection(state: GameSettingsStateHolder) {
 
-    // Steam Launcher is the default path; enabling it unchecks every other Steam mode (mutually exclusive launch paths).
     val onSteamLauncherChange: (Boolean) -> Unit = { enabled ->
         state.steamLauncher.value = enabled
         if (enabled) {
             state.useLegacyLauncher.value = false
             state.runtimePatcher.value = false
-            state.steamOfflineMode.value = false
         }
     }
 
@@ -3716,13 +3715,27 @@ private fun SteamSection(state: GameSettingsStateHolder) {
     Spacer(Modifier.height(8.dp))
     SettingGroup {
         SettingCheckbox(
-            label = "Steam Launcher",
+            label = stringResource(R.string.steam_launcher_real_client),
             checked = state.steamLauncher.value,
             onCheckedChange = onSteamLauncherChange
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "Run the game through the in-Wine Steam Launcher (recommended). Disables other Steam launch modes.",
+            stringResource(R.string.steam_launcher_real_client_description),
+            color = TextDim,
+            fontSize = 11.sp,
+            lineHeight = 16.sp
+        )
+        Spacer(Modifier.height(SettingItemGap))
+
+        SettingCheckbox(
+            label = stringResource(R.string.shortcuts_properties_steam_offline_mode),
+            checked = state.steamOfflineMode.value,
+            onCheckedChange = { state.steamOfflineMode.value = it }
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.shortcuts_properties_steam_offline_mode_description),
             color = TextDim,
             fontSize = 11.sp,
             lineHeight = 16.sp
@@ -3765,25 +3778,6 @@ private fun SteamSection(state: GameSettingsStateHolder) {
         )
         Spacer(Modifier.height(SettingItemGap))
         */
-
-        SettingCheckbox(
-            label = stringResource(R.string.shortcuts_properties_steam_offline_mode),
-            checked = state.steamOfflineMode.value,
-            onCheckedChange = {
-                state.steamOfflineMode.value = it
-                if (it) state.steamLauncher.value = false
-            },
-            enabled = state.useLegacyLauncher.value
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            stringResource(R.string.shortcuts_properties_steam_offline_mode_description),
-            color = TextDim,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            modifier = Modifier.alpha(if (state.useLegacyLauncher.value) 1f else 0.4f)
-        )
-        Spacer(Modifier.height(SettingItemGap))
 
         SettingCheckbox(
             label = stringResource(R.string.shortcuts_properties_runtime_patcher),
