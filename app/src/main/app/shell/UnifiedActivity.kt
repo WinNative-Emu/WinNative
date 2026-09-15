@@ -478,6 +478,31 @@ class UnifiedActivity :
     }
 
     // Avoid fragment tree traversal on every input event.
+    private var steamMenuBackend: com.winlator.cmod.runtime.input.controls.SteamControllerBackend? = null
+    private var steamMenuForeground = false
+    private val steamNavigation = com.winlator.cmod.runtime.input.controls.SteamControllerNavigation {
+        if (!com.winlator.cmod.shared.ui.nav.ControllerWindowInput.dispatch(it) && window.decorView.hasWindowFocus()) {
+            dispatchKeyEvent(it)
+        }
+    }
+
+    private fun startSteamMenuInput() {
+        if (!steamMenuForeground || cachedInputControlsFragment != null || steamMenuBackend != null || isFinishing || isDestroyed) return
+        if (!com.winlator.cmod.runtime.input.controls.SteamControllerPrefs.isEnabled(this)) return
+        val backend = com.winlator.cmod.runtime.input.controls.SteamControllerBackend(this,
+            com.winlator.cmod.runtime.input.controls.SteamControllerBackend.TRACKPAD_MOUSE_OFF, null, steamNavigation)
+        if (backend.start()) steamMenuBackend = backend
+    }
+
+    private fun stopSteamMenuInput() {
+        steamMenuBackend?.stop()
+        steamMenuBackend = null
+        steamNavigation.clear()
+    }
+
+    private fun isSteamShadow(device: android.view.InputDevice?): Boolean =
+        steamNavigation.hasControllers() && device?.vendorId == com.winlator.cmod.runtime.input.controls.SteamControllerBackend.VALVE_VENDOR_ID
+
     private var cachedInputControlsFragment: InputControlsFragment? = null
     private val inputControlsFragmentTracker =
         object : androidx.fragment.app.FragmentManager.FragmentLifecycleCallbacks() {
@@ -485,18 +510,25 @@ class UnifiedActivity :
                 fm: androidx.fragment.app.FragmentManager,
                 f: androidx.fragment.app.Fragment,
             ) {
-                if (f is InputControlsFragment) cachedInputControlsFragment = f
+                if (f is InputControlsFragment) {
+                    cachedInputControlsFragment = f
+                    stopSteamMenuInput()
+                }
             }
 
             override fun onFragmentPaused(
                 fm: androidx.fragment.app.FragmentManager,
                 f: androidx.fragment.app.Fragment,
             ) {
-                if (f is InputControlsFragment) cachedInputControlsFragment = null
+                if (f is InputControlsFragment) {
+                    cachedInputControlsFragment = null
+                    startSteamMenuInput()
+                }
             }
         }
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (isSteamShadow(event.device)) return true
         cachedInputControlsFragment?.let { fragment ->
             if (fragment.dispatchKeyEvent(event)) return true
         }
@@ -615,6 +647,8 @@ class UnifiedActivity :
     }
 
     override fun onPause() {
+        steamMenuForeground = false
+        stopSteamMenuInput()
         super.onPause()
         chasingBordersPaused.value = true
         UpdateService.stopHourlyLoop()
@@ -623,6 +657,8 @@ class UnifiedActivity :
 
     override fun onResume() {
         super.onResume()
+        steamMenuForeground = true
+        startSteamMenuInput()
         settingsStickEngaged = 0
         joystickActive = false
         chasingBordersPaused.value = false
@@ -646,6 +682,8 @@ class UnifiedActivity :
     }
 
     override fun onDestroy() {
+        steamMenuForeground = false
+        stopSteamMenuInput()
         if (isFinishing && !isChangingConfigurations) {
             DownloadService.clearCompletedDownloads()
         }
@@ -657,6 +695,7 @@ class UnifiedActivity :
     }
 
     override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
+        if (isSteamShadow(event.device)) return true
         cachedInputControlsFragment?.let { fragment ->
             if (fragment.dispatchGenericMotionEvent(event)) return true
         }

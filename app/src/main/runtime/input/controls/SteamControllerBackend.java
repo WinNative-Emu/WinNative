@@ -291,6 +291,7 @@ public final class SteamControllerBackend {
     for (int i = pads.size() - 1; i >= 0; i--) {
       Pad pad = pads.valueAt(i);
       pads.removeAt(i);
+      com.winlator.cmod.runtime.input.ControllerHelper.setSteamControllerConnected(pads.size() > 0);
       releaseHeld(pad);
       listener.onSteamPadDisconnected(pad.controller);
     }
@@ -480,6 +481,7 @@ public final class SteamControllerBackend {
       if (!present) {
         Pad pad = pads.valueAt(i);
         pads.removeAt(i);
+        com.winlator.cmod.runtime.input.ControllerHelper.setSteamControllerConnected(pads.size() > 0);
         releaseHeld(pad);
         listener.onSteamPadDisconnected(pad.controller);
       }
@@ -492,6 +494,7 @@ public final class SteamControllerBackend {
       if (connected) {
         pad = new Pad(createController(id, names[p], paths[p]));
         pads.put(id, pad);
+        com.winlator.cmod.runtime.input.ControllerHelper.setSteamControllerConnected(true);
       }
       int caps = ints[p * I_STRIDE + I_CAPS];
       pad.controller.steamTouchpadCount = caps >> 8;

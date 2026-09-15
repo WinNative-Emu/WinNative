@@ -1418,5 +1418,5 @@ internal fun UnifiedActivity.rememberControllerConnectionState(): ControllerConn
         }
     }
 
-    return controllerState
+    return controllerState.copy(isConnected = ControllerHelper.isControllerConnected())
 }

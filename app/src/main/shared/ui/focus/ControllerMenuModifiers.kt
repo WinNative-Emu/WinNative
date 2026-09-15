@@ -171,6 +171,8 @@ fun Modifier.controllerMenuInput(
         val lastMove = remember { longArrayOf(0L) }
 
         DisposableEffect(view) {
+            val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+            val unregister = window?.let { com.winlator.cmod.shared.ui.nav.ControllerWindowInput.register(it) }
             val decor = view.rootView
             val listener =
                 android.view.View.OnGenericMotionListener { _, ev ->
@@ -202,7 +204,10 @@ fun Modifier.controllerMenuInput(
                     false
                 }
             decor.setOnGenericMotionListener(listener)
-            onDispose { decor.setOnGenericMotionListener(null) }
+            onDispose {
+                unregister?.invoke()
+                decor.setOnGenericMotionListener(null)
+            }
         }
 
         this.onPreviewKeyEvent { e ->
