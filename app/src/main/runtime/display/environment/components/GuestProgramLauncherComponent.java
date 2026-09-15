@@ -19,6 +19,7 @@ import com.winlator.cmod.runtime.content.ContentsManager;
 import com.winlator.cmod.runtime.display.connector.UnixSocketConfig;
 import com.winlator.cmod.runtime.display.environment.EnvironmentComponent;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
+import com.winlator.cmod.runtime.display.ui.MangoHudView;
 import com.winlator.cmod.runtime.input.controls.FakeInputWriter;
 import com.winlator.cmod.runtime.system.GPUInformation;
 import com.winlator.cmod.runtime.system.ProcessHelper;
@@ -888,6 +889,12 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
     addBox64EnvVars(envVars, enableBox64Logs);
     envVars.putAll(FEXCorePresetManager.getEnvVars(context, fexcorePreset));
+
+    // Opt FEX-Emu into its low-overhead shm profile stats when the HUD's FEX
+    // element is on; MangoHudView reads the fex-<pid>-stats objects back.
+    if (MangoHudView.fexElementEnabled(preferences)) {
+      envVars.put("FEX_PROFILESTATS", "1");
+    }
 
     if (enableFexcoreLogs) {
       // FEXCore is silent by default. Enable logging to stderr so its output is

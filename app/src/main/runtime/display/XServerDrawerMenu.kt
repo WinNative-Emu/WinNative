@@ -703,11 +703,12 @@ data class XServerDrawerState(
     val rightStickSensitivity: Float = 1.0f,
     val screenTouchRsSensitivity: Float = 1.25f,
     val mangoHudEnabled: Boolean = false,
-    val mangoHudElements: BooleanArray = BooleanArray(20) { it < 12 },
+    val mangoHudElements: BooleanArray = BooleanArray(29) { it < 12 },
     val mangoHudAlpha: Float = 1.0f,
     val mangoHudBgAlpha: Float = 0.5f,
     val mangoHudScale: Float = 0.735f,
     val mangoHudLocked: Boolean = false,
+    val fexStatsAvailable: Boolean = true,
 )
 
 class XServerDrawerStateHolder(
@@ -1263,11 +1264,12 @@ fun buildXServerDrawerState(
     rightStickSensitivity: Float = 1.0f,
     screenTouchRsSensitivity: Float = 1.25f,
     mangoHudEnabled: Boolean = false,
-    mangoHudElements: BooleanArray = BooleanArray(20) { it < 12 },
+    mangoHudElements: BooleanArray = BooleanArray(29) { it < 12 },
     mangoHudAlpha: Float = 1.0f,
     mangoHudBgAlpha: Float = 0.5f,
     mangoHudScale: Float = 0.735f,
     mangoHudLocked: Boolean = false,
+    fexStatsAvailable: Boolean = true,
 ): XServerDrawerState {
     val items =
         mutableListOf(
@@ -1471,6 +1473,7 @@ fun buildXServerDrawerState(
         mangoHudBgAlpha = mangoHudBgAlpha,
         mangoHudScale = mangoHudScale,
         mangoHudLocked = mangoHudLocked,
+        fexStatsAvailable = fexStatsAvailable,
     )
 }
 
