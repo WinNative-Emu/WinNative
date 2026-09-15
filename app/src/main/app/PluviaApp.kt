@@ -2,7 +2,6 @@ package com.winlator.cmod.app
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
-import android.os.Looper
 import android.util.Log
 import com.winlator.cmod.app.config.DeviceProfileSettings
 import com.winlator.cmod.app.db.PluviaDatabase
@@ -46,12 +45,14 @@ class PluviaApp : Application() {
         super.onCreate()
         instance = this
 
-        val platformUncaughtHandler = Thread.getDefaultUncaughtExceptionHandler()
-        val mainThread = Looper.getMainLooper().thread
+        val systemUncaughtHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("PluviaApp", "CRASH in thread ${thread.name}", throwable)
-            if (thread === mainThread) {
-                platformUncaughtHandler?.uncaughtException(thread, throwable)
+            if (systemUncaughtHandler != null) {
+                systemUncaughtHandler.uncaughtException(thread, throwable)
+            } else {
+                android.os.Process.killProcess(android.os.Process.myPid())
+                kotlin.system.exitProcess(10)
             }
         }
 

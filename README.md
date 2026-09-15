@@ -61,7 +61,7 @@ authors, the **ARMSX2**, **PCSX2** and **Dolphin** teams, **PancakeTAS** (lsfg-v
 **Camille LaVey** of the **Eden Emulator Project** (the Vulkan LSFG port this one derives from),
 **qwertypower** of **DEVAR Entertainment LLC** (the open-source DIS engine), **OpenCV** and
 Till Kroeger (the DIS algorithm), **DXVK** (the `dxbc` translator), and **The412Banner**
-(DirectAudio, and with it microphone support).
+(DirectAudio and Steam Controller support), and the **SDL** contributors.
 
 That list is a summary, not the attribution itself. **[CREDITS.md](CREDITS.md)** carries the full
 acknowledgments, including exactly which files came from which upstream project, and

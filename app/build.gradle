@@ -210,6 +210,10 @@ android {
         noCompress += ['tzst', 'txz']
     }
 
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -353,6 +357,8 @@ dependencies {
 //    debugImplementation "com.squareup.leakcanary:leakcanary-android:2.14"
 
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.16.1'
+    testImplementation 'org.mockito:mockito-core:5.18.0'
 
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test:runner:1.6.2'
@@ -411,6 +417,7 @@ dependencies {
 
     implementation 'com.android.ndk.thirdparty:openssl:1.1.1q-beta-1'
     implementation 'com.android.ndk.thirdparty:curl:7.85.0-beta-1'
+    implementation 'org.libsdl.android:SDL3:3.4.16-winnative.1@aar'
 
     implementation libs.playServicesGamesV2
 

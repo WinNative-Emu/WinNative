@@ -104,6 +104,7 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
     private val dialog: Dialog
     private val nav = GameSettingsNav()
     private var restorePaneNav: (() -> Unit)? = null
+    private var activityObserver: DefaultLifecycleObserver? = null
     private val state = GameSettingsStateHolder()
     private val manager = ContainerManager(context)
     private val contentsManager = ContentsManager(context)
@@ -149,6 +150,8 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             // path as Save/Cancel and still fires onFinished (important for
             // the setup wizard launcher that blocks on UnifiedActivity finishing).
             setOnDismissListener {
+                activityObserver?.let { (activity as LifecycleOwner).lifecycle.removeObserver(it) }
+                activityObserver = null
                 restorePaneNav?.invoke()
                 restorePaneNav = null
                 AppUtils.hideKeyboard(activity)
@@ -194,11 +197,14 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         }
         dialog.setContentView(composeView)
 
-        (activity as LifecycleOwner).lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onDestroy(owner: LifecycleOwner) {
-                if (dialog.isShowing) dialog.dismiss()
+        val observer =
+            object : DefaultLifecycleObserver {
+                override fun onDestroy(owner: LifecycleOwner) {
+                    if (dialog.isShowing) dialog.dismiss()
+                }
             }
-        })
+        activityObserver = observer
+        (activity as LifecycleOwner).lifecycle.addObserver(observer)
 
         loadContentsAsync()
     }
@@ -699,25 +705,28 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
     }
 
     private fun loadContentsAsync() {
-        Executors.newSingleThreadExecutor().execute {
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
             val mouseWarp = readMouseWarpOverride()
             try {
                 contentsManager.syncContents()
-                activity.runOnUiThread {
-                    try {
-                        applyMouseWarpOverride(mouseWarp)
-                        populateContentsDependentData()
-                    } finally {
-                        state.isLoaded.value = true
-                    }
-                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error syncing contents", e)
-                activity.runOnUiThread {
+            }
+            activity.runOnUiThread {
+                try {
+                    if (dialog.isShowing) {
+                        applyMouseWarpOverride(mouseWarp)
+                        populateContentsDependentData()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error populating container settings", e)
+                } finally {
                     state.isLoaded.value = true
                 }
             }
         }
+        executor.shutdown()
     }
 
     private fun populateContentsDependentData() {

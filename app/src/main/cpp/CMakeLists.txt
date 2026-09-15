@@ -227,3 +227,11 @@ add_library(waudio SHARED
 )
 target_compile_options(waudio PRIVATE -Wall -Wextra -fvisibility=hidden)
 target_link_libraries(waudio log dl)
+
+find_package(SDL3 REQUIRED CONFIG)
+
+add_library(steamctrl SHARED
+        steamctrl/steam_controller_bridge.cpp
+)
+target_compile_options(steamctrl PRIVATE -Wall -Wextra -fvisibility=hidden)
+target_link_libraries(steamctrl SDL3::SDL3 log)

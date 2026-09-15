@@ -60,6 +60,17 @@ public class InputControlsView extends View {
   public static final String EXTRA_ADAPTIVE_JOYSTICKS = "adaptiveJoysticks";
   private static final byte MOUSE_WHEEL_DELTA = 120;
   private boolean editMode = false;
+  private final HashMap<Integer, SteamPadInput> steamPadInputs = new HashMap<>();
+
+  private static final class SteamPadInput {
+    final ExternalController controller;
+    final HashMap<Binding, Float> held;
+
+    SteamPadInput(ExternalController controller, HashMap<Binding, Float> held) {
+      this.controller = controller;
+      this.held = held;
+    }
+  }
   private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
   private final Path path = new Path();
   private final ColorFilter colorFilter =
@@ -413,6 +424,7 @@ public class InputControlsView extends View {
   }
 
   public synchronized void setProfile(ControlsProfile profile) {
+    releaseSteamPadInputs();
     releaseActiveTouchElements();
     if (profile != null) {
       this.profile = profile;
@@ -841,6 +853,7 @@ public class InputControlsView extends View {
 
   @Override
   public boolean onGenericMotionEvent(MotionEvent event) {
+    if (isInputSuspended()) return true;
     if (!editMode && profile != null) {
       ExternalController controller = profile.getController(event.getDeviceId());
 
@@ -873,7 +886,10 @@ public class InputControlsView extends View {
 
   @Override
   public boolean onTouchEvent(MotionEvent event) {
-    if (getContext() instanceof XServerDisplayActivity && ((XServerDisplayActivity)getContext()).isInputSuspended()) return true;
+    if (isInputSuspended()) {
+      dispatchUnhandledTouch(event);
+      return true;
+    }
 
     boolean hapticsEnabled = preferences.getBoolean("touchscreen_haptics_enabled", false);
 
@@ -1118,8 +1134,104 @@ public class InputControlsView extends View {
         dirtyRect.bottom + padding);
   }
 
+  public boolean onSteamPadState(ExternalController sdlPad, int[] pressedKeyCodes) {
+    ExternalController controller = profile != null ? profile.getController(sdlPad.getId()) : null;
+    if (editMode || controller == null || controller.getControllerBindingCount() == 0) {
+      onSteamPadDisconnected(sdlPad);
+      return false;
+    }
+    controller.setDeviceId(sdlPad.getDeviceId());
+    controller.state.copy(sdlPad.state);
+    HashMap<Binding, Float> next = new HashMap<>();
+    for (int keyCode : pressedKeyCodes) addSteamBinding(next, controller, keyCode, 1f);
+    addSteamBinding(next, controller, KeyEvent.KEYCODE_BUTTON_L2, controller.state.triggerL);
+    addSteamBinding(next, controller, KeyEvent.KEYCODE_BUTTON_R2, controller.state.triggerR);
+    int[] axes = {MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z,
+        MotionEvent.AXIS_RZ, MotionEvent.AXIS_HAT_X, MotionEvent.AXIS_HAT_Y};
+    float[] values = {controller.state.thumbLX, controller.state.thumbLY, controller.state.thumbRX,
+        controller.state.thumbRY, controller.state.getDPadX(), controller.state.getDPadY()};
+    for (int i = 0; i < axes.length; i++) {
+      if (Math.abs(values[i]) <= ControlElement.STICK_DEAD_ZONE) continue;
+      addSteamBinding(next, controller,
+          ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i])), values[i]);
+    }
+    HashMap<Binding, Float> previousBindings = aggregateSteamBindings();
+    steamPadInputs.put(sdlPad.getDeviceId(), new SteamPadInput(controller, next));
+    updateSteamBindings(previousBindings, aggregateSteamBindings());
+    controller.remappedState.clear();
+    for (java.util.Map.Entry<Binding, Float> entry : next.entrySet()) {
+      Binding binding = entry.getKey();
+      float value = entry.getValue();
+      if (binding.isGamepad()) {
+        handleInputEvent(controller, binding, true, value, false);
+      }
+    }
+    sdlPad.remappedState.copy(controller.remappedState);
+    WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+    if (winHandler != null) winHandler.sendGamepadState(sdlPad);
+    return true;
+  }
+
+  private static void addSteamBinding(HashMap<Binding, Float> targets,
+      ExternalController controller, int keyCode, float value) {
+    if (Math.abs(value) <= ControlElement.STICK_DEAD_ZONE) return;
+    ExternalControllerBinding source = controller.getControllerBinding(keyCode);
+    if (source == null || source.getBinding() == Binding.NONE) return;
+    Binding binding = source.getBinding();
+    value = Math.abs(value);
+    if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_UP) value = -value;
+    Float previous = targets.get(binding);
+    if (previous == null || Math.abs(value) > Math.abs(previous)) targets.put(binding, value);
+  }
+
+  private HashMap<Binding, Float> aggregateSteamBindings() {
+    HashMap<Binding, Float> bindings = new HashMap<>();
+    for (SteamPadInput input : steamPadInputs.values()) {
+      for (java.util.Map.Entry<Binding, Float> entry : input.held.entrySet()) {
+        if (entry.getKey().isGamepad()) continue;
+        Float previous = bindings.get(entry.getKey());
+        if (previous == null || Math.abs(entry.getValue()) > Math.abs(previous)) {
+          bindings.put(entry.getKey(), entry.getValue());
+        }
+      }
+    }
+    return bindings;
+  }
+
+  private void updateSteamBindings(HashMap<Binding, Float> previous, HashMap<Binding, Float> next) {
+    for (Binding binding : previous.keySet()) {
+      if (!next.containsKey(binding)) handleInputEvent(null, binding, false, 0, false);
+    }
+    for (java.util.Map.Entry<Binding, Float> entry : next.entrySet()) {
+      if (!previous.containsKey(entry.getKey()) || (entry.getKey().isMouseMove()
+          && !entry.getValue().equals(previous.get(entry.getKey())))) {
+        handleInputEvent(null, entry.getKey(), true, entry.getValue(), false);
+      }
+    }
+  }
+
+  public void onSteamPadDisconnected(ExternalController sdlPad) {
+    HashMap<Binding, Float> previous = aggregateSteamBindings();
+    releaseSteamPadInput(steamPadInputs.remove(sdlPad.getDeviceId()));
+    updateSteamBindings(previous, aggregateSteamBindings());
+  }
+
+  public void releaseSteamPadInputs() {
+    HashMap<Binding, Float> previous = aggregateSteamBindings();
+    for (SteamPadInput input : steamPadInputs.values()) releaseSteamPadInput(input);
+    steamPadInputs.clear();
+    updateSteamBindings(previous, new HashMap<>());
+  }
+
+  private void releaseSteamPadInput(SteamPadInput input) {
+    if (input == null) return;
+    input.controller.remappedState.clear();
+    WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+    if (winHandler != null) winHandler.sendGamepadState(input.controller);
+  }
+
   public boolean onKeyEvent(KeyEvent event) {
-    if (getContext() instanceof XServerDisplayActivity && ((XServerDisplayActivity)getContext()).isInputSuspended()) return false;
+    if (isInputSuspended()) return false;
     if (profile != null && event.getRepeatCount() == 0) {
       ExternalController controller = profile.getController(event.getDeviceId());
       if (controller != null) {
@@ -1310,5 +1422,9 @@ public class InputControlsView extends View {
       }
     }
     return icons[id];
+  }
+
+  private boolean isInputSuspended() {
+    return getContext() instanceof XServerDisplayActivity && ((XServerDisplayActivity)getContext()).isInputSuspended();
   }
 }

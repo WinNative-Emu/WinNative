@@ -48,6 +48,9 @@ public class ExternalController {
   private final ArrayList<ExternalControllerBinding> controllerBindings = new ArrayList<>();
   public final GamepadState state = new GamepadState();
   public final GamepadState remappedState = new GamepadState();
+  public int steamButtons, steamTouchpadCount, steamProductId;
+  public boolean steamHasRumble, steamHasGyro, steamLeftTouch, steamRightTouch;
+  public float steamLeftX, steamLeftY, steamRightX, steamRightY;
   private boolean triggerLPressedViaButton = false;
   private boolean triggerRPressedViaButton = false;
 
@@ -180,6 +183,10 @@ public class ExternalController {
 
   public void setId(String id) {
     this.id = id;
+  }
+
+  public void setDeviceId(int deviceId) {
+    this.deviceId = deviceId;
   }
 
   public byte getTriggerType() {

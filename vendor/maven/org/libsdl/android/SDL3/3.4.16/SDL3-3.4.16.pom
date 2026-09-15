@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-written POM for the vendored, unmodified SDL3 3.4.16 Android release AAR (SDL publishes the
+     AAR only as a GitHub release asset, not to a Maven repository). See vendor/maven/README.md. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.libsdl.android</groupId>
+    <artifactId>SDL3</artifactId>
+    <version>3.4.16</version>
+    <packaging>aar</packaging>
+    <name>SDL3</name>
+    <description>Simple DirectMedia Layer 3.4.16 for Android (official release AAR, unmodified)</description>
+    <url>https://github.com/libsdl-org/SDL</url>
+    <licenses>
+        <license>
+            <name>zlib License</name>
+            <url>https://github.com/libsdl-org/SDL/blob/release-3.4.16/LICENSE.txt</url>
+        </license>
+    </licenses>
+</project>
