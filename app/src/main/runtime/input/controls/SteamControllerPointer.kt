@@ -27,6 +27,11 @@ internal class SteamControllerPointer(private val activity: Activity) {
         send(if (buttons == 0) MotionEvent.ACTION_HOVER_MOVE else MotionEvent.ACTION_MOVE)
     }
 
+    fun scroll(horizontal: Float, vertical: Float) {
+        if ((horizontal == 0f && vertical == 0f) || target() == null) return
+        send(MotionEvent.ACTION_SCROLL, horizontal, vertical)
+    }
+
     fun button(secondary: Boolean, down: Boolean) {
         if (down && target() == null) return
         if (window == null) return
@@ -78,15 +83,17 @@ internal class SteamControllerPointer(private val activity: Activity) {
         return target
     }
 
-    private fun send(action: Int) {
+    private fun send(action: Int, horizontal: Float = 0f, vertical: Float = 0f) {
         val decor = window?.decorView ?: return
         val properties = MotionEvent.PointerProperties().apply { id = 0; toolType = MotionEvent.TOOL_TYPE_MOUSE }
         val coords = MotionEvent.PointerCoords().apply { x = this@SteamControllerPointer.x; y = this@SteamControllerPointer.y; pressure = if (buttons != 0) 1f else 0f }
+        coords.setAxisValue(MotionEvent.AXIS_HSCROLL, horizontal)
+        coords.setAxisValue(MotionEvent.AXIS_VSCROLL, vertical)
         val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, 1,
             arrayOf(properties), arrayOf(coords), 0, buttons, 1f, 1f, SteamControllerBackend.DEVICE_ID_BASE,
             0, android.view.InputDevice.SOURCE_MOUSE, 0)
         try {
-            if (action == MotionEvent.ACTION_HOVER_MOVE) {
+            if (action == MotionEvent.ACTION_HOVER_MOVE || action == MotionEvent.ACTION_SCROLL) {
                 decor.dispatchGenericMotionEvent(event)
             } else decor.dispatchTouchEvent(event)
         } finally { event.recycle() }

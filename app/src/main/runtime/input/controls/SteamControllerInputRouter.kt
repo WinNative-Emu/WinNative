@@ -8,6 +8,12 @@ internal class SteamControllerInputRouter(
     private var settings: SteamControllerBackend.Listener? = null
     private var captures: (() -> Boolean)? = null
     private var awaitNeutral = false
+    private val scrollPositions = mutableMapOf<Int, Pair<Float, Float>>()
+    var leftTrackpadScroll = true
+        set(value) {
+            field = value
+            scrollPositions.clear()
+        }
     var foreground = false
         set(value) {
             field = value
@@ -34,6 +40,7 @@ internal class SteamControllerInputRouter(
     }
 
     fun clearOutputs() {
+        scrollPositions.clear()
         navigation.clear()
         pointer.clear()
     }
@@ -51,6 +58,7 @@ internal class SteamControllerInputRouter(
     }
 
     override fun onSteamPadDisconnected(pad: ExternalController) {
+        scrollPositions.remove(pad.deviceId)
         pads.remove(pad.deviceId)
         navigation.onSteamPadDisconnected(pad)
         settings?.onSteamPadDisconnected(pad)
@@ -61,7 +69,10 @@ internal class SteamControllerInputRouter(
         if (!foreground) return
         val captured = captures?.invoke() == true
         settings?.onSteamPadState(pad, guide, quickAccess, keys)
-        if (captured) awaitNeutral = true
+        if (captured) {
+            awaitNeutral = true
+            scrollPositions.clear()
+        }
         if (awaitNeutral && !captured) {
             awaitNeutral = keys.isNotEmpty() || kotlin.math.abs(pad.state.thumbLX) > 0.55f ||
                 kotlin.math.abs(pad.state.thumbLY) > 0.55f || pad.state.triggerL > 0.5f || pad.state.triggerR > 0.5f
@@ -69,7 +80,16 @@ internal class SteamControllerInputRouter(
             return
         }
         if (captured || !isSteamPadInputEnabled()) navigation.clear()
-        else navigation.onSteamPadState(pad, guide, quickAccess, keys)
+        else {
+            if (leftTrackpadScroll && pad.steamLeftTouch) {
+                val previous = scrollPositions.put(pad.deviceId, pad.steamLeftX to pad.steamLeftY)
+                if (previous != null) pointer.scroll(
+                    (previous.first - pad.steamLeftX) * 12f,
+                    (pad.steamLeftY - previous.second) * 12f,
+                )
+            } else scrollPositions.remove(pad.deviceId)
+            navigation.onSteamPadState(pad, guide, quickAccess, keys)
+        }
     }
 
     override fun onSteamPadGyro(pad: ExternalController, x: Float, y: Float, z: Float, timestamp: Long) {

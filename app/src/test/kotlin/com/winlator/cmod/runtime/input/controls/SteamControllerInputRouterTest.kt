@@ -42,6 +42,39 @@ class SteamControllerInputRouterTest {
         router.clearOutputs()
     }
 
+    @Test fun leftPadSwipesScrollWithoutJumpingOnTouchOrRetouch() {
+        pad.steamLeftTouch = true
+        pad.steamLeftX = 0.5f
+        pad.steamLeftY = 0.75f
+        router.onSteamPadState(pad, false, false, intArrayOf())
+        verify(pointer, never()).scroll(anyFloat(), anyFloat())
+        pad.steamLeftY = 0.5f
+        router.onSteamPadState(pad, false, false, intArrayOf())
+        verify(pointer).scroll(0f, -3f)
+        pad.steamLeftTouch = false
+        router.onSteamPadState(pad, false, false, intArrayOf())
+        pad.steamLeftTouch = true
+        pad.steamLeftY = 0.9f
+        router.onSteamPadState(pad, false, false, intArrayOf())
+        verify(pointer, times(1)).scroll(anyFloat(), anyFloat())
+        assertTrue(keys.isEmpty())
+        router.clearOutputs()
+    }
+
+    @Test fun captureAndMousePreferencePreventLeftPadScrolling() {
+        router.leftTrackpadScroll = false
+        pad.steamLeftTouch = true
+        router.onSteamPadState(pad, false, false, intArrayOf())
+        pad.steamLeftY = 0.5f
+        router.onSteamPadState(pad, false, false, intArrayOf())
+        router.leftTrackpadScroll = true
+        router.attach(mock(SteamControllerBackend.Listener::class.java)) { true }
+        pad.steamLeftY = 0.8f
+        router.onSteamPadState(pad, false, false, intArrayOf())
+        verify(pointer, never()).scroll(anyFloat(), anyFloat())
+        router.clearOutputs()
+    }
+
     @Test fun buttonWhichClosesCaptureIsNotAlsoDispatchedToUnderlyingMenu() {
         var capture = true
         val settings = mock(SteamControllerBackend.Listener::class.java)
