@@ -18,7 +18,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = "3.4.16"
-PATCHED = VERSION + "-winnative.1"
+PATCHED = VERSION + "-winnative.2"
 REPO = ROOT / "vendor/maven/org/libsdl/android/SDL3"
 SOURCE_SHA = "c2ee715e42ec520c4d11fd8d249ef1d2b2baf4ad31148b72b3b000276c0b3633"
 

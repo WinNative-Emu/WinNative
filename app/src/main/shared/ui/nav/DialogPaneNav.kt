@@ -140,7 +140,11 @@ internal fun Window.bindPaneNav(handlers: PaneNavWindowHandlers): () -> Unit {
     val prev = callback ?: return {}
     val wrapper = PaneNavWindowCallback(prev, handlers, this)
     callback = wrapper
-    return { if (callback === wrapper) callback = prev }
+    val unregister = ControllerWindowInput.register(this)
+    return {
+        unregister()
+        if (callback === wrapper) callback = prev
+    }
 }
 
 internal fun Window.bindPaneNav(
