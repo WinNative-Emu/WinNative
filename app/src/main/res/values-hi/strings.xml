@@ -2821,4 +2821,5 @@
     <string name="container_display_server_needs_wayland_proton">इस Proton में winewayland या Wayland Turnip ड्राइवर नहीं है, इसलिए X11 उपयोग होता है। सामग्री से एक Wayland Proton लेयर इंस्टॉल करें, जैसे Banner का proton-11.0-2.1-arm64ec-wayland .wcp, और उसे कंटेनर के Proton के रूप में चुनें।</string>
     <string name="wayland_unavailable_fallback">इस गेम के लिए Wayland उपलब्ध नहीं है। X11 पर लॉन्च किया जा रहा है।</string>
     <string name="wayland_needs_turnip_driver">गेम दिखाने के लिए Wayland को Turnip ग्राफ़िक्स ड्राइवर चाहिए। सामग्री से एक इंस्टॉल करें और उसे ग्राफ़िक्स ड्राइवर के रूप में चुनें।</string>
+    <string name="settings_content_badge_online">ऑनलाइन</string>
 </resources>

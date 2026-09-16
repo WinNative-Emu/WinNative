@@ -8690,6 +8690,17 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
      * only when the device and the selected Wine/Proton can drive the compositor. A reattached
      * background session keeps whatever it was started with.
      */
+    private boolean hasPendingContainerOverride() {
+        if (shortcut == null || container == null) return false;
+        String id = shortcut.getExtra("container_id");
+        if (id == null || id.isEmpty()) return false;
+        try {
+            return Integer.parseInt(id) != container.id;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     private void resolveDisplayBackend() {
         boolean reattaching = SessionKeepAliveService.isSessionActive()
                 && SessionKeepAliveService.getActiveEnvironment() != null
@@ -8705,8 +8716,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (wanted && !(WineWaylandSupport.isAdrenoDevice(this) && WineWaylandSupport.isWaylandCapable(wineInfo))) {
             Log.w(TAG, "wayland: " + wineVersion + " (" + wineInfo.path
                     + ") or this GPU cannot drive the compositor; launching on X11");
-            android.widget.Toast.makeText(this, R.string.wayland_unavailable_fallback,
-                    android.widget.Toast.LENGTH_LONG).show();
+            // A shortcut that swaps the container resolves again against it; announcing the
+            // fallback here would name a container the session never launches in.
+            if (!hasPendingContainerOverride()) {
+                android.widget.Toast.makeText(this, R.string.wayland_unavailable_fallback,
+                        android.widget.Toast.LENGTH_LONG).show();
+            }
             wanted = false;
         }
         waylandMode = wanted;

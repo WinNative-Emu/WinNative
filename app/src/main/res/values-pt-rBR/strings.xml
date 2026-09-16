@@ -2886,5 +2886,6 @@ Caminho instalado:
     <string name="container_display_server_needs_wayland_proton">Este Proton não inclui winewayland nem o driver Turnip para Wayland, então o X11 é usado. Instale uma camada Proton Wayland em Conteúdos, por exemplo o .wcp proton-11.0-2.1-arm64ec-wayland do Banner, e selecione-a como Proton do contêiner.</string>
     <string name="wayland_unavailable_fallback">O Wayland não está disponível para este jogo. Iniciando no X11.</string>
     <string name="wayland_needs_turnip_driver">O Wayland precisa de um driver gráfico Turnip para exibir o jogo. Instale um em Conteúdos e selecione-o como driver gráfico.</string>
+    <string name="settings_content_badge_online">Online</string>
 </resources>
 

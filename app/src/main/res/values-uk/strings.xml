@@ -2892,5 +2892,6 @@
     <string name="container_display_server_needs_wayland_proton">У цьому Proton немає winewayland і драйвера Turnip для Wayland, тому використовується X11. Встановіть шар Proton для Wayland у розділі «Вміст», наприклад .wcp proton-11.0-2.1-arm64ec-wayland від Banner, і виберіть його як Proton контейнера.</string>
     <string name="wayland_unavailable_fallback">Wayland недоступний для цієї гри. Запуск через X11.</string>
     <string name="wayland_needs_turnip_driver">Для показу гри Wayland потрібен графічний драйвер Turnip. Встановіть його в розділі «Вміст» і виберіть як графічний драйвер.</string>
+    <string name="settings_content_badge_online">Онлайн</string>
 </resources>
 

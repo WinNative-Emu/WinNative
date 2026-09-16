@@ -2886,4 +2886,5 @@ Installerad sökväg:
     <string name="container_display_server_needs_wayland_proton">Denna Proton saknar winewayland och Wayland Turnip-drivrutinen, så X11 används. Installera ett Wayland Proton-lager från Innehåll, till exempel Banners proton-11.0-2.1-arm64ec-wayland .wcp, och välj det som containerns Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland är inte tillgängligt för detta spel. Startar på X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland behöver en Turnip-grafikdrivrutin för att visa spelet. Installera en under Innehåll och välj den som grafikdrivrutin.</string>
+    <string name="settings_content_badge_online">Online</string>
 </resources>

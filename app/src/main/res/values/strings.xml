@@ -2900,4 +2900,5 @@ Installed path:
     <string name="wayland_needs_turnip_driver">Wayland needs a Turnip graphics driver to show the game. Install one under Contents and select it as the graphics driver.</string>
     <string name="display_server_x11" translatable="false">X11</string>
     <string name="display_server_wayland" translatable="false">Wayland</string>
+    <string name="settings_content_badge_online">Online</string>
 </resources>

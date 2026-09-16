@@ -780,12 +780,12 @@ private fun IconTapButton(
     }
 }
 
+private val ONLINE_CAPABLE_MARKERS = listOf("online", "steam")
+
 private fun isOnlineCapable(item: ComponentItem): Boolean =
     ONLINE_CAPABLE_MARKERS.any { marker ->
         item.verName.contains(marker, ignoreCase = true) || item.key.contains(marker, ignoreCase = true)
     }
-
-private val ONLINE_CAPABLE_MARKERS = listOf("online", "steam")
 
 // Badge marking first-party "WinNative" builds. A perfect square (width follows
 // the filled height) in WinNative blue, carrying only the WinNative logo for
@@ -819,7 +819,7 @@ private fun OnlineCapableBadge(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "Online",
+            text = stringResource(R.string.settings_content_badge_online),
             color = SuccessGreen,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,

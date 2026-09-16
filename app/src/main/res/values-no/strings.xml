@@ -2886,4 +2886,5 @@ Installert bane:
     <string name="container_display_server_needs_wayland_proton">Denne Proton har verken winewayland eller Wayland Turnip-driveren, så X11 brukes. Installer et Wayland Proton-lag fra Innhold, for eksempel Banners proton-11.0-2.1-arm64ec-wayland .wcp, og velg det som containerens Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland er ikke tilgjengelig for dette spillet. Starter på X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland trenger en Turnip-grafikkdriver for å vise spillet. Installer en under Innhold og velg den som grafikkdriver.</string>
+    <string name="settings_content_badge_online">Online</string>
 </resources>
