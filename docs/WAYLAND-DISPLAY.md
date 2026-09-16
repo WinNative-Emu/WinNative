@@ -22,8 +22,8 @@ Wayland can only be selected, and is only used at launch, when both hold:
 
 1. The device has an Adreno GPU. The compositor imports the game's frames with Turnip through
    adrenotools; Mali and Xclipse devices stay on X11.
-2. The selected Wine/Proton ships `lib/wine/aarch64-unix/winewayland.so` (or the x86_64-unix
-   variant) and `lib/libvulkan_freedreno_wayland.so`, the Wayland Turnip the game renders on.
+2. The selected Wine/Proton ships `lib/wine/aarch64-unix/winewayland.so` and
+   `lib/libvulkan_freedreno_wayland.so`, the Wayland Turnip the game renders on.
    WinNative writes its own Vulkan ICD manifests for the bundled Turnips as
    `share/vulkan/icd.d/wayland_turnip[_variant].json` and points winewayland at the chosen one
    through `BANNER_WAYLAND_VK_ICD`, so the donor's manifest names are never relied on.
@@ -32,6 +32,15 @@ Wayland can only be selected, and is only used at launch, when both hold:
    `proton-11.0-2.1-arm64ec-wayland-v16.wcp` from the Bannerlator Wayland pre-releases
    (installs as `Proton-11.0-2.1-arm64ec-16`), then pick it as the container's Proton. The
    dropdown enables as soon as the selected Proton passes the check.
+An x86_64 layer does not qualify, even when it ships a Wayland driver. Its `winewayland.so` is
+a unixlib like any other and Box64 runs it: the compositor gets a connection, a desktop and
+windows. But the driver also has to `dlopen` the Wayland Turnip to hand the game its ICD, and
+that Turnip is aarch64, so the pin fails and the session is a desktop that never presents a
+frame. Pointing the driver at Box64's native `libwayland-client.so.0` wrapper instead makes
+Wine and Turnip share one connection, but the driver then faults at the entry to its event
+thread. x86_64 layers therefore stay on X11, where DXVK reaches the GPU through Box64's Vulkan
+wrapper.
+
 The files cannot be copied into another Proton. `winewayland.so` is a Wine unixlib bound to the
 `win32u` it was built against, so a copy taken from a different Proton loads, connects to the
 compositor and enumerates its outputs, but creates no window: the session runs with a black screen

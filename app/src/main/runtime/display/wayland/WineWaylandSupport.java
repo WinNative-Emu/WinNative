@@ -160,8 +160,10 @@ public final class WineWaylandSupport {
             Boolean cached = cache.get(cacheKey);
             if (cached != null) return cached;
         }
+        // aarch64 only. An x86_64 layer's winewayland.so loads and drives the compositor under
+        // Box64, but it cannot dlopen the aarch64 Wayland Turnip the game has to present through,
+        // so the session would come up as a desktop that never renders a frame.
         File winewayland = new File(installPath, UNIX_DRIVER);
-        if (!winewayland.isFile()) winewayland = new File(installPath, "lib/wine/x86_64-unix/winewayland.so");
         File waylandTurnip = new File(installPath, WAYLAND_TURNIP);
         boolean capable = winewayland.isFile() && waylandTurnip.isFile();
         synchronized (cache) {
