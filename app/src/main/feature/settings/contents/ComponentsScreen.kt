@@ -780,13 +780,12 @@ private fun IconTapButton(
     }
 }
 
-private val ONLINE_CAPABLE_MARKERS = listOf("online", "steam")
+private const val ONLINE_CAPABLE_MARKER = "online"
 
-// Shared with the Contents list, which orders online-capable layers first.
+// Shared with the Contents list, which orders online-capable layers first. Only a layer that
+// names itself online qualifies; a Steam-enabled build is not automatically online-capable.
 internal fun isOnlineCapableName(vararg fields: String?): Boolean =
-    ONLINE_CAPABLE_MARKERS.any { marker ->
-        fields.any { it != null && it.contains(marker, ignoreCase = true) }
-    }
+    fields.any { it != null && it.contains(ONLINE_CAPABLE_MARKER, ignoreCase = true) }
 
 private fun isOnlineCapable(item: ComponentItem): Boolean =
     isOnlineCapableName(item.verName, item.key)
