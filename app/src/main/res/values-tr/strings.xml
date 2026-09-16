@@ -2885,8 +2885,5 @@ Yüklü konum:
     <string name="container_display_server_wayland_requirements">Wayland için bir Adreno GPU ve winewayland ile Wayland Turnip sürücüsünü içeren Wayland uyumlu bir Proton gerekir. İçerikler bölümünden kurun.</string>
     <string name="container_display_server_needs_wayland_proton">Bu Proton winewayland veya Wayland Turnip sürücüsünü içermediğinden X11 kullanılıyor. İçerikler bölümünden bir Wayland Proton katmanı kurun, örneğin Banner\'ın proton-11.0-2.1-arm64ec-wayland .wcp dosyası, ve onu kapsayıcının Proton\'u olarak seçin.</string>
     <string name="wayland_unavailable_fallback">Bu oyun için Wayland kullanılamıyor. X11 ile başlatılıyor.</string>
-    <string name="container_display_server_copy_from">Wayland dosyaları burada yok; kaydettiğinizde %1$s kaynağından kopyalanacak. Proton, kaynakla aynı Wine ana sürümünde olmalıdır.</string>
-    <string name="wayland_files_copying">Wayland dosyaları arka planda %1$s içine ekleniyor. Bu sefer X11 ile başlatılıyor; bir sonraki başlatmada Wayland\'ı deneyin.</string>
-    <string name="wayland_files_copied">Wayland dosyaları %2$s kaynağından %1$s içine kopyalandı.</string>
-    <string name="wayland_files_copy_failed">Wayland dosyaları %1$s içine kopyalanamadı.</string>
+    <string name="wayland_needs_turnip_driver">Wayland\'ın oyunu gösterebilmesi için bir Turnip grafik sürücüsü gerekir. İçerikler bölümünden kurun ve grafik sürücüsü olarak seçin.</string>
 </resources>

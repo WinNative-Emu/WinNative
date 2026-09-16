@@ -2887,9 +2887,6 @@
     <string name="container_display_server_wayland_requirements">Wayland에는 Adreno GPU와 winewayland 및 Wayland Turnip 드라이버가 포함된 Wayland 지원 Proton이 필요합니다. 콘텐츠에서 설치하세요.</string>
     <string name="container_display_server_needs_wayland_proton">이 Proton에는 winewayland와 Wayland Turnip 드라이버가 없어 X11이 사용됩니다. 콘텐츠에서 Wayland Proton 레이어(예: Banner의 proton-11.0-2.1-arm64ec-wayland .wcp)를 설치하고 컨테이너의 Proton으로 선택하세요.</string>
     <string name="wayland_unavailable_fallback">이 게임에서는 Wayland를 사용할 수 없습니다. X11로 실행합니다.</string>
-    <string name="container_display_server_copy_from">여기에는 Wayland 파일이 없어 저장 시 %1$s에서 복사됩니다. Proton은 제공 원본과 같은 Wine 주 버전이어야 합니다.</string>
-    <string name="wayland_files_copying">백그라운드에서 %1$s에 Wayland 파일을 추가하는 중입니다. 이번에는 X11로 시작합니다. 다음 실행에서 Wayland를 사용해 보세요.</string>
-    <string name="wayland_files_copied">%2$s에서 %1$s(으)로 Wayland 파일을 복사했습니다.</string>
-    <string name="wayland_files_copy_failed">%1$s에 Wayland 파일을 복사할 수 없습니다.</string>
+    <string name="wayland_needs_turnip_driver">Wayland에서 게임을 표시하려면 Turnip 그래픽 드라이버가 필요합니다. 콘텐츠에서 설치한 뒤 그래픽 드라이버로 선택하세요.</string>
 </resources>
 

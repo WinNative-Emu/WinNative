@@ -2897,10 +2897,7 @@ Installed path:
     <string name="container_display_server_wayland_requirements">Wayland needs an Adreno GPU and a Wayland-capable Proton with winewayland and the Wayland Turnip driver. Install one from Contents.</string>
     <string name="container_display_server_needs_wayland_proton">This Proton has no winewayland or Wayland Turnip driver, so X11 is used. Install a Wayland Proton layer from Contents, such as Banner\'s proton-11.0-2.1-arm64ec-wayland .wcp, and select it as the container\'s Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland is not available for this game. Launching on X11.</string>
-    <string name="container_display_server_copy_from">Wayland files are missing here and will be copied from %1$s when you save. The Proton must share the same Wine major version as the donor.</string>
-    <string name="wayland_files_copying">Adding Wayland files to %1$s in the background. Launching on X11 this time; try Wayland on the next launch.</string>
-    <string name="wayland_files_copied">Wayland files copied into %1$s from %2$s.</string>
-    <string name="wayland_files_copy_failed">Could not copy the Wayland files into %1$s.</string>
+    <string name="wayland_needs_turnip_driver">Wayland needs a Turnip graphics driver to show the game. Install one under Contents and select it as the graphics driver.</string>
     <string name="display_server_x11" translatable="false">X11</string>
     <string name="display_server_wayland" translatable="false">Wayland</string>
 </resources>

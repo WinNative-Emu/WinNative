@@ -2885,8 +2885,5 @@ Installerad sökväg:
     <string name="container_display_server_wayland_requirements">Wayland kräver en Adreno-GPU och en Wayland-kompatibel Proton med winewayland och Wayland Turnip-drivrutinen. Installera en från Innehåll.</string>
     <string name="container_display_server_needs_wayland_proton">Denna Proton saknar winewayland och Wayland Turnip-drivrutinen, så X11 används. Installera ett Wayland Proton-lager från Innehåll, till exempel Banners proton-11.0-2.1-arm64ec-wayland .wcp, och välj det som containerns Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland är inte tillgängligt för detta spel. Startar på X11.</string>
-    <string name="container_display_server_copy_from">Wayland-filerna saknas här och kopieras från %1$s när du sparar. Proton måste ha samma huvudversion av Wine som källan.</string>
-    <string name="wayland_files_copying">Lägger till Wayland-filer i %1$s i bakgrunden. Startar på X11 den här gången; prova Wayland vid nästa start.</string>
-    <string name="wayland_files_copied">Wayland-filer kopierade till %1$s från %2$s.</string>
-    <string name="wayland_files_copy_failed">Kunde inte kopiera Wayland-filerna till %1$s.</string>
+    <string name="wayland_needs_turnip_driver">Wayland behöver en Turnip-grafikdrivrutin för att visa spelet. Installera en under Innehåll och välj den som grafikdrivrutin.</string>
 </resources>

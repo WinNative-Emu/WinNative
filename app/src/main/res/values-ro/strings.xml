@@ -2885,9 +2885,6 @@ Cale instalata:
     <string name="container_display_server_wayland_requirements">Wayland necesită un GPU Adreno și un Proton compatibil Wayland cu winewayland și driverul Turnip pentru Wayland. Instalează unul din Conținut.</string>
     <string name="container_display_server_needs_wayland_proton">Acest Proton nu conține winewayland sau driverul Turnip pentru Wayland, așa că se folosește X11. Instalează un strat Proton Wayland din Conținut, de exemplu .wcp-ul proton-11.0-2.1-arm64ec-wayland al lui Banner, și selectează-l ca Proton al containerului.</string>
     <string name="wayland_unavailable_fallback">Wayland nu este disponibil pentru acest joc. Se lansează pe X11.</string>
-    <string name="container_display_server_copy_from">Fișierele Wayland lipsesc aici și vor fi copiate din %1$s la salvare. Proton trebuie să aibă aceeași versiune majoră de Wine ca sursa.</string>
-    <string name="wayland_files_copying">Se adaugă fișierele Wayland la %1$s în fundal. De data aceasta se pornește pe X11; încearcă Wayland la următoarea lansare.</string>
-    <string name="wayland_files_copied">Fișierele Wayland au fost copiate în %1$s din %2$s.</string>
-    <string name="wayland_files_copy_failed">Fișierele Wayland nu au putut fi copiate în %1$s.</string>
+    <string name="wayland_needs_turnip_driver">Wayland are nevoie de un driver grafic Turnip pentru a afișa jocul. Instalează unul din Conținut și selectează-l ca driver grafic.</string>
 </resources>
 

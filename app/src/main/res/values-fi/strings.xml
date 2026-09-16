@@ -2885,8 +2885,5 @@ Asennuspolku:
     <string name="container_display_server_wayland_requirements">Wayland vaatii Adreno-näytönohjaimen ja Wayland-yhteensopivan Protonin, jossa on winewayland ja Wayland Turnip -ajuri. Asenna sellainen Sisältö-näkymästä.</string>
     <string name="container_display_server_needs_wayland_proton">Tässä Protonissa ei ole winewaylandia eikä Wayland Turnip -ajuria, joten käytetään X11:tä. Asenna Wayland-Proton-kerros Sisältö-näkymästä, esimerkiksi Bannerin proton-11.0-2.1-arm64ec-wayland .wcp, ja valitse se säiliön Protoniksi.</string>
     <string name="wayland_unavailable_fallback">Wayland ei ole käytettävissä tälle pelille. Käynnistetään X11:llä.</string>
-    <string name="container_display_server_copy_from">Wayland-tiedostot puuttuvat täältä ja kopioidaan kohteesta %1$s tallennettaessa. Protonin Wine-pääversion on oltava sama kuin lähteen.</string>
-    <string name="wayland_files_copying">Wayland-tiedostoja lisätään kohteeseen %1$s taustalla. Käynnistetään tällä kertaa X11:llä; kokeile Waylandia seuraavalla käynnistyksellä.</string>
-    <string name="wayland_files_copied">Wayland-tiedostot kopioitiin kohteeseen %1$s lähteestä %2$s.</string>
-    <string name="wayland_files_copy_failed">Wayland-tiedostoja ei voitu kopioida kohteeseen %1$s.</string>
+    <string name="wayland_needs_turnip_driver">Wayland tarvitsee Turnip-näytönohjainajurin näyttääkseen pelin. Asenna sellainen Sisältö-näkymästä ja valitse se näytönohjainajuriksi.</string>
 </resources>

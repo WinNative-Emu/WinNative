@@ -8705,16 +8705,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (wanted && !(WineWaylandSupport.isAdrenoDevice(this) && WineWaylandSupport.isWaylandCapable(wineInfo))) {
             Log.w(TAG, "wayland: " + wineVersion + " (" + wineInfo.path
                     + ") or this GPU cannot drive the compositor; launching on X11");
-            WineInfo donor = WineWaylandSupport.isAdrenoDevice(this)
-                    ? WineWaylandSupport.findDonor(this, contentsManager, wineInfo) : null;
-            if (donor != null) {
-                android.widget.Toast.makeText(this, getString(R.string.wayland_files_copying, wineVersion),
-                        android.widget.Toast.LENGTH_LONG).show();
-                WineWaylandSupport.borrowWaylandFilesAsync(this, wineVersion, null);
-            } else {
-                android.widget.Toast.makeText(this, R.string.wayland_unavailable_fallback,
-                        android.widget.Toast.LENGTH_LONG).show();
-            }
+            android.widget.Toast.makeText(this, R.string.wayland_unavailable_fallback,
+                    android.widget.Toast.LENGTH_LONG).show();
             wanted = false;
         }
         waylandMode = wanted;
@@ -8737,15 +8729,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private void startWaylandSession(FrameLayout rootView, int index) {
         WaylandSession.Config cfg = new WaylandSession.Config();
         try {
-            String driverId = graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null;
-            if (driverId != null && !driverId.isEmpty() && !driverId.equals("System")) {
-                AdrenotoolsManager atm = new AdrenotoolsManager(this);
-                String libraryName = atm.getLibraryName(driverId);
-                if (!libraryName.isEmpty()) {
-                    cfg.driverPath = atm.getDriverPath(driverId);
-                    cfg.libraryName = libraryName;
-                }
-            }
+            resolveCompositorDriver(cfg);
         } catch (Exception e) {
             Log.e(TAG, "wayland: compositor driver resolve failed", e);
         }
@@ -8800,6 +8784,33 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             }
         }, xServer, winHandler);
         waylandSession.attach(rootView, index, cfg, reattach);
+    }
+
+    /**
+     * Picks the Turnip the compositor imports the guest's frames with. The stock Vulkan driver has
+     * no VK_EXT_image_drm_format_modifier, so vkCreateDevice fails and the session shows nothing;
+     * a shortcut or container left on "System" therefore falls back to the container's own driver
+     * and then to any installed one, the way the X11 path never needs to.
+     */
+    private void resolveCompositorDriver(WaylandSession.Config cfg) {
+        AdrenotoolsManager atm = new AdrenotoolsManager(this);
+        ArrayList<String> candidates = new ArrayList<>();
+        if (graphicsDriverConfig != null) candidates.add(graphicsDriverConfig.get("version"));
+        candidates.add(GraphicsDriverConfigUtils
+                .parseGraphicsDriverConfig(container.getGraphicsDriverConfig()).get("version"));
+        candidates.addAll(atm.enumarateInstalledDrivers());
+        for (String driverId : candidates) {
+            if (driverId == null || driverId.isEmpty() || driverId.equals("System")) continue;
+            String libraryName = atm.getLibraryName(driverId);
+            if (libraryName == null || libraryName.isEmpty()) continue;
+            cfg.driverPath = atm.getDriverPath(driverId);
+            cfg.libraryName = libraryName;
+            Log.i(TAG, "wayland: compositor driver '" + driverId + "'");
+            return;
+        }
+        Log.w(TAG, "wayland: no Turnip installed; the compositor cannot import the guest's frames");
+        android.widget.Toast.makeText(this, R.string.wayland_needs_turnip_driver,
+                android.widget.Toast.LENGTH_LONG).show();
     }
 
     private void syncWaylandScaleMode() {

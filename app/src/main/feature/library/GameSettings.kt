@@ -1,7 +1,6 @@
 package com.winlator.cmod.feature.library
 
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -1911,11 +1910,10 @@ private fun DisplayServerRow(state: GameSettingsStateHolder) {
     )
     val status by produceState(initialValue = initial, key1 = wineIdentifier) {
         val result = withContext(Dispatchers.IO) { displayServerStatus(context, wineIdentifier) }
-        state.displayServerWaylandAvailable.value =
-            result.reason == WAYLAND_AVAILABLE || result.reason == WAYLAND_BORROW
+        state.displayServerWaylandAvailable.value = result.reason == WAYLAND_AVAILABLE
         value = result
     }
-    val enabled = status.reason == WAYLAND_AVAILABLE || status.reason == WAYLAND_BORROW
+    val enabled = status.reason == WAYLAND_AVAILABLE
     SettingPairRow {
         Box(Modifier.weight(1f)) {
             SettingDropdown(
@@ -1930,7 +1928,6 @@ private fun DisplayServerRow(state: GameSettingsStateHolder) {
             Text(
                 text = when (status.reason) {
                     WAYLAND_AVAILABLE -> stringResource(R.string.container_display_server_help)
-                    WAYLAND_BORROW -> stringResource(R.string.container_display_server_copy_from, status.donor)
                     WAYLAND_NEEDS_ADRENO -> stringResource(R.string.container_display_server_wayland_requirements)
                     else -> stringResource(R.string.container_display_server_needs_wayland_proton)
                 },
@@ -1945,7 +1942,6 @@ private fun DisplayServerRow(state: GameSettingsStateHolder) {
 private const val WAYLAND_AVAILABLE = 0
 private const val WAYLAND_NEEDS_ADRENO = 1
 private const val WAYLAND_NEEDS_PROTON = 2
-private const val WAYLAND_BORROW = 3
 
 private data class DisplayServerStatus(val reason: Int, val donor: String)
 
@@ -1957,23 +1953,7 @@ private fun displayServerWineIdentifier(state: GameSettingsStateHolder): String 
 private fun displayServerStatus(context: Context, wineIdentifier: String): DisplayServerStatus {
     if (!WineWaylandSupport.isAdrenoDevice(context)) return DisplayServerStatus(WAYLAND_NEEDS_ADRENO, "")
     if (WineWaylandSupport.isWaylandCapable(context, wineIdentifier)) return DisplayServerStatus(WAYLAND_AVAILABLE, "")
-    val donor = WineWaylandSupport.findDonor(context, wineIdentifier)
-    return if (donor != null) DisplayServerStatus(WAYLAND_BORROW, donor.identifier())
-    else DisplayServerStatus(WAYLAND_NEEDS_PROTON, "")
-}
-
-/** After a save that picked Wayland, copies the Wayland files into the Proton if it lacks them. */
-fun ensureWaylandFilesForSave(context: Context, state: GameSettingsStateHolder) {
-    if (state.selectedDisplayServer.intValue != DISPLAY_SERVER_WAYLAND_INDEX) return
-    val app = context.applicationContext
-    WineWaylandSupport.borrowWaylandFilesAsync(app, displayServerWineIdentifier(state)) { ok, donor, target ->
-        Toast.makeText(
-            app,
-            if (ok) app.getString(R.string.wayland_files_copied, target, donor)
-            else app.getString(R.string.wayland_files_copy_failed, target),
-            Toast.LENGTH_LONG
-        ).show()
-    }
+    return DisplayServerStatus(WAYLAND_NEEDS_PROTON, "")
 }
 
 @Composable

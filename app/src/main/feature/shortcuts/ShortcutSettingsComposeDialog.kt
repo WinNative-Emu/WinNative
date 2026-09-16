@@ -38,7 +38,6 @@ import com.winlator.cmod.feature.library.DriveItem
 import com.winlator.cmod.feature.library.DISPLAY_SERVER_WAYLAND_INDEX
 import com.winlator.cmod.feature.library.DISPLAY_SERVER_X11_INDEX
 import com.winlator.cmod.feature.library.displayBackendFromIndex
-import com.winlator.cmod.feature.library.ensureWaylandFilesForSave
 import com.winlator.cmod.feature.library.displayServerEntries
 import com.winlator.cmod.feature.library.EnvVarItem
 import com.winlator.cmod.feature.library.parseEnvVarItems
@@ -1150,7 +1149,6 @@ class ShortcutSettingsComposeDialog private constructor(
                 displayBackendFromIndex(state.selectedDisplayServer.intValue),
                 container.getDisplayBackend()
             )
-            ensureWaylandFilesForSave(context, state)
 
             val graphicsDriverConfig = buildGraphicsDriverConfigFromState()
             hasContainerOverride = hasContainerOverride or saveOverride(
