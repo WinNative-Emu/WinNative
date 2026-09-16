@@ -716,8 +716,8 @@ private fun ComponentItemCard(
                     OfficialBadge(Modifier.fillMaxHeight())
                     Spacer(Modifier.width(8.dp))
                 }
-                if (isSteamCompatible(item)) {
-                    SteamCompatBadge(Modifier.fillMaxHeight())
+                if (isOnlineCapable(item)) {
+                    OnlineCapableBadge(Modifier.fillMaxHeight())
                     Spacer(Modifier.width(8.dp))
                 }
                 if (item.isInstalled) {
@@ -780,9 +780,12 @@ private fun IconTapButton(
     }
 }
 
-private fun isSteamCompatible(item: ComponentItem): Boolean =
-    item.verName.contains("steam", ignoreCase = true) ||
-        item.key.contains("steam", ignoreCase = true)
+private fun isOnlineCapable(item: ComponentItem): Boolean =
+    ONLINE_CAPABLE_MARKERS.any { marker ->
+        item.verName.contains(marker, ignoreCase = true) || item.key.contains(marker, ignoreCase = true)
+    }
+
+private val ONLINE_CAPABLE_MARKERS = listOf("online", "steam")
 
 // Badge marking first-party "WinNative" builds. A perfect square (width follows
 // the filled height) in WinNative blue, carrying only the WinNative logo for
@@ -806,7 +809,7 @@ private fun OfficialBadge(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SteamCompatBadge(modifier: Modifier = Modifier) {
+private fun OnlineCapableBadge(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
@@ -816,7 +819,7 @@ private fun SteamCompatBadge(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "Steam",
+            text = "Online",
             color = SuccessGreen,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
