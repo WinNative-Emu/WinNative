@@ -2885,5 +2885,6 @@ Installeret sti:
     <string name="container_display_server">Skærmserver</string>
     <string name="container_display_server_help">Eksperimentel. Sessionen tegnes gennem den indbyggede Wayland-compositor i stedet for X-serveren.</string>
     <string name="container_display_server_wayland_requirements">Wayland kræver en Adreno-GPU og en Wayland-kompatibel Proton med winewayland og Wayland Turnip-driveren. Installér en fra Indhold.</string>
+    <string name="container_display_server_needs_wayland_proton">Denne Proton har hverken winewayland eller Wayland Turnip-driveren, så X11 bruges. Installér et Wayland Proton-lag fra Indhold, f.eks. Banners proton-11.0-2.1-arm64ec-wayland .wcp, og vælg det som containerens Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland er ikke tilgængelig for dette spil. Starter på X11.</string>
 </resources>

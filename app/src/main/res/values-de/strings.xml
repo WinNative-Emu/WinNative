@@ -2885,5 +2885,6 @@ Installierter Pfad:
     <string name="container_display_server">Display-Server</string>
     <string name="container_display_server_help">Experimentell. Die Sitzung wird über den eingebetteten Wayland-Compositor statt über den X-Server dargestellt.</string>
     <string name="container_display_server_wayland_requirements">Wayland benötigt eine Adreno-GPU und ein Wayland-fähiges Proton mit winewayland und dem Wayland-Turnip-Treiber. Installiere eines unter Inhalte.</string>
+    <string name="container_display_server_needs_wayland_proton">Dieses Proton enthält weder winewayland noch den Wayland-Turnip-Treiber, daher wird X11 verwendet. Installiere unter Inhalte eine Wayland-Proton-Ebene, z. B. Banners proton-11.0-2.1-arm64ec-wayland .wcp, und wähle sie als Proton des Containers.</string>
     <string name="wayland_unavailable_fallback">Wayland ist für dieses Spiel nicht verfügbar. Start über X11.</string>
 </resources>

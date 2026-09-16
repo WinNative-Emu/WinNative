@@ -2883,5 +2883,6 @@
     <string name="container_display_server">ディスプレイサーバー</string>
     <string name="container_display_server_help">実験的機能。セッションは X サーバーの代わりに内蔵の Wayland コンポジターで描画されます。</string>
     <string name="container_display_server_wayland_requirements">Wayland には Adreno GPU と、winewayland および Wayland 用 Turnip ドライバーを含む Wayland 対応の Proton が必要です。コンテンツからインストールしてください。</string>
+    <string name="container_display_server_needs_wayland_proton">この Proton には winewayland と Wayland 用 Turnip ドライバーが含まれていないため、X11 が使用されます。コンテンツから Wayland Proton レイヤー（例: Banner の proton-11.0-2.1-arm64ec-wayland .wcp）をインストールし、コンテナの Proton として選択してください。</string>
     <string name="wayland_unavailable_fallback">このゲームでは Wayland を利用できません。X11 で起動します。</string>
 </resources>

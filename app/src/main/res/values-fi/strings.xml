@@ -2883,5 +2883,6 @@ Asennuspolku:
     <string name="container_display_server">Näyttöpalvelin</string>
     <string name="container_display_server_help">Kokeellinen. Istunto piirretään sisäänrakennetun Wayland-koostajan kautta X-palvelimen sijaan.</string>
     <string name="container_display_server_wayland_requirements">Wayland vaatii Adreno-näytönohjaimen ja Wayland-yhteensopivan Protonin, jossa on winewayland ja Wayland Turnip -ajuri. Asenna sellainen Sisältö-näkymästä.</string>
+    <string name="container_display_server_needs_wayland_proton">Tässä Protonissa ei ole winewaylandia eikä Wayland Turnip -ajuria, joten käytetään X11:tä. Asenna Wayland-Proton-kerros Sisältö-näkymästä, esimerkiksi Bannerin proton-11.0-2.1-arm64ec-wayland .wcp, ja valitse se säiliön Protoniksi.</string>
     <string name="wayland_unavailable_fallback">Wayland ei ole käytettävissä tälle pelille. Käynnistetään X11:llä.</string>
 </resources>

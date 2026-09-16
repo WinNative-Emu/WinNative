@@ -2882,5 +2882,6 @@
     <string name="container_display_server">เซิร์ฟเวอร์แสดงผล</string>
     <string name="container_display_server_help">ทดลอง เซสชันจะวาดผ่านคอมโพสิเตอร์ Wayland ในตัวแทนเซิร์ฟเวอร์ X</string>
     <string name="container_display_server_wayland_requirements">Wayland ต้องใช้ GPU Adreno และ Proton ที่รองรับ Wayland พร้อม winewayland และไดรเวอร์ Turnip สำหรับ Wayland ติดตั้งได้จากเนื้อหา</string>
+    <string name="container_display_server_needs_wayland_proton">Proton นี้ไม่มี winewayland หรือไดรเวอร์ Wayland Turnip จึงใช้ X11 แทน ติดตั้งเลเยอร์ Proton สำหรับ Wayland จากเนื้อหา เช่น .wcp proton-11.0-2.1-arm64ec-wayland ของ Banner แล้วเลือกเป็น Proton ของคอนเทนเนอร์</string>
     <string name="wayland_unavailable_fallback">เกมนี้ไม่สามารถใช้ Wayland ได้ กำลังเปิดด้วย X11</string>
 </resources>

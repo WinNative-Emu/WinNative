@@ -24,7 +24,11 @@ Wayland can only be selected, and is only used at launch, when both hold:
    adrenotools; Mali and Xclipse devices stay on X11.
 2. The selected Wine/Proton ships `lib/wine/aarch64-unix/winewayland.so` (or the x86_64-unix
    variant) and `lib/libvulkan_freedreno_wayland.so`, the Wayland Turnip the game renders on.
-   Install such a Proton from the Contents screen.
+   The stock WinNative Proton ships only `winex11.so`, so the Display Server dropdown stays on
+   X11 with it. Install a Wayland layer from the Contents screen, for example Banner's
+   `proton-11.0-2.1-arm64ec-wayland-v16.wcp` from the Bannerlator Wayland pre-releases
+   (installs as `Proton-11.0-2.1-arm64ec-16`), then pick it as the container's Proton. The
+   dropdown enables as soon as the selected Proton passes the check.
 
 When a shortcut or container asks for Wayland and either condition fails, the session starts on
 X11 and a toast says so. The check is cached per Wine version and refreshed when contents are

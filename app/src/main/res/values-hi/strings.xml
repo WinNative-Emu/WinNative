@@ -2818,5 +2818,6 @@
     <string name="container_display_server">डिस्प्ले सर्वर</string>
     <string name="container_display_server_help">प्रायोगिक। सत्र X सर्वर के बजाय अंतर्निहित Wayland कंपोज़िटर के माध्यम से बनाया जाता है।</string>
     <string name="container_display_server_wayland_requirements">Wayland के लिए Adreno GPU और winewayland तथा Wayland Turnip ड्राइवर वाला Wayland-सक्षम Proton चाहिए। सामग्री से एक इंस्टॉल करें।</string>
+    <string name="container_display_server_needs_wayland_proton">इस Proton में winewayland या Wayland Turnip ड्राइवर नहीं है, इसलिए X11 उपयोग होता है। सामग्री से एक Wayland Proton लेयर इंस्टॉल करें, जैसे Banner का proton-11.0-2.1-arm64ec-wayland .wcp, और उसे कंटेनर के Proton के रूप में चुनें।</string>
     <string name="wayland_unavailable_fallback">इस गेम के लिए Wayland उपलब्ध नहीं है। X11 पर लॉन्च किया जा रहा है।</string>
 </resources>

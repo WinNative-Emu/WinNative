@@ -2883,5 +2883,6 @@ Installerad sökväg:
     <string name="container_display_server">Skärmserver</string>
     <string name="container_display_server_help">Experimentell. Sessionen ritas via den inbyggda Wayland-kompositören i stället för X-servern.</string>
     <string name="container_display_server_wayland_requirements">Wayland kräver en Adreno-GPU och en Wayland-kompatibel Proton med winewayland och Wayland Turnip-drivrutinen. Installera en från Innehåll.</string>
+    <string name="container_display_server_needs_wayland_proton">Denna Proton saknar winewayland och Wayland Turnip-drivrutinen, så X11 används. Installera ett Wayland Proton-lager från Innehåll, till exempel Banners proton-11.0-2.1-arm64ec-wayland .wcp, och välj det som containerns Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland är inte tillgängligt för detta spel. Startar på X11.</string>
 </resources>

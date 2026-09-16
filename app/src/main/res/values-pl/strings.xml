@@ -2890,6 +2890,7 @@ Zainstalowana ścieżka:
     <string name="container_display_server">Serwer wyświetlania</string>
     <string name="container_display_server_help">Eksperymentalne. Sesja jest rysowana przez wbudowany kompozytor Wayland zamiast serwera X.</string>
     <string name="container_display_server_wayland_requirements">Wayland wymaga GPU Adreno oraz Protona obsługującego Wayland z winewayland i sterownikiem Turnip dla Wayland. Zainstaluj go w Zawartości.</string>
+    <string name="container_display_server_needs_wayland_proton">Ten Proton nie zawiera winewayland ani sterownika Turnip dla Wayland, więc używany jest X11. Zainstaluj warstwę Proton Wayland w Zawartości, np. plik .wcp proton-11.0-2.1-arm64ec-wayland od Bannera, i wybierz ją jako Proton kontenera.</string>
     <string name="wayland_unavailable_fallback">Wayland nie jest dostępny dla tej gry. Uruchamianie na X11.</string>
 </resources>
 

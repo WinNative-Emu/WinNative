@@ -1906,16 +1906,20 @@ private fun DisplayServerRow(state: GameSettingsStateHolder) {
         if (state.wineVersionEditable.value && state.wineVersionEntries.value.isNotEmpty())
             state.wineVersionEntries.value.getOrElse(state.selectedWineVersion.intValue) { "" }
         else state.wineVersionIdentifier.value
-    val available by produceState(
-        initialValue = state.displayServerWaylandAvailable.value,
-        key1 = wineIdentifier
-    ) {
+    val initialReason =
+        if (state.displayServerWaylandAvailable.value) WAYLAND_AVAILABLE else WAYLAND_NEEDS_PROTON
+    val reason by produceState(initialValue = initialReason, key1 = wineIdentifier) {
         val result = withContext(Dispatchers.IO) {
-            WineWaylandSupport.isAvailable(context, wineIdentifier)
+            when {
+                !WineWaylandSupport.isAdrenoDevice(context) -> WAYLAND_NEEDS_ADRENO
+                WineWaylandSupport.isWaylandCapable(context, wineIdentifier) -> WAYLAND_AVAILABLE
+                else -> WAYLAND_NEEDS_PROTON
+            }
         }
-        state.displayServerWaylandAvailable.value = result
+        state.displayServerWaylandAvailable.value = result == WAYLAND_AVAILABLE
         value = result
     }
+    val available = reason == WAYLAND_AVAILABLE
     SettingPairRow {
         Box(Modifier.weight(1f)) {
             SettingDropdown(
@@ -1929,18 +1933,23 @@ private fun DisplayServerRow(state: GameSettingsStateHolder) {
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             Text(
                 text = stringResource(
-                    if (available) R.string.container_display_server_help
-                    else R.string.container_display_server_wayland_requirements
+                    when (reason) {
+                        WAYLAND_AVAILABLE -> R.string.container_display_server_help
+                        WAYLAND_NEEDS_ADRENO -> R.string.container_display_server_wayland_requirements
+                        else -> R.string.container_display_server_needs_wayland_proton
+                    }
                 ),
                 color = TextDim,
                 fontSize = SettingLabelSize,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = SettingLabelRowHeight)
             )
         }
     }
 }
+
+private const val WAYLAND_AVAILABLE = 0
+private const val WAYLAND_NEEDS_ADRENO = 1
+private const val WAYLAND_NEEDS_PROTON = 2
 
 @Composable
 private fun FrameGenerationCard(state: GameSettingsStateHolder) {

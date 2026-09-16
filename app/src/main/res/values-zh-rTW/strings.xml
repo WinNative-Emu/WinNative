@@ -2882,6 +2882,7 @@
     <string name="container_display_server">顯示伺服器</string>
     <string name="container_display_server_help">實驗性功能。工作階段透過內建的 Wayland 合成器繪製，而不是 X 伺服器。</string>
     <string name="container_display_server_wayland_requirements">Wayland 需要 Adreno GPU 以及包含 winewayland 和 Wayland Turnip 驅動程式的 Wayland 相容 Proton。請在「內容」中安裝。</string>
+    <string name="container_display_server_needs_wayland_proton">此 Proton 不包含 winewayland 或 Wayland Turnip 驅動程式，因此使用 X11。請在「內容」中安裝 Wayland Proton 層（例如 Banner 的 proton-11.0-2.1-arm64ec-wayland .wcp），並將其選為容器的 Proton。</string>
     <string name="wayland_unavailable_fallback">此遊戲無法使用 Wayland，將改用 X11 啟動。</string>
 </resources>
 
