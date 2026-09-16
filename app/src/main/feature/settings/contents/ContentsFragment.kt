@@ -167,22 +167,8 @@ class ContentsFragment : Fragment() {
     private fun publishState() {
         val profiles = manager.getProfiles(currentContentType).orEmpty()
 
-        val installed =
-            profiles
-                .filter { it.isInstalled }
-                .sortedWith(
-                    compareByDescending<ContentProfile> { it.isOfficial }
-                        .thenBy { it.verName.lowercase() }
-                        .thenByDescending { it.verCode },
-                )
-        val available =
-            profiles
-                .filterNot { it.isInstalled }
-                .sortedWith(
-                    compareByDescending<ContentProfile> { it.isOfficial }
-                        .thenBy { it.verName.lowercase() }
-                        .thenByDescending { it.verCode },
-                )
+        val installed = profiles.filter { it.isInstalled }.sortedWith(CONTENT_ORDER)
+        val available = profiles.filterNot { it.isInstalled }.sortedWith(CONTENT_ORDER)
 
         val keyedProfiles = linkedMapOf<String, ContentProfile>()
         val installedItems =
@@ -680,3 +666,35 @@ class ContentsFragment : Fragment() {
         private const val PREF_AUTO_CREATE_CONTAINER = "components_auto_create_container"
     }
 }
+
+// Online-capable layers first, then everything else; within each group newest version first.
+// The version is the first numeric run in the version name, which for remote entries is
+// prefixed by the type ("Proton-11.0-2-arm64ec" -> 11.0.2). Compared component by component,
+// so 11.0-2.1 outranks 11.0-2 and 11.10 outranks 11.9.
+private val VERSION_RUN = Regex("""\d+(?:[.\-]\d+)*""")
+
+private fun versionParts(verName: String?): List<Int> =
+    VERSION_RUN.find(verName.orEmpty())
+        ?.value
+        ?.split('.', '-')
+        ?.mapNotNull(String::toIntOrNull)
+        .orEmpty()
+
+private fun compareVersionDescending(a: ContentProfile, b: ContentProfile): Int {
+    val left = versionParts(a.verName)
+    val right = versionParts(b.verName)
+    for (i in 0 until maxOf(left.size, right.size)) {
+        // A missing component ranks below a present one, so 11.0-2 follows 11.0-2.1.
+        val l = left.getOrElse(i) { -1 }
+        val r = right.getOrElse(i) { -1 }
+        if (l != r) return r.compareTo(l)
+    }
+    return 0
+}
+
+private val CONTENT_ORDER: Comparator<ContentProfile> =
+    compareByDescending<ContentProfile> { isOnlineCapableName(it.verName, it.remoteUrl) }
+        .thenComparator(::compareVersionDescending)
+        .thenByDescending { it.verCode }
+        .thenByDescending { it.isOfficial }
+        .thenBy { it.verName.orEmpty().lowercase() }

@@ -782,10 +782,14 @@ private fun IconTapButton(
 
 private val ONLINE_CAPABLE_MARKERS = listOf("online", "steam")
 
-private fun isOnlineCapable(item: ComponentItem): Boolean =
+// Shared with the Contents list, which orders online-capable layers first.
+internal fun isOnlineCapableName(vararg fields: String?): Boolean =
     ONLINE_CAPABLE_MARKERS.any { marker ->
-        item.verName.contains(marker, ignoreCase = true) || item.key.contains(marker, ignoreCase = true)
+        fields.any { it != null && it.contains(marker, ignoreCase = true) }
     }
+
+private fun isOnlineCapable(item: ComponentItem): Boolean =
+    isOnlineCapableName(item.verName, item.key)
 
 // Badge marking first-party "WinNative" builds. A perfect square (width follows
 // the filled height) in WinNative blue, carrying only the WinNative logo for
