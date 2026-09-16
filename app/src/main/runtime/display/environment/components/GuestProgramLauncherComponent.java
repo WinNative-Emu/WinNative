@@ -70,6 +70,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     return waylandMode;
   }
 
+  private static final String GUEST_WAYLAND_LIB_DIR = "wayland-x86_64";
+
   /** Directory holding the compositor's wayland-0 socket; the compositor and the guest share it. */
   public static File getWaylandRuntimeDir(Context context) {
     return new File(context.getFilesDir(), ".wayland-rt");
@@ -196,12 +198,28 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
    * Points Wine at the compositor's socket. winewayland.so's Wayland client libraries ship inside
    * the Proton with unversioned sonames, so the Proton's lib dir is put ahead of the image
    * libraries; their own dependencies still resolve from the image.
+   *
+   * An x86_64 Proton cannot fall back on the image for those dependencies, whose copies there are
+   * aarch64, so it vendors its own in {@link #GUEST_WAYLAND_LIB_DIR}. That directory is kept off
+   * LD_LIBRARY_PATH and given to Box64 alone: some of its sonames (libc++_shared.so, libz.so.1)
+   * are also needed by the native box64 binary, which refuses to start if it links the x86_64 one.
    */
   private static void applyWaylandEnv(Context context, ImageFs imageFs, EnvVars envVars, String imageLibPath) {
     envVars.remove("DISPLAY");
     envVars.put("WAYLAND_DISPLAY", "wayland-0");
     envVars.put("XDG_RUNTIME_DIR", getWaylandRuntimeDir(context).getPath());
-    envVars.put("LD_LIBRARY_PATH", imageFs.getWinePath() + "/lib:" + imageLibPath);
+    String wineLibPath = imageFs.getWinePath() + "/lib";
+    envVars.put("LD_LIBRARY_PATH", wineLibPath + ":" + imageLibPath);
+
+    File guestDeps = new File(wineLibPath, GUEST_WAYLAND_LIB_DIR);
+    if (guestDeps.isDirectory()) {
+      String current = envVars.get("BOX64_LD_LIBRARY_PATH");
+      envVars.put(
+          "BOX64_LD_LIBRARY_PATH",
+          current == null || current.isEmpty()
+              ? guestDeps.getPath()
+              : guestDeps.getPath() + ":" + current);
+    }
   }
 
   public static File ensureImageFsNativeLibrary(
@@ -328,7 +346,6 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     envVars.put("USER", ImageFs.USER);
     envVars.put("TMPDIR", imageFs.getRootDir().getPath() + "/tmp");
     envVars.put("DISPLAY", ":0");
-    if (waylandMode) applyWaylandEnv(context, imageFs, envVars, imageFs.getRootDir().getPath() + "/usr/lib");
 
     String winePath =
         wineProfile == null
@@ -346,6 +363,9 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib");
     envVars.put(
         "BOX64_LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
+    // After the two library paths above, which would otherwise drop the Proton's own lib dir.
+    if (waylandMode)
+      applyWaylandEnv(context, imageFs, envVars, imageFs.getRootDir().getPath() + "/usr/lib");
     envVars.put(
         "ANDROID_SYSVSHM_SERVER",
         imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
