@@ -2884,4 +2884,8 @@
     <string name="container_display_server_wayland_requirements">Wayland ต้องใช้ GPU Adreno และ Proton ที่รองรับ Wayland พร้อม winewayland และไดรเวอร์ Turnip สำหรับ Wayland ติดตั้งได้จากเนื้อหา</string>
     <string name="container_display_server_needs_wayland_proton">Proton นี้ไม่มี winewayland หรือไดรเวอร์ Wayland Turnip จึงใช้ X11 แทน ติดตั้งเลเยอร์ Proton สำหรับ Wayland จากเนื้อหา เช่น .wcp proton-11.0-2.1-arm64ec-wayland ของ Banner แล้วเลือกเป็น Proton ของคอนเทนเนอร์</string>
     <string name="wayland_unavailable_fallback">เกมนี้ไม่สามารถใช้ Wayland ได้ กำลังเปิดด้วย X11</string>
+    <string name="container_display_server_copy_from">ไม่มีไฟล์ Wayland ที่นี่ จะคัดลอกจาก %1$s เมื่อบันทึก Proton ต้องมีเวอร์ชันหลักของ Wine เดียวกับต้นทาง</string>
+    <string name="wayland_files_copying">กำลังเพิ่มไฟล์ Wayland ลงใน %1$s ในเบื้องหลัง ครั้งนี้เริ่มด้วย X11 ลอง Wayland ในการเริ่มครั้งถัดไป</string>
+    <string name="wayland_files_copied">คัดลอกไฟล์ Wayland ลงใน %1$s จาก %2$s แล้ว</string>
+    <string name="wayland_files_copy_failed">ไม่สามารถคัดลอกไฟล์ Wayland ลงใน %1$s</string>
 </resources>

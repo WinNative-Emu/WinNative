@@ -75,6 +75,42 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
   }
 
   /**
+   * The compositor hands wl_keyboard clients the xkb keymap from this directory, and Wine only
+   * connects once wayland-0 exists; the socket is bound on the compositor thread, so the guest
+   * launch waits for it briefly instead of racing it.
+   */
+  private void prepareWaylandRuntime() {
+    Context context = environment.getContext();
+    File runtimeDir = getWaylandRuntimeDir(context);
+    if (!runtimeDir.isDirectory() && !runtimeDir.mkdirs()) {
+      Log.e(TAG, "wayland: cannot create " + runtimeDir);
+      return;
+    }
+    File keymap = new File(runtimeDir, "keymap.xkb");
+    if (!keymap.isFile()) {
+      File tmp = new File(runtimeDir, "keymap.xkb.part");
+      try (InputStream in = context.getAssets().open("wayland/keymap.xkb")) {
+        java.nio.file.Files.copy(in, tmp.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        if (!tmp.renameTo(keymap)) tmp.delete();
+      } catch (IOException e) {
+        Log.e(TAG, "wayland: keymap extract failed", e);
+        tmp.delete();
+      }
+    }
+    File socket = new File(runtimeDir, "wayland-0");
+    long deadline = System.currentTimeMillis() + 8000;
+    while (!socket.exists() && System.currentTimeMillis() < deadline) {
+      try {
+        Thread.sleep(25);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      }
+    }
+    if (!socket.exists()) Log.w(TAG, "wayland: " + socket + " not present after 8 s; Wine may not find the compositor");
+  }
+
+  /**
    * Points Wine at the compositor's socket. winewayland.so's Wayland client libraries ship inside
    * the Proton with unversioned sonames, so the Proton's lib dir is put ahead of the image
    * libraries; their own dependencies still resolve from the image.
@@ -563,6 +599,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }
       }
 
+      if (waylandMode) prepareWaylandRuntime();
       launchGeneration++;
       pid = execGuestProgram();
       Log.d(

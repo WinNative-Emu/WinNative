@@ -29,9 +29,18 @@ Wayland can only be selected, and is only used at launch, when both hold:
    `proton-11.0-2.1-arm64ec-wayland-v16.wcp` from the Bannerlator Wayland pre-releases
    (installs as `Proton-11.0-2.1-arm64ec-16`), then pick it as the container's Proton. The
    dropdown enables as soon as the selected Proton passes the check.
+3. Or borrow the files. Once one Wayland Proton is installed, any other arm64ec Proton with the
+   same Wine major version can use it as a donor: the Display Server row offers Wayland and says
+   which Proton the files come from. Saving Wayland copies winewayland.so, winewayland.drv, the
+   Wayland Turnips, the Wayland client libraries and the xkb data into the selected Proton on a
+   worker thread and shows a toast when done. A launch that finds the files still missing starts
+   the copy, runs on X11 that time, and says so. winewayland.so is a Wine unixlib, so a donor
+   from a different Wine major version is never used.
 
 When a shortcut or container asks for Wayland and either condition fails, the session starts on
-X11 and a toast says so. The check is cached per Wine version and refreshed when contents are
+X11 and a toast says so. Before Wine launches on Wayland the launcher creates the runtime
+directory, extracts the xkb keymap into it and waits up to eight seconds for the compositor's
+`wayland-0` socket, so Wine never starts against a socket that does not exist yet. The check is cached per Wine version and refreshed when contents are
 installed or removed.
 
 ## What a Wayland session changes

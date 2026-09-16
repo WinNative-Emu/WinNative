@@ -33,6 +33,7 @@ import com.winlator.cmod.feature.library.DriveItem
 import com.winlator.cmod.feature.library.DISPLAY_SERVER_WAYLAND_INDEX
 import com.winlator.cmod.feature.library.DISPLAY_SERVER_X11_INDEX
 import com.winlator.cmod.feature.library.displayBackendFromIndex
+import com.winlator.cmod.feature.library.ensureWaylandFilesForSave
 import com.winlator.cmod.feature.library.displayServerEntries
 import com.winlator.cmod.feature.library.EnvVarItem
 import com.winlator.cmod.feature.library.GameSettingsCallbacks
@@ -897,6 +898,7 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             c.setCPUListWoW64(cpuListWoW64)
             c.setGraphicsDriver(graphicsDriver)
             c.setDisplayBackend(displayBackendFromIndex(state.selectedDisplayServer.intValue))
+            ensureWaylandFilesForSave(activity, state)
             c.setZinkMode(if (state.selectedZinkMode.intValue == 1) "windows" else "unix")
             c.setGraphicsDriverConfig(graphicsDriverConfig)
             c.setDXWrapper(dxwrapper)

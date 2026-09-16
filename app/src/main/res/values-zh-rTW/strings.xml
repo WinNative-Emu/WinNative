@@ -2884,5 +2884,9 @@
     <string name="container_display_server_wayland_requirements">Wayland 需要 Adreno GPU 以及包含 winewayland 和 Wayland Turnip 驅動程式的 Wayland 相容 Proton。請在「內容」中安裝。</string>
     <string name="container_display_server_needs_wayland_proton">此 Proton 不包含 winewayland 或 Wayland Turnip 驅動程式，因此使用 X11。請在「內容」中安裝 Wayland Proton 層（例如 Banner 的 proton-11.0-2.1-arm64ec-wayland .wcp），並將其選為容器的 Proton。</string>
     <string name="wayland_unavailable_fallback">此遊戲無法使用 Wayland，將改用 X11 啟動。</string>
+    <string name="container_display_server_copy_from">此處缺少 Wayland 檔案，儲存時將從 %1$s 複製。該 Proton 必須與來源具有相同的 Wine 主版本。</string>
+    <string name="wayland_files_copying">正在背景將 Wayland 檔案加入 %1$s。本次以 X11 啟動；下次啟動時請嘗試 Wayland。</string>
+    <string name="wayland_files_copied">已從 %2$s 將 Wayland 檔案複製到 %1$s。</string>
+    <string name="wayland_files_copy_failed">無法將 Wayland 檔案複製到 %1$s。</string>
 </resources>
 

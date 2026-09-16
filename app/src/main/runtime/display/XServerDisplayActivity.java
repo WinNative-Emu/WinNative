@@ -8693,8 +8693,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (wanted && !(WineWaylandSupport.isAdrenoDevice(this) && WineWaylandSupport.isWaylandCapable(wineInfo))) {
             Log.w(TAG, "wayland: " + wineVersion + " (" + wineInfo.path
                     + ") or this GPU cannot drive the compositor; launching on X11");
-            android.widget.Toast.makeText(this, R.string.wayland_unavailable_fallback,
-                    android.widget.Toast.LENGTH_LONG).show();
+            WineInfo donor = WineWaylandSupport.isAdrenoDevice(this)
+                    ? WineWaylandSupport.findDonor(this, contentsManager, wineInfo) : null;
+            if (donor != null) {
+                android.widget.Toast.makeText(this, getString(R.string.wayland_files_copying, wineVersion),
+                        android.widget.Toast.LENGTH_LONG).show();
+                WineWaylandSupport.borrowWaylandFilesAsync(this, wineVersion, null);
+            } else {
+                android.widget.Toast.makeText(this, R.string.wayland_unavailable_fallback,
+                        android.widget.Toast.LENGTH_LONG).show();
+            }
             wanted = false;
         }
         waylandMode = wanted;

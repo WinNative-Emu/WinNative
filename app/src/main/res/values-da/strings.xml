@@ -2887,4 +2887,8 @@ Installeret sti:
     <string name="container_display_server_wayland_requirements">Wayland kræver en Adreno-GPU og en Wayland-kompatibel Proton med winewayland og Wayland Turnip-driveren. Installér en fra Indhold.</string>
     <string name="container_display_server_needs_wayland_proton">Denne Proton har hverken winewayland eller Wayland Turnip-driveren, så X11 bruges. Installér et Wayland Proton-lag fra Indhold, f.eks. Banners proton-11.0-2.1-arm64ec-wayland .wcp, og vælg det som containerens Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland er ikke tilgængelig for dette spil. Starter på X11.</string>
+    <string name="container_display_server_copy_from">Wayland-filerne mangler her og kopieres fra %1$s, når du gemmer. Proton skal have samme Wine-hovedversion som kilden.</string>
+    <string name="wayland_files_copying">Tilføjer Wayland-filer til %1$s i baggrunden. Starter på X11 denne gang; prøv Wayland ved næste start.</string>
+    <string name="wayland_files_copied">Wayland-filer kopieret til %1$s fra %2$s.</string>
+    <string name="wayland_files_copy_failed">Kunne ikke kopiere Wayland-filerne til %1$s.</string>
 </resources>

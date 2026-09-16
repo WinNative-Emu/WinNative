@@ -140,6 +140,9 @@ public final class WaylandSession {
         cursorView.setVisibility(View.GONE);
 
         final File runtimeDir = new File(activity.getFilesDir(), ".wayland-rt");
+        if (!runtimeDir.isDirectory() && !runtimeDir.mkdirs()) {
+            Log.e(TAG, "wayland: cannot create " + runtimeDir);
+        }
         final String driverPath = cfg.driverPath;
         final String libraryName = cfg.libraryName;
         final String nativeLibDir = activity.getApplicationInfo().nativeLibraryDir;
