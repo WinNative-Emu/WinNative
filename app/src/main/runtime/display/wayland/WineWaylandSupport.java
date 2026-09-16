@@ -44,10 +44,14 @@ public final class WineWaylandSupport {
     private static volatile Boolean adrenoGpu;
 
     private static final String[] BORROWED_LIBS = {
-        "libwayland-client.so", "libwayland-egl.so", "libxkbcommon.so", "libxkbregistry.so"
+        "libwayland-client.so", "libwayland-egl.so", "libxkbcommon.so", "libxkbregistry.so",
+        "libEGL.so.1", "libGLESv2.so.2", "libdrm.so"
     };
     private static final String UNIX_DRIVER = "lib/wine/aarch64-unix/winewayland.so";
     private static final String WAYLAND_TURNIP = "lib/libvulkan_freedreno_wayland.so";
+    private static final String ICD_DIR = "share/vulkan/icd.d";
+    private static final String TURNIP_PREFIX = "libvulkan_freedreno_wayland";
+    public static final String MANIFEST_PREFIX = "wayland_turnip";
 
     public interface CopyListener {
         void onDone(boolean ok, String donorName, String targetName);
@@ -166,15 +170,17 @@ public final class WineWaylandSupport {
             File dst = new File(target.path);
             if (!new File(dst, "lib/wine/aarch64-unix").isDirectory()) return false;
             for (String lib : BORROWED_LIBS) {
-                if (!copyFile(new File(src, "lib/" + lib), new File(dst, "lib/" + lib))) return false;
+                File from = new File(src, "lib/" + lib);
+                if (from.isFile() && !copyFile(from, new File(dst, "lib/" + lib))) return false;
             }
-            File[] turnips = new File(src, "lib").listFiles((dir, name) ->
-                    name.startsWith("libvulkan_freedreno_wayland_") && name.endsWith(".so"));
-            if (turnips != null) {
-                for (File turnip : turnips) {
-                    if (!copyFile(turnip, new File(dst, "lib/" + turnip.getName()))) return false;
+            File[] extras = new File(src, "lib").listFiles((dir, name) -> name.endsWith(".so")
+                    && (name.startsWith("libvulkan_freedreno_wayland_") || name.startsWith("libgallium")));
+            if (extras != null) {
+                for (File extra : extras) {
+                    if (!copyFile(extra, new File(dst, "lib/" + extra.getName()))) return false;
                 }
             }
+            if (!writeManifests(dst)) return false;
             for (String drv : new String[] {"lib/wine/aarch64-windows/winewayland.drv", "lib/wine/i386-windows/winewayland.drv"}) {
                 File from = new File(src, drv);
                 if (from.isFile() && !copyFile(from, new File(dst, drv))) return false;
@@ -258,6 +264,44 @@ public final class WineWaylandSupport {
             if (child.isDirectory()) {
                 if (!copyTree(child, target)) return false;
             } else if (!copyFile(child, target)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** The manifest path winewayland is pointed at for a driver variant ("" for the plain driver). */
+    public static File manifestFor(File wineRoot, String variant) {
+        String suffix = variant == null || variant.isEmpty() ? "" : "_" + variant;
+        return new File(wineRoot, ICD_DIR + "/" + MANIFEST_PREFIX + suffix + ".json");
+    }
+
+    /**
+     * Writes one Vulkan ICD manifest per bundled Wayland Turnip under WinNative's own names, so the
+     * guest driver is addressed without the donor's branding. Existing files are left alone.
+     */
+    public static boolean writeManifests(File wineRoot) {
+        File[] turnips = new File(wineRoot, "lib").listFiles((dir, name) ->
+                name.startsWith(TURNIP_PREFIX) && name.endsWith(".so"));
+        if (turnips == null || turnips.length == 0) return false;
+        File icdDir = new File(wineRoot, ICD_DIR);
+        if (!icdDir.isDirectory() && !icdDir.mkdirs()) return false;
+        for (File turnip : turnips) {
+            String rest = turnip.getName().substring(TURNIP_PREFIX.length(), turnip.getName().length() - 3);
+            String variant = rest.startsWith("_") ? rest.substring(1) : rest;
+            File manifest = manifestFor(wineRoot, variant);
+            if (manifest.isFile()) continue;
+            String json = "{\n    \"ICD\": {\n        \"api_version\": \"1.4.0\",\n"
+                    + "        \"library_arch\": \"64\",\n"
+                    + "        \"library_path\": \"../../../lib/" + turnip.getName() + "\"\n"
+                    + "    },\n    \"file_format_version\": \"1.0.1\"\n}\n";
+            File tmp = new File(icdDir, manifest.getName() + ".part");
+            try {
+                Files.write(tmp.toPath(), json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                Files.move(tmp.toPath(), manifest.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException e) {
+                Log.e(TAG, "cannot write " + manifest, e);
+                tmp.delete();
                 return false;
             }
         }

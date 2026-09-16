@@ -62,13 +62,14 @@ public final class WaylandGameDriver {
     }
 
     /** Exports the variant for a Wayland launch unless the user set one of the two variables. */
-    public static void applyToLaunchEnv(Context context, EnvVars envVars) {
+    public static void applyToLaunchEnv(Context context, EnvVars envVars, java.io.File wineRoot) {
         if (envVars.has(ENV_ICD) || envVars.has(ENV_VARIANT)) {
             Log.i(TAG, "wayland game driver: keeping the user's " + ENV_VARIANT + "/" + ENV_ICD);
             return;
         }
         String variant = autoVariant(context);
         if (!variant.isEmpty()) envVars.put(ENV_VARIANT, variant);
+        envVars.put(ENV_ICD, WineWaylandSupport.manifestFor(wineRoot, variant).getPath());
         Log.i(TAG, "wayland game driver: auto -> " + (variant.isEmpty() ? "plain" : variant));
     }
 }

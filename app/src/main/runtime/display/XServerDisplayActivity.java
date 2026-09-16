@@ -88,6 +88,7 @@ import com.winlator.cmod.shared.ui.toast.WinToast;
 import com.winlator.cmod.runtime.wine.EnvVars;
 import com.winlator.cmod.runtime.display.wayland.WaylandCompositor;
 import com.winlator.cmod.runtime.display.wayland.WaylandGameDriver;
+import com.winlator.cmod.runtime.display.wayland.WaylandPrefixRegistry;
 import com.winlator.cmod.runtime.display.wayland.WaylandSession;
 import com.winlator.cmod.runtime.display.wayland.WineWaylandSupport;
 import com.winlator.cmod.runtime.reshade.ReshadeConfigWriter;
@@ -614,6 +615,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private Runnable hideControlsRunnable;
 
     private volatile boolean startFullscreenStretched;
+    private static final long WAYLAND_OVERLAY_GRACE_MS = 2000L;
     private final AtomicBoolean firstGuestWindowShown = new AtomicBoolean(false);
 
     // Display server of this session: the X server, or the embedded Wayland compositor.
@@ -8056,12 +8058,15 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.SYSVSHM_SERVER_PATH)
                 )
         );
-        environment.addComponent(
-                new XServerComponent(
-                        xServer,
-                        UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)
-                )
-        );
+        // The embedded compositor is the display server on Wayland, so the X server stays off.
+        if (!waylandMode) {
+            environment.addComponent(
+                    new XServerComponent(
+                            xServer,
+                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)
+                    )
+            );
+        }
 
         if (audioDriver.equals("alsa")) {
             envVars.put("ANDROID_ALSA_SERVER", rootPath + UnixSocketConfig.ALSA_SERVER_PATH);
@@ -8618,6 +8623,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             }
         }
 
+        // Wayland has no X11 window-content hook to clear the launch overlay, and the compositor's
+        // first-frame callback never fires for a desktop that only ever presents shm. Clear it on a
+        // timer so the guest is never hidden behind a stuck spinner.
+        if (waylandMode) {
+            new Handler(getMainLooper()).postDelayed(this::onFirstGuestWindow, WAYLAND_OVERLAY_GRACE_MS);
+        }
+
         winHandler.start();
         com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.setDialogOpen(false);
         runOnUiThread(() -> {
@@ -8821,7 +8833,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
      * gralloc swapchain hint for zero-copy, and winex11.drv disabled so Wine loads winewayland.
      */
     private void applyWaylandLaunchEnv(EnvVars envVars) {
-        WaylandGameDriver.applyToLaunchEnv(this, envVars);
+        WaylandGameDriver.applyToLaunchEnv(this, envVars, new File(wineInfo.path));
         if (!envVars.has("GALLIUM_THREAD")) envVars.put("GALLIUM_THREAD", "0");
         if (envFlag(envVars, "BANNER_WAYLAND_ZERO_COPY", false) && !envVars.has("BANNER_WSI_AHB")) {
             envVars.put("BANNER_WSI_AHB", "1");
@@ -8840,26 +8852,23 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
      */
     private void applyWaylandRegistry() {
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
-        if (!userRegFile.isFile()) return;
-        try (WineRegistryEditor reg = new WineRegistryEditor(userRegFile)) {
-            reg.setCreateKeyIfNotExist(true);
-            if (waylandMode) {
-                reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "wayland");
-                reg.setStringValue("Software\\Wine\\Explorer", "Desktop", "shell");
-                reg.setStringValue("Software\\Wine\\Explorer\\Desktops", "shell",
-                        xServer.screenInfo.width + "x" + xServer.screenInfo.height);
+        final boolean wayland = waylandMode;
+        final String size = xServer.screenInfo.width + "x" + xServer.screenInfo.height;
+        WaylandPrefixRegistry.edit(userRegFile, reg -> {
+            if (wayland) {
+                reg.set("Software\\Wine\\Drivers", "Graphics", "wayland");
+                reg.set("Software\\Wine\\Explorer\\Desktops", "shell", size);
+                reg.remove("Software\\Wine\\Explorer", "Desktop");
             } else {
-                if ("wayland".equals(reg.getStringValue("Software\\Wine\\Drivers", "Graphics", ""))) {
-                    reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "x11");
+                if ("wayland".equals(reg.get("Software\\Wine\\Drivers", "Graphics"))) {
+                    reg.set("Software\\Wine\\Drivers", "Graphics", "x11");
                 }
-                if ("shell".equals(reg.getStringValue("Software\\Wine\\Explorer", "Desktop", ""))) {
-                    reg.removeValue("Software\\Wine\\Explorer", "Desktop");
-                    reg.removeValue("Software\\Wine\\Explorer\\Desktops", "shell");
+                if ("shell".equals(reg.get("Software\\Wine\\Explorer", "Desktop"))) {
+                    reg.remove("Software\\Wine\\Explorer", "Desktop");
+                    reg.remove("Software\\Wine\\Explorer\\Desktops", "shell");
                 }
             }
-        } catch (Exception e) {
-            Log.e(TAG, "wayland: registry update failed", e);
-        }
+        });
     }
 
     private void setupUI() {

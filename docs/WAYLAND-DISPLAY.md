@@ -24,6 +24,9 @@ Wayland can only be selected, and is only used at launch, when both hold:
    adrenotools; Mali and Xclipse devices stay on X11.
 2. The selected Wine/Proton ships `lib/wine/aarch64-unix/winewayland.so` (or the x86_64-unix
    variant) and `lib/libvulkan_freedreno_wayland.so`, the Wayland Turnip the game renders on.
+   WinNative writes its own Vulkan ICD manifests for the bundled Turnips as
+   `share/vulkan/icd.d/wayland_turnip[_variant].json` and points winewayland at the chosen one
+   through `BANNER_WAYLAND_VK_ICD`, so the donor's manifest names are never relied on.
    The stock WinNative Proton ships only `winex11.so`, so the Display Server dropdown stays on
    X11 with it. Install a Wayland layer from the Contents screen, for example Banner's
    `proton-11.0-2.1-arm64ec-wayland-v16.wcp` from the Bannerlator Wayland pre-releases
@@ -32,7 +35,8 @@ Wayland can only be selected, and is only used at launch, when both hold:
 3. Or borrow the files. Once one Wayland Proton is installed, any other arm64ec Proton with the
    same Wine major version can use it as a donor: the Display Server row offers Wayland and says
    which Proton the files come from. Saving Wayland copies winewayland.so, winewayland.drv, the
-   Wayland Turnips, the Wayland client libraries and the xkb data into the selected Proton on a
+   Wayland Turnips, the Wayland client libraries, the bundled Mesa EGL
+   and gallium libraries and the xkb data into the selected Proton on a
    worker thread and shows a toast when done. A launch that finds the files still missing starts
    the copy, runs on X11 that time, and says so. winewayland.so is a Wine unixlib, so a donor
    from a different Wine major version is never used.

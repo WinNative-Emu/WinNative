@@ -317,6 +317,10 @@ public final class WaylandSession {
     }
 
     private void startVsync() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            main.post(this::startVsync);
+            return;
+        }
         if (vsyncRunning) return;
         vsyncRunning = true;
         Choreographer.getInstance().postFrameCallback(vsyncCallback);
@@ -324,6 +328,10 @@ public final class WaylandSession {
 
     private void stopVsync() {
         vsyncRunning = false;
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            main.post(() -> Choreographer.getInstance().removeFrameCallback(vsyncCallback));
+            return;
+        }
         Choreographer.getInstance().removeFrameCallback(vsyncCallback);
     }
 

@@ -19,6 +19,7 @@ import com.winlator.cmod.runtime.content.ContentsManager;
 import com.winlator.cmod.runtime.display.connector.UnixSocketConfig;
 import com.winlator.cmod.runtime.display.environment.EnvironmentComponent;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
+import com.winlator.cmod.runtime.display.wayland.WineWaylandSupport;
 import com.winlator.cmod.runtime.input.controls.FakeInputWriter;
 import com.winlator.cmod.runtime.system.GPUInformation;
 import com.winlator.cmod.runtime.system.ProcessHelper;
@@ -75,6 +76,83 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
   }
 
   /**
+   * Brings a stale prefix up to date before the session starts, with no display driver attached.
+   *
+   * Wine's ntdll runs {@code wineboot --init} from the session's first process when the prefix's
+   * .update-timestamp no longer matches the layer's wine.inf. That blocks explorer before main()
+   * while wineboot installs wine.inf, and wineboot's wait dialog needs a desktop that does not
+   * exist yet, so win32u spawns its own explorer for it. Doing the update here keeps it off the
+   * session's critical path. Wine Mono's download prompt is switched off for this step only.
+   */
+  private void updatePrefixBeforeSession(EnvVars guestEnv, String wineLauncher, File rootDir, ImageFs imageFs) {
+    try {
+      File wineInf = new File(imageFs.getWinePath(), "share/wine/wine.inf");
+      File stamp = new File(rootDir, ImageFs.WINEPREFIX + "/.update-timestamp");
+      if (!wineInf.isFile()) return;
+      long infMtime = wineInf.lastModified() / 1000L;
+      String current = stamp.isFile() ? FileUtils.readString(stamp) : "";
+      if (current == null) current = "";
+      current = current.trim();
+      if (current.startsWith("disable")) return;
+      int digits = 0;
+      while (digits < current.length() && Character.isDigit(current.charAt(digits))) digits++;
+      if (digits > 0) {
+        try {
+          if (Long.parseLong(current.substring(0, digits)) == infMtime) return;
+        } catch (NumberFormatException ignored) {
+        }
+      }
+
+      EnvVars env = new EnvVars();
+      env.putAll(guestEnv);
+      if (waylandMode) {
+        env.remove("WAYLAND_DISPLAY");
+        env.remove("XDG_RUNTIME_DIR");
+        env.remove("DISPLAY");
+      }
+      env.put("WINEDLLOVERRIDES", withMscoreeDisabled(env.get("WINEDLLOVERRIDES")));
+      Log.i(TAG, "prefix update: .update-timestamp \"" + current + "\" != wine.inf mtime " + infMtime
+              + "; updating the prefix before the " + (waylandMode ? "Wayland" : "X11") + " session");
+      long started = System.currentTimeMillis();
+      ProcessHelper.exec(wineLauncher + " wineboot -h", env.toStringArray(), rootDir);
+      long deadline = started + 180_000;
+      while (System.currentTimeMillis() < deadline) {
+        String stamped = stamp.isFile() ? FileUtils.readString(stamp) : "";
+        if (stamped != null && stamped.trim().startsWith(String.valueOf(infMtime))) break;
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+      deadline = System.currentTimeMillis() + 30_000;
+      while (!ProcessHelper.listRunningWineProcesses().isEmpty() && System.currentTimeMillis() < deadline) {
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+      if (!ProcessHelper.listRunningWineProcesses().isEmpty()) {
+        Log.w(TAG, "prefix update: wine processes still alive; terminating them");
+        ProcessHelper.terminateAllWineProcesses();
+      }
+      Log.i(TAG, "prefix update: finished in " + (System.currentTimeMillis() - started) + " ms");
+    } catch (Throwable t) {
+      Log.w(TAG, "prefix update: the step before the session failed; launching anyway", t);
+    }
+  }
+
+  /** A WINEDLLOVERRIDES value with mscoree disabled appended, so Wine Mono never prompts. */
+  static String withMscoreeDisabled(String overrides) {
+    String value = overrides == null ? "" : overrides.trim();
+    while (value.endsWith(";")) value = value.substring(0, value.length() - 1).trim();
+    return value.isEmpty() ? "mscoree=d" : value + ";mscoree=d";
+  }
+
+  /**
    * The compositor hands wl_keyboard clients the xkb keymap from this directory, and Wine only
    * connects once wayland-0 exists; the socket is bound on the compositor thread, so the guest
    * launch waits for it briefly instead of racing it.
@@ -96,6 +174,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         Log.e(TAG, "wayland: keymap extract failed", e);
         tmp.delete();
       }
+    }
+    String winePath = environment.getImageFs().getWinePath();
+    if (!WineWaylandSupport.writeManifests(new File(winePath))) {
+      Log.w(TAG, "wayland: no Turnip manifests written under " + winePath);
     }
     File socket = new File(runtimeDir, "wayland-0");
     long deadline = System.currentTimeMillis() + 8000;
@@ -1287,6 +1369,11 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             + " "
             + "MESA_VK_WSI_DEBUG="
             + envVars.get("MESA_VK_WSI_DEBUG"));
+
+    String wineLauncher = wineInfo != null && wineInfo.isArm64EC()
+        ? imageFs.getWinePath() + "/bin/wine"
+        : imageFs.getBinDir() + "/box64 wine";
+    updatePrefixBeforeSession(envVars, wineLauncher, rootDir, imageFs);
 
     return ProcessHelper.exec(
         command,
