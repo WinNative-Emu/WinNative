@@ -2882,4 +2882,8 @@ Installierter Pfad:
     <string name="steam_controller_left_pad_click">Linkes Touchpad drücken</string>
     <string name="steam_controller_right_pad_click">Rechtes Touchpad drücken</string>
     <string name="controller_test_generic">Allgemein</string>
+    <string name="container_display_server">Display-Server</string>
+    <string name="container_display_server_help">Experimentell. Die Sitzung wird über den eingebetteten Wayland-Compositor statt über den X-Server dargestellt.</string>
+    <string name="container_display_server_wayland_requirements">Wayland benötigt eine Adreno-GPU und ein Wayland-fähiges Proton mit winewayland und dem Wayland-Turnip-Treiber. Installiere eines unter Inhalte.</string>
+    <string name="wayland_unavailable_fallback">Wayland ist für dieses Spiel nicht verfügbar. Start über X11.</string>
 </resources>

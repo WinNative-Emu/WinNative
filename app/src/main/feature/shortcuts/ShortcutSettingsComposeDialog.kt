@@ -35,6 +35,10 @@ import com.winlator.cmod.BuildConfig
 import com.winlator.cmod.R
 import com.winlator.cmod.app.PluviaApp
 import com.winlator.cmod.feature.library.DriveItem
+import com.winlator.cmod.feature.library.DISPLAY_SERVER_WAYLAND_INDEX
+import com.winlator.cmod.feature.library.DISPLAY_SERVER_X11_INDEX
+import com.winlator.cmod.feature.library.displayBackendFromIndex
+import com.winlator.cmod.feature.library.displayServerEntries
 import com.winlator.cmod.feature.library.EnvVarItem
 import com.winlator.cmod.feature.library.parseEnvVarItems
 import androidx.compose.runtime.getValue
@@ -619,6 +623,12 @@ class ShortcutSettingsComposeDialog private constructor(
         state.selectedZinkMode.intValue =
             if (getShortcutSetting("zinkMode", container.getZinkMode()) == "windows") 1 else 0
 
+        state.displayServerEntries.value = displayServerEntries(context)
+        state.selectedDisplayServer.intValue =
+            if (getShortcutSetting(Container.EXTRA_DISPLAY_BACKEND, container.getDisplayBackend()) ==
+                Container.DISPLAY_BACKEND_WAYLAND
+            ) DISPLAY_SERVER_WAYLAND_INDEX else DISPLAY_SERVER_X11_INDEX
+
         // DX Wrapper
         val dxWrapperArr =
             context.resources.getStringArray(R.array.dxwrapper_entries).toList()
@@ -664,6 +674,7 @@ class ShortcutSettingsComposeDialog private constructor(
         isArm64EC = wineInfo.isArm64EC
         state.isArm64EC.value = isArm64EC
         state.wineVersionDisplay.value = formatWineVersionDisplay(wineInfo)
+        state.wineVersionIdentifier.value = wineVersionStr
 
         rebuildEmulatorLists()
         selectByIdentifier(
@@ -1132,6 +1143,12 @@ class ShortcutSettingsComposeDialog private constructor(
             val zinkMode = if (state.selectedZinkMode.intValue == 1) "windows" else "unix"
             hasContainerOverride =
                 hasContainerOverride or saveOverride("zinkMode", zinkMode, container.getZinkMode())
+
+            hasContainerOverride = hasContainerOverride or saveOverride(
+                Container.EXTRA_DISPLAY_BACKEND,
+                displayBackendFromIndex(state.selectedDisplayServer.intValue),
+                container.getDisplayBackend()
+            )
 
             val graphicsDriverConfig = buildGraphicsDriverConfigFromState()
             hasContainerOverride = hasContainerOverride or saveOverride(

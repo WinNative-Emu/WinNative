@@ -2892,4 +2892,10 @@ Installed path:
     <string name="steam_controller_left_pad_click">Left pad click</string>
     <string name="steam_controller_right_pad_click">Right pad click</string>
     <string name="controller_test_generic">Generic</string>
+    <string name="container_display_server">Display Server</string>
+    <string name="container_display_server_help">Experimental. The session draws through the embedded Wayland compositor instead of the X server.</string>
+    <string name="container_display_server_wayland_requirements">Wayland needs an Adreno GPU and a Wayland-capable Proton with winewayland and the Wayland Turnip driver. Install one from Contents.</string>
+    <string name="wayland_unavailable_fallback">Wayland is not available for this game. Launching on X11.</string>
+    <string name="display_server_x11" translatable="false">X11</string>
+    <string name="display_server_wayland" translatable="false">Wayland</string>
 </resources>

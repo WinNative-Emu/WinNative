@@ -2887,5 +2887,9 @@ Zainstalowana ścieżka:
     <string name="steam_controller_left_pad_click">Kliknięcie lewego panelu</string>
     <string name="steam_controller_right_pad_click">Kliknięcie prawego panelu</string>
     <string name="controller_test_generic">Ogólny</string>
+    <string name="container_display_server">Serwer wyświetlania</string>
+    <string name="container_display_server_help">Eksperymentalne. Sesja jest rysowana przez wbudowany kompozytor Wayland zamiast serwera X.</string>
+    <string name="container_display_server_wayland_requirements">Wayland wymaga GPU Adreno oraz Protona obsługującego Wayland z winewayland i sterownikiem Turnip dla Wayland. Zainstaluj go w Zawartości.</string>
+    <string name="wayland_unavailable_fallback">Wayland nie jest dostępny dla tej gry. Uruchamianie na X11.</string>
 </resources>
 

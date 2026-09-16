@@ -2882,5 +2882,9 @@ Percorso installato:
     <string name="steam_controller_left_pad_click">Clic del pad sinistro</string>
     <string name="steam_controller_right_pad_click">Clic del pad destro</string>
     <string name="controller_test_generic">Generico</string>
+    <string name="container_display_server">Server grafico</string>
+    <string name="container_display_server_help">Sperimentale. La sessione viene disegnata tramite il compositor Wayland integrato invece del server X.</string>
+    <string name="container_display_server_wayland_requirements">Wayland richiede una GPU Adreno e un Proton compatibile con Wayland con winewayland e il driver Turnip per Wayland. Installane uno da Contenuti.</string>
+    <string name="wayland_unavailable_fallback">Wayland non è disponibile per questo gioco. Avvio su X11.</string>
 </resources>
 

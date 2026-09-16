@@ -91,6 +91,9 @@ import androidx.compose.material3.SliderState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.winlator.cmod.runtime.container.Container
+import androidx.compose.runtime.produceState
+import com.winlator.cmod.runtime.display.wayland.WineWaylandSupport
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.window.Dialog
@@ -383,6 +386,17 @@ data class WinComponentItem(val key: String, val label: String, val selectedInde
 data class EnvVarItem(val key: String, val value: String)
 
 // Row-preserving parse: duplicate names stay as separate rows (EnvVars would collapse them into a map).
+const val DISPLAY_SERVER_X11_INDEX = 0
+const val DISPLAY_SERVER_WAYLAND_INDEX = 1
+
+fun displayServerEntries(context: android.content.Context): List<String> = listOf(
+    context.getString(R.string.display_server_x11),
+    context.getString(R.string.display_server_wayland),
+)
+
+fun displayBackendFromIndex(index: Int): String =
+    if (index == DISPLAY_SERVER_WAYLAND_INDEX) Container.DISPLAY_BACKEND_WAYLAND else Container.DISPLAY_BACKEND_X11
+
 fun parseEnvVarItems(envVarsStr: String?): List<EnvVarItem> =
     envVarsStr.orEmpty().split(" ").mapNotNull { part ->
         val index = part.indexOf('=')
@@ -424,6 +438,11 @@ class GameSettingsStateHolder {
     val fpsLimit = mutableIntStateOf(0)
 
     // Display
+    val displayServerEntries = mutableStateOf<List<String>>(emptyList())
+    val selectedDisplayServer = mutableIntStateOf(0)
+    val displayServerWaylandAvailable = mutableStateOf(false)
+    // Wine identifier the session will use when the wine dropdown is not shown (shortcut editor).
+    val wineVersionIdentifier = mutableStateOf("")
     val graphicsDriverEntries = mutableStateOf<List<String>>(emptyList())
     val selectedGraphicsDriver = mutableIntStateOf(0)
     val isArm64EC = mutableStateOf(false)
@@ -1818,6 +1837,10 @@ private fun DisplaySection(
 
         Spacer(Modifier.height(SettingSectionGap))
 
+        DisplayServerRow(state)
+
+        Spacer(Modifier.height(SettingSectionGap))
+
         SettingPairRow {
             Box(Modifier.weight(1f)) {
                 SettingDropdown(
@@ -1867,6 +1890,56 @@ private fun DisplaySection(
         WineD3DConfigCard(state)
     }
 
+}
+
+/**
+ * X11 or the embedded Wayland compositor. Wayland is selectable only when the device has an Adreno
+ * GPU and the selected Wine/Proton ships winewayland; otherwise the row is greyed out with the
+ * requirement text and the stored choice is left untouched.
+ */
+@Composable
+private fun DisplayServerRow(state: GameSettingsStateHolder) {
+    val entries = state.displayServerEntries.value
+    if (entries.isEmpty()) return
+    val context = LocalContext.current
+    val wineIdentifier =
+        if (state.wineVersionEditable.value && state.wineVersionEntries.value.isNotEmpty())
+            state.wineVersionEntries.value.getOrElse(state.selectedWineVersion.intValue) { "" }
+        else state.wineVersionIdentifier.value
+    val available by produceState(
+        initialValue = state.displayServerWaylandAvailable.value,
+        key1 = wineIdentifier
+    ) {
+        val result = withContext(Dispatchers.IO) {
+            WineWaylandSupport.isAvailable(context, wineIdentifier)
+        }
+        state.displayServerWaylandAvailable.value = result
+        value = result
+    }
+    SettingPairRow {
+        Box(Modifier.weight(1f)) {
+            SettingDropdown(
+                label = stringResource(R.string.container_display_server),
+                entries = entries,
+                selectedIndex = state.selectedDisplayServer.intValue,
+                onSelected = { state.selectedDisplayServer.intValue = it },
+                enabled = available
+            )
+        }
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            Text(
+                text = stringResource(
+                    if (available) R.string.container_display_server_help
+                    else R.string.container_display_server_wayland_requirements
+                ),
+                color = TextDim,
+                fontSize = SettingLabelSize,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = SettingLabelRowHeight)
+            )
+        }
+    }
 }
 
 @Composable

@@ -1,5 +1,7 @@
 package com.winlator.cmod.runtime.display.winhandler;
 
+import com.winlator.cmod.runtime.display.wayland.WaylandCompositor;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.input.InputManager;
@@ -419,8 +421,33 @@ public class WinHandler {
         });
   }
 
+  private volatile boolean waylandMouseRouting;
+
+  /** Wayland mode: relative mouse input goes to the compositor instead of the guest-side bridge. */
+  public void setWaylandMouseRouting(boolean on) {
+    waylandMouseRouting = on;
+  }
+
+  private static void waylandMouseEvent(int flags, int dx, int dy, int wheelDelta) {
+    if ((flags & MouseEventFlags.MOVE) != 0) WaylandCompositor.sendPointerDelta(dx, dy);
+    if ((flags & MouseEventFlags.LEFTDOWN) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x110, 1);
+    if ((flags & MouseEventFlags.LEFTUP) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x110, 0);
+    if ((flags & MouseEventFlags.RIGHTDOWN) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x111, 1);
+    if ((flags & MouseEventFlags.RIGHTUP) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x111, 0);
+    if ((flags & MouseEventFlags.MIDDLEDOWN) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x112, 1);
+    if ((flags & MouseEventFlags.MIDDLEUP) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x112, 0);
+    if ((flags & MouseEventFlags.WHEEL) != 0 && wheelDelta != 0) {
+      int steps = wheelDelta > 0 ? -Math.max(1, wheelDelta / 120) : Math.max(1, -wheelDelta / 120);
+      WaylandCompositor.nativeSendSceneInput(4, steps, 0);
+    }
+  }
+
   public void mouseEvent(final int flags, final int dx, final int dy, final int wheelDelta) {
     checkGyroActivatorMouseFlags(flags);
+    if (waylandMouseRouting) {
+      waylandMouseEvent(flags, dx, dy, wheelDelta);
+      return;
+    }
     if (!this.initReceived) {
       return;
     }

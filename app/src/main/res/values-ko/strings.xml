@@ -2882,5 +2882,9 @@
     <string name="steam_controller_left_pad_click">왼쪽 패드 클릭</string>
     <string name="steam_controller_right_pad_click">오른쪽 패드 클릭</string>
     <string name="controller_test_generic">일반</string>
+    <string name="container_display_server">디스플레이 서버</string>
+    <string name="container_display_server_help">실험적 기능입니다. 세션이 X 서버 대신 내장 Wayland 컴포지터를 통해 그려집니다.</string>
+    <string name="container_display_server_wayland_requirements">Wayland에는 Adreno GPU와 winewayland 및 Wayland Turnip 드라이버가 포함된 Wayland 지원 Proton이 필요합니다. 콘텐츠에서 설치하세요.</string>
+    <string name="wayland_unavailable_fallback">이 게임에서는 Wayland를 사용할 수 없습니다. X11로 실행합니다.</string>
 </resources>
 

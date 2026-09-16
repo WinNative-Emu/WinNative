@@ -86,6 +86,10 @@ import com.winlator.cmod.shared.android.AppUtils;
 import com.winlator.cmod.shared.android.AppTerminationHelper;
 import com.winlator.cmod.shared.ui.toast.WinToast;
 import com.winlator.cmod.runtime.wine.EnvVars;
+import com.winlator.cmod.runtime.display.wayland.WaylandCompositor;
+import com.winlator.cmod.runtime.display.wayland.WaylandGameDriver;
+import com.winlator.cmod.runtime.display.wayland.WaylandSession;
+import com.winlator.cmod.runtime.display.wayland.WineWaylandSupport;
 import com.winlator.cmod.runtime.reshade.ReshadeConfigWriter;
 import com.winlator.cmod.runtime.reshade.ReshadeManager;
 import com.winlator.cmod.runtime.wine.LocaleEnv;
@@ -610,6 +614,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private Runnable hideControlsRunnable;
 
     private volatile boolean startFullscreenStretched;
+    private final AtomicBoolean firstGuestWindowShown = new AtomicBoolean(false);
+
+    // Display server of this session: the X server, or the embedded Wayland compositor.
+    private boolean waylandMode;
+    private WaylandSession waylandSession;
+    private final java.util.concurrent.atomic.AtomicInteger waylandFrameSerial =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     private final AtomicBoolean exitRequested = new AtomicBoolean(false);
     private final AtomicBoolean steamExitWatchRunning = new AtomicBoolean(false);
@@ -1536,6 +1547,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             if (xServerView != null && xServerView.getRenderer() != null) {
                 xServerView.getRenderer().setFpsLimit(runtimeFpsLimit);
             }
+            if (waylandSession != null) waylandSession.setFpsLimit(runtimeFpsLimit);
             if (shortcut != null) {
                 shortcut.putExtra("fpsLimit", String.valueOf(runtimeFpsLimit));
                 shortcut.saveData();
@@ -2151,6 +2163,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         wineInfo = WineInfo.fromIdentifier(this, contentsManager, wineVersion);
 
         imageFs.setWinePath(wineInfo.path);
+        resolveDisplayBackend();
 
         ProcessHelper.removeAllDebugCallbacks();
         if (enableLogsMenu) {
@@ -2205,6 +2218,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     }
                     wineInfo = WineInfo.fromIdentifier(this, contentsManager, wineVersion);
                     imageFs.setWinePath(wineInfo.path);
+                    resolveDisplayBackend();
                 }
             }
 
@@ -2420,44 +2434,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         sgsrRuntimeEnabled = sgsrEnabled;
         xServer.setWinHandler(winHandler);
 
-        boolean[] winStarted = {false};
-
         xServer.windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
             @Override
             public void onUpdateWindowContent(Window window) {
-                if (!winStarted[0] && window.isApplicationWindow()) {
-                    if (!isMouseDisabled) {
-                        touchpadView.setMouseEnabled(true);
-                    } else {
-                        xServerView.getRenderer().setCursorVisible(false);
-                    }
-                    if (!wnLauncherDrivesDismiss.get()) {
-                        preloaderDialog.closeOnUiThread();
-                        stopWnLauncherStatusTailer();
-                    }
-                    winStarted[0] = true;
-                    runOnUiThread(() -> {
-                        inputControlsRevealAllowed = true;
-                        if (inputControlsView != null) {
-                            ControlsProfile activeProfile = inputControlsView.getProfile();
-                            if (activeProfile != null) showInputControls(activeProfile);
-                            else startTouchscreenTimeout();
-                        }
-                    });
-                    if (startFullscreenStretched) {
-                        timeoutHandler.post(() -> {
-                            if (activityDestroyed.get()) return;
-                            VulkanRenderer r = xServerView != null ? xServerView.getRenderer() : null;
-                            if (r != null && !r.isFullscreen()) {
-                                r.toggleFullscreen();
-                                touchpadView.toggleFullscreen();
-                                renderDrawerMenu();
-                            }
-                        });
-                    }
-                }
+                if (window.isApplicationWindow()) onFirstGuestWindow();
             }
-           
+
             @Override
             public void onMapWindow(Window window) {
                 assignTaskAffinity(window);
@@ -3258,6 +3240,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (!cleaningUp && environment != null) {
             xServerView.onResume();
             environment.onResume();
+            if (waylandSession != null) waylandSession.onResume();
             ensureAudioFocusHandler();
             if (audioFocusHandler != null) audioFocusHandler.request();
         }
@@ -3922,6 +3905,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             }
 
             stopXServer("forced cleanup (" + trigger + ")");
+            endWaylandSession();
             xServer = null;
             xServerView = null;
 
@@ -3980,6 +3964,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     LogManager.log(TAG, "Process snapshot after environment stop: "
                             + ProcessHelper.listRunningWineProcessDetails(), this);
                     stopXServer("exit");
+                    endWaylandSession();
                     wineRequestHandler = null;
                     midiHandler = null;
                     xServer = null;
@@ -4974,6 +4959,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     @Override
     protected void onDestroy() {
         activityDestroyed.set(true);
+        detachWaylandSession();
         stopSteamControllerSupport();
         hideControllerTestDialog();
         stopSystemFrameGenPolling();
@@ -5618,6 +5604,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         if (xServerView != null) {
                             xServerView.getRenderer().setFpsLimit(runtimeFpsLimit);
                         }
+                        if (waylandSession != null) waylandSession.setFpsLimit(runtimeFpsLimit);
                         applyPreferredRefreshRate();
                         if (shortcut != null) {
                             shortcut.putExtra("fpsLimit", runtimeFpsLimit > 0 ? String.valueOf(runtimeFpsLimit) : null);
@@ -6829,6 +6816,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 break;
             case R.id.main_menu_keyboard:
                 AppUtils.showKeyboard(this);
+                if (waylandSession != null) waylandSession.onUserToggledKeyboard();
                 closeDrawerMenu();
                 break;
             case R.id.main_menu_controller_manager:
@@ -6875,6 +6863,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             case R.id.main_menu_toggle_fullscreen:
                 renderer.toggleFullscreen();
                 touchpadView.toggleFullscreen();
+                syncWaylandScaleMode();
                 renderDrawerMenu();
                 break;
             case R.id.main_menu_refactor_size:
@@ -7237,6 +7226,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
+        if (waylandSession != null) waylandSession.onWindowFocusChanged(hasFocus);
 
         if (hasFocus && shouldUsePointerCapture()) {
             updatePointerCapture();
@@ -7577,6 +7567,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 " rootDir=" + container.getRootDir().getAbsolutePath());
 
         ensureWinePrefixReady();
+        applyWaylandRegistry();
         ensureLaunchRuntimeFilesReady();
 
         String appVersion = String.valueOf(AppUtils.getVersionCode(this));
@@ -7941,6 +7932,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (container != null) {
                 guestProgramLauncherComponent.setContainer(this.container);
                 guestProgramLauncherComponent.setWineInfo(this.wineInfo);
+                guestProgramLauncherComponent.setWaylandMode(waylandMode);
 
                 GameFixes.applyForLaunch(container, shortcut);
 
@@ -8559,6 +8551,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 getShortcutSetting(NetworkingSettings.EXTRA_DRIVER,
                         container.getExtra(NetworkingSettings.EXTRA_DRIVER, NetworkingSettings.DEFAULT_DRIVER)),
                 getShortcutSetting(NetworkingSettings.EXTRA_MAC, container.getExtra(NetworkingSettings.EXTRA_MAC, "")));
+        if (waylandMode) applyWaylandLaunchEnv(envVars);
         guestProgramLauncherComponent.setEnvVars(envVars);
         guestProgramLauncherComponent.setTerminationCallback((status) -> {
             LogManager.log(TAG, "Guest process [" + guestProgramLauncherComponent.getGuestExecutable() + "] terminated with status: " + status, this);
@@ -8643,6 +8636,224 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         scriptFile.setExecutable(true);
     }
 
+    /**
+     * The first application window (X11: window content; Wayland: the first presented frame).
+     * Dismisses the launch overlay, reveals the controls and applies the saved fullscreen choice.
+     */
+    private void onFirstGuestWindow() {
+        if (!firstGuestWindowShown.compareAndSet(false, true)) return;
+        if (!isMouseDisabled) {
+            if (touchpadView != null) touchpadView.setMouseEnabled(true);
+        } else if (xServerView != null) {
+            xServerView.getRenderer().setCursorVisible(false);
+        }
+        if (!wnLauncherDrivesDismiss.get()) {
+            preloaderDialog.closeOnUiThread();
+            stopWnLauncherStatusTailer();
+        }
+        runOnUiThread(() -> {
+            inputControlsRevealAllowed = true;
+            if (inputControlsView != null) {
+                ControlsProfile activeProfile = inputControlsView.getProfile();
+                if (activeProfile != null) showInputControls(activeProfile);
+                else startTouchscreenTimeout();
+            }
+        });
+        if (startFullscreenStretched) {
+            timeoutHandler.post(() -> {
+                if (activityDestroyed.get()) return;
+                VulkanRenderer r = xServerView != null ? xServerView.getRenderer() : null;
+                if (r != null && !r.isFullscreen()) {
+                    r.toggleFullscreen();
+                    if (touchpadView != null) touchpadView.toggleFullscreen();
+                    syncWaylandScaleMode();
+                    renderDrawerMenu();
+                }
+            });
+        }
+    }
+
+    /**
+     * Resolves the session's display server: the shortcut's choice, else the container's, and
+     * only when the device and the selected Wine/Proton can drive the compositor. A reattached
+     * background session keeps whatever it was started with.
+     */
+    private void resolveDisplayBackend() {
+        boolean reattaching = SessionKeepAliveService.isSessionActive()
+                && SessionKeepAliveService.getActiveEnvironment() != null
+                && SessionKeepAliveService.getActiveXServer() != null;
+        if (reattaching) {
+            waylandMode = WaylandSession.hasActiveSession();
+            return;
+        }
+        String backend = shortcut != null
+                ? getShortcutSetting(Container.EXTRA_DISPLAY_BACKEND, container.getDisplayBackend())
+                : container.getDisplayBackend();
+        boolean wanted = Container.DISPLAY_BACKEND_WAYLAND.equals(backend) && !isDependencyInstall;
+        if (wanted && !(WineWaylandSupport.isAdrenoDevice(this) && WineWaylandSupport.isWaylandCapable(wineInfo))) {
+            Log.w(TAG, "wayland: " + wineVersion + " (" + wineInfo.path
+                    + ") or this GPU cannot drive the compositor; launching on X11");
+            android.widget.Toast.makeText(this, R.string.wayland_unavailable_fallback,
+                    android.widget.Toast.LENGTH_LONG).show();
+            wanted = false;
+        }
+        waylandMode = wanted;
+        Log.i(TAG, "display server: " + (waylandMode ? "Wayland" : "X11"));
+    }
+
+    private static boolean envFlag(EnvVars env, String name, boolean fallback) {
+        String v = env != null ? env.get(name) : null;
+        if (v == null || v.isEmpty()) return fallback;
+        return v.equals("1") || v.equalsIgnoreCase("true") || v.equalsIgnoreCase("on");
+    }
+
+    private EnvVars effectiveUserEnv() {
+        String raw = shortcut != null
+                ? getShortcutSetting("envVars", container.getEnvVars())
+                : container.getEnvVars();
+        return raw != null && !raw.isEmpty() ? new EnvVars(raw) : new EnvVars();
+    }
+
+    private void startWaylandSession(FrameLayout rootView, int index) {
+        WaylandSession.Config cfg = new WaylandSession.Config();
+        try {
+            String driverId = graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null;
+            if (driverId != null && !driverId.isEmpty() && !driverId.equals("System")) {
+                AdrenotoolsManager atm = new AdrenotoolsManager(this);
+                String libraryName = atm.getLibraryName(driverId);
+                if (!libraryName.isEmpty()) {
+                    cfg.driverPath = atm.getDriverPath(driverId);
+                    cfg.libraryName = libraryName;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "wayland: compositor driver resolve failed", e);
+        }
+        cfg.hideShell = shortcut != null || (bootExePath != null && !bootExePath.isEmpty());
+        try {
+            android.view.Display display = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                    ? getDisplay() : getWindowManager().getDefaultDisplay();
+            cfg.refreshHz = display != null ? display.getRefreshRate() : 60f;
+        } catch (Exception e) {
+            cfg.refreshHz = 60f;
+        }
+        cfg.outputWidth = xServer.screenInfo.width;
+        cfg.outputHeight = xServer.screenInfo.height;
+        cfg.fpsLimit = runtimeFpsLimit;
+        EnvVars env = effectiveUserEnv();
+        cfg.zeroCopy = envFlag(env, "BANNER_WAYLAND_ZERO_COPY", false);
+        cfg.ubwc = envFlag(env, "BANNER_WAYLAND_UBWC", true);
+        cfg.noRenderNode = envFlag(env, "BANNER_WAYLAND_NO_RENDER_NODE", false);
+        VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
+        cfg.scaleMode = renderer != null && renderer.isFullscreen()
+                ? WaylandCompositor.SCALE_STRETCH : WaylandCompositor.SCALE_FIT;
+        File logRoot = getExternalFilesDir(null);
+        cfg.logDir = new File(logRoot != null ? logRoot : getFilesDir(), "wayland-logs");
+        boolean reattach = WaylandSession.hasActiveSession()
+                && SessionKeepAliveService.isSessionActive()
+                && SessionKeepAliveService.getActiveEnvironment() != null;
+
+        waylandSession = new WaylandSession(this, new WaylandSession.Host() {
+            @Override
+            public void onPointerLockChanged(boolean locked) {
+                if (locked) updatePointerCapture();
+            }
+
+            @Override
+            public void onGameSurface(boolean present, String gpuName) {
+                if (frameRating == null) return;
+                boolean wanted = present && (effectiveShowFPS || controllerHudMode);
+                frameRating.setVisibility(wanted ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public void onGameFrame() {
+                if (frameRating != null && (effectiveShowFPS || controllerHudMode)) {
+                    frameRating.recordGameFrame(true, waylandFrameSerial.incrementAndGet());
+                }
+                if (mangoHud != null) mangoHud.recordGameFrame(true);
+            }
+
+            @Override
+            public void onFirstFrame() {
+                onFirstGuestWindow();
+            }
+        }, xServer, winHandler);
+        waylandSession.attach(rootView, index, cfg, reattach);
+    }
+
+    private void syncWaylandScaleMode() {
+        if (waylandSession == null || xServerView == null) return;
+        VulkanRenderer r = xServerView.getRenderer();
+        if (r == null) return;
+        waylandSession.setScaleMode(r.isFullscreen()
+                ? WaylandCompositor.SCALE_STRETCH : WaylandCompositor.SCALE_FIT);
+    }
+
+    /** The activity is going away; a background session keeps the compositor and the guest. */
+    private void detachWaylandSession() {
+        WaylandSession session = waylandSession;
+        if (session != null) session.detach();
+    }
+
+    /** The session is over: the compositor disconnects the guest and resets for the next one. */
+    private void endWaylandSession() {
+        WaylandSession session = waylandSession;
+        waylandSession = null;
+        if (session != null) {
+            session.end();
+        } else if (WaylandSession.hasActiveSession() && waylandMode) {
+            WaylandCompositor.nativeEndSession();
+        }
+    }
+
+    /**
+     * Guest-side environment of a Wayland session: the game's Wayland Turnip variant, Mesa's
+     * threaded GL context off (its helper thread crashes outside Wine's signal handling), the
+     * gralloc swapchain hint for zero-copy, and winex11.drv disabled so Wine loads winewayland.
+     */
+    private void applyWaylandLaunchEnv(EnvVars envVars) {
+        WaylandGameDriver.applyToLaunchEnv(this, envVars);
+        if (!envVars.has("GALLIUM_THREAD")) envVars.put("GALLIUM_THREAD", "0");
+        if (envFlag(envVars, "BANNER_WAYLAND_ZERO_COPY", false) && !envVars.has("BANNER_WSI_AHB")) {
+            envVars.put("BANNER_WSI_AHB", "1");
+        }
+        String overrides = envVars.has("WINEDLLOVERRIDES") ? envVars.get("WINEDLLOVERRIDES") : "";
+        if (!overrides.contains("winex11.drv")) {
+            envVars.put("WINEDLLOVERRIDES", overrides.isEmpty() ? "winex11.drv=d" : overrides + ";winex11.drv=d");
+        }
+    }
+
+    /**
+     * Wine picks its graphics driver from the prefix registry. A Wayland session selects
+     * winewayland and seeds the "shell" desktop so every process of the session, explorer's own
+     * threads included, is born on it; an X11 session undoes both, so a prefix is never left on
+     * a driver the session cannot serve.
+     */
+    private void applyWaylandRegistry() {
+        File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
+        if (!userRegFile.isFile()) return;
+        try (WineRegistryEditor reg = new WineRegistryEditor(userRegFile)) {
+            reg.setCreateKeyIfNotExist(true);
+            if (waylandMode) {
+                reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "wayland");
+                reg.setStringValue("Software\\Wine\\Explorer", "Desktop", "shell");
+                reg.setStringValue("Software\\Wine\\Explorer\\Desktops", "shell",
+                        xServer.screenInfo.width + "x" + xServer.screenInfo.height);
+            } else {
+                if ("wayland".equals(reg.getStringValue("Software\\Wine\\Drivers", "Graphics", ""))) {
+                    reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "x11");
+                }
+                if ("shell".equals(reg.getStringValue("Software\\Wine\\Explorer", "Desktop", ""))) {
+                    reg.removeValue("Software\\Wine\\Explorer", "Desktop");
+                    reg.removeValue("Software\\Wine\\Explorer\\Desktops", "shell");
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "wayland: registry update failed", e);
+        }
+    }
+
     private void setupUI() {
         FrameLayout rootView = xServerDisplayFrame;
         xServerView = new XServerSurfaceView(this, xServer);
@@ -8683,6 +8894,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         applyScreenEffects();
         xServer.setRenderer(renderer);
         rootView.addView(xServerView);
+        if (waylandMode) {
+            xServerView.setVisibility(View.GONE);
+            startWaylandSession(rootView, rootView.indexOfChild(xServerView) + 1);
+        }
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
         touchpadView = new TouchpadView(this, xServer, timeoutHandler, hideControlsRunnable);

@@ -30,6 +30,10 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.winlator.cmod.R
 import com.winlator.cmod.feature.library.DriveItem
+import com.winlator.cmod.feature.library.DISPLAY_SERVER_WAYLAND_INDEX
+import com.winlator.cmod.feature.library.DISPLAY_SERVER_X11_INDEX
+import com.winlator.cmod.feature.library.displayBackendFromIndex
+import com.winlator.cmod.feature.library.displayServerEntries
 import com.winlator.cmod.feature.library.EnvVarItem
 import com.winlator.cmod.feature.library.GameSettingsCallbacks
 import com.winlator.cmod.feature.library.GameSettingsContent
@@ -574,6 +578,11 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             state.selectedGraphicsDriver
         )
 
+        state.displayServerEntries.value = displayServerEntries(context)
+        state.selectedDisplayServer.intValue =
+            if (c?.isWaylandBackend == true) DISPLAY_SERVER_WAYLAND_INDEX else DISPLAY_SERVER_X11_INDEX
+        state.wineVersionIdentifier.value = c?.getWineVersion() ?: WineInfo.MAIN_WINE_VERSION.identifier()
+
         state.zinkModeEntries.value = context.resources.getStringArray(R.array.zink_mode_entries).toList()
         state.selectedZinkMode.intValue =
             if ((c?.getZinkMode() ?: Container.DEFAULT_ZINK_MODE) == "windows") 1 else 0
@@ -887,6 +896,7 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             c.setCPUList(cpuList)
             c.setCPUListWoW64(cpuListWoW64)
             c.setGraphicsDriver(graphicsDriver)
+            c.setDisplayBackend(displayBackendFromIndex(state.selectedDisplayServer.intValue))
             c.setZinkMode(if (state.selectedZinkMode.intValue == 1) "windows" else "unix")
             c.setGraphicsDriverConfig(graphicsDriverConfig)
             c.setDXWrapper(dxwrapper)

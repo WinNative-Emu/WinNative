@@ -2886,5 +2886,9 @@
     <string name="steam_controller_left_pad_click">Натискання лівої панелі</string>
     <string name="steam_controller_right_pad_click">Натискання правої панелі</string>
     <string name="controller_test_generic">Універсальний</string>
+    <string name="container_display_server">Дисплейний сервер</string>
+    <string name="container_display_server_help">Експериментально. Сеанс малюється через вбудований композитор Wayland замість X-сервера.</string>
+    <string name="container_display_server_wayland_requirements">Для Wayland потрібні GPU Adreno та Proton з підтримкою Wayland, що містить winewayland і драйвер Turnip для Wayland. Встановіть його в розділі «Вміст».</string>
+    <string name="wayland_unavailable_fallback">Wayland недоступний для цієї гри. Запуск через X11.</string>
 </resources>
 

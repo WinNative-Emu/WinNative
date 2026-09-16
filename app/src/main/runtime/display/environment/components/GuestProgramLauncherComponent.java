@@ -58,6 +58,34 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
   private Runnable preUnpackCallback;
   private boolean fexUnixLibsActive = false;
 
+  // The session runs through winewayland.drv into the embedded compositor instead of the X server.
+  private boolean waylandMode = false;
+
+  public void setWaylandMode(boolean waylandMode) {
+    this.waylandMode = waylandMode;
+  }
+
+  public boolean isWaylandMode() {
+    return waylandMode;
+  }
+
+  /** Directory holding the compositor's wayland-0 socket; the compositor and the guest share it. */
+  public static File getWaylandRuntimeDir(Context context) {
+    return new File(context.getFilesDir(), ".wayland-rt");
+  }
+
+  /**
+   * Points Wine at the compositor's socket. winewayland.so's Wayland client libraries ship inside
+   * the Proton with unversioned sonames, so the Proton's lib dir is put ahead of the image
+   * libraries; their own dependencies still resolve from the image.
+   */
+  private static void applyWaylandEnv(Context context, ImageFs imageFs, EnvVars envVars, String imageLibPath) {
+    envVars.remove("DISPLAY");
+    envVars.put("WAYLAND_DISPLAY", "wayland-0");
+    envVars.put("XDG_RUNTIME_DIR", getWaylandRuntimeDir(context).getPath());
+    envVars.put("LD_LIBRARY_PATH", imageFs.getWinePath() + "/lib:" + imageLibPath);
+  }
+
   public static File ensureImageFsNativeLibrary(
       Context context, ImageFs imageFs, String libraryName) {
     File destFile = new File(imageFs.getLibDir(), libraryName);
@@ -182,6 +210,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     envVars.put("USER", ImageFs.USER);
     envVars.put("TMPDIR", imageFs.getRootDir().getPath() + "/tmp");
     envVars.put("DISPLAY", ":0");
+    if (waylandMode) applyWaylandEnv(context, imageFs, envVars, imageFs.getRootDir().getPath() + "/usr/lib");
 
     String winePath =
         wineProfile == null
@@ -926,6 +955,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
     envVars.put("PREFIX", rootDir.getPath() + "/usr");
     envVars.put("DISPLAY", ":0");
+    if (waylandMode) applyWaylandEnv(context, imageFs, envVars, rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
     envVars.put("WINE_DISABLE_FULLSCREEN_HACK", "1");
     envVars.put("GST_PLUGIN_FEATURE_RANK", "ximagesink:3000");
     envVars.put(

@@ -2880,4 +2880,8 @@ Asennuspolku:
     <string name="steam_controller_left_pad_click">Vasemman kosketuslevyn painallus</string>
     <string name="steam_controller_right_pad_click">Oikean kosketuslevyn painallus</string>
     <string name="controller_test_generic">Yleinen</string>
+    <string name="container_display_server">Näyttöpalvelin</string>
+    <string name="container_display_server_help">Kokeellinen. Istunto piirretään sisäänrakennetun Wayland-koostajan kautta X-palvelimen sijaan.</string>
+    <string name="container_display_server_wayland_requirements">Wayland vaatii Adreno-näytönohjaimen ja Wayland-yhteensopivan Protonin, jossa on winewayland ja Wayland Turnip -ajuri. Asenna sellainen Sisältö-näkymästä.</string>
+    <string name="wayland_unavailable_fallback">Wayland ei ole käytettävissä tälle pelille. Käynnistetään X11:llä.</string>
 </resources>

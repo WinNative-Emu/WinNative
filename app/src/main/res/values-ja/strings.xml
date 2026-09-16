@@ -2880,4 +2880,8 @@
     <string name="steam_controller_left_pad_click">左パッドのクリック</string>
     <string name="steam_controller_right_pad_click">右パッドのクリック</string>
     <string name="controller_test_generic">汎用</string>
+    <string name="container_display_server">ディスプレイサーバー</string>
+    <string name="container_display_server_help">実験的機能。セッションは X サーバーの代わりに内蔵の Wayland コンポジターで描画されます。</string>
+    <string name="container_display_server_wayland_requirements">Wayland には Adreno GPU と、winewayland および Wayland 用 Turnip ドライバーを含む Wayland 対応の Proton が必要です。コンテンツからインストールしてください。</string>
+    <string name="wayland_unavailable_fallback">このゲームでは Wayland を利用できません。X11 で起動します。</string>
 </resources>

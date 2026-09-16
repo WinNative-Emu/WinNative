@@ -2880,4 +2880,8 @@ Yüklü konum:
     <string name="steam_controller_left_pad_click">Sol yüzeye tıklama</string>
     <string name="steam_controller_right_pad_click">Sağ yüzeye tıklama</string>
     <string name="controller_test_generic">Genel</string>
+    <string name="container_display_server">Görüntü Sunucusu</string>
+    <string name="container_display_server_help">Deneysel. Oturum X sunucusu yerine yerleşik Wayland birleştiricisi üzerinden çizilir.</string>
+    <string name="container_display_server_wayland_requirements">Wayland için bir Adreno GPU ve winewayland ile Wayland Turnip sürücüsünü içeren Wayland uyumlu bir Proton gerekir. İçerikler bölümünden kurun.</string>
+    <string name="wayland_unavailable_fallback">Bu oyun için Wayland kullanılamıyor. X11 ile başlatılıyor.</string>
 </resources>

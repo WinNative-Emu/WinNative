@@ -383,6 +383,7 @@ public class ContentsManager {
     }
 
     repairInstalledContentPermissions(profile);
+    com.winlator.cmod.runtime.display.wayland.WineWaylandSupport.invalidate();
     callback.onSucceed(profile);
   }
 
@@ -650,6 +651,7 @@ public class ContentsManager {
     FileUtils.delete(getInstallDir(context, profile));
     forgetRemoteProfileAliases(profile);
     syncContents();
+    com.winlator.cmod.runtime.display.wayland.WineWaylandSupport.invalidate();
   }
 
   private void forgetRemoteProfileAliases(ContentProfile profile) {

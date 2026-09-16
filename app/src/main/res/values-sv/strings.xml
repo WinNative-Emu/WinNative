@@ -2880,4 +2880,8 @@ Installerad sökväg:
     <string name="steam_controller_left_pad_click">Klick på vänster styrplatta</string>
     <string name="steam_controller_right_pad_click">Klick på höger styrplatta</string>
     <string name="controller_test_generic">Generisk</string>
+    <string name="container_display_server">Skärmserver</string>
+    <string name="container_display_server_help">Experimentell. Sessionen ritas via den inbyggda Wayland-kompositören i stället för X-servern.</string>
+    <string name="container_display_server_wayland_requirements">Wayland kräver en Adreno-GPU och en Wayland-kompatibel Proton med winewayland och Wayland Turnip-drivrutinen. Installera en från Innehåll.</string>
+    <string name="wayland_unavailable_fallback">Wayland är inte tillgängligt för detta spel. Startar på X11.</string>
 </resources>

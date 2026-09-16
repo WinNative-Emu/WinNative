@@ -164,6 +164,24 @@ public class Container {
         putExtra("zinkMode", zinkMode);
     }
 
+    /** Display server the session runs on: the X server (default) or the embedded Wayland compositor. */
+    public static final String EXTRA_DISPLAY_BACKEND = "displayBackend";
+    public static final String DISPLAY_BACKEND_X11 = "x11";
+    public static final String DISPLAY_BACKEND_WAYLAND = "wayland";
+
+    public String getDisplayBackend() {
+        String value = getExtra(EXTRA_DISPLAY_BACKEND, DISPLAY_BACKEND_X11);
+        return DISPLAY_BACKEND_WAYLAND.equals(value) ? DISPLAY_BACKEND_WAYLAND : DISPLAY_BACKEND_X11;
+    }
+
+    public void setDisplayBackend(String value) {
+        putExtra(EXTRA_DISPLAY_BACKEND, DISPLAY_BACKEND_WAYLAND.equals(value) ? DISPLAY_BACKEND_WAYLAND : null);
+    }
+
+    public boolean isWaylandBackend() {
+        return DISPLAY_BACKEND_WAYLAND.equals(getDisplayBackend());
+    }
+
     public String getGraphicsDriverConfig() { return this.graphicsDriverConfig; }
 
     public void setGraphicsDriverConfig(String graphicsDriverConfig) { this.graphicsDriverConfig = graphicsDriverConfig; }

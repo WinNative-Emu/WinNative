@@ -2815,4 +2815,8 @@
     <string name="steam_controller_left_pad_click">बाएँ पैड पर क्लिक</string>
     <string name="steam_controller_right_pad_click">दाएँ पैड पर क्लिक</string>
     <string name="controller_test_generic">सामान्य</string>
+    <string name="container_display_server">डिस्प्ले सर्वर</string>
+    <string name="container_display_server_help">प्रायोगिक। सत्र X सर्वर के बजाय अंतर्निहित Wayland कंपोज़िटर के माध्यम से बनाया जाता है।</string>
+    <string name="container_display_server_wayland_requirements">Wayland के लिए Adreno GPU और winewayland तथा Wayland Turnip ड्राइवर वाला Wayland-सक्षम Proton चाहिए। सामग्री से एक इंस्टॉल करें।</string>
+    <string name="wayland_unavailable_fallback">इस गेम के लिए Wayland उपलब्ध नहीं है। X11 पर लॉन्च किया जा रहा है।</string>
 </resources>

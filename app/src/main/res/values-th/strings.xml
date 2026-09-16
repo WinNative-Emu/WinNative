@@ -2879,4 +2879,8 @@
     <string name="steam_controller_left_pad_click">คลิกแพดซ้าย</string>
     <string name="steam_controller_right_pad_click">คลิกแพดขวา</string>
     <string name="controller_test_generic">ทั่วไป</string>
+    <string name="container_display_server">เซิร์ฟเวอร์แสดงผล</string>
+    <string name="container_display_server_help">ทดลอง เซสชันจะวาดผ่านคอมโพสิเตอร์ Wayland ในตัวแทนเซิร์ฟเวอร์ X</string>
+    <string name="container_display_server_wayland_requirements">Wayland ต้องใช้ GPU Adreno และ Proton ที่รองรับ Wayland พร้อม winewayland และไดรเวอร์ Turnip สำหรับ Wayland ติดตั้งได้จากเนื้อหา</string>
+    <string name="wayland_unavailable_fallback">เกมนี้ไม่สามารถใช้ Wayland ได้ กำลังเปิดด้วย X11</string>
 </resources>

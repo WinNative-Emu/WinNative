@@ -235,3 +235,6 @@ add_library(steamctrl SHARED
 )
 target_compile_options(steamctrl PRIVATE -Wall -Wextra -fvisibility=hidden)
 target_link_libraries(steamctrl SDL3::SDL3 log)
+
+# Embedded Wayland compositor (winewayland.drv sessions); see waylandcomp/CMakeLists.txt.
+add_subdirectory(waylandcomp)

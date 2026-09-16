@@ -2882,4 +2882,8 @@ Installeret sti:
     <string name="steam_controller_left_pad_click">Klik på venstre pegefelt</string>
     <string name="steam_controller_right_pad_click">Klik på højre pegefelt</string>
     <string name="controller_test_generic">Generisk</string>
+    <string name="container_display_server">Skærmserver</string>
+    <string name="container_display_server_help">Eksperimentel. Sessionen tegnes gennem den indbyggede Wayland-compositor i stedet for X-serveren.</string>
+    <string name="container_display_server_wayland_requirements">Wayland kræver en Adreno-GPU og en Wayland-kompatibel Proton med winewayland og Wayland Turnip-driveren. Installér en fra Indhold.</string>
+    <string name="wayland_unavailable_fallback">Wayland er ikke tilgængelig for dette spil. Starter på X11.</string>
 </resources>

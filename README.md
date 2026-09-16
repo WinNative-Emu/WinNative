@@ -20,6 +20,7 @@ alongside them.
 | 📦 **Install** | [Releases](https://github.com/WinNative-Emu/WinNative/releases) |
 | 🎮 **Retro consoles** | [docs/RETRO-CONSOLES.md](docs/RETRO-CONSOLES.md) — NES through PlayStation 2 |
 | 🎞️ **Frame generation** | [docs/FRAME-GENERATION.md](docs/FRAME-GENERATION.md) — LSFG and DIS |
+| 🖥️ **Wayland display server** | [docs/WAYLAND-DISPLAY.md](docs/WAYLAND-DISPLAY.md) — winewayland sessions on the embedded compositor |
 | 🔨 **Build from source** | [docs/BUILDING.md](docs/BUILDING.md) |
 | 🙏 **Credits & licenses** | [CREDITS.md](CREDITS.md) · [EMULATOR_CREDITS.md](EMULATOR_CREDITS.md) |
 | 💬 **Chat** | [Discord](https://discord.gg/uhTkvGfakU) |

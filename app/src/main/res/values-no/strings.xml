@@ -2880,4 +2880,8 @@ Installert bane:
     <string name="steam_controller_left_pad_click">Klikk på venstre styreflate</string>
     <string name="steam_controller_right_pad_click">Klikk på høyre styreflate</string>
     <string name="controller_test_generic">Generisk</string>
+    <string name="container_display_server">Skjermserver</string>
+    <string name="container_display_server_help">Eksperimentell. Økten tegnes gjennom den innebygde Wayland-compositoren i stedet for X-serveren.</string>
+    <string name="container_display_server_wayland_requirements">Wayland krever en Adreno-GPU og en Wayland-kompatibel Proton med winewayland og Wayland Turnip-driveren. Installer en fra Innhold.</string>
+    <string name="wayland_unavailable_fallback">Wayland er ikke tilgjengelig for dette spillet. Starter på X11.</string>
 </resources>

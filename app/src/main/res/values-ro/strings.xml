@@ -2880,5 +2880,9 @@ Cale instalata:
     <string name="steam_controller_left_pad_click">Clic pe panoul stâng</string>
     <string name="steam_controller_right_pad_click">Clic pe panoul drept</string>
     <string name="controller_test_generic">Generic</string>
+    <string name="container_display_server">Server de afișare</string>
+    <string name="container_display_server_help">Experimental. Sesiunea este desenată prin compozitorul Wayland integrat în locul serverului X.</string>
+    <string name="container_display_server_wayland_requirements">Wayland necesită un GPU Adreno și un Proton compatibil Wayland cu winewayland și driverul Turnip pentru Wayland. Instalează unul din Conținut.</string>
+    <string name="wayland_unavailable_fallback">Wayland nu este disponibil pentru acest joc. Se lansează pe X11.</string>
 </resources>
 

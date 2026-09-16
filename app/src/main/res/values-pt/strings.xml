@@ -2879,4 +2879,8 @@ Caminho instalado:
     <string name="steam_controller_left_pad_click">Clique no painel esquerdo</string>
     <string name="steam_controller_right_pad_click">Clique no painel direito</string>
     <string name="controller_test_generic">Genérico</string>
+    <string name="container_display_server">Servidor de ecrã</string>
+    <string name="container_display_server_help">Experimental. A sessão é desenhada através do compositor Wayland integrado em vez do servidor X.</string>
+    <string name="container_display_server_wayland_requirements">O Wayland precisa de uma GPU Adreno e de um Proton compatível com Wayland com winewayland e o controlador Turnip para Wayland. Instale um em Conteúdos.</string>
+    <string name="wayland_unavailable_fallback">O Wayland não está disponível para este jogo. A iniciar em X11.</string>
 </resources>
