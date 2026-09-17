@@ -192,33 +192,57 @@ in `untrusted_app_27`, the last domain allowed to exec a file under `files/`.
 
 ## Verified so far
 
-- gamescope 3.16.29 and Xwayland 24.1.13 from the rootfs start under proot + qemu-user on the
-  build machine with no missing libraries.
-- The whole launch line - proot with the bindings above, `env -i`, `winnative-session desktop` -
-  runs from the rootfs under qemu-user as a client of a nested sway on the build machine:
-  gamescope binds the parent's globals, reports "Initted Wayland backend", enumerates its dma-buf
-  formats, and only stops at `vkAllocateMemory` on lavapipe-under-qemu, which has no device memory
-  to give. The rig is `scratchpad/host-test.sh`; weston 13 (seat 7) and cage (no pointer
-  constraints) cannot host it.
-- **gamescope requires `wl_seat` version 8 or newer** from the parent; it refuses the input
-  objects otherwise. The compositor advertised 5 and now advertises 9, sending
-  `wl_pointer.axis_value120` to version 8+ pointers in place of `axis_discrete`.
-- The Steam manifest parser resolves 17 components; the client zips download from
-  `client-update.fastly.steamstatic.com/<file>`.
-- The device (NP06J, Adreno) exposes `/dev/kgsl-3d0` and a world-readable `/dev/dri/renderD128`.
+On the NP06J (Adreno 840, Android 16, app uid 10516), 2026-09-17:
+
+- The proot rootfs runs as the app's own uid. Android's app seccomp policy traps `setuid`,
+  `setgid`, `setreuid`, `setregid`, `setfsuid`, `setfsgid` and `get_robust_list`; proot answers
+  the id calls itself (a process without privileges may only take an id it already holds), and
+  `libwnsession.so` answers `get_robust_list` in the process (see below).
+- gamescope 3.16.29 starts as a client of `libwnwayland.so`, drops its libdecor frame once the
+  compositor confirms `xdg_toplevel.set_fullscreen`, and delivers input: it holds two
+  `wl_pointer`/`wl_keyboard` pairs (one on its input thread), so the compositor sends seat events
+  to every such object of a client. pcmanfm shows, its menus open on tap, GTK icons render
+  (glycin's bwrap sandbox needs `/proc/sys/kernel/overflowuid`, which is faked).
+- **The GPU.** Arch's Turnip cannot open the GPU (msm only); Termux's 24.2.6 KGSL build rejects
+  the Adreno 840; Mesa 26.2.2 built with `-Dfreedreno-kmds=msm,kgsl` drives it (vkcube at 121 fps
+  through the compositor). `/dev/dri` is not visible to an app process at all (not even `stat`), and
+  neither is `/proc/net` nor `NETLINK_SOCK_DIAG`: only `/dev/kgsl-3d0` is. gamescope refuses to
+  offer `linux-dmabuf` without a DRM node from `VK_EXT_physical_device_drm`, so the runtime
+  presents the KGSL device as `/dev/dri/renderD<minor>` (a proot bind) with the sysfs entries
+  libdrm reads under `/sys/dev/char/<maj>:<min>`, and the Turnip patch reports that device as both
+  nodes. Consumers then run PRIME ioctls on it, which KGSL cannot answer; `libwnsession.so`
+  keeps an fd/handle table for `drmPrimeFDToHandle` and friends on that device. With that, Xwayland
+  runs glamor on Zink and every Vulkan client under gamescope gets a swapchain; the compositor log
+  shows gamescope presenting through dma-buf.
+- **Steam.** The arm64 client installs, updates itself (exit code 42 = restart, as `steam.sh`
+  handles), loads `steamui.so` and `vgui2_s.so` (GTK 2 from Debian, `openal`, `libvdpau`), shows its
+  update window on the GPU, passes its System V semaphore and robust-mutex checks, connects to
+  Steam's network, and launches `steamwebhelper`, whose CEF renders its first frame.
+- libdrm-based checks: `drmGetDevice2` on the presented node reports a platform device
+  `kgsl-3d0`; Turnip reports `hasRender=1` for it.
 
 ## Not yet done
 
+- **Steam's UI does not appear yet.** `steamwebhelper` connects to the client's loopback
+  websocket, the client runs `lsof -i TCP@127.0.0.1:<port>` to identify the peer
+  (`GetIPCConnectionDetails`), and rejects the connection. `libwnsession.so` now records every
+  loopback port each session process binds or connects and answers that lsof from the record,
+  which moved the log from `command failed` to `WebUITransport: Checked: 0/<pid>` - the client
+  identifies the peer and still rejects it. What that second check reads (probably
+  `/proc/<pid>/exe`, which under proot names the host path) is the next thing to find.
+- Xwayland's swapchain through the gamescope WSI layer still fails once at startup
+  (`CreateSwapchainKHR failed with VK_ERROR_INITIALIZATION_FAILED`) and recovers; harmless so far.
+- `steam-runtime-launcher-service` is not shipped for arm64; Steam disables it and goes on.
+- `build-linuxfs.sh` now cross-builds Turnip (`build-turnip.sh`; meson, ninja and the aarch64
+  toolchain on the build host); `linuxfs.tar.zst` has not been regenerated with it yet - the
+  device rootfs was updated file by file.
 - **Installing the runtime.** `linuxfs.tar.zst` has no download or import path in the app yet;
-  for now it is extracted by hand into `files/linuxfs`. It should become a content profile.
-- **Turnip in the rootfs is Arch's msm build.** The device's GPU is reached through KGSL; the
-  compositor's Turnip is a KGSL build. Whether Arch's `vulkan-freedreno` finds the GPU through
-  `/dev/dri/renderD128` on this device is the first thing to test on hardware; if not, a glibc
-  Turnip built with `-Dfreedreno-kmds=msm,kgsl` goes into the rootfs.
-- **Nothing has run on the device yet.** The launch line is WayLandIE's, which is known to work
-  on Adreno, but the compositor here is ours.
+  for now it is extracted by hand into `files/linuxfs`. It should become a content profile, and
+  the importer must copy hard links as files (toybox tar cannot create them).
 - Shortcut Settings still shows the Wine pages for a Linux entry; a Linux settings page is owed.
 - Extensionless ELFs in the picker; AppImage icons.
+- gamescope logs `Changed refresh` on every presentation-feedback event because the compositor's
+  reported refresh jitters around 120 Hz; sending a fixed refresh would quiet it.
 
 ## Risks
 
