@@ -506,6 +506,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private static final long WAYLAND_RENDERER_POLL_MS = 2000L;
     private static final long WAYLAND_RENDERER_SETTLED_POLL_MS = 15000L;
     private Thread waylandRendererThread;
+    /* The process behind the window the compositor is showing, from the compositor itself. */
+    private volatile int waylandGamePid;
     private static final int[] DIS_FLOW_MIN_SIDES = {180, 252, 360};
     private static final int DIS_FRAME_GEN_SCALE_DEFAULT = 180;
 
@@ -1063,9 +1065,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         systemFrameGenPollRunnable = null;
     }
 
-    /* A Wayland session has no window property to read the renderer from, so the container's own
-     * processes are asked instead; WaylandRendererProbe says why. Off the UI thread: every tick
-     * reads a megabyte of /proc. */
+    /* A Wayland session has no window property to read the renderer from, so the process behind the
+     * window is asked instead; WaylandRendererProbe says why. Off the UI thread: a tick that has no
+     * pid to go on falls back to reading every process on the device. */
     private void startWaylandRendererPolling() {
         if (!waylandMode || waylandRendererThread != null) return;
         final java.io.File root = container != null ? container.getRootDir() : null;
@@ -1073,7 +1075,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         waylandRendererThread = new Thread(() -> {
             String reported = null;
             while (!activityDestroyed.get()) {
-                String name = com.winlator.cmod.runtime.display.wayland.WaylandRendererProbe.probe(root);
+                String name = com.winlator.cmod.runtime.display.wayland.WaylandRendererProbe.probe(root, waylandGamePid);
                 if (name != null && !name.equals(reported)) {
                     reported = name;
                     final String resolved = name;
@@ -8883,6 +8885,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             @Override
             public void onFirstFrame() {
                 onFirstGuestWindow();
+            }
+
+            @Override
+            public void onGameProgram(int pid, String program) {
+                waylandGamePid = pid;
             }
         }, xServer, winHandler);
         waylandSession.attach(rootView, index, cfg, reattach);

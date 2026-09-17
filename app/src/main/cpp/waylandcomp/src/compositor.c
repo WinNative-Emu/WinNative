@@ -447,9 +447,16 @@ static int on_release_timer(int fd, uint32_t mask, void *data) {
  * delivered (a swapchain rebuild destroys buffers with queued releases) or that a coarser earlier
  * limit had spaced out, and the game's first frames after that waited on empty slots. */
 static void release_buffer(struct surface *s, struct wl_resource *buffer, int64_t since_ns) {
-    int limit = g_fps_limit;
-    if (limit <= 0 || g_release_timer_fd < 0) { wl_buffer_send_release(buffer); perf_note_release(since_ns); return; }
-    int64_t interval = 1000000000LL / limit, now = now_ns();
+    const int limit = g_fps_limit;
+    /* Without a limit of its own a game is paced to the screen. A swapchain that does not wait for
+     * frame callbacks (MAILBOX, IMMEDIATE) is held back by nothing else here, so handing a replaced
+     * buffer straight back let it draw as fast as the GPU allowed and everything above the refresh
+     * rate was thrown away - 178 frames a second for 91 on screen, measured. X11 never did that:
+     * there a buffer comes back only once the scene that used it has been composed. One release per
+     * refresh is the same back-pressure, and the screen shows the same frames either way. */
+    const int64_t interval = limit > 0 ? 1000000000LL / limit : g_refresh_ns;
+    if (interval <= 0 || g_release_timer_fd < 0) { wl_buffer_send_release(buffer); perf_note_release(since_ns); return; }
+    int64_t now = now_ns();
     int64_t at = s->next_release_ns + interval;
     int64_t latest = now + interval * (int64_t)(s->releases_pending + 1);
     if (at < now) at = now;

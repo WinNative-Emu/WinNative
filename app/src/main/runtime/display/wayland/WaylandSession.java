@@ -44,6 +44,9 @@ public final class WaylandSession {
 
         /** UI thread, once per session: the first client frame is on screen. */
         void onFirstFrame();
+
+        /** UI thread: the Linux process behind the window now presenting ({@code pid} 0 = unknown). */
+        default void onGameProgram(int pid, String program) {}
     }
 
     /** Settings the compositor reads for the session; stored before the surface comes up. */
@@ -168,6 +171,11 @@ public final class WaylandSession {
 
             @Override
             public void surfaceDestroyed(SurfaceHolder holder) {
+                /* The ticks drive the compositor's drawing, and there is nothing to draw on until
+                 * surfaceCreated hands it another surface. Left running they woke the UI thread and
+                 * the compositor thread at the panel's refresh rate for a screen the session no
+                 * longer has - all of it while the app sat in the background. */
+                stopVsync();
                 WaylandCompositor.nativeSetSurface(null);
             }
         });
@@ -253,6 +261,11 @@ public final class WaylandSession {
             @Override
             public void onGameFrame() {
                 if (attached) host.onGameFrame();
+            }
+
+            @Override
+            public void onGameProgram(int pid, String program) {
+                main.post(() -> { if (attached) host.onGameProgram(pid, program); });
             }
         });
         WaylandCompositor.setPointerLockListener((locked, x, y) -> main.post(() -> {

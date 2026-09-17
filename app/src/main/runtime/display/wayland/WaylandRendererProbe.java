@@ -25,13 +25,24 @@ public final class WaylandRendererProbe {
      * The renderer of the container rooted at {@code containerRoot}, or null while no process has
      * loaded one yet. Callers keep asking: a Steam session maps the store's own Direct3D before the
      * game maps its, so the answer can rise from DXVK to VKD3D once the game is up.
+     *
+     * <p>{@code gamePid} is the process behind the window the compositor is showing. Reading that
+     * one process answers the question outright; without it every process on the device has to be
+     * read instead, which is about a megabyte of /proc a tick.
      */
-    public static String probe(File containerRoot) {
+    public static String probe(File containerRoot, int gamePid) {
         if (containerRoot == null) return null;
         // Matched on the container directory's name, not its full path: the same directory is
         // reachable as both /data/data/<pkg> and /data/user/0/<pkg>, and maps reports whichever
         // path the process opened it through.
         String marker = "/" + containerRoot.getName() + "/.wine/drive_c";
+
+        if (gamePid > 0) {
+            int rank = scan(new File("/proc/" + gamePid, "maps"), marker);
+            // Nothing yet (the process is still starting, or it has already gone): fall through to
+            // the sweep rather than report a renderer the session is not on.
+            if (rank != 0) return name(rank);
+        }
 
         File[] entries = new File("/proc").listFiles();
         if (entries == null) return null;
