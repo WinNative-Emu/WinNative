@@ -15,6 +15,8 @@
     <string name="common_ui_revert_icon">Reverter Icone</string>
     <string name="common_ui_select_exe">Selecionar EXE</string>
     <string name="common_ui_select_valid_exe_file">Por favor, selecione um arquivo .exe valido</string>
+    <string name="common_ui_select_executable">Selecionar executável</string>
+    <string name="common_ui_select_valid_executable">Selecione um executável do Windows ou do Linux</string>
     <string name="common_ui_select_valid_icon_file">Por favor, selecione um arquivo .ico ou .png valido.</string>
     <string name="common_ui_exit">Sair</string>
     <string name="common_ui_exit_app">Sair do aplicativo</string>
@@ -226,11 +228,18 @@
     <string name="hero_graphics_test_32">32-bit</string>
     <string name="hero_graphics_test_64">64-bit</string>
     <string name="hero_input_tests_title">Testes de entrada</string>
-    <string name="library_games_add_custom_game">Adicionar Jogo Personalizado</string>
     <string name="library_games_game_name">Nome do Jogo</string>
     <string name="library_games_game_folder_mapped_drive">Pasta do jogo (unidade de jogo mapeada)</string>
     <string name="library_games_select_exe_provide_name">Selecione um exe e forneca um nome</string>
     <string name="library_games_sign_in_prompt">Entre em uma loja ou adicione um jogo personalizado para montar sua biblioteca.</string>
+    <string name="library_games_add_title">Adicionar jogo ou aplicativo</string>
+    <string name="library_games_type">Tipo</string>
+    <string name="library_games_type_game">Jogo</string>
+    <string name="library_games_type_app">Aplicativo</string>
+    <string name="library_games_select_executable_or_rom">Selecione um executável ou uma ROM de console</string>
+    <string name="library_games_added">%1$s adicionado</string>
+    <string name="library_games_add_failed">Não foi possível adicionar %1$s</string>
+    <string name="linux_runtime_not_installed">O runtime Linux ainda não está instalado, então %1$s não pode ser iniciado.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Lojas</string>

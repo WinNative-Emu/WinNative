@@ -923,6 +923,13 @@ internal fun UnifiedActivity.launchCustomGame(
             return@launch
         }
 
+        if (com.winlator.cmod.feature.library.LinuxApps.isLinuxShortcut(shortcut)) {
+            withContext(Dispatchers.Main) {
+                com.winlator.cmod.feature.library.LinuxApps.launch(context, shortcut)
+            }
+            return@launch
+        }
+
         if (com.winlator.cmod.feature.retro.RetroShortcuts.isRetroShortcut(shortcut)) {
             // Asks RetroShortcuts which launcher this shortcut needs rather
             // than reasoning about it here. Listing the embedded paths in two

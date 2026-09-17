@@ -18,6 +18,8 @@
     <string name="common_ui_enter_path">ป้อนพาธ</string>
     <string name="common_ui_path_not_found">ไม่พบพาธ</string>
     <string name="common_ui_select_valid_exe_file">โปรดเลือกไฟล์ .exe ที่ถูกต้อง</string>
+    <string name="common_ui_select_executable">เลือกไฟล์ปฏิบัติการ</string>
+    <string name="common_ui_select_valid_executable">เลือกไฟล์ปฏิบัติการของ Windows หรือ Linux</string>
     <string name="common_ui_select_valid_icon_file">โปรดเลือกไฟล์ .ico หรือ .png ที่ถูกต้อง</string>
     <string name="common_ui_exit">ออก</string>
     <string name="common_ui_exit_app">ออกจากแอป</string>
@@ -227,11 +229,18 @@
     <string name="hero_graphics_test_32">32-bit</string>
     <string name="hero_graphics_test_64">64-bit</string>
     <string name="hero_input_tests_title">ทดสอบอินพุต</string>
-    <string name="library_games_add_custom_game">เพิ่มเกมกำหนดเอง</string>
     <string name="library_games_game_name">ชื่อเกม</string>
     <string name="library_games_game_folder_mapped_drive">โฟลเดอร์เกม (ไดรฟ์เกมที่แมป)</string>
     <string name="library_games_select_exe_provide_name">เลือกไฟล์ exe และระบุชื่อ</string>
     <string name="library_games_sign_in_prompt">เข้าสู่ระบบร้านค้าหรือเพิ่มเกมกำหนดเองเพื่อสร้างคลังของคุณ</string>
+    <string name="library_games_add_title">เพิ่มเกมหรือแอป</string>
+    <string name="library_games_type">ประเภท</string>
+    <string name="library_games_type_game">เกม</string>
+    <string name="library_games_type_app">แอป</string>
+    <string name="library_games_select_executable_or_rom">เลือกไฟล์ปฏิบัติการหรือ ROM คอนโซล</string>
+    <string name="library_games_added">เพิ่ม %1$s แล้ว</string>
+    <string name="library_games_add_failed">ไม่สามารถเพิ่ม %1$s ได้</string>
+    <string name="linux_runtime_not_installed">ยังไม่ได้ติดตั้งรันไทม์ Linux จึงไม่สามารถเริ่ม %1$s ได้</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">ร้านค้า</string>

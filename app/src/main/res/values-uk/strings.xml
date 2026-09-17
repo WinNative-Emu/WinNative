@@ -15,6 +15,8 @@
     <string name="common_ui_revert_icon">Скинути іконку</string>
     <string name="common_ui_select_exe">Вибрати EXE</string>
     <string name="common_ui_select_valid_exe_file">Будь ласка, виберіть дійсний файл .exe</string>
+    <string name="common_ui_select_executable">Вибрати виконуваний файл</string>
+    <string name="common_ui_select_valid_executable">Виберіть виконуваний файл Windows або Linux</string>
     <string name="common_ui_select_valid_icon_file">Будь ласка, виберіть дійсний файл .ico або .png.</string>
     <string name="common_ui_exit">Вийти</string>
     <string name="common_ui_exit_app">Вийти із застосунку</string>
@@ -230,11 +232,18 @@
     <string name="hero_graphics_test_32">32-біт</string>
     <string name="hero_graphics_test_64">64-біт</string>
     <string name="hero_input_tests_title">Тести введення</string>
-    <string name="library_games_add_custom_game">Додати користувацьку гру</string>
     <string name="library_games_game_name">Назва гри</string>
     <string name="library_games_game_folder_mapped_drive">Папка гри (зіставлений ігровий диск)</string>
     <string name="library_games_select_exe_provide_name">Виберіть exe та вкажіть назву</string>
     <string name="library_games_sign_in_prompt">Увійдіть до магазину або додайте користувацьку гру, щоб побудувати свою бібліотеку.</string>
+    <string name="library_games_add_title">Додати гру або застосунок</string>
+    <string name="library_games_type">Тип</string>
+    <string name="library_games_type_game">Гра</string>
+    <string name="library_games_type_app">Застосунок</string>
+    <string name="library_games_select_executable_or_rom">Виберіть виконуваний файл або ROM консолі</string>
+    <string name="library_games_added">%1$s додано</string>
+    <string name="library_games_add_failed">Не вдалося додати %1$s</string>
+    <string name="linux_runtime_not_installed">Середовище виконання Linux ще не встановлено, тому %1$s не можна запустити.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Магазини</string>

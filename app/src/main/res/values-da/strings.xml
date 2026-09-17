@@ -15,6 +15,8 @@
     <string name="common_ui_revert_icon">Gendan ikon</string>
     <string name="common_ui_select_exe">Vælg EXE</string>
     <string name="common_ui_select_valid_exe_file">Vælg venligst en gyldig .exe-fil</string>
+    <string name="common_ui_select_executable">Vælg eksekverbar fil</string>
+    <string name="common_ui_select_valid_executable">Vælg en eksekverbar Windows- eller Linux-fil</string>
     <string name="common_ui_select_valid_icon_file">Vælg venligst en gyldig .ico- eller .png-fil.</string>
     <string name="common_ui_exit">Afslut</string>
     <string name="common_ui_exit_app">Afslut app</string>
@@ -226,11 +228,18 @@
     <string name="hero_graphics_test_32">32-bit</string>
     <string name="hero_graphics_test_64">64-bit</string>
     <string name="hero_input_tests_title">Inputtests</string>
-    <string name="library_games_add_custom_game">Tilføj brugerdefineret spil</string>
     <string name="library_games_game_name">Spilnavn</string>
     <string name="library_games_game_folder_mapped_drive">Spilmappe (tilknyttet spildrev)</string>
     <string name="library_games_select_exe_provide_name">Vælg en exe og angiv et navn</string>
     <string name="library_games_sign_in_prompt">Log ind på en butik eller tilføj et brugerdefineret spil for at opbygge dit bibliotek.</string>
+    <string name="library_games_add_title">Tilføj spil eller app</string>
+    <string name="library_games_type">Type</string>
+    <string name="library_games_type_game">Spil</string>
+    <string name="library_games_type_app">App</string>
+    <string name="library_games_select_executable_or_rom">Vælg en eksekverbar fil eller konsol-ROM</string>
+    <string name="library_games_added">%1$s tilføjet</string>
+    <string name="library_games_add_failed">Kunne ikke tilføje %1$s</string>
+    <string name="linux_runtime_not_installed">Linux-runtimen er ikke installeret endnu, så %1$s kan ikke startes.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Butikker</string>

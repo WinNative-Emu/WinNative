@@ -15,6 +15,8 @@
     <string name="common_ui_revert_icon">Restaurar icono</string>
     <string name="common_ui_select_exe">Seleccionar EXE</string>
     <string name="common_ui_select_valid_exe_file">Por favor, selecciona un archivo .exe válido</string>
+    <string name="common_ui_select_executable">Seleccionar ejecutable</string>
+    <string name="common_ui_select_valid_executable">Selecciona un ejecutable de Windows o Linux</string>
     <string name="common_ui_select_valid_icon_file">Por favor, selecciona un archivo .ico o .png válido.</string>
     <string name="common_ui_exit">Salir</string>
     <string name="common_ui_exit_app">Salir de la aplicación</string>
@@ -226,11 +228,18 @@
     <string name="hero_graphics_test_32">32-bit</string>
     <string name="hero_graphics_test_64">64-bit</string>
     <string name="hero_input_tests_title">Pruebas de entrada</string>
-    <string name="library_games_add_custom_game">Añadir juego personalizado</string>
     <string name="library_games_game_name">Nombre del juego</string>
     <string name="library_games_game_folder_mapped_drive">Carpeta del juego (unidad de juego asignada)</string>
     <string name="library_games_select_exe_provide_name">Selecciona un exe e indica un nombre</string>
     <string name="library_games_sign_in_prompt">Inicia sesión en una tienda o añade un juego personalizado para construir tu biblioteca.</string>
+    <string name="library_games_add_title">Añadir juego o aplicación</string>
+    <string name="library_games_type">Tipo</string>
+    <string name="library_games_type_game">Juego</string>
+    <string name="library_games_type_app">Aplicación</string>
+    <string name="library_games_select_executable_or_rom">Selecciona un ejecutable o una ROM de consola</string>
+    <string name="library_games_added">%1$s añadido</string>
+    <string name="library_games_add_failed">No se pudo añadir %1$s</string>
+    <string name="linux_runtime_not_installed">El entorno de ejecución de Linux aún no está instalado, por lo que %1$s no se puede iniciar.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Tiendas</string>

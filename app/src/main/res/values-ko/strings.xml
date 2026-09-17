@@ -15,6 +15,8 @@
     <string name="common_ui_revert_icon">아이콘 되돌리기</string>
     <string name="common_ui_select_exe">EXE 선택</string>
     <string name="common_ui_select_valid_exe_file">올바른 .exe 파일을 선택하세요</string>
+    <string name="common_ui_select_executable">실행 파일 선택</string>
+    <string name="common_ui_select_valid_executable">Windows 또는 Linux 실행 파일을 선택하세요</string>
     <string name="common_ui_select_valid_icon_file">올바른 .ico 또는 .png 파일을 선택하세요.</string>
     <string name="common_ui_exit">종료</string>
     <string name="common_ui_exit_app">앱 종료</string>
@@ -226,11 +228,18 @@
     <string name="hero_graphics_test_32">32비트</string>
     <string name="hero_graphics_test_64">64비트</string>
     <string name="hero_input_tests_title">입력 테스트</string>
-    <string name="library_games_add_custom_game">사용자 지정 게임 추가</string>
     <string name="library_games_game_name">게임 이름</string>
     <string name="library_games_game_folder_mapped_drive">게임 폴더(매핑된 게임 드라이브)</string>
     <string name="library_games_select_exe_provide_name">exe를 선택하고 이름을 입력하세요</string>
     <string name="library_games_sign_in_prompt">스토어에 로그인하거나 사용자 지정 게임을 추가하여 라이브러리를 구성하세요.</string>
+    <string name="library_games_add_title">게임 또는 앱 추가</string>
+    <string name="library_games_type">유형</string>
+    <string name="library_games_type_game">게임</string>
+    <string name="library_games_type_app">앱</string>
+    <string name="library_games_select_executable_or_rom">실행 파일 또는 콘솔 ROM 선택</string>
+    <string name="library_games_added">%1$s 추가됨</string>
+    <string name="library_games_add_failed">%1$s을(를) 추가할 수 없습니다</string>
+    <string name="linux_runtime_not_installed">Linux 런타임이 아직 설치되지 않아 %1$s을(를) 시작할 수 없습니다.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">스토어</string>

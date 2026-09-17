@@ -18,6 +18,8 @@
     <string name="common_ui_enter_path">Anna polku</string>
     <string name="common_ui_path_not_found">Polkua ei löytynyt</string>
     <string name="common_ui_select_valid_exe_file">Valitse kelvollinen .exe-tiedosto</string>
+    <string name="common_ui_select_executable">Valitse suoritettava tiedosto</string>
+    <string name="common_ui_select_valid_executable">Valitse suoritettava Windows- tai Linux-tiedosto</string>
     <string name="common_ui_select_valid_icon_file">Valitse kelvollinen .ico- tai .png-tiedosto.</string>
     <string name="common_ui_exit">Poistu</string>
     <string name="common_ui_exit_app">Poistu sovelluksesta</string>
@@ -227,11 +229,18 @@
     <string name="hero_graphics_test_32">32-bittinen</string>
     <string name="hero_graphics_test_64">64-bittinen</string>
     <string name="hero_input_tests_title">Syötetestit</string>
-    <string name="library_games_add_custom_game">Lisää mukautettu peli</string>
     <string name="library_games_game_name">Pelin nimi</string>
     <string name="library_games_game_folder_mapped_drive">Pelikansio (yhdistetty peliasema)</string>
     <string name="library_games_select_exe_provide_name">Valitse exe ja anna nimi</string>
     <string name="library_games_sign_in_prompt">Kirjaudu kauppaan tai lisää mukautettu peli rakentaaksesi kirjastosi.</string>
+    <string name="library_games_add_title">Lisää peli tai sovellus</string>
+    <string name="library_games_type">Tyyppi</string>
+    <string name="library_games_type_game">Peli</string>
+    <string name="library_games_type_app">Sovellus</string>
+    <string name="library_games_select_executable_or_rom">Valitse suoritettava tiedosto tai konsolin ROM</string>
+    <string name="library_games_added">%1$s lisätty</string>
+    <string name="library_games_add_failed">Kohdetta %1$s ei voitu lisätä</string>
+    <string name="linux_runtime_not_installed">Linux-ajoympäristöä ei ole vielä asennettu, joten kohdetta %1$s ei voi käynnistää.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Kaupat</string>

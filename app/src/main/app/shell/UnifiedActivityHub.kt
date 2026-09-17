@@ -158,6 +158,8 @@ import com.winlator.cmod.app.db.PluviaDatabase
 import com.winlator.cmod.app.service.DownloadService
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.app.update.UpdateService
+import com.winlator.cmod.feature.library.LibraryContentFilters
+import com.winlator.cmod.feature.library.LibraryItemType
 import com.winlator.cmod.feature.library.LibraryStoreLinks
 import com.winlator.cmod.feature.library.LibraryStoreOption
 import com.winlator.cmod.feature.library.LibraryStoreTransfer
@@ -503,17 +505,7 @@ internal fun UnifiedActivity.UnifiedHub() {
 
     val filteredSteamApps =
         remember(steamApps, contentFilters.toMap()) {
-            steamApps.filter { app ->
-                when (app.type) {
-                    com.winlator.cmod.feature.stores.steam.enums.AppType.game -> contentFilters["games"] == true
-                    com.winlator.cmod.feature.stores.steam.enums.AppType.demo -> contentFilters["games"] == true
-                    com.winlator.cmod.feature.stores.steam.enums.AppType.dlc -> contentFilters["dlc"] == true
-                    com.winlator.cmod.feature.stores.steam.enums.AppType.application -> contentFilters["applications"] == true
-                    com.winlator.cmod.feature.stores.steam.enums.AppType.tool -> contentFilters["tools"] == true
-                    com.winlator.cmod.feature.stores.steam.enums.AppType.config -> contentFilters["tools"] == true
-                    else -> contentFilters["games"] == true
-                }
-            }
+            steamApps.filter { app -> LibraryContentFilters.allows(app.type, contentFilters) }
         }
 
     var globalSettingsApp by remember { mutableStateOf<SteamApp?>(null) }
@@ -1012,6 +1004,7 @@ internal fun UnifiedActivity.UnifiedHub() {
                             steamApps = filteredSteamApps,
                             epicApps = epicApps,
                             gogApps = gogApps,
+                            contentFilters = contentFilters.toMap(),
                             layoutMode = libraryLayoutMode,
                             libraryRefreshKey = libraryRefreshKey,
                             shortcutRefreshKey = shortcutRefreshKey,
@@ -2005,6 +1998,7 @@ internal fun UnifiedActivity.LibraryCarousel(
     steamApps: List<SteamApp>,
     epicApps: List<EpicGame>,
     gogApps: List<GOGGame>,
+    contentFilters: Map<String, Boolean>,
     layoutMode: LibraryLayoutMode,
     libraryRefreshKey: Int = 0,
     shortcutRefreshKey: Int = 0,
@@ -2092,6 +2086,7 @@ internal fun UnifiedActivity.LibraryCarousel(
                                 SteamApp(
                                     id = customId,
                                     name = displayName,
+                                    type = LibraryItemType.of(shortcut).appType,
                                     developer = "Custom",
                                     gameDir = gameDir,
                                 )
@@ -2141,6 +2136,7 @@ internal fun UnifiedActivity.LibraryCarousel(
             epicApps,
             gogApps,
             customApps,
+            contentFilters,
             customStoragePathByAppId,
             externalStorageState.connectivityKey,
             libraryRefreshKey,
@@ -2294,7 +2290,11 @@ internal fun UnifiedActivity.LibraryCarousel(
             val storeInstallPaths =
                 installedRows.associate { row -> row.libraryId to row.installPath }
             val merged =
-                (steamInstalled + customApps + mappedEpic + mappedGog)
+                (
+                    steamInstalled +
+                        customApps.filter { LibraryContentFilters.allows(it.type, contentFilters) } +
+                        mappedEpic + mappedGog
+                )
                     .distinctBy { it.id }
                     .filterNot { it.id in storeLinks.hiddenLibraryIds }
                     .filterNot { app ->

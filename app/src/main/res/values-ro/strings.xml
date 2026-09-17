@@ -15,6 +15,8 @@
     <string name="common_ui_revert_icon">Restaureaza pictograma</string>
     <string name="common_ui_select_exe">Selecteaza EXE</string>
     <string name="common_ui_select_valid_exe_file">Selecteaza un fisier .exe valid</string>
+    <string name="common_ui_select_executable">Selectează executabilul</string>
+    <string name="common_ui_select_valid_executable">Selectează un executabil Windows sau Linux</string>
     <string name="common_ui_select_valid_icon_file">Selecteaza un fisier .ico sau .png valid.</string>
     <string name="common_ui_exit">Iesire</string>
     <string name="common_ui_exit_app">Ieși din aplicație</string>
@@ -226,11 +228,18 @@
     <string name="hero_graphics_test_32">32-bit</string>
     <string name="hero_graphics_test_64">64-bit</string>
     <string name="hero_input_tests_title">Teste de intrare</string>
-    <string name="library_games_add_custom_game">Adauga joc personalizat</string>
     <string name="library_games_game_name">Nume joc</string>
     <string name="library_games_game_folder_mapped_drive">Folder joc (unitate de joc mapata)</string>
     <string name="library_games_select_exe_provide_name">Selecteaza un exe si introdu un nume</string>
     <string name="library_games_sign_in_prompt">Autentifica-te intr-un magazin sau adauga un joc personalizat pentru a-ti construi biblioteca.</string>
+    <string name="library_games_add_title">Adaugă joc sau aplicație</string>
+    <string name="library_games_type">Tip</string>
+    <string name="library_games_type_game">Joc</string>
+    <string name="library_games_type_app">Aplicație</string>
+    <string name="library_games_select_executable_or_rom">Selectează un executabil sau un ROM de consolă</string>
+    <string name="library_games_added">%1$s a fost adăugat</string>
+    <string name="library_games_add_failed">Nu s-a putut adăuga %1$s</string>
+    <string name="linux_runtime_not_installed">Mediul de execuție Linux nu este încă instalat, așa că %1$s nu poate fi pornit.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Magazine</string>

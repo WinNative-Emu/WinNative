@@ -15,6 +15,8 @@
     <string name="common_ui_revert_icon">还原图标</string>
     <string name="common_ui_select_exe">选择 EXE</string>
     <string name="common_ui_select_valid_exe_file">请选择一个有效的 .exe 文件</string>
+    <string name="common_ui_select_executable">选择可执行文件</string>
+    <string name="common_ui_select_valid_executable">请选择 Windows 或 Linux 可执行文件</string>
     <string name="common_ui_select_valid_icon_file">请选择一个有效的 .ico 或 .png 文件。</string>
     <string name="common_ui_exit">退出</string>
     <string name="common_ui_exit_app">退出应用</string>
@@ -226,11 +228,18 @@
     <string name="hero_graphics_test_32">32 位</string>
     <string name="hero_graphics_test_64">64 位</string>
     <string name="hero_input_tests_title">输入测试</string>
-    <string name="library_games_add_custom_game">添加自定义游戏</string>
     <string name="library_games_game_name">游戏名称</string>
     <string name="library_games_game_folder_mapped_drive">游戏文件夹（映射的游戏驱动器）</string>
     <string name="library_games_select_exe_provide_name">选择 exe 文件并输入名称</string>
     <string name="library_games_sign_in_prompt">登录商店或添加自定义游戏来构建您的游戏库。</string>
+    <string name="library_games_add_title">添加游戏或应用</string>
+    <string name="library_games_type">类型</string>
+    <string name="library_games_type_game">游戏</string>
+    <string name="library_games_type_app">应用</string>
+    <string name="library_games_select_executable_or_rom">选择可执行文件或主机 ROM</string>
+    <string name="library_games_added">已添加 %1$s</string>
+    <string name="library_games_add_failed">无法添加 %1$s</string>
+    <string name="linux_runtime_not_installed">Linux 运行时尚未安装，因此无法启动 %1$s。</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">商店</string>

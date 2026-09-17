@@ -18,6 +18,8 @@
     <string name="common_ui_enter_path">Yol girin</string>
     <string name="common_ui_path_not_found">Yol bulunamadı</string>
     <string name="common_ui_select_valid_exe_file">Lütfen geçerli bir .exe dosyası seçin</string>
+    <string name="common_ui_select_executable">Çalıştırılabilir dosya seç</string>
+    <string name="common_ui_select_valid_executable">Bir Windows veya Linux çalıştırılabilir dosyası seçin</string>
     <string name="common_ui_select_valid_icon_file">Lütfen geçerli bir .ico veya .png dosyası seçin.</string>
     <string name="common_ui_exit">Çıkış</string>
     <string name="common_ui_exit_app">Uygulamadan Çık</string>
@@ -227,11 +229,18 @@
     <string name="hero_graphics_test_32">32-bit</string>
     <string name="hero_graphics_test_64">64-bit</string>
     <string name="hero_input_tests_title">Giriş Testleri</string>
-    <string name="library_games_add_custom_game">Özel Oyun Ekle</string>
     <string name="library_games_game_name">Oyun Adı</string>
     <string name="library_games_game_folder_mapped_drive">Oyun Klasörü (Eşlenmiş Oyun Sürücüsü)</string>
     <string name="library_games_select_exe_provide_name">Bir exe seçin ve bir ad girin</string>
     <string name="library_games_sign_in_prompt">Kütüphanenizi oluşturmak için bir mağazaya giriş yapın veya özel bir oyun ekleyin.</string>
+    <string name="library_games_add_title">Oyun veya uygulama ekle</string>
+    <string name="library_games_type">Tür</string>
+    <string name="library_games_type_game">Oyun</string>
+    <string name="library_games_type_app">Uygulama</string>
+    <string name="library_games_select_executable_or_rom">Bir çalıştırılabilir dosya veya konsol ROM\'u seçin</string>
+    <string name="library_games_added">%1$s eklendi</string>
+    <string name="library_games_add_failed">%1$s eklenemedi</string>
+    <string name="linux_runtime_not_installed">Linux çalışma zamanı henüz yüklü değil, bu yüzden %1$s başlatılamıyor.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Mağazalar</string>

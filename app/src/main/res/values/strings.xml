@@ -19,6 +19,8 @@
     <string name="common_ui_enter_path">Enter Path</string>
     <string name="common_ui_path_not_found">Path not found</string>
     <string name="common_ui_select_valid_exe_file">Please select a valid .exe file</string>
+    <string name="common_ui_select_executable">Select Executable</string>
+    <string name="common_ui_select_valid_executable">Select a Windows or Linux executable</string>
     <string name="common_ui_select_valid_icon_file">Please select a valid .ico or .png file.</string>
     <string name="common_ui_exit">Exit</string>
     <string name="common_ui_exit_app">Exit App</string>
@@ -228,11 +230,18 @@
     <string name="hero_graphics_test_32">32-bit</string>
     <string name="hero_graphics_test_64">64-bit</string>
     <string name="hero_input_tests_title">Input Tests</string>
-    <string name="library_games_add_custom_game">Add Custom Game</string>
     <string name="library_games_game_name">Game Name</string>
     <string name="library_games_game_folder_mapped_drive">Game Folder (Mapped Game Drive)</string>
     <string name="library_games_select_exe_provide_name">Select an exe and provide a name</string>
     <string name="library_games_sign_in_prompt">Sign into a store or add a custom game to build your library.</string>
+    <string name="library_games_add_title">Add Game or App</string>
+    <string name="library_games_type">Type</string>
+    <string name="library_games_type_game">Game</string>
+    <string name="library_games_type_app">App</string>
+    <string name="library_games_select_executable_or_rom">Select an executable or console ROM</string>
+    <string name="library_games_added">%1$s added</string>
+    <string name="library_games_add_failed">Could not add %1$s</string>
+    <string name="linux_runtime_not_installed">The Linux runtime is not installed yet, so %1$s cannot be started.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Stores</string>
