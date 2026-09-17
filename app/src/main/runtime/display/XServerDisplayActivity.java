@@ -501,6 +501,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private static final long SYSTEM_FRAME_GEN_POLL_MS = 2000L;
     private static final int SYSTEM_FRAME_GEN_IDLE_PROBES = 3;
     private String systemFrameGenSignal = "";
+    /* Fast until the renderer is known, then slow: it only changes if the session starts
+     * another game, as a store front end does. */
+    private static final long WAYLAND_RENDERER_POLL_MS = 2000L;
+    private static final long WAYLAND_RENDERER_SETTLED_POLL_MS = 15000L;
+    private Thread waylandRendererThread;
     private static final int[] DIS_FLOW_MIN_SIDES = {180, 252, 360};
     private static final int DIS_FRAME_GEN_SCALE_DEFAULT = 180;
 
@@ -1056,6 +1061,48 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (systemFrameGenPollRunnable == null) return;
         handler.removeCallbacks(systemFrameGenPollRunnable);
         systemFrameGenPollRunnable = null;
+    }
+
+    /* A Wayland session has no window property to read the renderer from, so the container's own
+     * processes are asked instead; WaylandRendererProbe says why. Off the UI thread: every tick
+     * reads a megabyte of /proc. */
+    private void startWaylandRendererPolling() {
+        if (!waylandMode || waylandRendererThread != null) return;
+        final java.io.File root = container != null ? container.getRootDir() : null;
+        if (root == null) return;
+        waylandRendererThread = new Thread(() -> {
+            String reported = null;
+            while (!activityDestroyed.get()) {
+                String name = com.winlator.cmod.runtime.display.wayland.WaylandRendererProbe.probe(root);
+                if (name != null && !name.equals(reported)) {
+                    reported = name;
+                    final String resolved = name;
+                    runOnUiThread(() -> applyWaylandRendererName(resolved));
+                }
+                try {
+                    Thread.sleep(reported == null
+                            ? WAYLAND_RENDERER_POLL_MS : WAYLAND_RENDERER_SETTLED_POLL_MS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }, "WaylandRendererProbe");
+        waylandRendererThread.setDaemon(true);
+        waylandRendererThread.start();
+    }
+
+    private void stopWaylandRendererPolling() {
+        if (waylandRendererThread == null) return;
+        waylandRendererThread.interrupt();
+        waylandRendererThread = null;
+    }
+
+    private void applyWaylandRendererName(String name) {
+        if (activityDestroyed.get() || name.equals(lastRendererName)) return;
+        lastRendererName = name;
+        if (frameRating != null) frameRating.setRenderer(name);
+        if (mangoHud != null) mangoHud.setEngineName(mangoEngineLabel());
     }
 
     private final FrameRating.OutputFrameSource waylandFrameGenOutputSource =
@@ -3319,6 +3366,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             syncFrameGenerationHud();
             startSystemFrameGenPolling();
         }
+        startWaylandRendererPolling();
 
         SessionKeepAliveService.onResumeSession(this);
         LogManager.log(TAG, "Session resumed", getApplicationContext());
@@ -3346,6 +3394,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         stopSteamControllerSupport();
         super.onPause();
         stopSystemFrameGenPolling();
+        stopWaylandRendererPolling();
         if (systemFrameGenMonitor != null) systemFrameGenMonitor.stop();
         isVolumeUpPressed = false;
         isVolumeDownPressed = false;
@@ -5002,6 +5051,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         stopSteamControllerSupport();
         hideControllerTestDialog();
         stopSystemFrameGenPolling();
+        stopWaylandRendererPolling();
         if (systemFrameGenMonitor != null) {
             systemFrameGenMonitor.stop();
             systemFrameGenMonitor = null;
