@@ -63,12 +63,18 @@ public final class LinuxRuntime {
   /**
    * The proot command line running {@code guestCommand} inside the rootfs. Host paths the session
    * needs (the app's files directory for the compositor and audio sockets, external storage for the
-   * user's games) are bound at their own paths so nothing on either side needs translating. Android
-   * has no /dev/shm; a directory under the cache stands in for it, which glibc's shm_open and
-   * Chromium's shared memory are content with.
+   * user's games) are bound at their own paths so nothing on either side needs translating; @binds
+   * adds {@code host:guest} pairs. Android has no /dev/shm; a directory under the cache stands in
+   * for it, which glibc's shm_open and Chromium's shared memory are content with.
    */
   public static List<String> command(
-      Context context, ImageFs imageFs, File runtimeDir, File externalStorage, List<String> guestCommand) {
+      Context context,
+      ImageFs imageFs,
+      File runtimeDir,
+      File externalStorage,
+      File inputDir,
+      List<String> binds,
+      List<String> guestCommand) {
     File root = rootDir(context);
     List<String> cmd = new ArrayList<>();
     cmd.add(prootBinary(context).getPath());
@@ -96,6 +102,13 @@ public final class LinuxRuntime {
     File shm = new File(context.getCacheDir(), "shm");
     shm.mkdirs();
     bind(cmd, shm.getPath() + ":/dev/shm");
+    // Apps may not list /dev/input; the fake evdev nodes the input rings back stand in for it.
+    if (inputDir != null && inputDir.isDirectory()) {
+      bind(cmd, inputDir.getPath() + ":/dev/input");
+    }
+    for (String spec : binds) {
+      bind(cmd, spec);
+    }
     // Android denies apps these; glibc, Steam and libcap read them at startup.
     File fakeProc = new File(root, "etc/winnative/proc");
     String[][] procFiles = {

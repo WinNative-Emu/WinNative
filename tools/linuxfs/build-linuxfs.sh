@@ -118,6 +118,11 @@ cp -a "$here/overlay/." rootfs/
 # in the process itself; see preload/*.c.
 mkdir -p rootfs/usr/local/lib
 aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread -o rootfs/usr/local/lib/libwnsession.so "$here"/preload/*.c -ldl
+# The same fake evdev layer Wine sessions use, built against glibc: controllers reach Steam and
+# SDL through /dev/input nodes backed by the app's input rings.
+aarch64-linux-gnu-g++ -shared -fPIC -O2 -Wall -Wno-attributes -Wno-nonnull-compare -pthread \
+  -o rootfs/usr/local/lib/libwninput.so "$here/../../app/src/main/cpp/winlator/fakeinput.cpp" -ldl
+aarch64-linux-gnu-strip rootfs/usr/local/lib/libwnsession.so rootfs/usr/local/lib/libwninput.so
 mkdir -p rootfs/dev rootfs/proc rootfs/sys rootfs/tmp rootfs/root rootfs/run/user
 chmod 1777 rootfs/tmp
 # The dynamic loader takes its search path from here; ldconfig cannot run without the target CPU.

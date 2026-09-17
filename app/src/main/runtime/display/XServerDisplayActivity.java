@@ -137,6 +137,7 @@ import com.winlator.cmod.runtime.input.ControllerAssignmentDialog;
 import com.winlator.cmod.runtime.input.controls.ControlsProfile;
 import com.winlator.cmod.runtime.input.controls.ControllerManager;
 import com.winlator.cmod.runtime.input.controls.ExternalController;
+import com.winlator.cmod.runtime.input.controls.FakeInputWriter;
 import com.winlator.cmod.runtime.input.controls.GestureProfile;
 import com.winlator.cmod.runtime.input.controls.GestureProfileManager;
 import com.winlator.cmod.runtime.input.controls.InputControlsManager;
@@ -8830,7 +8831,17 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("XDG_SESSION_TYPE=wayland");
         guest.add("WAYLAND_DISPLAY=wayland-0");
         guest.add("GAMESCOPE_FORCE_GENERAL_QUEUE=1");
-        guest.add("LD_PRELOAD=/usr/local/lib/libwnsession.so");
+        guest.add("LD_PRELOAD=/usr/local/lib/libwnsession.so:/usr/local/lib/libwninput.so");
+        File devInputDir = new File(imageFs.getRootDir(), "dev/input");
+        FakeInputWriter.prepareRingSlots(devInputDir, 4);
+        String inputRings = FakeInputWriter.getRingEnv(devInputDir);
+        if (!inputRings.isEmpty()) guest.add("FAKE_EVDEV_MEMFD_PATHS=" + inputRings);
+        guest.add("FAKE_EVDEV_DIR=" + devInputDir.getPath());
+        guest.add("FAKE_EVDEV_VIBRATION=1");
+        // No udev runs in the runtime: SDL and Steam's hidapi must scan /dev/input themselves.
+        guest.add("SDL_JOYSTICK_DISABLE_UDEV=1");
+        guest.add("SDL_HIDAPI_JOYSTICK_DISABLE_UDEV=1");
+        guest.add("SDL_JOYSTICK_HIDAPI=0");
         guest.add("MESA_LOADER_DRIVER_OVERRIDE=zink");
         guest.add("GALLIUM_DRIVER=zink");
         guest.add("LIBGL_KOPPER_DRI2=true");
@@ -8860,8 +8871,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         EnvVars hostEnv = new EnvVars();
         hostEnv.put("PROOT_LOADER", LinuxRuntime.prootLoader(this).getPath());
         hostEnv.put("PROOT_TMP_DIR", getCacheDir().getPath());
+        List<String> binds = com.winlator.cmod.feature.library.LinuxSteamLibrary.prepare(
+                this, LinuxRuntime.rootDir(this));
         List<String> command = LinuxRuntime.command(this, imageFs, runtimeDir,
-                android.os.Environment.getExternalStorageDirectory(), guest);
+                android.os.Environment.getExternalStorageDirectory(), devInputDir, binds, guest);
         LinuxProgramLauncherComponent launcher = new LinuxProgramLauncherComponent(
                 command, hostEnv, LinuxRuntime.rootDir(this), (status) -> {
                     LogManager.log(TAG, "Linux session [" + String.join(" ", session)

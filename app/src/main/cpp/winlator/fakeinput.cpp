@@ -39,6 +39,14 @@
 
 #define EXPORT __attribute__((visibility("default"))) extern "C"
 
+// glibc declares the request as unsigned long; bionic as int. The same source also serves the
+// Linux runtime's preload (tools/linuxfs), where Steam and SDL run against glibc.
+#ifdef __GLIBC__
+typedef unsigned long ioctl_request_t;
+#else
+typedef int ioctl_request_t;
+#endif
+
 static constexpr uint16_t GAMEPAD_VENDOR_ID_BASE = 0x1234;
 static constexpr uint16_t GAMEPAD_PRODUCT_ID_BASE = 0x5678;
 static constexpr uint16_t GAMEPAD_VERSION = 0x0110;
@@ -866,7 +874,7 @@ static bool wait_snapshot(std::shared_ptr<FakeController> fake,
   }
 }
 
-EXPORT int ioctl(int fd, int op, ...) {
+EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
   va_list va;
   void *argp;
 
@@ -1471,3 +1479,55 @@ EXPORT int select(int nfds, fd_set *readfds, fd_set *writefds,
       backoff_ms *= 2;
   }
 }
+
+#ifdef __GLIBC__
+// Steam's binaries were linked against an older glibc and reach the calls above through these
+// names instead.
+static mode_t open_mode(int flags, va_list va) {
+  return (flags & (O_CREAT | O_TMPFILE)) ? va_arg(va, mode_t) : 0;
+}
+
+EXPORT int open64(const char *pathname, int flags, ...) {
+  va_list va;
+  va_start(va, flags);
+  mode_t mode = open_mode(flags, va);
+  va_end(va);
+  return open(pathname, flags, mode);
+}
+
+EXPORT int openat64(int dirfd, const char *pathname, int flags, ...) {
+  va_list va;
+  va_start(va, flags);
+  mode_t mode = open_mode(flags, va);
+  va_end(va);
+  return openat(dirfd, pathname, flags, mode);
+}
+
+EXPORT int stat64(const char *pathname, struct stat64 *statbuf) {
+  return stat(pathname, reinterpret_cast<struct stat *>(statbuf));
+}
+
+EXPORT int fstat64(int fd, struct stat64 *buf) {
+  return fstat(fd, reinterpret_cast<struct stat *>(buf));
+}
+
+EXPORT int __xstat(int version, const char *pathname, struct stat *statbuf) {
+  (void)version;
+  return stat(pathname, statbuf);
+}
+
+EXPORT int __xstat64(int version, const char *pathname, struct stat64 *statbuf) {
+  (void)version;
+  return stat(pathname, reinterpret_cast<struct stat *>(statbuf));
+}
+
+EXPORT int __fxstat(int version, int fd, struct stat *buf) {
+  (void)version;
+  return fstat(fd, buf);
+}
+
+EXPORT int __fxstat64(int version, int fd, struct stat64 *buf) {
+  (void)version;
+  return fstat(fd, reinterpret_cast<struct stat *>(buf));
+}
+#endif
