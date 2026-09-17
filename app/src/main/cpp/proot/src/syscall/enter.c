@@ -109,6 +109,7 @@ int translate_syscall_enter(Tracee *tracee) {
   syscall_number = get_sysnum(tracee, ORIGINAL);
   switch (syscall_number) {
   case PR_execve:
+  case PR_execveat:
     status = translate_execve_enter(tracee);
     break;
 
