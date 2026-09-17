@@ -1,0 +1,119 @@
+#!/usr/bin/python3
+# Registers winnative-proton with the native Steam client: linked into compatibilitytools.d and
+# set as the default tool for Windows titles (CompatToolMapping "0" in config.vdf) when the user
+# has not chosen one. Run before the client starts; it rewrites config.vdf on exit.
+#
+#   winnative-steam-compat <steam root>
+import os
+import re
+import sys
+
+TOOL = "winnative-proton"
+TOOL_DIR = "/usr/local/share/winnative/proton-tool"
+TOKEN = re.compile(r'\s*(?:"((?:[^"\\]|\\.)*)"|([{}])|//[^\n]*)')
+
+
+def tokenize(text):
+    tokens = []
+    pos = 0
+    while pos < len(text):
+        m = TOKEN.match(text, pos)
+        if not m or m.end() == pos:
+            break
+        pos = m.end()
+        if m.group(2):
+            tokens.append(m.group(2))
+        elif m.group(1) is not None:
+            tokens.append('"' + m.group(1) + '"')
+    return tokens
+
+
+def find_block(tokens, path):
+    """Index of the '{' opening the block at path, or None."""
+    depth, want, i = 0, 0, 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t == "{":
+            depth += 1
+        elif t == "}":
+            depth -= 1
+            if depth < want:
+                return None
+        elif depth == want and i + 1 < len(tokens) and tokens[i + 1] == "{":
+            if t.lower() == '"%s"' % path[want].lower():
+                if want == len(path) - 1:
+                    return i + 1
+                want += 1
+        i += 1
+    return None
+
+
+def block_end(tokens, start):
+    depth = 0
+    for i in range(start, len(tokens)):
+        if tokens[i] == "{":
+            depth += 1
+        elif tokens[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+    return len(tokens)
+
+
+def serialize(tokens):
+    out, depth, i = [], 0, 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t == "}":
+            depth -= 1
+            out.append("\t" * depth + "}")
+            i += 1
+        elif i + 1 < len(tokens) and tokens[i + 1] == "{":
+            out.append("\t" * depth + t)
+            out.append("\t" * depth + "{")
+            depth += 1
+            i += 2
+        else:
+            out.append("\t" * depth + t + "\t\t" + tokens[i + 1])
+            i += 2
+    return "\n".join(out) + "\n"
+
+
+def register_default(config_path):
+    with open(config_path, encoding="utf-8", errors="replace") as f:
+        tokens = tokenize(f.read())
+    steam = find_block(tokens, ["InstallConfigStore", "Software", "Valve", "Steam"])
+    if steam is None:
+        return
+    mapping = find_block(tokens[steam + 1:], ["CompatToolMapping"])
+    entry = ['"0"', "{", '"name"', '"%s"' % TOOL, '"config"', '""', '"priority"', '"75"', "}"]
+    if mapping is None:
+        end = block_end(tokens, steam)
+        tokens[end:end] = ['"CompatToolMapping"', "{"] + entry + ["}"]
+    else:
+        mapping += steam + 1
+        if find_block(tokens[mapping + 1:], ["0"]) is not None:
+            return
+        tokens[mapping + 1:mapping + 1] = entry
+    tmp = config_path + ".winnative"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(serialize(tokens))
+    os.replace(tmp, config_path)
+
+
+def main():
+    steam_root = sys.argv[1]
+    tools = os.path.join(steam_root, "compatibilitytools.d")
+    os.makedirs(tools, exist_ok=True)
+    link = os.path.join(tools, TOOL)
+    if os.path.islink(link) and os.readlink(link) != TOOL_DIR:
+        os.unlink(link)
+    if not os.path.exists(link):
+        os.symlink(TOOL_DIR, link)
+    config = os.path.join(steam_root, "config", "config.vdf")
+    if os.path.isfile(config):
+        register_default(config)
+
+
+if __name__ == "__main__":
+    main()

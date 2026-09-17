@@ -1,0 +1,33 @@
+#!/bin/bash
+# Steam's compatibility tool in the GameScope session: Proton Experimental, run by FEX from the
+# Steam Linux Runtime's x86_64 tree without pressure-vessel (the kernel here has no user
+# namespaces). Vulkan and GL are thunked to the host's drivers.
+#
+#   winnative-proton <verb> <program> [args...]      (Steam calls it as toolmanifest.vdf says)
+verb=$1
+shift
+steam_root=${STEAM_COMPAT_CLIENT_INSTALL_PATH:-$XDG_DATA_HOME/Steam}
+fex=$steam_root/steamapps/common/FEX-Emu
+proton="$steam_root/steamapps/common/Proton - Experimental"
+rootfs=$(winnative-fex-rootfs "$steam_root")
+for need in "$fex/usr/bin/FEX" "$proton/proton" "$rootfs/bin/python3"; do
+  if [ ! -e "$need" ]; then
+    echo "winnative-proton: missing $need (install FEX-Emu, Proton Experimental and Steam Linux Runtime 4)" >&2
+    exit 1
+  fi
+done
+if [ -z "$STEAM_COMPAT_DATA_PATH" ]; then
+  echo "winnative-proton: STEAM_COMPAT_DATA_PATH is not set" >&2
+  exit 1
+fi
+# This FEX keeps its server socket under the compat data; the directory must exist before the
+# server it launches tries to bind there.
+mkdir -p "$STEAM_COMPAT_DATA_PATH/fex-emu/Server"
+export FEX_ROOTFS=$rootfs FEX_PORTABLE=1
+export FEX_THUNKHOSTLIBS=$fex/usr/lib/aarch64-linux-gnu/fex-emu/HostThunks
+export FEX_THUNKGUESTLIBS=$fex/usr/share/fex-emu/GuestThunks
+if [ -z "$FEX_APP_CONFIG" ]; then
+  printf '{\n  "Config": {},\n  "ThunksDB": {\n    "Vulkan": "1",\n    "GL": "1"\n  }\n}\n' > "$STEAM_COMPAT_DATA_PATH/winnative-fex.json"
+  export FEX_APP_CONFIG=$STEAM_COMPAT_DATA_PATH/winnative-fex.json
+fi
+exec "$fex/usr/bin/FEX" /usr/bin/python3 "$proton/proton" "$verb" "$@"
