@@ -2,8 +2,14 @@ package com.winlator.cmod.runtime.linux;
 
 import android.content.Context;
 import android.os.Process;
+import android.system.ErrnoException;
+import android.system.Os;
+import android.system.StructStat;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +24,7 @@ public final class LinuxRuntime {
   public static final String MODE_DESKTOP = "desktop";
   public static final String MODE_STEAM = "steam";
   public static final String MODE_RUN = "run";
+  private static final String KGSL_DEVICE = "/dev/kgsl-3d0";
 
   private LinuxRuntime() {}
 
@@ -98,6 +105,8 @@ public final class LinuxRuntime {
       {"uptime", "/proc/uptime"},
       {"vmstat", "/proc/vmstat"},
       {"cap_last_cap", "/proc/sys/kernel/cap_last_cap"},
+      {"overflowuid", "/proc/sys/kernel/overflowuid"},
+      {"overflowgid", "/proc/sys/kernel/overflowgid"},
     };
     for (String[] entry : procFiles) {
       File fake = new File(fakeProc, entry[0]);
@@ -105,8 +114,49 @@ public final class LinuxRuntime {
         bind(cmd, fake.getPath() + ":" + entry[1]);
       }
     }
+    bindGpuNode(context, cmd);
     cmd.addAll(guestCommand);
     return cmd;
+  }
+
+  /**
+   * Apps may not touch {@code /dev/dri} or read sysfs, yet libdrm and the compositors built on it
+   * identify a GPU by a DRM render node. The KGSL device Turnip drives stands in: it appears as a
+   * render node with the sysfs entries libdrm reads, and Turnip reports the same device numbers.
+   */
+  private static void bindGpuNode(Context context, List<String> cmd) {
+    StructStat st;
+    try {
+      st = Os.stat(KGSL_DEVICE);
+    } catch (ErrnoException e) {
+      return;
+    }
+    long dev = st.st_rdev;
+    long major = ((dev >> 8) & 0xfff) | ((dev >> 32) & ~0xfffL);
+    long minor = (dev & 0xff) | ((dev >> 12) & ~0xffL);
+    String node = "renderD" + minor;
+    File base = new File(context.getCacheDir(), "drm");
+    File dri = new File(base, "dri");
+    File device = new File(base, "sys/" + major + ":" + minor + "/device");
+    File drm = new File(device, "drm/" + node);
+    try {
+      if ((!dri.isDirectory() && !dri.mkdirs()) || (!drm.isDirectory() && !drm.mkdirs())) {
+        return;
+      }
+      new File(dri, node).createNewFile();
+      Files.write(new File(drm, "dev").toPath(), (major + ":" + minor + "\n").getBytes(StandardCharsets.UTF_8));
+      Files.write(new File(device, "uevent").toPath(),
+          "DRIVER=kgsl-3d0\nMODALIAS=platform:kgsl-3d0\n".getBytes(StandardCharsets.UTF_8));
+      File subsystem = new File(device, "subsystem");
+      if (!Files.isSymbolicLink(subsystem.toPath())) {
+        Os.symlink("/sys/bus/platform", subsystem.getPath());
+      }
+    } catch (IOException | ErrnoException e) {
+      return;
+    }
+    bind(cmd, new File(base, "sys").getPath() + ":/sys/dev/char");
+    bind(cmd, dri.getPath() + ":/dev/dri");
+    bind(cmd, KGSL_DEVICE + ":/dev/dri/" + node);
   }
 
   private static void bind(List<String> cmd, String spec) {
@@ -114,7 +164,13 @@ public final class LinuxRuntime {
     cmd.add(spec);
   }
 
-  public static int uid() {
-    return Process.myUid();
+  /** X access control and Steam look the session user up by uid: the app uid is root inside. */
+  public static void writeAccounts(Context context) throws IOException {
+    File root = rootDir(context);
+    int uid = Process.myUid();
+    Files.write(new File(root, "etc/passwd").toPath(),
+        ("root:x:" + uid + ":" + uid + ":root:/root:/bin/bash\n").getBytes(StandardCharsets.UTF_8));
+    Files.write(new File(root, "etc/group").toPath(),
+        ("root:x:" + uid + ":\n").getBytes(StandardCharsets.UTF_8));
   }
 }

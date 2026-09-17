@@ -1,0 +1,40 @@
+--- a/src/freedreno/vulkan/tu_knl_kgsl.cc	2026-09-02 11:40:02.000000000 -0400
++++ b/src/freedreno/vulkan/tu_knl_kgsl.cc	2026-09-17 12:43:30.981751690 -0400
+@@ -10,6 +10,8 @@
+ #include <stdint.h>
+ #include <sys/ioctl.h>
+ #include <sys/mman.h>
++#include <sys/stat.h>
++#include <sys/sysmacros.h>
+ 
+ #define __user
+ #include "ion/ion.h"
+@@ -1948,6 +1950,17 @@
+ 
+    instance->knl = &kgsl_knl_funcs;
+ 
++   /* KGSL has no DRM nodes. Report the device itself as both so a Wayland
++    * compositor's dma-buf feedback and the WSI can agree on a main device
++    * when the host exposes the device at a DRM path.
++    */
++   struct stat kgsl_st;
++   if (fstat(fd, &kgsl_st) == 0 && S_ISCHR(kgsl_st.st_mode)) {
++      device->has_local = device->has_master = true;
++      device->local_major = device->master_major = major(kgsl_st.st_rdev);
++      device->local_minor = device->master_minor = minor(kgsl_st.st_rdev);
++   }
++
+    result = tu_physical_device_init(device, instance);
+    if (result != VK_SUCCESS)
+       goto fail;
+--- a/src/freedreno/vulkan/tu_device.cc	2026-09-02 11:40:02.000000000 -0400
++++ b/src/freedreno/vulkan/tu_device.cc	2026-09-17 12:33:58.573289971 -0400
+@@ -353,7 +353,7 @@
+       .EXT_mutable_descriptor_type = true,
+       .EXT_nested_command_buffer = true,
+       .EXT_non_seamless_cube_map = true,
+-      .EXT_physical_device_drm = !is_kgsl(device->instance),
++      .EXT_physical_device_drm = !is_kgsl(device->instance) || device->has_local,
+       .EXT_pipeline_creation_cache_control = true,
+       .EXT_pipeline_creation_feedback = true,
+ #ifdef TU_USE_WSI_PLATFORM

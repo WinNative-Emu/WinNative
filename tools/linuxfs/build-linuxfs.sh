@@ -6,7 +6,7 @@
 #
 #   tools/linuxfs/build-linuxfs.sh <work dir> <output.tar.zst>
 #
-# Needs curl, tar, zstd and python3 on the build host; nothing runs from the rootfs.
+# Needs curl, tar, zstd, ar, python3, proot, qemu-aarch64-static, aarch64-linux-gnu-gcc/g++, meson >= 1.5 and ninja.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 work=${1:?work dir}
@@ -16,7 +16,7 @@ base_url=http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz
 seeds=(gamescope mesa vulkan-freedreno xorg-xwayland xorg-xhost xorg-xrandr vulkan-tools wayland-utils
   mesa-utils foot pcmanfm unzip dbus libpulse nss libnm curl ca-certificates fontconfig freetype2
   bash coreutils grep sed gawk which findutils glib2 libglvnd ibus libxcomposite libxdamage libxrandr
-  libxtst libxi)
+  libxtst libxi ttf-dejavu openal libvdpau lsof)
 
 mkdir -p "$work/db" "$work/pkgs" "$work/rootfs"
 cd "$work"
@@ -93,7 +93,31 @@ while read -r entry; do
 done < pkglist.txt
 
 chmod -R u+w rootfs
+# Arch's Turnip only knows the msm DRM kernel driver; Android reaches the Adreno through KGSL.
+# build-turnip.sh cross-builds Mesa's Turnip with the KGSL backend against this rootfs.
+"$here/build-turnip.sh" "$work/turnip" "$work/rootfs"
+install -m 755 "$work/turnip/libvulkan_freedreno.so" rootfs/usr/lib/libvulkan_freedreno.so
+printf '{\n    "ICD": {\n        "api_version": "1.4.0",\n        "library_path": "/usr/lib/libvulkan_freedreno.so"\n    },\n    "file_format_version": "1.0.0"\n}\n' \
+  > rootfs/usr/share/vulkan/icd.d/freedreno_icd.json
+rm -f rootfs/usr/share/vulkan/icd.d/nvidia_icd.json
+
+# Steam's arm64 UI (steamui.so, vgui2_s.so) still links GTK 2, which Arch no longer packages;
+# Debian's build links only sonames the rootfs has, so its two libraries are enough.
+gtk2_deb=libgtk2.0-0t64_2.24.33-7_arm64.deb
+gtk2_sha=28b2f1622197443f07f25a93e03db1a964184946ac12f501b8221c895026d0ca
+[ -s "pkgs/$gtk2_deb" ] || curl -fsSLo "pkgs/$gtk2_deb" "http://deb.debian.org/debian/pool/main/g/gtk+2.0/$gtk2_deb"
+echo "$gtk2_sha  pkgs/$gtk2_deb" | sha256sum -c --quiet
+rm -rf gtk2 && mkdir gtk2 && (cd gtk2 && ar x "../pkgs/$gtk2_deb" && tar -xf data.tar.*)
+for n in gtk gdk; do
+  install -m 755 "gtk2/usr/lib/aarch64-linux-gnu/lib$n-x11-2.0.so.0.2400.33" rootfs/usr/lib/
+  ln -sfn "lib$n-x11-2.0.so.0.2400.33" "rootfs/usr/lib/lib$n-x11-2.0.so.0"
+done
+
 cp -a "$here/overlay/." rootfs/
+# Preloaded into every session process: what the kernel or the app sandbox withholds, answered
+# in the process itself; see preload/*.c.
+mkdir -p rootfs/usr/local/lib
+aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread -o rootfs/usr/local/lib/libwnsession.so "$here"/preload/*.c -ldl
 mkdir -p rootfs/dev rootfs/proc rootfs/sys rootfs/tmp rootfs/root rootfs/run/user
 chmod 1777 rootfs/tmp
 # The dynamic loader takes its search path from here; ldconfig cannot run without the target CPU.
@@ -105,6 +129,17 @@ head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n' > rootfs/etc/machine-id
 printf 'nameserver 8.8.8.8\nnameserver 1.1.1.1\n' > rootfs/etc/resolv.conf
 printf 'root:x:0:0:root:/root:/bin/bash\n' > rootfs/etc/passwd
 printf 'root:x:0:\n' > rootfs/etc/group
+
+# What pacman's hooks would have built: the mime database, pixbuf loader and icon caches,
+# GSettings schemas and the font cache. Only these run from the rootfs, under qemu.
+proot -q "$(command -v qemu-aarch64-static)" -r rootfs -w / -b /dev -b /proc /bin/bash -c '
+  export PATH=/usr/bin:/bin
+  update-mime-database /usr/share/mime
+  gdk-pixbuf-query-loaders --update-cache
+  glib-compile-schemas /usr/share/glib-2.0/schemas
+  fc-cache -f
+  for d in /usr/share/icons/*/; do [ -f "$d/index.theme" ] && gtk-update-icon-cache -q -t -f "$d"; done
+  rm -rf /root/.cache' >/dev/null
 
 tar -C rootfs -cf - . | zstd -T0 -19 -o "$out" --force
 ls -la "$out"

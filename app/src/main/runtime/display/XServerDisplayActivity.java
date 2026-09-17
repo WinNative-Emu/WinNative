@@ -8800,12 +8800,18 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     /**
      * A gamescope container: proot runs the Linux runtime's session script under gamescope, which
-     * is a Wayland client of the compositor started by {@link #startWaylandSession}. Nothing of
-     * Wine is involved; the audio socket is the only imagefs service the guest reaches.
+     * is a Wayland client of the compositor started by {@link #startWaylandSession}. The script
+     * starts gamescope itself from WN_WIDTH/WN_HEIGHT/WN_FPS and logs to WN_LOG. Nothing of Wine
+     * is involved; the audio socket is the only imagefs service the guest reaches.
      */
     private void setupLinuxSession(String rootPath) {
         if (!LinuxRuntime.isInstalled(this)) {
             throw new IllegalStateException(getString(R.string.linux_runtime_missing));
+        }
+        try {
+            LinuxRuntime.writeAccounts(this);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
         }
         List<String> session = linuxSessionArgs();
         File runtimeDir = GuestProgramLauncherComponent.getWaylandRuntimeDir(this);
@@ -8823,9 +8829,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("XDG_RUNTIME_DIR=" + runtimeDir.getPath());
         guest.add("XDG_SESSION_TYPE=wayland");
         guest.add("WAYLAND_DISPLAY=wayland-0");
-        guest.add("GAMESCOPE_DRM_RENDER_NODE=/dev/dri/renderD128");
-        guest.add("WLR_DRM_DEVICES=/dev/dri/renderD128");
         guest.add("GAMESCOPE_FORCE_GENERAL_QUEUE=1");
+        guest.add("LD_PRELOAD=/usr/local/lib/libwnsession.so");
         guest.add("MESA_LOADER_DRIVER_OVERRIDE=zink");
         guest.add("GALLIUM_DRIVER=zink");
         guest.add("LIBGL_KOPPER_DRI2=true");
@@ -8843,25 +8848,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             );
         }
         for (String entry : effectiveUserEnv().toStringArray()) guest.add(entry);
-        guest.add("gamescope");
-        guest.add("--backend");
-        guest.add("wayland");
-        guest.add("--expose-wayland");
-        guest.add("-f");
-        guest.add("-W");
-        guest.add(String.valueOf(xServer.screenInfo.width));
-        guest.add("-H");
-        guest.add(String.valueOf(xServer.screenInfo.height));
-        guest.add("-w");
-        guest.add(String.valueOf(xServer.screenInfo.width));
-        guest.add("-h");
-        guest.add(String.valueOf(xServer.screenInfo.height));
-        if (runtimeFpsLimit > 0) {
-            guest.add("-r");
-            guest.add(String.valueOf(runtimeFpsLimit));
-        }
-        if (LinuxRuntime.MODE_STEAM.equals(session.get(0))) guest.add("-e");
-        guest.add("--");
+        guest.add("WN_WIDTH=" + xServer.screenInfo.width);
+        guest.add("WN_HEIGHT=" + xServer.screenInfo.height);
+        guest.add("WN_FPS=" + Math.max(0, runtimeFpsLimit));
+        File logDir = new File(getExternalFilesDir(null), "wayland-logs");
+        logDir.mkdirs();
+        guest.add("WN_LOG=" + new File(logDir, "linux-session.log").getPath());
         guest.add(LinuxRuntime.SESSION_SCRIPT);
         guest.addAll(session);
 

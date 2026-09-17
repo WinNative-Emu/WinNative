@@ -43,3 +43,9 @@ echo publicbeta > "$steam_root/package/beta"
 echo "$version" > "$stamp"
 ln -sfn "$steam_root/steamrtarm64" "$steam_root/steamrtarm32"
 chmod +x "$steam_root/steamrtarm64/steam" 2>/dev/null || true
+# What Valve's steam.sh sets up before it runs the client (it has no arm64 branch itself).
+mkdir -p "$HOME/.steam"
+ln -sfn "$steam_root" "$HOME/.steam/root"
+ln -sfn "$steam_root" "$HOME/.steam/steam"
+ln -sfn "$steam_root/steamrtarm64" "$HOME/.steam/bin64"
+ln -sfn "$steam_root/linuxarm64" "$HOME/.steam/sdk64"

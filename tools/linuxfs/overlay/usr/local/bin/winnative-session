@@ -1,17 +1,41 @@
 #!/bin/bash
-# The program gamescope runs for a WinNative session. gamescope has already set DISPLAY to its
-# Xwayland and WAYLAND_DISPLAY to its own socket.
+# The Linux runtime's session. WinNative execs this under proot with the output size and mode;
+# the first pass starts gamescope, which execs this script again inside it for the program:
 #   winnative-session desktop            the file manager
 #   winnative-session run <path>         a Linux program (AppImage, script or ELF)
 #   winnative-session steam [steam-url]  the native Steam client
+# WN_WIDTH / WN_HEIGHT size the output, WN_FPS limits it, WN_LOG collects everything said here.
 set -u
 export HOME=${HOME:-/root}
 mode=${1:-desktop}
 shift || true
+if [ -n "${WN_LOG:-}" ] && [ -z "${WN_INSIDE:-}" ]; then
+  exec >>"$WN_LOG" 2>&1
+  echo "== winnative-session $(date) mode=$mode $*"
+fi
 export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+
+if [ -z "${WN_INSIDE:-}" ]; then
+  # The compositor may still be starting, and a socket left by an earlier session is not
+  # a compositor: probe until a connection succeeds.
+  for _ in $(seq 1 100); do
+    wayland-info >/dev/null 2>&1 && break
+    sleep 0.1
+  done
+  width=${WN_WIDTH:-1280}
+  height=${WN_HEIGHT:-720}
+  args=(--backend wayland --expose-wayland -f -W "$width" -H "$height" -w "$width" -h "$height")
+  [ "${WN_FPS:-0}" -gt 0 ] && args+=(-r "$WN_FPS")
+  [ "$mode" = steam ] && args+=(-e)
+  export WN_INSIDE=1
+  exec gamescope "${args[@]}" -- "$0" "$mode" "$@"
+fi
+
+# gamescope manages X windows: toolkits go through Xwayland, not gamescope's own Wayland socket.
+export GDK_BACKEND=x11 QT_QPA_PLATFORM=xcb SDL_VIDEODRIVER=x11
 
 case $mode in
   desktop)
@@ -39,10 +63,16 @@ case $mode in
     winnative-steam-install || exit $?
     steam_root=$XDG_DATA_HOME/Steam
     export STEAM_RUNTIME=1
-    export SDL_VIDEODRIVER=x11
-    exec "$steam_root/steamrtarm64/steam" -gamepadui -clientbeta publicbeta \
-      -no-cef-sandbox -cef-force-gpu -cef-ozone-platform=x11 \
-      -cef-use-gl=angle -cef-use-angle=vulkan "$@"
+    export LD_LIBRARY_PATH=$steam_root/steamrtarm64:$steam_root/steamrtarm64/panorama${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+    export SDL_VIDEO_X11_DGAMOUSE=0
+    # The client exits 42 when it has updated itself and wants a fresh start (steam.sh does this).
+    while :; do
+      "$steam_root/steamrtarm64/steam" -gamepadui -clientbeta publicbeta \
+        -no-cef-sandbox -cef-force-gpu -cef-ozone-platform=x11 \
+        -cef-use-gl=angle -cef-use-angle=vulkan "$@"
+      rc=$?
+      [ "$rc" -eq 42 ] || exit "$rc"
+    done
     ;;
   *)
     echo "winnative-session: unknown mode '$mode'" >&2
