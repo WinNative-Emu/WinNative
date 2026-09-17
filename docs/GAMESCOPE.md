@@ -217,19 +217,20 @@ On the NP06J (Adreno 840, Android 16, app uid 10516), 2026-09-17:
 - **Steam.** The arm64 client installs, updates itself (exit code 42 = restart, as `steam.sh`
   handles), loads `steamui.so` and `vgui2_s.so` (GTK 2 from Debian, `openal`, `libvdpau`), shows its
   update window on the GPU, passes its System V semaphore and robust-mutex checks, connects to
-  Steam's network, and launches `steamwebhelper`, whose CEF renders its first frame.
+  Steam's network, and launches `steamwebhelper`; the gamepad UI comes up and is usable.
+- **Steam's IPC peer check.** The client identifies a websocket peer by running
+  `lsof -P -F upnR -i TCP@127.0.0.1:<port>` (`GetIPCConnectionDetails`), which cannot work in the
+  app sandbox (`/proc/net` and `sock_diag` are denied). `libwnsession.so` records every loopback
+  port a session process binds, connects or accepts, with its peer, and answers that lsof from the
+  record. The client splits the `n` line on `->` and requires two halves, takes the port from the
+  left one, requires `u` to be its own uid, discards a record whose `R` is its own pid as a leaked
+  fd, and finally accepts the peer if it is the client itself or a descendant; `Checked: %d/%d` is
+  peer pid over the client's pid, so `Checked: 0/<pid>` meant no pid had been parsed at all.
 - libdrm-based checks: `drmGetDevice2` on the presented node reports a platform device
   `kgsl-3d0`; Turnip reports `hasRender=1` for it.
 
 ## Not yet done
 
-- **Steam's UI does not appear yet.** `steamwebhelper` connects to the client's loopback
-  websocket, the client runs `lsof -i TCP@127.0.0.1:<port>` to identify the peer
-  (`GetIPCConnectionDetails`), and rejects the connection. `libwnsession.so` now records every
-  loopback port each session process binds or connects and answers that lsof from the record,
-  which moved the log from `command failed` to `WebUITransport: Checked: 0/<pid>` - the client
-  identifies the peer and still rejects it. What that second check reads (probably
-  `/proc/<pid>/exe`, which under proot names the host path) is the next thing to find.
 - Xwayland's swapchain through the gamescope WSI layer still fails once at startup
   (`CreateSwapchainKHR failed with VK_ERROR_INITIALIZATION_FAILED`) and recovers; harmless so far.
 - `steam-runtime-launcher-service` is not shipped for arm64; Steam disables it and goes on.

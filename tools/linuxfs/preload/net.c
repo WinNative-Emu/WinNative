@@ -38,8 +38,9 @@ static const char *net_dir(void) {
   return dir;
 }
 
-/* Record that this process owns a loopback socket on local port. */
-static void record_port(int fd) {
+/* Record that this process owns a loopback socket on its local port; peer is the far end's port,
+ * 0 for a listening socket. */
+static void record_port(int fd, unsigned peer) {
   struct sockaddr_storage ss;
   socklen_t len = sizeof(ss);
   if (getsockname(fd, (struct sockaddr *)&ss, &len) != 0) {
@@ -63,12 +64,31 @@ static void record_port(int fd) {
   char path[300];
   snprintf(path, sizeof(path), "%s/p%u", net_dir(), port);
   char line[64];
-  int n = snprintf(line, sizeof(line), "%d %d %d\n", (int)getpid(), (int)getppid(), (int)getuid());
+  int n = snprintf(line, sizeof(line), "%d %d %d %u\n", (int)getpid(), (int)getppid(), (int)getuid(), peer);
   int out = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
   if (out >= 0) {
     if (write(out, line, n) != n) { /* best effort */ }
     close(out);
   }
+}
+
+static unsigned addr_port(const struct sockaddr *addr, socklen_t len) {
+  if (addr && addr->sa_family == AF_INET && len >= sizeof(struct sockaddr_in)) {
+    return ntohs(((const struct sockaddr_in *)addr)->sin_port);
+  }
+  if (addr && addr->sa_family == AF_INET6 && len >= sizeof(struct sockaddr_in6)) {
+    return ntohs(((const struct sockaddr_in6 *)addr)->sin6_port);
+  }
+  return 0;
+}
+
+static unsigned peer_port(int fd) {
+  struct sockaddr_storage ps;
+  socklen_t plen = sizeof(ps);
+  if (getpeername(fd, (struct sockaddr *)&ps, &plen) != 0) {
+    return 0;
+  }
+  return addr_port((struct sockaddr *)&ps, plen);
 }
 
 typedef int (*bind_fn)(int, const struct sockaddr *, socklen_t);
@@ -80,7 +100,7 @@ int bind(int fd, const struct sockaddr *addr, socklen_t len) {
   static bind_fn real;
   if (!real) real = (bind_fn)dlsym(RTLD_NEXT, "bind");
   int ret = real(fd, addr, len);
-  if (ret == 0) record_port(fd);
+  if (ret == 0) record_port(fd, 0);
   return ret;
 }
 
@@ -88,7 +108,7 @@ int listen(int fd, int backlog) {
   static listen_fn real;
   if (!real) real = (listen_fn)dlsym(RTLD_NEXT, "listen");
   int ret = real(fd, backlog);
-  if (ret == 0) record_port(fd);
+  if (ret == 0) record_port(fd, 0);
   return ret;
 }
 
@@ -96,7 +116,7 @@ int connect(int fd, const struct sockaddr *addr, socklen_t len) {
   static connect_fn real;
   if (!real) real = (connect_fn)dlsym(RTLD_NEXT, "connect");
   int ret = real(fd, addr, len);
-  if (ret == 0 || errno == EINPROGRESS) record_port(fd);
+  if (ret == 0 || errno == EINPROGRESS) record_port(fd, addr_port(addr, len));
   return ret;
 }
 
@@ -104,7 +124,7 @@ int accept4(int fd, struct sockaddr *addr, socklen_t *len, int flags) {
   static accept4_fn real;
   if (!real) real = (accept4_fn)dlsym(RTLD_NEXT, "accept4");
   int ret = real(fd, addr, len, flags);
-  if (ret >= 0) record_port(ret);
+  if (ret >= 0) record_port(ret, peer_port(ret));
   return ret;
 }
 
@@ -145,9 +165,15 @@ static int maybe_answer_lsof(const char *path, char *const argv[]) {
   }
   buf[n] = '\0';
   int pid = 0, ppid = 0, uid = 0;
-  sscanf(buf, "%d %d %d", &pid, &ppid, &uid);
-  char out[128];
-  int m = snprintf(out, sizeof(out), "p%d\nR%d\nu%d\nn127.0.0.1:%s\n", pid, ppid, uid, port_str);
+  unsigned peer = 0;
+  sscanf(buf, "%d %d %d %u", &pid, &ppid, &uid, &peer);
+  /* Steam splits the address on "->" and wants exactly two halves, taking the port it asked
+   * about from the left one; only a listening socket has no far end. */
+  char out[160];
+  int m = peer ? snprintf(out, sizeof(out), "p%d\nR%d\nu%d\nn127.0.0.1:%u->127.0.0.1:%u\n",
+                          pid, ppid, uid, (unsigned)atoi(port_str), peer)
+                : snprintf(out, sizeof(out), "p%d\nR%d\nu%d\nn127.0.0.1:%u\n",
+                          pid, ppid, uid, (unsigned)atoi(port_str));
   if (write(1, out, m) != m) { /* best effort */ }
   _exit(0);
 }
@@ -161,20 +187,19 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
 
 /* popen(3) and posix_spawn(3) reach lsof without going through the execve symbol above. The
  * check is cheap, so a spawned lsof is answered here too by handling it in a short-lived child. */
-static void answer_lsof_via_spawn(const char *path, char *const argv[], pid_t *pid) {
-  const char *base = path ? strrchr(path, '/') : NULL;
-  base = base ? base + 1 : path;
-  if (!base || strcmp(base, "lsof") != 0) {
-    return;
-  }
+static int answer_lsof_via_spawn(const char *path, char *const argv[], pid_t *pid) {
   pid_t child = fork();
+  if (child < 0) {
+    return errno;
+  }
   if (child == 0) {
     maybe_answer_lsof(path, argv);
     _exit(127);
   }
-  if (child > 0 && pid) {
+  if (pid) {
     *pid = child;
   }
+  return 0;
 }
 
 int execvp(const char *file, char *const argv[]) {
@@ -196,8 +221,7 @@ int posix_spawn(pid_t *pid, const char *path, const posix_spawn_file_actions_t *
   const char *base = strrchr(path, '/');
   base = base ? base + 1 : path;
   if (strcmp(base, "lsof") == 0 && !fa) {
-    answer_lsof_via_spawn(path, argv, pid);
-    return 0;
+    return answer_lsof_via_spawn(path, argv, pid);
   }
   static int (*real)(pid_t *, const char *, const posix_spawn_file_actions_t *,
                      const posix_spawnattr_t *, char *const[], char *const[]);
