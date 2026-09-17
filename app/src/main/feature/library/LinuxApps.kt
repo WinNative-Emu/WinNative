@@ -31,6 +31,7 @@ object LinuxApps {
     const val SESSION_STEAM = "steam"
     const val STEAM_SHORTCUT_NAME = "Steam"
     private const val STEAM_ICON = "steam_client"
+    private const val STEAM_GROUND = 0xFF1B2838.toInt()
 
     /** Extensions Linux programs ship with. A bare ELF with no extension is not recognised. */
     val Extensions = setOf("appimage", "sh", "run", "bin", "elf", "x86_64", "x86", "aarch64", "arm64")
@@ -62,9 +63,10 @@ object LinuxApps {
         val desktopDir = container.desktopDir
         if (!desktopDir.exists()) desktopDir.mkdirs()
         val shortcutFile = File(desktopDir, "$STEAM_SHORTCUT_NAME.desktop")
-        if (shortcutFile.exists()) return
+        // The artwork is refreshed even for an entry that already exists, so an upgrade picks it up.
         renderSteamIcon(context, File(container.getIconsDir(64), "$STEAM_ICON.png"), 64)
-        renderSteamIcon(context, File(context.filesDir, "custom_icons/$STEAM_SHORTCUT_NAME.png"), 512)
+        renderSteamCover(context, File(context.filesDir, "custom_icons/$STEAM_SHORTCUT_NAME.png"))
+        if (shortcutFile.exists()) return
         val content =
             buildString {
                 append("[Desktop Entry]\n")
@@ -83,6 +85,30 @@ object LinuxApps {
                 append("use_container_defaults=1\n")
             }
         FileUtils.writeString(shortcutFile, content)
+    }
+
+    /**
+     * The wide card the library draws, so the square glyph is not cropped: it is centred on the
+     * same dark ground the icon uses.
+     */
+    private fun renderSteamCover(
+        context: Context,
+        file: File,
+    ) {
+        if (file.exists()) return
+        val drawable = AppCompatResources.getDrawable(context, R.drawable.library_steam_client) ?: return
+        file.parentFile?.mkdirs()
+        val width = 920
+        val height = 430
+        val glyph = 300
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(STEAM_GROUND)
+        val left = (width - glyph) / 2
+        val top = (height - glyph) / 2
+        drawable.setBounds(left, top, left + glyph, top + glyph)
+        drawable.draw(canvas)
+        FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     /** The library card reads `custom_icons/<name>.png`; the desktop entry reads the container's icon dir. */
