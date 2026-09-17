@@ -38,6 +38,9 @@ import com.winlator.cmod.feature.library.DriveItem
 import com.winlator.cmod.feature.library.DISPLAY_SERVER_WAYLAND_INDEX
 import com.winlator.cmod.feature.library.DISPLAY_SERVER_X11_INDEX
 import com.winlator.cmod.feature.library.displayBackendFromIndex
+import com.winlator.cmod.feature.library.runtimeEntries
+import com.winlator.cmod.feature.library.runtimeFromIndex
+import com.winlator.cmod.feature.library.runtimeIndexOf
 import com.winlator.cmod.feature.library.displayServerEntries
 import com.winlator.cmod.feature.library.EnvVarItem
 import com.winlator.cmod.feature.library.parseEnvVarItems
@@ -628,6 +631,9 @@ class ShortcutSettingsComposeDialog private constructor(
             if (getShortcutSetting(Container.EXTRA_DISPLAY_BACKEND, container.getDisplayBackend()) ==
                 Container.DISPLAY_BACKEND_WAYLAND
             ) DISPLAY_SERVER_WAYLAND_INDEX else DISPLAY_SERVER_X11_INDEX
+        state.runtimeEntries.value = runtimeEntries(context)
+        state.selectedRuntime.intValue =
+            runtimeIndexOf(getShortcutSetting(Container.EXTRA_RUNTIME, container.getRuntime()))
 
         // DX Wrapper
         val dxWrapperArr =
@@ -1148,6 +1154,11 @@ class ShortcutSettingsComposeDialog private constructor(
                 Container.EXTRA_DISPLAY_BACKEND,
                 displayBackendFromIndex(state.selectedDisplayServer.intValue),
                 container.getDisplayBackend()
+            )
+            hasContainerOverride = hasContainerOverride or saveOverride(
+                Container.EXTRA_RUNTIME,
+                runtimeFromIndex(state.selectedRuntime.intValue),
+                container.getRuntime()
             )
 
             val graphicsDriverConfig = buildGraphicsDriverConfigFromState()

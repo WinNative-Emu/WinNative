@@ -121,69 +121,104 @@ Three layers, each usable on its own:
 3. **The app around them.** A Linux container type, shortcut settings for Linux entries, and the
    gamescope switch with its options (upscaler, frame limit, game resolution vs output resolution).
 
-## Plan
+## How it is wired
 
-### Phase 0 - library groundwork (this branch)
+**Choosing it.** Container Settings and Shortcut Settings have a **Runtime** row above Display Server:
+*Wine* (the default) or *Gamescope*. It is stored as the `runtime` extra (`wine` / `gamescope`), and a
+shortcut overrides its container the same way Display Server does, so one library entry can move
+between the two without touching the container. Choosing Gamescope pins Display Server to Wayland;
+gamescope is a client of the compositor and has nothing to draw on otherwise.
 
-Done: file picking, the type selector and filter, the `runtime=linux` shortcut shape, the launch seam
-in `LinuxApps.launch`.
+**Booting.** `XServerDisplayActivity.resolveDisplayBackend` reads the runtime first. For Gamescope
+it starts the compositor as for any Wayland session (same Turnip, same output size, same input
+seat) and `setupLinuxSession` replaces the Wine launcher with `LinuxProgramLauncherComponent`,
+which execs proot from the native library directory:
 
-### Phase 1 - Linux runtime
+```
+libproot.so --kill-on-exit -r files/linuxfs -w /root
+  -b /dev -b /proc -b /sys -b /dev/urandom:/dev/random -b /proc/self/fd:/dev/fd ...
+  -b files -b cache -b <XDG_RUNTIME_DIR> -b imagefs -b /storage/emulated/0
+  -b cache/shm:/dev/shm -b etc/winnative/empty:/sys/fs/selinux
+  -b etc/winnative/proc/<x>:/proc/<x>          (only where Android denies the real file)
+  /usr/bin/env -i HOME=/root PATH=... WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=<same host path>
+     GAMESCOPE_DRM_RENDER_NODE=/dev/dri/renderD128 GAMESCOPE_FORCE_GENERAL_QUEUE=1
+     MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink LIBGL_KOPPER_DRI2=true
+     VK_ICD_FILENAMES=<rootfs freedreno icd> PULSE_SERVER=unix:<imagefs pulse socket> <user env>
+  gamescope --backend wayland --expose-wayland -f -W <w> -H <h> -w <w> -h <h> [-r <fps>] [-e]
+  -- /usr/local/bin/winnative-session <mode> [arg]
+```
 
-Decide and build the rootfs execution model. Two candidates:
+Host paths are bound at their own paths on purpose: the compositor socket, the PulseAudio socket
+and the user's storage need no translation on either side, and proot never touches the fds a
+dma-buf travels in. `-e` is added for the Steam mode only.
 
-- **proot** (ptrace, in tree). No patching of the rootfs; every syscall pays a ptrace round trip,
-  which is the wrong cost for a game, and `PTRACE_O_TRACESECCOMPHARDENING` interactions on newer
-  Android need checking. Right for bring-up, wrong for shipping games.
-- **Prefixed glibc** (the Termux `glibc-packages` approach): a glibc built with the rootfs path as
-  its prefix, so `/usr/lib` resolves without a chroot. No per-syscall cost. Every package in the
-  rootfs must come from that build, so it is a package repository, not a tarball.
+**What runs** is decided by `linuxSessionArgs` from the library entry:
 
-Research before choosing: whether Valve's arm64 Steam Linux Runtime (`sniper`) images are
-redistributable and whether they carry a prefixable glibc; what Arch Linux ARM's `gamescope`
-package pulls in transitively; AppImage handling (no FUSE on Android, so
-`APPIMAGE_EXTRACT_AND_RUN=1`); and which of the imagefs pieces (PulseAudio, the sysvshm shim,
-`libredirect`) the Linux side reuses.
+| Entry | `winnative-session` | Notes |
+|---|---|---|
+| Boot from Edit Containers (no shortcut) | `desktop` | pcmanfm under gamescope's Xwayland: the file explorer |
+| Linux entry (`runtime=linux`) | `run <path>` | AppImage with `APPIMAGE_EXTRACT_AND_RUN=1` (no FUSE), `.sh` through bash, else exec |
+| Steam entry (`game_source=STEAM`) | `steam steam://rungameid/<id>` | the native arm64 client, `-gamepadui`, after `winnative-steam-install` |
+| A Windows entry | refused | the launch reports it and asks for Runtime = Wine |
 
-Deliverable: a `linuxfs` under `files/`, a launcher component beside
-`GuestProgramLauncherComponent` that execs `sh` and an AppImage with `WAYLAND_DISPLAY=wayland-0`
-pointed at our compositor, and a Wayland-native Vulkan program (`vkcube` on Wayland) on screen.
-That milestone does not need gamescope.
+The session ends when gamescope exits; the activity exits with it. A background session stays
+reattachable through `SessionKeepAliveService`, which now records that the environment is a Linux
+one so a reattach resolves to gamescope and not Wine.
 
-### Phase 2 - gamescope
+**The runtime** is `files/linuxfs`, assembled by `tools/linuxfs/build-linuxfs.sh` from Arch Linux
+ARM packages (gamescope 3.16.29, Xwayland 24.1, Mesa 26.2 with Turnip and Zink, pcmanfm, foot,
+PulseAudio and X client libraries, ibus and glib for steamwebhelper) plus the `overlay/` scripts
+and fake `/proc` files. It contains no Valve software. `LinuxRuntime.isInstalled` checks for
+gamescope, the session script, and the packaged proot binaries. Installing it into the app is not
+yet wired (see below).
 
-Cross-build for aarch64 with
-`-Ddrm_backend=disabled -Dsdl2_backend=disabled -Denable_openvr_support=false -Dpipewire=disabled -Dinput_emulation=disabled -Davif_screenshots=disabled -Drt_cap=disabled`
-and wlroots 0.20 as a static subproject. Things to verify on device, in order:
+**Steam.** `winnative-steam-install` reads Valve's `steam_client_publicbeta_linuxarm64` manifest
+from the client-update CDN, downloads the `*_all` and `*_linuxarm64_linuxarm64` zips (sha256
+checked), unpacks them into `~/.local/share/Steam`, writes `package/beta = publicbeta`, and
+repairs the zip entries Valve packs with backslash separators. The `*_linuxarm64_linuxarm64`
+components are the native aarch64 client (`steamrtarm64/steam`, verified as an aarch64 ELF);
+the `*_linuxarm64` and `*_steamrt_linuxarm64` components in the same manifest are the x86 client
+and its pressure-vessel runtime and are skipped. Valve's own `steam.sh` has no arm64 branch, so
+the client is started directly. Proton and FEX are Steam depots the client fetches itself. The
+client is downloaded from Valve at first use and never redistributed.
 
-1. Turnip reports `VK_KHR_swapchain_mutable_format`, `VK_KHR_present_id` and
-   `VK_KHR_present_wait` on a Wayland surface of our compositor (Mesa enables `present_wait` when
-   the compositor has `wp_presentation`, which ours does).
-2. Xwayland starts inside the rootfs with our xkb keymap and `-rootless`.
-3. libinput/libseat are link-time only in this configuration; if wlroots' session code still opens
-   a seat, build wlroots with `session=disabled` and patch the one gamescope check that insists.
-4. gamescope's `renderer_get_drm_fd` hands the render node fd to Xwayland clients so games get
-   dma-buf, not `wl_shm`.
+**proot** is the tree at `app/src/main/cpp/proot` (a Termux-derived build without the extension
+layer), now in the CMake build as `libproot.so` and `libproot-loader.so`. Changes made for this:
+the loader is linked freestanding at `LOADER_ADDRESS` as upstream does; `statx` is translated
+(glibc uses it for stat); `PROOT_NO_SECCOMP` disables the seccomp accelerator for debugging. Its
+SIGSYS handler is what lets glibc survive Android's zygote filter (`set_robust_list`, `rseq`
+return `ENOSYS` instead of killing the process). `targetSdk 28` is load-bearing: it keeps the app
+in `untrusted_app_27`, the last domain allowed to exec a file under `files/`.
 
-Deliverable: a Linux game under `gamescope --backend wayland --expose-wayland -W <w> -H <h> -- <game>`
-with FSR upscaling and the frame limiter working, in the same session window as everything else.
+## Verified so far
 
-### Phase 3 - Linux Steam
+- gamescope 3.16.29 and Xwayland 24.1.13 from the rootfs start under proot + qemu-user on the
+  build machine with no missing libraries.
+- The whole launch line - proot with the bindings above, `env -i`, `winnative-session desktop` -
+  runs from the rootfs under qemu-user as a client of a nested sway on the build machine:
+  gamescope binds the parent's globals, reports "Initted Wayland backend", enumerates its dma-buf
+  formats, and only stops at `vkAllocateMemory` on lavapipe-under-qemu, which has no device memory
+  to give. The rig is `scratchpad/host-test.sh`; weston 13 (seat 7) and cage (no pointer
+  constraints) cannot host it.
+- **gamescope requires `wl_seat` version 8 or newer** from the parent; it refuses the input
+  objects otherwise. The compositor advertised 5 and now advertises 9, sending
+  `wl_pointer.axis_value120` to version 8+ pointers in place of `axis_discrete`.
+- The Steam manifest parser resolves 17 components; the client zips download from
+  `client-update.fastly.steamstatic.com/<file>`.
+- The device (NP06J, Adreno) exposes `/dev/kgsl-3d0` and a world-readable `/dev/dri/renderD128`.
 
-The Linux Steam client is i386 + x86_64; on arm64 Valve's own path is FEX. That means an x86 glibc
-sub-rootfs for FEX inside the Linux runtime, the Steam bootstrap, and gamescope as the session
-compositor the way Steam Deck's gaming mode does it (`gamescope -e -- steam -tenfoot`). Research:
-FEX's rootfs requirements against our runtime, the unofficial native arm64 client's state
-(regressed to ARMv8.1 LSE in 2026, per steam-for-linux#13288), and whether the existing
-`wn-steam-*` pieces (real-Steam login, `steamwebhelper` handling) carry over.
+## Not yet done
 
-### Phase 4 - app integration
-
-A `Container` kind for Linux with its own settings dialog (the Wine dialog is wrong for it);
-`ShortcutSettingsComposeDialog` routed by `LinuxApps.isLinuxShortcut` the way it is for retro
-entries; icon extraction from an AppImage's `.DirIcon`; extensionless ELF detection in the picker
-(needs the listing moved off the UI thread first); the gamescope options in the drawer; and the
-Linux runtime as a downloadable content profile, not an asset in the APK.
+- **Installing the runtime.** `linuxfs.tar.zst` has no download or import path in the app yet;
+  for now it is extracted by hand into `files/linuxfs`. It should become a content profile.
+- **Turnip in the rootfs is Arch's msm build.** The device's GPU is reached through KGSL; the
+  compositor's Turnip is a KGSL build. Whether Arch's `vulkan-freedreno` finds the GPU through
+  `/dev/dri/renderD128` on this device is the first thing to test on hardware; if not, a glibc
+  Turnip built with `-Dfreedreno-kmds=msm,kgsl` goes into the rootfs.
+- **Nothing has run on the device yet.** The launch line is WayLandIE's, which is known to work
+  on Adreno, but the compositor here is ours.
+- Shortcut Settings still shows the Wine pages for a Linux entry; a Linux settings page is owed.
+- Extensionless ELFs in the picker; AppImage icons.
 
 ## Risks
 

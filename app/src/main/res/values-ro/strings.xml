@@ -2895,6 +2895,11 @@ Cale instalata:
     <string name="container_display_server_needs_wayland_proton">Acest Proton nu conține winewayland sau driverul Turnip pentru Wayland, așa că se folosește X11. Instalează un strat Proton Wayland din Conținut și selectează-l ca Proton al containerului.</string>
     <string name="wayland_unavailable_fallback">Wayland nu este disponibil pentru acest joc. Se lansează pe X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland are nevoie de un driver grafic Turnip pentru a afișa jocul. Instalează unul din Conținut și selectează-l ca driver grafic.</string>
+    <string name="container_runtime">Mediu de execuție</string>
+    <string name="container_runtime_help">Pornește gamescope în mediul Linux pe compozitorul Wayland în locul Wine. Programele Linux și clientul Steam nativ rulează aici.</string>
+    <string name="linux_runtime_missing">Mediul de execuție Linux nu este instalat, așa că acest container nu poate porni încă.</string>
+    <string name="container_display_server_gamescope">Gamescope desenează întotdeauna prin compozitorul Wayland.</string>
+    <string name="linux_runtime_windows_program">Acesta este un program Windows. Setează mediul său de execuție la Wine în setările scurtăturii pentru a-l porni.</string>
     <string name="settings_content_badge_online">Online</string>
 </resources>
 

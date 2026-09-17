@@ -2895,5 +2895,10 @@ Yüklü konum:
     <string name="container_display_server_needs_wayland_proton">Bu Proton winewayland veya Wayland Turnip sürücüsünü içermediğinden X11 kullanılıyor. İçerikler bölümünden bir Wayland Proton katmanı kurun ve onu kapsayıcının Proton\'u olarak seçin.</string>
     <string name="wayland_unavailable_fallback">Bu oyun için Wayland kullanılamıyor. X11 ile başlatılıyor.</string>
     <string name="wayland_needs_turnip_driver">Wayland\'ın oyunu gösterebilmesi için bir Turnip grafik sürücüsü gerekir. İçerikler bölümünden kurun ve grafik sürücüsü olarak seçin.</string>
+    <string name="container_runtime">Çalışma zamanı</string>
+    <string name="container_runtime_help">Wine yerine Wayland birleştiricisi üzerinde Linux çalışma zamanında gamescope başlatır. Linux programları ve yerel Steam istemcisi burada çalışır.</string>
+    <string name="linux_runtime_missing">Linux çalışma zamanı yüklü değil, bu yüzden bu kapsayıcı henüz başlatılamıyor.</string>
+    <string name="container_display_server_gamescope">Gamescope her zaman Wayland birleştiricisi üzerinden çizer.</string>
+    <string name="linux_runtime_windows_program">Bu bir Windows programı. Başlatmak için Kısayol Ayarları\'nda çalışma zamanını Wine olarak ayarlayın.</string>
     <string name="settings_content_badge_online">Çevrimiçi</string>
 </resources>

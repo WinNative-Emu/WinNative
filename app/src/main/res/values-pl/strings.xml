@@ -2902,6 +2902,11 @@ Zainstalowana ścieżka:
     <string name="container_display_server_needs_wayland_proton">Ten Proton nie zawiera winewayland ani sterownika Turnip dla Wayland, więc używany jest X11. Zainstaluj warstwę Proton Wayland w Zawartości i wybierz ją jako Proton kontenera.</string>
     <string name="wayland_unavailable_fallback">Wayland nie jest dostępny dla tej gry. Uruchamianie na X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland potrzebuje sterownika graficznego Turnip, aby wyświetlić grę. Zainstaluj go w Zawartości i wybierz jako sterownik graficzny.</string>
+    <string name="container_runtime">Środowisko uruchomieniowe</string>
+    <string name="container_runtime_help">Uruchamia gamescope w środowisku Linux na kompozytorze Wayland zamiast Wine. Działają tu programy Linux i natywny klient Steam.</string>
+    <string name="linux_runtime_missing">Środowisko Linux nie jest zainstalowane, więc ten kontener nie może jeszcze wystartować.</string>
+    <string name="container_display_server_gamescope">Gamescope zawsze rysuje przez kompozytor Wayland.</string>
+    <string name="linux_runtime_windows_program">To program Windows. Ustaw jego środowisko na Wine w ustawieniach skrótu, aby go uruchomić.</string>
     <string name="settings_content_badge_online">Online</string>
 </resources>
 

@@ -1,0 +1,51 @@
+#!/bin/bash
+# The program gamescope runs for a WinNative session. gamescope has already set DISPLAY to its
+# Xwayland and WAYLAND_DISPLAY to its own socket.
+#   winnative-session desktop            the file manager
+#   winnative-session run <path>         a Linux program (AppImage, script or ELF)
+#   winnative-session steam [steam-url]  the native Steam client
+set -u
+export HOME=${HOME:-/root}
+mode=${1:-desktop}
+shift || true
+export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+
+case $mode in
+  desktop)
+    exec pcmanfm
+    ;;
+  run)
+    target=${1:?program path}
+    shift
+    case ${target,,} in
+      *.appimage)
+        export APPIMAGE_EXTRACT_AND_RUN=1
+        chmod +x "$target" 2>/dev/null
+        exec "$target" "$@"
+        ;;
+      *.sh)
+        exec bash "$target" "$@"
+        ;;
+      *)
+        chmod +x "$target" 2>/dev/null
+        cd "$(dirname "$target")" && exec "$target" "$@"
+        ;;
+    esac
+    ;;
+  steam)
+    winnative-steam-install || exit $?
+    steam_root=$XDG_DATA_HOME/Steam
+    export STEAM_RUNTIME=1
+    export SDL_VIDEODRIVER=x11
+    exec "$steam_root/steamrtarm64/steam" -gamepadui -clientbeta publicbeta \
+      -no-cef-sandbox -cef-force-gpu -cef-ozone-platform=x11 \
+      -cef-use-gl=angle -cef-use-angle=vulkan "$@"
+    ;;
+  *)
+    echo "winnative-session: unknown mode '$mode'" >&2
+    exit 64
+    ;;
+esac

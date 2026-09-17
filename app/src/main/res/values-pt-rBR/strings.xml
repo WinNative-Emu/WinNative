@@ -2895,6 +2895,11 @@ Caminho instalado:
     <string name="container_display_server_needs_wayland_proton">Este Proton não inclui winewayland nem o driver Turnip para Wayland, então o X11 é usado. Instale uma camada Proton Wayland em Conteúdos e selecione-a como Proton do contêiner.</string>
     <string name="wayland_unavailable_fallback">O Wayland não está disponível para este jogo. Iniciando no X11.</string>
     <string name="wayland_needs_turnip_driver">O Wayland precisa de um driver gráfico Turnip para exibir o jogo. Instale um em Conteúdos e selecione-o como driver gráfico.</string>
+    <string name="container_runtime">Runtime</string>
+    <string name="container_runtime_help">Inicia o gamescope no runtime Linux sobre o compositor Wayland em vez do Wine. Programas Linux e o cliente Steam nativo rodam aqui.</string>
+    <string name="linux_runtime_missing">O runtime Linux não está instalado, então este contêiner ainda não pode iniciar.</string>
+    <string name="container_display_server_gamescope">O Gamescope sempre desenha através do compositor Wayland.</string>
+    <string name="linux_runtime_windows_program">Este é um programa do Windows. Defina o runtime dele como Wine nas configurações do atalho para iniciá-lo.</string>
     <string name="settings_content_badge_online">Online</string>
 </resources>
 

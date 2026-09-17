@@ -182,6 +182,24 @@ public class Container {
         return DISPLAY_BACKEND_WAYLAND.equals(getDisplayBackend());
     }
 
+    /** What the container boots: Wine on the bionic imagefs (default) or gamescope in the Linux runtime. */
+    public static final String EXTRA_RUNTIME = "runtime";
+    public static final String RUNTIME_WINE = "wine";
+    public static final String RUNTIME_GAMESCOPE = "gamescope";
+
+    public String getRuntime() {
+        String value = getExtra(EXTRA_RUNTIME, RUNTIME_WINE);
+        return RUNTIME_GAMESCOPE.equals(value) ? RUNTIME_GAMESCOPE : RUNTIME_WINE;
+    }
+
+    public void setRuntime(String value) {
+        putExtra(EXTRA_RUNTIME, RUNTIME_GAMESCOPE.equals(value) ? RUNTIME_GAMESCOPE : null);
+    }
+
+    public boolean isGamescopeRuntime() {
+        return RUNTIME_GAMESCOPE.equals(getRuntime());
+    }
+
     public String getGraphicsDriverConfig() { return this.graphicsDriverConfig; }
 
     public void setGraphicsDriverConfig(String graphicsDriverConfig) { this.graphicsDriverConfig = graphicsDriverConfig; }

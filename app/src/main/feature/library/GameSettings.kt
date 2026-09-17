@@ -94,6 +94,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import com.winlator.cmod.runtime.container.Container
+import com.winlator.cmod.runtime.linux.LinuxRuntime
 import androidx.compose.runtime.produceState
 import com.winlator.cmod.runtime.display.wayland.WineWaylandSupport
 import androidx.compose.material3.TextButton
@@ -390,6 +391,19 @@ data class EnvVarItem(val key: String, val value: String)
 // Row-preserving parse: duplicate names stay as separate rows (EnvVars would collapse them into a map).
 const val DISPLAY_SERVER_X11_INDEX = 0
 const val DISPLAY_SERVER_WAYLAND_INDEX = 1
+const val RUNTIME_WINE_INDEX = 0
+const val RUNTIME_GAMESCOPE_INDEX = 1
+
+fun runtimeEntries(context: android.content.Context): List<String> = listOf(
+    context.getString(R.string.runtime_wine),
+    context.getString(R.string.runtime_gamescope),
+)
+
+fun runtimeFromIndex(index: Int): String =
+    if (index == RUNTIME_GAMESCOPE_INDEX) Container.RUNTIME_GAMESCOPE else Container.RUNTIME_WINE
+
+fun runtimeIndexOf(runtime: String?): Int =
+    if (runtime == Container.RUNTIME_GAMESCOPE) RUNTIME_GAMESCOPE_INDEX else RUNTIME_WINE_INDEX
 
 fun displayServerEntries(context: android.content.Context): List<String> = listOf(
     context.getString(R.string.display_server_x11),
@@ -443,6 +457,8 @@ class GameSettingsStateHolder {
     val displayServerEntries = mutableStateOf<List<String>>(emptyList())
     val selectedDisplayServer = mutableIntStateOf(0)
     val displayServerWaylandAvailable = mutableStateOf(false)
+    val runtimeEntries = mutableStateOf<List<String>>(emptyList())
+    val selectedRuntime = mutableIntStateOf(0)
     // Wine identifier the session will use when the wine dropdown is not shown (shortcut editor).
     val wineVersionIdentifier = mutableStateOf("")
     val graphicsDriverEntries = mutableStateOf<List<String>>(emptyList())
@@ -1839,6 +1855,10 @@ private fun DisplaySection(
 
         Spacer(Modifier.height(SettingSectionGap))
 
+        RuntimeRow(state)
+
+        Spacer(Modifier.height(SettingSectionGap))
+
         DisplayServerRow(state)
 
         Spacer(Modifier.height(SettingSectionGap))
@@ -1899,11 +1919,68 @@ private fun DisplaySection(
  * GPU and the selected Wine/Proton ships winewayland; otherwise the row is greyed out with the
  * requirement text and the stored choice is left untouched.
  */
+/**
+ * Wine on the imagefs, or gamescope in the Linux runtime. gamescope is a Wayland client of the
+ * compositor, so choosing it pins the display server to Wayland below.
+ */
+@Composable
+private fun RuntimeRow(state: GameSettingsStateHolder) {
+    val entries = state.runtimeEntries.value
+    if (entries.isEmpty()) return
+    val context = LocalContext.current
+    val installed by produceState(initialValue = true) {
+        value = withContext(Dispatchers.IO) { LinuxRuntime.isInstalled(context) }
+    }
+    val gamescope = state.selectedRuntime.intValue == RUNTIME_GAMESCOPE_INDEX
+    SettingPairRow {
+        Box(Modifier.weight(1f)) {
+            SettingDropdown(
+                label = stringResource(R.string.container_runtime),
+                entries = entries,
+                selectedIndex = state.selectedRuntime.intValue,
+                onSelected = { state.selectedRuntime.intValue = it },
+            )
+        }
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            Text(
+                text = stringResource(
+                    if (gamescope && !installed) R.string.linux_runtime_missing else R.string.container_runtime_help
+                ),
+                color = TextDim,
+                fontSize = SettingLabelSize,
+                modifier = Modifier.padding(top = SettingLabelRowHeight)
+            )
+        }
+    }
+}
+
 @Composable
 private fun DisplayServerRow(state: GameSettingsStateHolder) {
     val entries = state.displayServerEntries.value
     if (entries.isEmpty()) return
     val context = LocalContext.current
+    if (state.selectedRuntime.intValue == RUNTIME_GAMESCOPE_INDEX) {
+        SettingPairRow {
+            Box(Modifier.weight(1f)) {
+                SettingDropdown(
+                    label = stringResource(R.string.container_display_server),
+                    entries = entries,
+                    selectedIndex = DISPLAY_SERVER_WAYLAND_INDEX,
+                    onSelected = {},
+                    enabled = false
+                )
+            }
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                Text(
+                    text = stringResource(R.string.container_display_server_gamescope),
+                    color = TextDim,
+                    fontSize = SettingLabelSize,
+                    modifier = Modifier.padding(top = SettingLabelRowHeight)
+                )
+            }
+        }
+        return
+    }
     val wineIdentifier = displayServerWineIdentifier(state)
     val initial = DisplayServerStatus(
         if (state.displayServerWaylandAvailable.value) WAYLAND_AVAILABLE else WAYLAND_NEEDS_PROTON, ""

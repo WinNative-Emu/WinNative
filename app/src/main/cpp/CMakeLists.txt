@@ -239,3 +239,4 @@ target_link_libraries(steamctrl SDL3::SDL3 log)
 
 # Embedded Wayland compositor (winewayland.drv sessions); see waylandcomp/CMakeLists.txt.
 add_subdirectory(waylandcomp)
+add_subdirectory(proot)

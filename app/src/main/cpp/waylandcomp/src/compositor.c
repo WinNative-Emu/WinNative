@@ -2874,7 +2874,10 @@ static void scroll_event(int steps) {
     if (target != g_desktop && target->placed) { tx = target->x; ty = target->y; }
     uint32_t t = now_ms();
     pointer_focus(target->resource, wl_fixed_from_double(g_ptr_x - tx), wl_fixed_from_double(g_ptr_y - ty));
-    if (wl_resource_get_version(sp->ptr) >= WL_POINTER_AXIS_DISCRETE_SINCE_VERSION)
+    /* From version 8 the discrete event is replaced by value120 and must not be sent. */
+    if (wl_resource_get_version(sp->ptr) >= WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
+        wl_pointer_send_axis_value120(sp->ptr, WL_POINTER_AXIS_VERTICAL_SCROLL, steps * 120);
+    else if (wl_resource_get_version(sp->ptr) >= WL_POINTER_AXIS_DISCRETE_SINCE_VERSION)
         wl_pointer_send_axis_discrete(sp->ptr, WL_POINTER_AXIS_VERTICAL_SCROLL, steps);
     wl_pointer_send_axis(sp->ptr, t, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_int(steps * 10));
     if (wl_resource_get_version(sp->ptr) >= WL_POINTER_FRAME_SINCE_VERSION)
@@ -3227,7 +3230,8 @@ int wnc_wayland_run(void) {
     wl_global_create(display, &wl_output_interface, 2, NULL, bind_output);
     wl_global_create(display, &xdg_wm_base_interface, 1, NULL, bind_xdg_wm_base);
     wl_global_create(display, &zwp_linux_dmabuf_v1_interface, 4, NULL, bind_dmabuf);
-    wl_global_create(display, &wl_seat_interface, 5, NULL, bind_seat);
+    /* gamescope's Wayland backend refuses a seat older than 8. */
+    wl_global_create(display, &wl_seat_interface, 9, NULL, bind_seat);
     wl_global_create(display, &banner_desktop_v1_interface, 1, NULL, bind_desktop);
     wl_global_create(display, &wp_presentation_interface, 2, NULL, bind_presentation);
     wl_global_create(display, &zwp_pointer_constraints_v1_interface, 1, NULL, bind_pointer_constraints);

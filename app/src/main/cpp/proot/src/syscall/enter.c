@@ -299,6 +299,7 @@ int translate_syscall_enter(Tracee *tracee) {
   case PR_fchownat:
   case PR_fstatat64:
   case PR_newfstatat:
+  case PR_statx:
   case PR_utimensat:
   case PR_name_to_handle_at:
     dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
@@ -310,6 +311,8 @@ int translate_syscall_enter(Tracee *tracee) {
     flags = (syscall_number == PR_fchownat ||
              syscall_number == PR_name_to_handle_at)
                 ? peek_reg(tracee, CURRENT, SYSARG_5)
+            : syscall_number == PR_statx
+                ? peek_reg(tracee, CURRENT, SYSARG_3)
                 : peek_reg(tracee, CURRENT, SYSARG_4);
 
     if ((flags & AT_SYMLINK_NOFOLLOW) != 0)

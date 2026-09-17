@@ -33,6 +33,9 @@ import com.winlator.cmod.feature.library.DriveItem
 import com.winlator.cmod.feature.library.DISPLAY_SERVER_WAYLAND_INDEX
 import com.winlator.cmod.feature.library.DISPLAY_SERVER_X11_INDEX
 import com.winlator.cmod.feature.library.displayBackendFromIndex
+import com.winlator.cmod.feature.library.runtimeEntries
+import com.winlator.cmod.feature.library.runtimeFromIndex
+import com.winlator.cmod.feature.library.runtimeIndexOf
 import com.winlator.cmod.feature.library.displayServerEntries
 import com.winlator.cmod.feature.library.EnvVarItem
 import com.winlator.cmod.feature.library.GameSettingsCallbacks
@@ -581,6 +584,8 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         state.displayServerEntries.value = displayServerEntries(context)
         state.selectedDisplayServer.intValue =
             if (c?.isWaylandBackend == true) DISPLAY_SERVER_WAYLAND_INDEX else DISPLAY_SERVER_X11_INDEX
+        state.runtimeEntries.value = runtimeEntries(context)
+        state.selectedRuntime.intValue = runtimeIndexOf(c?.getRuntime())
         state.wineVersionIdentifier.value = c?.getWineVersion() ?: WineInfo.MAIN_WINE_VERSION.identifier()
 
         state.zinkModeEntries.value = context.resources.getStringArray(R.array.zink_mode_entries).toList()
@@ -897,6 +902,7 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
             c.setCPUListWoW64(cpuListWoW64)
             c.setGraphicsDriver(graphicsDriver)
             c.setDisplayBackend(displayBackendFromIndex(state.selectedDisplayServer.intValue))
+            c.setRuntime(runtimeFromIndex(state.selectedRuntime.intValue))
             c.setZinkMode(if (state.selectedZinkMode.intValue == 1) "windows" else "unix")
             c.setGraphicsDriverConfig(graphicsDriverConfig)
             c.setDXWrapper(dxwrapper)

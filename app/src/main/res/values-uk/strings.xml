@@ -2901,6 +2901,11 @@
     <string name="container_display_server_needs_wayland_proton">У цьому Proton немає winewayland і драйвера Turnip для Wayland, тому використовується X11. Встановіть шар Proton для Wayland у розділі «Вміст» і виберіть його як Proton контейнера.</string>
     <string name="wayland_unavailable_fallback">Wayland недоступний для цієї гри. Запуск через X11.</string>
     <string name="wayland_needs_turnip_driver">Для показу гри Wayland потрібен графічний драйвер Turnip. Встановіть його в розділі «Вміст» і виберіть як графічний драйвер.</string>
+    <string name="container_runtime">Середовище виконання</string>
+    <string name="container_runtime_help">Запускає gamescope у середовищі Linux на композиторі Wayland замість Wine. Тут працюють програми Linux і нативний клієнт Steam.</string>
+    <string name="linux_runtime_missing">Середовище виконання Linux не встановлено, тому цей контейнер поки не можна запустити.</string>
+    <string name="container_display_server_gamescope">Gamescope завжди малює через композитор Wayland.</string>
+    <string name="linux_runtime_windows_program">Це програма Windows. Установіть для неї середовище Wine у налаштуваннях ярлика, щоб запустити.</string>
     <string name="settings_content_badge_online">Онлайн</string>
 </resources>
 

@@ -2895,6 +2895,11 @@
     <string name="container_display_server_needs_wayland_proton">此 Proton 不包含 winewayland 或 Wayland Turnip 驱动，因此使用 X11。请在“内容”中安装 Wayland Proton 层，并将其选为容器的 Proton。</string>
     <string name="wayland_unavailable_fallback">此游戏无法使用 Wayland，将改用 X11 启动。</string>
     <string name="wayland_needs_turnip_driver">Wayland 需要 Turnip 图形驱动才能显示游戏。请在“内容”中安装并将其选为图形驱动。</string>
+    <string name="container_runtime">运行时</string>
+    <string name="container_runtime_help">在 Wayland 合成器上的 Linux 运行时中启动 gamescope，而不是 Wine。Linux 程序和原生 Steam 客户端在此运行。</string>
+    <string name="linux_runtime_missing">Linux 运行时尚未安装，因此此容器暂时无法启动。</string>
+    <string name="container_display_server_gamescope">Gamescope 始终通过 Wayland 合成器绘制。</string>
+    <string name="linux_runtime_windows_program">这是 Windows 程序。请在快捷方式设置中将其运行时设为 Wine 后再启动。</string>
     <string name="settings_content_badge_online">联机</string>
 </resources>
 

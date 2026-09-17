@@ -2894,5 +2894,10 @@
     <string name="container_display_server_needs_wayland_proton">Proton นี้ไม่มี winewayland หรือไดรเวอร์ Wayland Turnip จึงใช้ X11 แทน ติดตั้งเลเยอร์ Proton สำหรับ Wayland จากเนื้อหา แล้วเลือกเป็น Proton ของคอนเทนเนอร์</string>
     <string name="wayland_unavailable_fallback">เกมนี้ไม่สามารถใช้ Wayland ได้ กำลังเปิดด้วย X11</string>
     <string name="wayland_needs_turnip_driver">Wayland ต้องใช้ไดรเวอร์กราฟิก Turnip เพื่อแสดงเกม ติดตั้งได้จากเนื้อหาแล้วเลือกเป็นไดรเวอร์กราฟิก</string>
+    <string name="container_runtime">รันไทม์</string>
+    <string name="container_runtime_help">เริ่ม gamescope ในรันไทม์ Linux บนคอมโพสิเตอร์ Wayland แทน Wine โปรแกรม Linux และไคลเอนต์ Steam แบบเนทีฟทำงานที่นี่</string>
+    <string name="linux_runtime_missing">ยังไม่ได้ติดตั้งรันไทม์ Linux จึงยังไม่สามารถเริ่มคอนเทนเนอร์นี้ได้</string>
+    <string name="container_display_server_gamescope">Gamescope วาดผ่านคอมโพสิเตอร์ Wayland เสมอ</string>
+    <string name="linux_runtime_windows_program">นี่คือโปรแกรม Windows ตั้งค่ารันไทม์เป็น Wine ในการตั้งค่าทางลัดเพื่อเริ่มใช้งาน</string>
     <string name="settings_content_badge_online">ออนไลน์</string>
 </resources>

@@ -64,6 +64,8 @@ import com.winlator.cmod.app.update.UpdateService;
 import com.winlator.cmod.feature.settings.DebugFragment;
 import com.winlator.cmod.feature.setup.SetupWizardActivity;
 import com.winlator.cmod.runtime.container.Container;
+import com.winlator.cmod.runtime.display.environment.components.LinuxProgramLauncherComponent;
+import com.winlator.cmod.runtime.linux.LinuxRuntime;
 import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings;
 import com.winlator.cmod.runtime.container.ContainerManager;
 import com.winlator.cmod.runtime.container.Shortcut;
@@ -627,6 +629,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     // Display server of this session: the X server, or the embedded Wayland compositor.
     private boolean waylandMode;
+    /* The container boots gamescope in the Linux runtime; the compositor is its display. */
+    private boolean gamescopeMode;
     private WaylandSession waylandSession;
     private final java.util.concurrent.atomic.AtomicInteger waylandFrameSerial =
             new java.util.concurrent.atomic.AtomicInteger();
@@ -8013,6 +8017,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         String rootPath = imageFs.getRootDir().getPath();
         FileUtils.clear(imageFs.getTmpDir());
 
+        if (gamescopeMode) {
+            setupLinuxSession(rootPath);
+            return;
+        }
 
         guestProgramLauncherComponent = new GuestProgramLauncherComponent(
                 contentsManager,
@@ -8790,13 +8798,152 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
     }
 
+    /**
+     * A gamescope container: proot runs the Linux runtime's session script under gamescope, which
+     * is a Wayland client of the compositor started by {@link #startWaylandSession}. Nothing of
+     * Wine is involved; the audio socket is the only imagefs service the guest reaches.
+     */
+    private void setupLinuxSession(String rootPath) {
+        if (!LinuxRuntime.isInstalled(this)) {
+            throw new IllegalStateException(getString(R.string.linux_runtime_missing));
+        }
+        List<String> session = linuxSessionArgs();
+        File runtimeDir = GuestProgramLauncherComponent.getWaylandRuntimeDir(this);
+        runtimeDir.mkdirs();
+
+        environment = new XEnvironment(this, imageFs);
+        List<String> guest = new ArrayList<>();
+        guest.add("/usr/bin/env");
+        guest.add("-i");
+        guest.add("HOME=/root");
+        guest.add("USER=root");
+        guest.add("PATH=/usr/local/bin:/usr/bin:/bin");
+        guest.add("TERM=xterm-256color");
+        guest.add("LANG=C.UTF-8");
+        guest.add("XDG_RUNTIME_DIR=" + runtimeDir.getPath());
+        guest.add("XDG_SESSION_TYPE=wayland");
+        guest.add("WAYLAND_DISPLAY=wayland-0");
+        guest.add("GAMESCOPE_DRM_RENDER_NODE=/dev/dri/renderD128");
+        guest.add("WLR_DRM_DEVICES=/dev/dri/renderD128");
+        guest.add("GAMESCOPE_FORCE_GENERAL_QUEUE=1");
+        guest.add("MESA_LOADER_DRIVER_OVERRIDE=zink");
+        guest.add("GALLIUM_DRIVER=zink");
+        guest.add("LIBGL_KOPPER_DRI2=true");
+        File icd = LinuxRuntime.vulkanIcd(this);
+        if (icd != null) guest.add("VK_ICD_FILENAMES=" + icd.getPath());
+        if (audioDriver.equals("pulseaudio")) {
+            PulseAudioComponent.Options pulseOptions = PulseAudioComponent.Options.fromEnvVars(envVars);
+            guest.add("PULSE_SERVER=unix:" + rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
+            guest.add("PULSE_LATENCY_MSEC=" + pulseOptions.latencyMillis);
+            environment.addComponent(
+                    new PulseAudioComponent(
+                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH),
+                            pulseOptions
+                    )
+            );
+        }
+        for (String entry : effectiveUserEnv().toStringArray()) guest.add(entry);
+        guest.add("gamescope");
+        guest.add("--backend");
+        guest.add("wayland");
+        guest.add("--expose-wayland");
+        guest.add("-f");
+        guest.add("-W");
+        guest.add(String.valueOf(xServer.screenInfo.width));
+        guest.add("-H");
+        guest.add(String.valueOf(xServer.screenInfo.height));
+        guest.add("-w");
+        guest.add(String.valueOf(xServer.screenInfo.width));
+        guest.add("-h");
+        guest.add(String.valueOf(xServer.screenInfo.height));
+        if (runtimeFpsLimit > 0) {
+            guest.add("-r");
+            guest.add(String.valueOf(runtimeFpsLimit));
+        }
+        if (LinuxRuntime.MODE_STEAM.equals(session.get(0))) guest.add("-e");
+        guest.add("--");
+        guest.add(LinuxRuntime.SESSION_SCRIPT);
+        guest.addAll(session);
+
+        EnvVars hostEnv = new EnvVars();
+        hostEnv.put("PROOT_LOADER", LinuxRuntime.prootLoader(this).getPath());
+        hostEnv.put("PROOT_TMP_DIR", getCacheDir().getPath());
+        List<String> command = LinuxRuntime.command(this, imageFs, runtimeDir,
+                android.os.Environment.getExternalStorageDirectory(), guest);
+        LinuxProgramLauncherComponent launcher = new LinuxProgramLauncherComponent(
+                command, hostEnv, LinuxRuntime.rootDir(this), (status) -> {
+                    LogManager.log(TAG, "Linux session [" + String.join(" ", session)
+                            + "] ended with status: " + status, this);
+                    exit();
+                });
+        environment.addComponent(launcher);
+        winHandler.preAssignConnectedControllers();
+        if (!reusingSession) {
+            if (preloaderDialog != null) {
+                preloaderDialog.setStepOnUiThread(R.string.preloader_launching);
+            }
+            environment.startEnvironmentComponents();
+            if (backgroundSessionEnabled) {
+                SessionKeepAliveService.setActiveEnvironment(environment);
+                SessionKeepAliveService.setActiveXServer(xServer);
+                SessionKeepAliveService.setLinuxSessionActive(true);
+            }
+        }
+        new Handler(getMainLooper()).postDelayed(this::onFirstGuestWindow, WAYLAND_OVERLAY_GRACE_MS);
+        winHandler.start();
+        com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.setDialogOpen(false);
+        runOnUiThread(() -> {
+            steamControllerSessionReady = true;
+            startSteamControllerSupport();
+        });
+    }
+
+    /** What the session script runs: the desktop, a Linux program, or the native Steam client. */
+    private List<String> linuxSessionArgs() {
+        List<String> args = new ArrayList<>();
+        if (shortcut == null) {
+            args.add(LinuxRuntime.MODE_DESKTOP);
+            return args;
+        }
+        if (com.winlator.cmod.feature.library.LinuxApps.isLinuxShortcut(shortcut)) {
+            args.add(LinuxRuntime.MODE_RUN);
+            args.add(shortcut.getExtra("custom_exe"));
+            return args;
+        }
+        if ("STEAM".equals(shortcut.getExtra("game_source"))) {
+            args.add(LinuxRuntime.MODE_STEAM);
+            String appId = shortcut.getExtra("app_id");
+            if (!appId.isEmpty()) args.add("steam://rungameid/" + appId);
+            return args;
+        }
+        throw new IllegalStateException(getString(R.string.linux_runtime_windows_program));
+    }
+
     private void resolveDisplayBackend() {
         boolean reattaching = SessionKeepAliveService.isSessionActive()
                 && SessionKeepAliveService.getActiveEnvironment() != null
                 && SessionKeepAliveService.getActiveXServer() != null;
         if (reattaching) {
             waylandMode = WaylandSession.hasActiveSession();
+            gamescopeMode = waylandMode && SessionKeepAliveService.isLinuxSessionActive();
             return;
+        }
+        String runtime = shortcut != null
+                ? getShortcutSetting(Container.EXTRA_RUNTIME, container.getRuntime())
+                : container.getRuntime();
+        gamescopeMode = Container.RUNTIME_GAMESCOPE.equals(runtime) && !isDependencyInstall;
+        if (gamescopeMode) {
+            // gamescope is a client of the compositor; the Wine checks below do not apply to it.
+            if (!WineWaylandSupport.isAdrenoDevice(this)) {
+                Log.w(TAG, "gamescope: this GPU cannot drive the compositor");
+                android.widget.Toast.makeText(this, R.string.container_display_server_wayland_requirements,
+                        android.widget.Toast.LENGTH_LONG).show();
+                gamescopeMode = false;
+            } else {
+                waylandMode = true;
+                Log.i(TAG, "display server: Wayland (gamescope)");
+                return;
+            }
         }
         String backend = shortcut != null
                 ? getShortcutSetting(Container.EXTRA_DISPLAY_BACKEND, container.getDisplayBackend())

@@ -72,6 +72,8 @@ public class SessionKeepAliveService extends Service {
 
     private static volatile XEnvironment activeEnvironment;
     private static volatile XServer activeXServer;
+    /* The active environment runs gamescope in the Linux runtime rather than Wine. */
+    private static volatile boolean linuxSessionActive;
 
     private static volatile boolean isContainerPaused = false;
 
@@ -186,6 +188,7 @@ public class SessionKeepAliveService extends Service {
         final XEnvironment env = activeEnvironment;
         activeEnvironment = null;
         activeXServer = null;
+        linuxSessionActive = false;
         if (env == null) return;
         new Thread(() -> {
             try {
@@ -215,6 +218,15 @@ public class SessionKeepAliveService extends Service {
     public static void clearActiveSession() {
         activeEnvironment = null;
         activeXServer = null;
+        linuxSessionActive = false;
+    }
+
+    public static boolean isLinuxSessionActive() {
+        return linuxSessionActive;
+    }
+
+    public static void setLinuxSessionActive(boolean active) {
+        linuxSessionActive = active;
     }
 
     public static void setPipMode(boolean inPip) {

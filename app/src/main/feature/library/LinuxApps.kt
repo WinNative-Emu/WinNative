@@ -1,11 +1,14 @@
 package com.winlator.cmod.feature.library
 
 import android.content.Context
+import android.content.Intent
 import android.widget.Toast
 import com.winlator.cmod.R
 import com.winlator.cmod.feature.setup.SetupWizardActivity
 import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.container.Shortcut
+import com.winlator.cmod.runtime.display.XServerDisplayActivity
+import com.winlator.cmod.runtime.linux.LinuxRuntime
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.ui.toast.WinToast
 import java.io.File
@@ -69,12 +72,21 @@ object LinuxApps {
         return true
     }
 
-    /** UI thread. Until the Linux runtime ships there is nothing to start the program with. */
+    /** UI thread. Starts a session in the Linux runtime, or says why it cannot. */
     fun launch(
         context: Context,
         shortcut: Shortcut,
     ) {
         val name = shortcut.getExtra("custom_name").ifEmpty { shortcut.name }
-        WinToast.show(context, context.getString(R.string.linux_runtime_not_installed, name), Toast.LENGTH_LONG)
+        if (!LinuxRuntime.isInstalled(context)) {
+            WinToast.show(context, context.getString(R.string.linux_runtime_not_installed, name), Toast.LENGTH_LONG)
+            return
+        }
+        val intent =
+            Intent(context, XServerDisplayActivity::class.java)
+                .putExtra("container_id", shortcut.container.id)
+                .putExtra("shortcut_path", shortcut.file.path)
+                .putExtra("shortcut_name", name)
+        context.startActivity(intent)
     }
 }

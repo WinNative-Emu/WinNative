@@ -359,6 +359,7 @@ static FilteredSysnum proot_sysnums[] = {
     {PR_mknodat, 0},
     {PR_name_to_handle_at, 0},
     {PR_newfstatat, 0},
+    {PR_statx, 0},
     {PR_open, 0},
     {PR_openat, 0},
     {PR_prctl, 0},

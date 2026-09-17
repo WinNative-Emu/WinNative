@@ -89,7 +89,8 @@ int launch_process(Tracee *tracee, char *const argv[]) {
     kill(getpid(), SIGSTOP);
 
     /* Improve performance by using seccomp mode 2  */
-    enable_syscall_filtering(tracee);
+    if (getenv("PROOT_NO_SECCOMP") == NULL)
+      enable_syscall_filtering(tracee);
 
     /* Now process is ptraced, so the current rootfs is already the
      * guest rootfs.  Note: Valgrind can't handle execve(2) on

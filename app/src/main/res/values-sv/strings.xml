@@ -2895,5 +2895,10 @@ Installerad sökväg:
     <string name="container_display_server_needs_wayland_proton">Denna Proton saknar winewayland och Wayland Turnip-drivrutinen, så X11 används. Installera ett Wayland Proton-lager från Innehåll och välj det som containerns Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland är inte tillgängligt för detta spel. Startar på X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland behöver en Turnip-grafikdrivrutin för att visa spelet. Installera en under Innehåll och välj den som grafikdrivrutin.</string>
+    <string name="container_runtime">Körmiljö</string>
+    <string name="container_runtime_help">Startar gamescope i Linux-körmiljön på Wayland-kompositören i stället för Wine. Linux-program och den nativa Steam-klienten körs här.</string>
+    <string name="linux_runtime_missing">Linux-körmiljön är inte installerad, så den här containern kan inte startas ännu.</string>
+    <string name="container_display_server_gamescope">Gamescope ritar alltid genom Wayland-kompositören.</string>
+    <string name="linux_runtime_windows_program">Detta är ett Windows-program. Ställ in dess körmiljö på Wine i genvägsinställningarna för att starta det.</string>
     <string name="settings_content_badge_online">Online</string>
 </resources>

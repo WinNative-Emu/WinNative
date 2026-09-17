@@ -2897,5 +2897,10 @@ Installeret sti:
     <string name="container_display_server_needs_wayland_proton">Denne Proton har hverken winewayland eller Wayland Turnip-driveren, så X11 bruges. Installér et Wayland Proton-lag fra Indhold, og vælg det som containerens Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland er ikke tilgængelig for dette spil. Starter på X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland kræver en Turnip-grafikdriver for at vise spillet. Installér en under Indhold, og vælg den som grafikdriver.</string>
+    <string name="container_runtime">Runtime</string>
+    <string name="container_runtime_help">Starter gamescope i Linux-runtimen på Wayland-compositoren i stedet for Wine. Linux-programmer og den native Steam-klient kører her.</string>
+    <string name="linux_runtime_missing">Linux-runtimen er ikke installeret, så denne container kan ikke starte endnu.</string>
+    <string name="container_display_server_gamescope">Gamescope tegner altid gennem Wayland-compositoren.</string>
+    <string name="linux_runtime_windows_program">Dette er et Windows-program. Sæt dets runtime til Wine i genvejsindstillingerne for at starte det.</string>
     <string name="settings_content_badge_online">Online</string>
 </resources>
