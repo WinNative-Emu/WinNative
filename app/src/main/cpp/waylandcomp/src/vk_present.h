@@ -121,12 +121,12 @@ int vkp_can_wait_sync_fd(void);
 
 /* ---- HDR composition (hdr_compose.h) ----
  * An HDR game that cannot be alone on its display layer: the scene is composed into ONE encoding. */
-struct banner_color;
+struct wnc_color;
 struct vkp_hdr_frame {
     const unsigned char *is_hdr; /* per draw: 1 = its image holds PQ BT.2020 (the surface's description) */
     float peak_nits;             /* the HDR content's peak, for a tone-map (max CLL / mastering max; 0 = 1000) */
     int tonemap;                 /* 1 = the drawer's HDR output switch is off: tone-map to SDR, never PQ */
-    const struct banner_color *color; /* the topmost HDR draw's description: an HDR10 swapchain's metadata */
+    const struct wnc_color *color; /* the topmost HDR draw's description: an HDR10 swapchain's metadata */
 };
 /* vkp_render for a scene with HDR draws (frame generation): composed into PQ and presented through an
  * HDR10 swapchain where the surface offers one (and hf->tonemap is 0), else tone-mapped into the ordinary
@@ -180,6 +180,6 @@ int vkp_pass_copy_to(struct vkp_image *dst, int wait_fd);
 void vkp_pass_abort(void);
 
 // Session log (compositor.c): one line to Download/Wayland-logs and logcat.
-void banner_log(const char *tag, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+void wnc_log(const char *tag, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
 #endif

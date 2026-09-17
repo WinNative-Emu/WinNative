@@ -1,5 +1,5 @@
 /*
- * bannerlator-wayland — the embedded compositor of the Wayland display path.
+ * The embedded compositor of the Wayland display path.
  *
  * Clients are the Wine processes of a container (winewayland.drv) and, through them,
  * Mesa's Vulkan WSI. Each process is its own client, so a Windows virtual desktop is
@@ -41,7 +41,7 @@
 #include "sc_layer.h"
 #include "ahb_swapchain.h"
 #include "viewporter-server-protocol.h"
-#include "banner-desktop-v1-server-protocol.h"
+#include "desktop-v1-server-protocol.h"
 #include "presentation-time-server-protocol.h"
 #include "pointer-constraints-unstable-v1-server-protocol.h"
 #include "relative-pointer-unstable-v1-server-protocol.h"
@@ -49,11 +49,11 @@
 #include "framegen_bridge.h"
 #include <pthread.h>
 #include "effects_chain.h"
-#include "banner_ext.h"
-#include "banner_color.h"
+#include "desktop_ext.h"
+#include "color_mgmt.h"
 
-#define WLOGI(...) __android_log_print(ANDROID_LOG_INFO, "BannerWayland", __VA_ARGS__)
-#define WLOGE(...) __android_log_print(ANDROID_LOG_ERROR, "BannerWayland", __VA_ARGS__)
+#define WLOGI(...) __android_log_print(ANDROID_LOG_INFO, "WNWayland", __VA_ARGS__)
+#define WLOGE(...) __android_log_print(ANDROID_LOG_ERROR, "WNWayland", __VA_ARGS__)
 
 /* ------------------------------------------------------------------ session log
  * One readable, time-stamped file per Wayland session in Download/Wayland-logs, also
@@ -72,7 +72,7 @@ static pthread_mutex_t g_log_lock = PTHREAD_MUTEX_INITIALIZER;
 static char *g_prelog[PRELOG_MAX];
 static int g_prelog_n;
 
-void banner_log(const char *tag, const char *fmt, ...) {
+void wnc_log(const char *tag, const char *fmt, ...) {
     char msg[512];
     va_list ap;
     va_start(ap, fmt);
@@ -92,7 +92,7 @@ void banner_log(const char *tag, const char *fmt, ...) {
     pthread_mutex_unlock(&g_log_lock);
 }
 
-void banner_wayland_set_log_dir(const char *dir) {
+void wnc_wayland_set_log_dir(const char *dir) {
     pthread_mutex_lock(&g_log_lock);
     snprintf(g_log_dir, sizeof(g_log_dir), "%s", dir ? dir : "");
     pthread_mutex_unlock(&g_log_lock);
@@ -133,7 +133,6 @@ static void open_session_log(void) {
             "=========================\n"
             "Started   %s\n"
             "Display   Wayland: Windows programs draw through the embedded compositor\n"
-            "          (Bannerlator waylandcomp by The412Banner).\n"
             "          No X server is used for this session.\n"
             "Log       %s\n\n"
             "Time          Area      Event\n"
@@ -199,8 +198,8 @@ static const char *client_name(struct wl_client *client) {
 
 static void on_client_destroyed(struct wl_listener *l, void *data) {
     struct client_info *ci = wl_container_of(l, ci, destroy), **pp;
-    banner_log("program", "disconnected: %s (pid %d)", ci->name, (int)ci->pid);
-    banner_color_client_gone(ci->client); /* HDR summary for a program that presented HDR (gate open only) */
+    wnc_log("program", "disconnected: %s (pid %d)", ci->name, (int)ci->pid);
+    wnc_color_client_gone(ci->client); /* HDR summary for a program that presented HDR (gate open only) */
     for (pp = &g_clients; *pp; pp = &(*pp)->next)
         if (*pp == ci) { *pp = ci->next; break; }
     free(ci);
@@ -232,7 +231,7 @@ static void on_client_created(struct wl_listener *l, void *data) {
     wl_client_add_destroy_listener(client, &ci->destroy);
     ci->next = g_clients;
     g_clients = ci;
-    banner_log("program", "connected over Wayland: %s (pid %d)", ci->name, (int)ci->pid);
+    wnc_log("program", "connected over Wayland: %s (pid %d)", ci->name, (int)ci->pid);
 }
 
 /* ------------------------------------------------------------------ surfaces */
@@ -595,7 +594,7 @@ static void map_toplevel(struct surface *s) {
     {
         char name[160];
         describe(s, name, sizeof(name));
-        banner_log("window", "opened %s %dx%d at %d,%d%s", name, w, h, s->x, s->y,
+        wnc_log("window", "opened %s %dx%d at %d,%d%s", name, w, h, s->x, s->y,
                    s->placed ? "" : " (no desktop position yet)");
     }
     wl_list_insert(g_toplevels.prev, &s->toplevel_link); /* new windows start on top */
@@ -608,12 +607,12 @@ static void unmap_toplevel(struct surface *s) {
     {
         char name[160];
         describe(s, name, sizeof(name));
-        banner_log("window", "closed %s", name);
+        wnc_log("window", "closed %s", name);
     }
     wl_list_remove(&s->toplevel_link);
     wl_list_init(&s->toplevel_link);
     if (g_ime_click == s) g_ime_click = NULL;
-    banner_text_input_refocus();
+    wnc_text_input_refocus();
 }
 
 /* Let go of the surface's dmabuf content. paced = 1: the buffer was replaced, give it back on the
@@ -688,11 +687,11 @@ static void take_shm(struct surface *s, struct wl_shm_buffer *shm, struct wl_res
 /* The window the app's performance HUD follows: the latest one to start presenting GPU frames
  * (X11 binds the HUD to the _MESA_DRV window and counts X presents instead). JNI upcalls. */
 static struct surface *g_hud_surface;
-extern void banner_on_game_surface(const char *window, const char *gpu); /* window NULL = gone */
-extern void banner_on_game_frame(void);
+extern void wnc_on_game_surface(const char *window, const char *gpu); /* window NULL = gone */
+extern void wnc_on_game_frame(void);
 /* The program behind that window: its Linux pid (the Wayland client's credentials) and executable name
  * ("" when /proc gave none) - the app arms its CPU affinity on it (X11 does that from window events). */
-extern void banner_on_game_program(int pid, const char *program);
+extern void wnc_on_game_program(int pid, const char *program);
 
 static void take_dmabuf(struct surface *s, struct dmabuf_buffer *b, struct wl_resource *buffer) {
     if (s->dmabuf != buffer || s->dmabuf_buf != b) {
@@ -725,61 +724,61 @@ static void take_dmabuf(struct surface *s, struct dmabuf_buffer *b, struct wl_re
         if (b->img)
             /* Imported for the copy path. Whether its frames ALSO go on the display layer without a copy
              * is decided per frame (fullscreen, zero-copy on) and counted in the 10 s lines. */
-            banner_log("vulkan", "%s is presenting GPU frames through Wayland: %dx%d, format %c%c%c%c, %s (%s)",
+            wnc_log("vulkan", "%s is presenting GPU frames through Wayland: %dx%d, format %c%c%c%c, %s (%s)",
                        name, b->width, b->height, b->format & 0xff, (b->format >> 8) & 0xff,
                        (b->format >> 16) & 0xff, (b->format >> 24) & 0xff,
                        vkp_modifier_name(b->modifier),
                        ahb_swapchain_has_ahb(b) ? "gralloc buffers: can go on the display layer without a copy"
                                                 : "dma-buf: copied into the screen swapchain");
         else if (ahb_swapchain_has_ahb(b))
-            banner_log("vulkan", "%s is presenting GPU frames through Wayland: %dx%d on its own display layer only "
+            wnc_log("vulkan", "%s is presenting GPU frames through Wayland: %dx%d on its own display layer only "
                        "(gralloc buffers the compositor cannot import for the copy path)",
                        name, b->width, b->height);
         else
-            banner_log("error", "could not import GPU frames from %s (%dx%d, modifier %#llx)",
+            wnc_log("error", "could not import GPU frames from %s (%dx%d, modifier %#llx)",
                        name, b->width, b->height, (unsigned long long)b->modifier);
         /* The HUD follows the window whether its frames are copied or go straight to the layer:
          * a zero-copy frame the compositor never imported is still a presented game frame. */
         if (b->img || ahb_swapchain_has_ahb(b)) {
             g_hud_surface = s;
-            banner_on_game_surface(name, vkp_gpu_name());
+            wnc_on_game_surface(name, vkp_gpu_name());
             struct client_info *ci = client_info_of(wl_resource_get_client(s->resource));
-            if (ci) banner_on_game_program((int)ci->pid, strncmp(ci->name, "pid ", 4) ? ci->name : "");
+            if (ci) wnc_on_game_program((int)ci->pid, strncmp(ci->name, "pid ", 4) ? ci->name : "");
         }
     }
     /* HDR session (gate open): a DXVK game switches to HDR by REBUILDING its swapchain on the same
      * surface, so the one-shot line above never sees the 10-bit buffers - name every format change. */
-    if (b->format != s->hdr_fmt_logged && banner_color_hdr_open()) {
+    if (b->format != s->hdr_fmt_logged && wnc_color_hdr_open()) {
         char name[160];
         uint32_t af = ahb_swapchain_ahb_format(b);
         int ten = b->format == FOURCC('A', 'B', '3', '0') || b->format == FOURCC('X', 'B', '3', '0');
         describe(s, name, sizeof(name));
-        banner_log("color", "%s presents %dx%d buffers in %c%c%c%c (%s), %s%s%s; %s", name, b->width, b->height,
+        wnc_log("color", "%s presents %dx%d buffers in %c%c%c%c (%s), %s%s%s; %s", name, b->width, b->height,
                    b->format & 0xff, (b->format >> 8) & 0xff, (b->format >> 16) & 0xff, (b->format >> 24) & 0xff,
                    ten ? "10-bit A2B10G10R10" : "8-bit", vkp_modifier_name(b->modifier),
-                   af ? ", gralloc " : ", no gralloc buffer (copy path only)", af ? banner_ahb_format_name(af) : "",
+                   af ? ", gralloc " : ", no gralloc buffer (copy path only)", af ? wnc_ahb_format_name(af) : "",
                    b->img ? "the compositor imported it"
                           : af ? "the compositor's driver could NOT import it (display layer only, fullscreen)"
                                : "the compositor's driver could NOT import it (nothing can show it)");
         s->hdr_fmt_logged = b->format;
     }
-    if (s == g_hud_surface && (b->img || ahb_swapchain_has_ahb(b))) banner_on_game_frame();
+    if (s == g_hud_surface && (b->img || ahb_swapchain_has_ahb(b))) wnc_on_game_frame();
 }
 
 /* ---- hooks for ahb_swapchain.c (zero-copy layers) */
-struct dmabuf_buffer *banner_dmabuf_from_resource(struct wl_resource *buffer) { return get_dmabuf(buffer); }
-int banner_dmabuf_fd(const struct dmabuf_buffer *b) { return b && b->n_planes > 0 ? b->fd[0] : -1; }
-void banner_dmabuf_size(const struct dmabuf_buffer *b, int *w, int *h) { *w = b->width; *h = b->height; }
-void **banner_dmabuf_ahb_slot(struct dmabuf_buffer *b) { return &b->ahb_state; }
-void banner_dmabuf_ref(struct dmabuf_buffer *b) { b->refs++; }
-void banner_dmabuf_unref(struct dmabuf_buffer *b) { dmabuf_buffer_unref(b); }
-void banner_release_buffer(struct surface *s, struct wl_resource *buffer, int paced, int64_t since_ns) {
+struct dmabuf_buffer *wnc_dmabuf_from_resource(struct wl_resource *buffer) { return get_dmabuf(buffer); }
+int wnc_dmabuf_fd(const struct dmabuf_buffer *b) { return b && b->n_planes > 0 ? b->fd[0] : -1; }
+void wnc_dmabuf_size(const struct dmabuf_buffer *b, int *w, int *h) { *w = b->width; *h = b->height; }
+void **wnc_dmabuf_ahb_slot(struct dmabuf_buffer *b) { return &b->ahb_state; }
+void wnc_dmabuf_ref(struct dmabuf_buffer *b) { b->refs++; }
+void wnc_dmabuf_unref(struct dmabuf_buffer *b) { dmabuf_buffer_unref(b); }
+void wnc_release_buffer(struct surface *s, struct wl_resource *buffer, int paced, int64_t since_ns) {
     if (paced && s) release_buffer(s, buffer, since_ns);
     else { wl_buffer_send_release(buffer); perf_note_release(since_ns); }
 }
-void banner_surface_describe(const struct surface *s, char *out, size_t size) { describe(s, out, size); }
-const struct banner_color *banner_surface_color(const struct surface *s) {
-    return s ? banner_color_of(s->resource) : NULL;
+void wnc_surface_describe(const struct surface *s, char *out, size_t size) { describe(s, out, size); }
+const struct wnc_color *wnc_surface_color(const struct surface *s) {
+    return s ? wnc_color_of(s->resource) : NULL;
 }
 
 /* ------------------------------------------------------------------ wl_surface */
@@ -924,7 +923,7 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
     wl_list_insert_list(s->feedback.prev, &s->pending_feedback);
     wl_list_init(&s->pending_feedback);
     constraints_surface_commit(s);
-    banner_color_commit(s->resource); /* wp_color_management_surface_v1 state (returns at once when HDR is off) */
+    wnc_color_commit(s->resource); /* wp_color_management_surface_v1 state (returns at once when HDR is off) */
 
     if (s->role == ROLE_TOPLEVEL && s->xdg_toplevel) {
         if (s->has_content) map_toplevel(s);
@@ -970,9 +969,9 @@ static void surface_resource_destroy(struct wl_resource *r) {
     if (g_grab == s) g_grab = NULL;
     if (g_key_target == s) g_key_target = NULL;
     if (g_ime_click == s) g_ime_click = NULL;
-    banner_text_input_surface_gone(r);
-    if (g_desktop == s) { g_desktop = NULL; banner_log("desktop", "the desktop closed"); }
-    if (g_hud_surface == s) { g_hud_surface = NULL; banner_on_game_surface(NULL, NULL); }
+    wnc_text_input_surface_gone(r);
+    if (g_desktop == s) { g_desktop = NULL; wnc_log("desktop", "the desktop closed"); }
+    if (g_hud_surface == s) { g_hud_surface = NULL; wnc_on_game_surface(NULL, NULL); }
     constraints_surface_gone(s);
 
     unmap_toplevel(s);
@@ -1310,7 +1309,7 @@ static void desktop_set_desktop(struct wl_client *c, struct wl_resource *r, stru
     if (!s || (s->role != ROLE_NONE && s->role != ROLE_DESKTOP)) return;
     s->role = ROLE_DESKTOP;
     g_desktop = s;
-    banner_log("desktop", "Windows virtual desktop created by %s", client_name(c));
+    wnc_log("desktop", "Windows virtual desktop created by %s", client_name(c));
     schedule_render();
 }
 static void desktop_set_window(struct wl_client *c, struct wl_resource *r, struct wl_resource *surface,
@@ -1320,7 +1319,7 @@ static void desktop_set_window(struct wl_client *c, struct wl_resource *r, struc
     if (s->placed && (s->x != x || s->y != y) && s->mapped && log_budget()) {
         char name[160];
         describe(s, name, sizeof(name));
-        banner_log("window", "moved %s to %d,%d", name, x, y);
+        wnc_log("window", "moved %s to %d,%d", name, x, y);
     }
     s->hwnd = hwnd;
     s->x = x;
@@ -1443,7 +1442,7 @@ static const struct zwp_linux_dmabuf_v1_interface dmabuf_impl = {
 /* The advertised format/modifier table, built at the first bind from what the renderer's driver
  * can import (vkp_dmabuf_modifiers). INVALID is always offered too (Mesa drops it; other clients
  * may use it for the implicit path). Without a renderer the list is LINEAR + INVALID, as before. */
-/* The last two rows are HDR10's (banner_color.h): A2B10G10R10 as AB30 (alpha) + XB30 (opaque) - Mesa
+/* The last two rows are HDR10's (color_mgmt.h): A2B10G10R10 as AB30 (alpha) + XB30 (opaque) - Mesa
  * lists a VkFormat only when both are advertised, and it is the one 10-bit layout our zero-copy WSI
  * can put in a gralloc buffer (AHARDWAREBUFFER_FORMAT_R10G10B10A2_UNORM). They are advertised ONLY
  * while the HDR gate is open, and after the 8-bit rows, so every other session - and every client that
@@ -1463,7 +1462,7 @@ static void dmabuf_build_formats(void) {
     char line[320];
     int pos = 0, compressed = 0;
     g_dmabuf_fmts_ready = 1;
-    g_dmabuf_nfmt = banner_color_hdr_open() ? DMABUF_NFMT_MAX : DMABUF_NFMT_SDR;
+    g_dmabuf_nfmt = wnc_color_hdr_open() ? DMABUF_NFMT_MAX : DMABUF_NFMT_SDR;
     for (int f = 0; f < g_dmabuf_nfmt; f++) {
         uint64_t got[DMABUF_NMOD];
         int n = vkp_dmabuf_modifiers(g_dmabuf_fmts[f].fmt, got, DMABUF_NMOD), k = 0;
@@ -1486,10 +1485,10 @@ static void dmabuf_build_formats(void) {
                             vkp_modifier_name(g_dmabuf_fmts[f].mods[i]));
         if (pos >= (int)sizeof(line)) pos = (int)sizeof(line) - 1;
     }
-    banner_log("dmabuf", "formats: %s%s", line,
+    wnc_log("dmabuf", "formats: %s%s", line,
                !g_ubwc ? " (BANNER_WAYLAND_UBWC=0: qcom_compressed not advertised)" : "");
     if (g_ubwc && !compressed)
-        banner_log("dmabuf", "the compositor's driver (%s) reports no importable qcom_compressed layout: "
+        wnc_log("dmabuf", "the compositor's driver (%s) reports no importable qcom_compressed layout: "
                    "game swapchains stay linear", vkp_gpu_name());
     if (g_dmabuf_nfmt > DMABUF_NFMT_SDR) {
         /* The rows above always carry LINEAR; say what the compositor's own driver can really import
@@ -1497,7 +1496,7 @@ static void dmabuf_build_formats(void) {
         uint64_t got[DMABUF_NMOD];
         int n = vkp_dmabuf_modifiers(DRM_XBGR2101010, got, DMABUF_NMOD), ubwc10 = 0;
         for (int i = 0; i < n; i++) if (got[i] == VKP_MOD_QCOM_COMPRESSED) ubwc10 = 1;
-        banner_log("color", "10-bit dma-buf formats AB30/XB30 advertised for HDR10; the compositor's driver (%s) "
+        wnc_log("color", "10-bit dma-buf formats AB30/XB30 advertised for HDR10; the compositor's driver (%s) "
                    "imports XB30 %s", vkp_gpu_name(),
                    n == 0 ? "with no layout it reports (copy path unlikely; display layer only)"
                           : ubwc10 ? "linear and UBWC" : "linear only (UBWC 10-bit frames: display layer only)");
@@ -1568,7 +1567,7 @@ static void dmabuf_build_feedback(void) {
         }
     if (!n) return;
 
-    int fd = (int)syscall(__NR_memfd_create, "banner-dmabuf-formats",
+    int fd = (int)syscall(__NR_memfd_create, "wn-dmabuf-formats",
                           MFD_CLOEXEC | MFD_ALLOW_SEALING);
     if (fd < 0) { WLOGE("dmabuf feedback: memfd_create failed (%s)", strerror(errno)); return; }
     size_t size = (size_t)n * sizeof(entries[0]);
@@ -1582,12 +1581,12 @@ static void dmabuf_build_feedback(void) {
     g_fmt_table_fd = fd;
     g_fmt_table_size = size;
     g_fmt_table_n = (uint16_t)n;
-    banner_log("dmabuf", "feedback ready: %d format/modifier pairs, main device %u:%u",
+    wnc_log("dmabuf", "feedback ready: %d format/modifier pairs, main device %u:%u",
                n, (unsigned)major(g_main_device), (unsigned)minor(g_main_device));
     /* Vulkan games never need the node. Mesa's EGL did until Wayland layer versionCode 9: without
      * one it fell back to a software path that draws nothing here (black window, sound plays). */
     if (!g_main_device)
-        banner_log("dmabuf", "%s: OpenGL games need Wayland layer versionCode 9 or newer, "
+        wnc_log("dmabuf", "%s: OpenGL games need Wayland layer versionCode 9 or newer, "
                    "which runs OpenGL on the GPU without a DRM node; older layers show a black window",
                    g_no_render_node ? "no DRM device named (forced by BANNER_WAYLAND_NO_RENDER_NODE=1)"
                                     : "this device gives apps no display (DRM) device (/dev/dri)");
@@ -1670,7 +1669,7 @@ static void bind_output(struct wl_client *c, void *data, uint32_t ver, uint32_t 
     struct wl_resource *r = wl_resource_create(c, &wl_output_interface, ver, id);
     wl_resource_set_implementation(r, NULL, NULL, NULL);
     wl_output_send_geometry(r, 0, 0, 340, 190, WL_OUTPUT_SUBPIXEL_UNKNOWN,
-                            "Bannerlator", "Wayland", WL_OUTPUT_TRANSFORM_NORMAL);
+                            "WinNative", "Wayland", WL_OUTPUT_TRANSFORM_NORMAL);
     wl_output_send_mode(r, WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED,
                         g_output_w > 0 ? g_output_w : 1920, g_output_h > 0 ? g_output_h : 1080,
                         g_output_refresh_mhz > 0 ? g_output_refresh_mhz : 60000);
@@ -1701,7 +1700,7 @@ static int g_hdr_unimported_rect[4], g_hdr_unimported_below; /* scene x,y,w,h; d
 
 static void note_hdr_unimported(const struct draw_list *dl, struct surface *s, int ox, int oy) {
     if (!s->dmabuf_buf || s->dmabuf_buf->img || !ahb_swapchain_has_ahb(s->dmabuf_buf)) return;
-    const struct banner_color *c = banner_color_of(s->resource);
+    const struct wnc_color *c = wnc_color_of(s->resource);
     if (!c || !c->dataspace) return;
     if (s->src_set && (s->src[0] != 0 || s->src[1] != 0 || (int)(s->src[2] + 0.5f) != s->buf_w ||
                        (int)(s->src[3] + 0.5f) != s->buf_h)) return; /* cropped: the layer shows whole buffers */
@@ -1719,7 +1718,7 @@ static void add_surface(struct draw_list *dl, struct surface *s, int ox, int oy)
     int dw, dh;
 
     if (!img) {
-        if (g_zero_copy && banner_color_hdr_open()) note_hdr_unimported(dl, s, ox, oy);
+        if (g_zero_copy && wnc_color_hdr_open()) note_hdr_unimported(dl, s, ox, oy);
         return;
     }
     if (s->src_set) { sx = s->src[0]; sy = s->src[1]; sw = s->src[2]; sh = s->src[3]; }
@@ -1837,7 +1836,7 @@ static struct surface *ahb_layer_only_candidate(int scene_w, int scene_h) {
     return s;
 }
 
-/* ---- HDR (banner_color.h) in the scene
+/* ---- HDR (color_mgmt.h) in the scene
  * An HDR frame is only right on the game's own display layer: everything the compositor draws itself -
  * the scene blit, the effects chain, frame generation, its swapchain - is 8-bit sRGB, and a PQ-encoded
  * frame pushed through it as it stands comes out washed out. So a scene with HDR in it takes one of
@@ -1853,7 +1852,7 @@ static struct surface *ahb_layer_only_candidate(int scene_w, int scene_h) {
  *      tone-mapped to SDR (correct colours instead of washed out).
  *   3  a frame the compositor could not import: only its display layer can show it, so effects and
  *      frame generation are skipped for it (said in the log).
- * The drawer's HDR output switch (banner_color_output) OFF: the same routes, tone-mapped - route 0
+ * The drawer's HDR output switch (wnc_color_output) OFF: the same routes, tone-mapped - route 0
  * becomes route 1 (the whole scene composed, tone-mapped to sRGB, onto the game layer UNtagged), route 2
  * tone-maps into an SDR swapchain, route 3 cannot (nothing can read those frames) and stays HDR, said
  * in the log. The game is told nothing; it keeps rendering HDR.
@@ -1863,7 +1862,7 @@ struct hdr_scene {
     struct vkp_hdr_frame hf;
     unsigned char *is_hdr;              /* per draw (calloc'd; free after the frame) */
     int n_hdr;
-    const struct banner_color *color;   /* the topmost HDR draw's description: what the picture is tagged */
+    const struct wnc_color *color;   /* the topmost HDR draw's description: what the picture is tagged */
     struct surface *who;                /* its surface, for the log */
     const char *why;                    /* route 1: why the game cannot be alone on its layer */
 };
@@ -1878,29 +1877,29 @@ static struct surface *hdr_unimported_fullscreen(const struct draw_list *dl, int
 }
 
 static int is_hdr_surface(struct surface *s) {
-    const struct banner_color *c = s ? banner_color_of(s->resource) : NULL;
+    const struct wnc_color *c = s ? wnc_color_of(s->resource) : NULL;
     return c && c->dataspace;
 }
 
 /* Which route this scene takes (see above); fills hs. 0 whenever the gate is closed or no HDR is drawn. */
 static int hdr_plan(const struct draw_list *dl, int w, int h, int fx_on, int framegen, struct hdr_scene *hs) {
     memset(hs, 0, sizeof(*hs));
-    if (!banner_color_hdr_open()) return 0;
+    if (!wnc_color_hdr_open()) return 0;
     /* A fullscreen HDR frame this compositor could not import has no draw: layer only (route 3). */
     struct surface *un = hdr_unimported_fullscreen(dl, w, h);
     if (!un) {
         struct surface *lo = ahb_layer_only_candidate(w, h);
         if (lo && is_hdr_surface(lo)) un = lo;
     }
-    if (un && g_zero_copy) { hs->color = banner_color_of(un->resource); hs->who = un; return 3; }
-    hs->hf.tonemap = !banner_color_output();
+    if (un && g_zero_copy) { hs->color = wnc_color_of(un->resource); hs->who = un; return 3; }
+    hs->hf.tonemap = !wnc_color_output();
     if (dl->n <= 0 || !(hs->is_hdr = calloc((size_t)dl->n, 1))) return 0;
     for (int i = 0; i < dl->n; i++) {
         struct surface *s = surface_for_image(dl->d[i].img);
         if (!is_hdr_surface(s)) continue;
         hs->is_hdr[i] = 1;
         hs->n_hdr++;
-        hs->color = banner_color_of(s->resource); /* later draws are above: the topmost wins */
+        hs->color = wnc_color_of(s->resource); /* later draws are above: the topmost wins */
         hs->who = s;
     }
     if (!hs->n_hdr) { free(hs->is_hdr); hs->is_hdr = NULL; return 0; }
@@ -1929,7 +1928,7 @@ static int hdr_plan(const struct draw_list *dl, int w, int h, int fx_on, int fra
 static void hdr_note_route(int route, const struct hdr_scene *hs) {
     static int said = -1, said_tm = -1;
     static const char *said_why;
-    const int tm = route != 0 && !banner_color_output(); /* route 0 never runs with the switch off */
+    const int tm = route != 0 && !wnc_color_output(); /* route 0 never runs with the switch off */
     if (route == said && tm == said_tm && (route != 1 || hs->why == said_why)) return;
     int was = said;
     said = route; said_why = hs->why; said_tm = tm;
@@ -1938,30 +1937,30 @@ static void hdr_note_route(int route, const struct hdr_scene *hs) {
     switch (route) {
     case 1:
         if (tm)
-            banner_log("color", "tone-mapped picture for %s: %s - the whole scene is composed and tone-mapped to SDR "
+            wnc_log("color", "tone-mapped picture for %s: %s - the whole scene is composed and tone-mapped to SDR "
                        "(HDR peak %.0f nits rolled off to SDR white, screen effects applied after it) on the game's "
                        "display layer, untagged", name, hs->why ? hs->why : "?", hs->hf.peak_nits);
         else
-            banner_log("color", "HDR picture for %s: %s - the whole scene is composed into one 10-bit PQ BT.2020 picture "
+            wnc_log("color", "HDR picture for %s: %s - the whole scene is composed into one 10-bit PQ BT.2020 picture "
                        "(SDR content at %.0f nits, screen effects applied in 10-bit) on the game's display layer, tagged "
-                       "BT2020_PQ", name, hs->why ? hs->why : "?", banner_color_sdr_white());
+                       "BT2020_PQ", name, hs->why ? hs->why : "?", wnc_color_sdr_white());
         break;
     case 2:
         if (tm)
-            banner_log("color", "HDR with frame generation for %s, HDR output switched off: the scene is tone-mapped to "
+            wnc_log("color", "HDR with frame generation for %s, HDR output switched off: the scene is tone-mapped to "
                        "SDR and presented through an SDR screen swapchain", name);
         else
-            banner_log("color", "HDR with frame generation for %s: the scene is composed into PQ and presented through "
+            wnc_log("color", "HDR with frame generation for %s: the scene is composed into PQ and presented through "
                        "the screen swapchain (HDR10 where the surface offers it, else tone-mapped to SDR)", name);
         break;
     case 3:
         if (tm)
-            banner_log("color", "HDR output is switched off, but %s's HDR frames cannot be imported by the compositor, "
+            wnc_log("color", "HDR output is switched off, but %s's HDR frames cannot be imported by the compositor, "
                        "so nothing can tone-map them: they stay HDR on its own display layer", name);
         break; /* otherwise hdr_note_precedence says it */
     default:
         if (was == 1 || was == 2)
-            banner_log("color", "%s is back on its own display layer (no composition needed)", name);
+            wnc_log("color", "%s is back on its own display layer (no composition needed)", name);
         break;
     }
 }
@@ -1974,18 +1973,18 @@ static void hdr_note_precedence(struct surface *hs, int fx_on, int framegen) {
     if (hs) describe(hs, name, sizeof(name));
     if (fx_skip != fx_said) {
         if (fx_skip)
-            banner_log("color", "screen effects are NOT applied to %s: its HDR frames cannot be imported by the "
+            wnc_log("color", "screen effects are NOT applied to %s: its HDR frames cannot be imported by the "
                        "compositor, so only its own display layer can show them (as they are)", name);
         else if (fx_said == 1)
-            banner_log("color", "screen effects apply to the scene again (no HDR game on its layer, or effects off)");
+            wnc_log("color", "screen effects apply to the scene again (no HDR game on its layer, or effects off)");
         fx_said = fx_skip;
     }
     if (fg_skip != fg_said) {
         if (fg_skip)
-            banner_log("color", "frame generation is NOT applied to %s: its HDR frames cannot be imported by the "
+            wnc_log("color", "frame generation is NOT applied to %s: its HDR frames cannot be imported by the "
                        "compositor, so only its own display layer can show them (as they are)", name);
         else if (fg_said == 1)
-            banner_log("color", "frame generation applies again (no HDR game on its layer, or frame generation off)");
+            wnc_log("color", "frame generation applies again (no HDR game on its layer, or frame generation off)");
         fg_said = fg_skip;
     }
 }
@@ -1994,11 +1993,11 @@ static void hdr_note_precedence(struct surface *hs, int fx_on, int framegen) {
 static void hdr_count_copied(const struct draw_list *dl, const char *reason) {
     for (int i = 0; i < dl->n; i++) {
         struct surface *s = surface_for_image(dl->d[i].img);
-        const struct banner_color *c = s ? banner_color_of(s->resource) : NULL;
+        const struct wnc_color *c = s ? wnc_color_of(s->resource) : NULL;
         if (!c || !c->dataspace) continue;
         char name[160];
         describe(s, name, sizeof(name));
-        banner_color_frame_copied(name, reason);
+        wnc_color_frame_copied(name, reason);
     }
 }
 
@@ -2014,8 +2013,8 @@ static void render_scene(void) {
     wl_list_for_each(s, &g_surfaces, link) s->drawn = 0;
     scene_size(&w, &h);
     if (w != g_scene_w || h != g_scene_h) {
-        if (g_desktop) banner_log("desktop", "size %dx%d", w, h);
-        else banner_log("desktop", "no desktop: showing %dx%d (largest window)", w, h);
+        if (g_desktop) wnc_log("desktop", "size %dx%d", w, h);
+        else wnc_log("desktop", "no desktop: showing %dx%d (largest window)", w, h);
         g_scene_w = w;
         g_scene_h = h;
     }
@@ -2034,7 +2033,7 @@ static void render_scene(void) {
     struct hdr_scene hs;
     int hdr_route = hdr_plan(&dl, w, h, fx_on, framegen, &hs);
     const char *hdr_copy = NULL;           /* why this scene's HDR frames (if any) took the copy path */
-    if (banner_color_hdr_open()) {
+    if (wnc_color_hdr_open()) {
         hdr_note_route(hdr_route, &hs);
         hdr_note_precedence(hdr_route == 3 ? hs.who : NULL, fx_on, framegen);
     }
@@ -2045,12 +2044,12 @@ static void render_scene(void) {
         sc_layer_hide_overlay();
         if (sc_layer_present_hdr_scene(dl.d, dl.n, &hs.hf, w, h, hs.color) == 0) {
             rendered = vkp_base_black(w, h) == 0; /* black under the composed picture, presented only when it is not already */
-            if (fell_back) { fell_back = 0; banner_log("color", "the composed picture is on the game's display layer again"); }
+            if (fell_back) { fell_back = 0; wnc_log("color", "the composed picture is on the game's display layer again"); }
         } else {
             hdr_route = 2; /* no layer this frame: the picture goes through the swapchain instead */
             if (!fell_back) {
                 fell_back = 1;
-                banner_log("color", "the composed picture could not go on the game's display layer (no layer, or the "
+                wnc_log("color", "the composed picture could not go on the game's display layer (no layer, or the "
                            "10-bit pass failed): it goes through the screen swapchain instead until that changes");
             }
         }
@@ -2060,8 +2059,8 @@ static void render_scene(void) {
         sc_layer_hide();
         rendered = vkp_render_hdr(w, h, dl.d, dl.n, &hs.hf, &how) == 0;
         copy = 1;
-        if (rendered && how == 1) banner_color_frame_shown(hs.color, BANNER_HDR_SWAPCHAIN, 0);
-        else if (rendered && how == 2) banner_color_frame_shown(hs.color, BANNER_HDR_TONEMAPPED, 0);
+        if (rendered && how == 1) wnc_color_frame_shown(hs.color, WNC_HDR_SWAPCHAIN, 0);
+        else if (rendered && how == 2) wnc_color_frame_shown(hs.color, WNC_HDR_TONEMAPPED, 0);
         else if (rendered) hdr_copy = "the HDR composition pass is unavailable on this driver";
     }
     if (hdr_route == 0 || hdr_route == 3) {
@@ -2090,14 +2089,14 @@ static void render_scene(void) {
     if (g_zero_copy && blocked != g_zero_copy_paused) {
         g_zero_copy_paused = blocked;
         if (blocked == 1)
-            banner_log("framegen", "zero-copy paused: frame generation needs the compositor pass");
+            wnc_log("framegen", "zero-copy paused: frame generation needs the compositor pass");
         else if (blocked == 2)
-            banner_log("effects", "zero-copy paused: a window above the game needs the compositor pass for the whole scene");
+            wnc_log("effects", "zero-copy paused: a window above the game needs the compositor pass for the whole scene");
         else if (blocked == 3)
-            banner_log("layer", "zero-copy paused: a window above the game would need a second display layer, "
+            wnc_log("layer", "zero-copy paused: a window above the game would need a second display layer, "
                                 "which this display cannot compose in hardware - whole scene on the copy path");
         else
-            banner_log("effects", "zero-copy resumed: the game is back on its own display layer");
+            wnc_log("effects", "zero-copy resumed: the game is back on its own display layer");
     }
     struct surface *ls = li >= 0 ? surface_for_image(dl.d[li].img) : NULL;
     /* A frame this renderer could not import can only be shown on the layer, effects or not. */
@@ -2107,7 +2106,7 @@ static void render_scene(void) {
     if (li < 0 && !ls) ls = hdr_unimported_fullscreen(&dl, w, h);
     if (ls && pass_on && li < 0 && !g_zero_copy_fx_skip_said) {
         g_zero_copy_fx_skip_said = 1;
-        banner_log(framegen ? "framegen" : "effects",
+        wnc_log(framegen ? "framegen" : "effects",
                    "the game's frames cannot be imported by the compositor: shown zero-copy, %s skipped",
                    framegen ? "frame generation" : "effects");
     }
@@ -2134,7 +2133,7 @@ static void render_scene(void) {
             r = ahb_swapchain_present(ls->dmabuf_buf, ls, w, h);
         if (r != 0 && li >= 0)
             r = fx_on ? sc_layer_present_pass(&dl.d[li], 1, w, h)
-                      : sc_layer_present(dl.d[li].img, w, h, ls ? banner_surface_color(ls) : NULL);
+                      : sc_layer_present(dl.d[li].img, w, h, ls ? wnc_surface_color(ls) : NULL);
         if (r == 0) {
             if (ls) ls->drawn = 1;
             /* The one window above the game keeps the game off the copy path entirely: it goes on
@@ -2174,7 +2173,7 @@ static void render_scene(void) {
     }
     } /* routes 0 and 3 */
     free(hs.is_hdr);
-    if (hdr_copy && rendered && banner_color_hdr_open()) hdr_count_copied(&dl, hdr_copy);
+    if (hdr_copy && rendered && wnc_color_hdr_open()) hdr_count_copied(&dl, hdr_copy);
     if (rendered) {
         int64_t t = now_ns();
         g_stat_frames++;
@@ -2315,7 +2314,7 @@ static void bind_seat(struct wl_client *c, void *data, uint32_t ver, uint32_t id
     struct wl_resource *r = wl_resource_create(c, &wl_seat_interface, ver, id);
     wl_resource_set_implementation(r, &seat_impl, NULL, NULL);
     wl_seat_send_capabilities(r, WL_SEAT_CAPABILITY_POINTER | WL_SEAT_CAPABILITY_KEYBOARD);
-    if (ver >= 2) wl_seat_send_name(r, "bannerlator-seat");
+    if (ver >= 2) wl_seat_send_name(r, "winnative-seat");
 }
 
 static struct seat_pointer *pointer_for(struct wl_client *client) {
@@ -2373,7 +2372,7 @@ static void keyboard_focus(struct wl_resource *target) {
     /* Baseline modifiers = none; Shift/Ctrl arrive as their own key events. */
     wl_keyboard_send_modifiers(sk->kb, wl_display_next_serial(g_display), 0, 0, 0, 0);
     wl_array_release(&keys);
-    banner_clipboard_keyboard_focus(wl_resource_get_client(target)); /* wl_data_device selection follows focus */
+    wnc_clipboard_keyboard_focus(wl_resource_get_client(target)); /* wl_data_device selection follows focus */
 }
 
 /* ------------------------------------------------------------------ pointer constraints
@@ -2426,14 +2425,14 @@ static int g_raw_valid;
 
 /* JNI: the app switches its touch/mouse path to deltas while a lock holds and re-syncs its
  * pointer to x,y when it ends. */
-extern void banner_on_pointer_lock(int locked, int x, int y);
+extern void wnc_on_pointer_lock(int locked, int x, int y);
 
 static void sync_lock_notify(void) {
     static int last;
     int locked = g_active_constraint && g_active_constraint->is_lock;
     if (locked == last) return;
     last = locked;
-    banner_on_pointer_lock(locked, (int)g_ptr_x, (int)g_ptr_y);
+    wnc_on_pointer_lock(locked, (int)g_ptr_x, (int)g_ptr_y);
 }
 
 static void constraint_describe(const struct constraint *k, char *out, size_t size) {
@@ -2494,7 +2493,7 @@ static void constraint_end(struct constraint *k, int tell_client, const char *wh
     g_raw_valid = 0;
     if (tell_client) constraint_send_state(k, 0);
     constraint_describe(k, name, sizeof(name));
-    banner_log("pointer", "%s: %s (%s), pointer at %d,%d", k->is_lock ? "unlocked" : "unconfined",
+    wnc_log("pointer", "%s: %s (%s), pointer at %d,%d", k->is_lock ? "unlocked" : "unconfined",
                name, why, (int)g_ptr_x, (int)g_ptr_y);
     sync_lock_notify();
 }
@@ -2514,15 +2513,15 @@ static void constraint_activate(struct constraint *k) {
     constraint_send_state(k, 1);
     constraint_describe(k, name, sizeof(name));
     if (k->is_lock)
-        banner_log("pointer", "locked: %s (%s), pointer frozen at %d,%d", name,
+        wnc_log("pointer", "locked: %s (%s), pointer frozen at %d,%d", name,
                    k->lifetime == ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT ? "oneshot" : "persistent",
                    (int)g_ptr_x, (int)g_ptr_y);
     else if (k->region.set)
-        banner_log("pointer", "confined: %s (%s) to %dx%d at %d,%d of the window", name,
+        wnc_log("pointer", "confined: %s (%s) to %dx%d at %d,%d of the window", name,
                    k->lifetime == ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT ? "oneshot" : "persistent",
                    k->region.w, k->region.h, k->region.x, k->region.y);
     else
-        banner_log("pointer", "confined: %s (%s) to the whole window", name,
+        wnc_log("pointer", "confined: %s (%s) to the whole window", name,
                    k->lifetime == ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT ? "oneshot" : "persistent");
     sync_lock_notify();
     wl_display_flush_clients(g_display);
@@ -2576,7 +2575,7 @@ static void constraints_surface_commit(struct surface *s) {
                 g_ptr_x = ox + k->hint_x;
                 g_ptr_y = oy + k->hint_y;
                 if (log_budget())
-                    banner_log("pointer", "position hint: pointer moved to %d,%d", (int)g_ptr_x, (int)g_ptr_y);
+                    wnc_log("pointer", "position hint: pointer moved to %d,%d", (int)g_ptr_x, (int)g_ptr_y);
             }
         }
         if (k->pending_region_set) {
@@ -2657,7 +2656,7 @@ static void constraint_create(struct wl_client *c, struct wl_resource *r, uint32
     wl_list_insert(g_constraints.prev, &k->link);
     if (!s) { k->defunct = 1; return; }
     constraint_describe(k, name, sizeof(name));
-    banner_log("pointer", "%s requested by %s for %s", is_lock ? "lock" : "confine", client_name(c), name);
+    wnc_log("pointer", "%s requested by %s for %s", is_lock ? "lock" : "confine", client_name(c), name);
     constraint_activate(k);
 }
 
@@ -2688,7 +2687,7 @@ static void bind_pointer_constraints(struct wl_client *c, void *data, uint32_t v
 static void relative_pointer_resource_destroy(struct wl_resource *r) {
     struct relative_pointer *rp = wl_resource_get_user_data(r);
     if (!rp) return;
-    banner_log("pointer", "relative pointer released by %s", client_name(wl_resource_get_client(r)));
+    wnc_log("pointer", "relative pointer released by %s", client_name(wl_resource_get_client(r)));
     wl_list_remove(&rp->link);
     free(rp);
 }
@@ -2707,7 +2706,7 @@ static void relative_pointer_manager_get(struct wl_client *c, struct wl_resource
     rp->pointer = pointer;
     wl_resource_set_implementation(res, &relative_pointer_impl, rp, relative_pointer_resource_destroy);
     wl_list_insert(g_relative_pointers.prev, &rp->link);
-    banner_log("pointer", "relative pointer created for %s (motion arrives as deltas)", client_name(c));
+    wnc_log("pointer", "relative pointer created for %s (motion arrives as deltas)", client_name(c));
 }
 static const struct zwp_relative_pointer_manager_v1_interface relative_pointer_manager_impl = {
     .destroy = relative_pointer_manager_destroy,
@@ -2811,7 +2810,7 @@ static void pointer_input(double x, double y, int relative, uint32_t button, int
     if (button && pressed && !(k && k->is_lock)) {
         struct surface *clicked = toplevel_at(g_ptr_x, g_ptr_y);
         if (clicked) g_ime_click = clicked;
-        banner_text_input_refocus();
+        wnc_text_input_refocus();
     }
     wl_display_flush_clients(g_display);
 }
@@ -2852,7 +2851,7 @@ static void deliver_pointer(const struct input_msg *m) {
 }
 
 static void key_event(uint32_t evdev, int pressed);
-struct wl_resource *banner_ime_target(void);
+struct wl_resource *wnc_ime_target(void);
 static void deliver_key(const struct input_msg *m) {
     key_event((uint32_t)m->p1, m->p2);
 }
@@ -2883,7 +2882,7 @@ static void key_event(uint32_t evdev, int pressed) {
      * thread, not to the foreground program (X11 delivers keys to the focused app window, so
      * this mirrors it). The desktop itself is the last resort. */
     struct surface *target = NULL;
-    struct wl_resource *ime = banner_ime_target();
+    struct wl_resource *ime = wnc_ime_target();
     if (ime) target = wl_resource_get_user_data(ime);
     if (!target && g_key_target && g_key_target->mapped && g_key_target != g_desktop) target = g_key_target;
     if (!target) target = g_desktop;
@@ -2913,7 +2912,7 @@ static void session_end(void) {
     g_desktop = NULL; g_hud_surface = NULL; g_hdr_unimported = NULL;
     g_active_constraint = NULL;
     sc_layer_hide();
-    banner_color_session_end();
+    wnc_color_session_end();
     g_zero_copy_paused = 0;
     g_zero_copy_fx_skip_said = 0;
     g_stat_frames = g_stat_dmabuf = g_stat_shm = 0;
@@ -2923,7 +2922,7 @@ static void session_end(void) {
     if (g_fmt_table_fd >= 0) { close(g_fmt_table_fd); g_fmt_table_fd = -1; }
     g_fmt_table_size = 0; g_fmt_table_n = 0;
     g_dmabuf_fmts_ready = 0;
-    banner_log("display", "session ended: clients disconnected, state reset");
+    wnc_log("display", "session ended: clients disconnected, state reset");
     close_session_log();
 }
 
@@ -2931,7 +2930,7 @@ static void session_end(void) {
  * session's settings (hide shell, output mode, FPS limit, zero-copy...). Compositor thread. */
 static void session_begin(void) {
     open_session_log();
-    banner_log("display", "session started on the running compositor (%s)", vkp_gpu_name());
+    wnc_log("display", "session started on the running compositor (%s)", vkp_gpu_name());
 }
 
 /* wl event-loop callback: drain queued input events written by the Android UI thread. */
@@ -2955,7 +2954,7 @@ static int on_input_readable(int fd, uint32_t mask, void *data) {
 
 /* Called from JNI (Android UI thread). Queues a pointer event; the compositor thread
  * dispatches it. x/y are in INPUT_SPACE (0..1919, 0..1079) over the whole output. */
-void banner_wayland_send_pointer(int action, int x, int y) {
+void wnc_wayland_send_pointer(int action, int x, int y) {
     if (g_input_pipe[1] < 0) return;
     struct input_msg m = { 0, action, x, y };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
@@ -2963,7 +2962,7 @@ void banner_wayland_send_pointer(int action, int x, int y) {
 }
 
 /* Called from JNI. Queues a key event. evdev = Linux input keycode (e.g. KEY_A=30); state 1=down 0=up. */
-void banner_wayland_send_key(int evdev, int state) {
+void wnc_wayland_send_key(int evdev, int state) {
     if (g_input_pipe[1] < 0) return;
     struct input_msg m = { 1, evdev, state, 0 };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
@@ -2971,14 +2970,14 @@ void banner_wayland_send_key(int evdev, int state) {
 }
 
 /* Called from JNI when a game session ends / a new one starts on the running compositor. */
-void banner_wayland_end_session(void) {
+void wnc_wayland_end_session(void) {
     if (g_input_pipe[1] < 0) return;
     struct input_msg m = { 7, 0, 0, 0 };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
     (void)n;
 }
 
-void banner_wayland_begin_session(void) {
+void wnc_wayland_begin_session(void) {
     if (g_input_pipe[1] < 0) return;
     struct input_msg m = { 8, 0, 0, 0 };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
@@ -2986,7 +2985,7 @@ void banner_wayland_begin_session(void) {
 }
 
 /* Called from JNI on every screen refresh (Choreographer). */
-void banner_wayland_vsync(int64_t frame_time_ns) {
+void wnc_wayland_vsync(int64_t frame_time_ns) {
     if (g_input_pipe[1] < 0) return;
     struct input_msg m = { 5, (int)(frame_time_ns >> 32), (int)(uint32_t)frame_time_ns, 0 };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
@@ -2996,7 +2995,7 @@ void banner_wayland_vsync(int64_t frame_time_ns) {
 /* Called from JNI with the app's X-server input (on-screen controls, mouse): type 2 = motion
  * to scene x,y; 3 = evdev button a pressed/released (b); 4 = a wheel steps (negative = up);
  * 6 = relative motion by a,b in 1/256 pixel (the app's Relative Mouse / captured-mouse path). */
-void banner_wayland_send_scene_input(int type, int a, int b) {
+void wnc_wayland_send_scene_input(int type, int a, int b) {
     if (g_input_pipe[1] < 0) return;
     struct input_msg m = { type, a, b, 0 };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
@@ -3004,15 +3003,15 @@ void banner_wayland_send_scene_input(int type, int a, int b) {
 }
 
 /* ------------------------------------------------------------------ extension module hooks
- * What wl_clipboard.c / wl_text_input.c need from the scene (see banner_ext.h). */
+ * What wl_clipboard.c / wl_text_input.c need from the scene (see desktop_ext.h). */
 
-const char *banner_client_name(struct wl_client *client) { return client_name(client); }
-struct wl_display *banner_get_display(void) { return g_display; }
-void banner_request_redraw(void) { schedule_render(); }
+const char *wnc_client_name(struct wl_client *client) { return client_name(client); }
+struct wl_display *wnc_get_display(void) { return g_display; }
+void wnc_request_redraw(void) { schedule_render(); }
 
 /* The surface text input follows: the last clicked mapped program window, else the topmost
  * mapped window not owned by the desktop's process (explorer). NULL when there is none. */
-struct wl_resource *banner_ime_target(void) {
+struct wl_resource *wnc_ime_target(void) {
     struct surface *s;
     if (g_ime_click && g_ime_click->mapped) return g_ime_click->resource;
     struct wl_client *shell = g_desktop ? wl_resource_get_client(g_desktop->resource) : NULL;
@@ -3021,13 +3020,13 @@ struct wl_resource *banner_ime_target(void) {
     return NULL;
 }
 
-void banner_surface_scene_origin(struct wl_resource *surface, int *x, int *y) {
+void wnc_surface_scene_origin(struct wl_resource *surface, int *x, int *y) {
     struct surface *s = surface ? wl_resource_get_user_data(surface) : NULL;
     *x = 0; *y = 0;
     if (s && s->placed) { *x = s->x; *y = s->y; }
 }
 
-void banner_inject_key(uint32_t evdev, int pressed) { key_event(evdev, pressed); }
+void wnc_inject_key(uint32_t evdev, int pressed) { key_event(evdev, pressed); }
 
 /* ------------------------------------------------------------------ 10 s summary */
 
@@ -3054,7 +3053,7 @@ static int on_stats_timer(void *data) {
          * zero-copy, so they are counted apart from the line above. */
         if (layer_frames) off += snprintf(extra + off, sizeof(extra) - (size_t)off, " | %u layer frames", layer_frames);
         if (generated) snprintf(extra + off, sizeof(extra) - (size_t)off, " | %u generated frames", generated);
-        banner_log("stats", "last 10 s: %u frames on screen (%.1f fps) | %u GPU frames from games | %u window redraws | %d windows open%s",
+        wnc_log("stats", "last 10 s: %u frames on screen (%.1f fps) | %u GPU frames from games | %u window redraws | %d windows open%s",
                    g_stat_frames + generated, (g_stat_frames + generated) / 10.0, g_stat_dmabuf, g_stat_shm, windows, extra);
     }
     /* The perf line, next to the stats line and only when something happened: the compositor thread's
@@ -3066,7 +3065,7 @@ static int on_stats_timer(void *data) {
         const unsigned drops = sc_layer_drops_take();
 #define PERF_MS(sum, n) ((n) ? (double)(sum) / 1e6 / (double)(n) : 0.0)
         if (g_perf.scenes || vp.presents || g_perf.releases || drops)
-            banner_log("perf", "last 10 s: %u ticks, %u scenes, %u on screen (copy %u, zero-copy %u, layer copy %u) | "
+            wnc_log("perf", "last 10 s: %u ticks, %u scenes, %u on screen (copy %u, zero-copy %u, layer copy %u) | "
                        "render_scene %.2f/%.2f ms | base %u black kept, %u presented | acquire %.2f/%.2f ms | "
                        "present %.2f/%.2f ms (%u) | fence wait %.2f/%.2f ms (%u, %u GPU release waits) | "
                        "release %.2f/%.2f ms (%u, %u held) | %u pool drops",
@@ -3082,7 +3081,7 @@ static int on_stats_timer(void *data) {
         memset(&g_perf, 0, sizeof(g_perf));
     }
     g_stat_frames = g_stat_dmabuf = g_stat_shm = 0;
-    banner_color_stats_tick(); /* HDR evidence for the same window (nothing when the HDR gate is closed) */
+    wnc_color_stats_tick(); /* HDR evidence for the same window (nothing when the HDR gate is closed) */
     /* A program that asked for dma-buf feedback (EGL's GPU path does, first thing) but has drawn
      * only wl_shm frames since is an OpenGL program whose EGL gave up on the GPU. The software
      * path it fell to has no rasteriser in the Wayland layers, so what it commits is black. */
@@ -3090,7 +3089,7 @@ static int on_stats_timer(void *data) {
         if (!ci->asked_feedback || ci->dmabuf_buffers || ci->shm_gl_said || ci->shm_frames < 150)
             continue;
         ci->shm_gl_said = 1;
-        banner_log("opengl", "%s asked for GPU buffers but has drawn only software (shared-memory) "
+        wnc_log("opengl", "%s asked for GPU buffers but has drawn only software (shared-memory) "
                    "frames: its OpenGL fell back to software rendering, which the Wayland layer cannot "
                    "draw - expect a black picture (main device %u:%u)", ci->name,
                    (unsigned)major(g_main_device), (unsigned)minor(g_main_device));
@@ -3116,7 +3115,7 @@ static void test_input_line(const char *line) {
     int n = sscanf(line, "%15s %lf %lf", cmd, &x, &y);
 
     if (n < 2) return;
-    banner_log("test", "input: %s", line);
+    wnc_log("test", "input: %s", line);
     if (!strcmp(cmd, "key") || !strcmp(cmd, "keydown") || !strcmp(cmd, "keyup")) {
         code = (unsigned)x;
         if (strcmp(cmd, "keyup")) key_event(code, 1);
@@ -3179,7 +3178,7 @@ static void start_test_input(struct wl_event_loop *loop) {
 
 static struct wl_listener g_client_created = { .notify = on_client_created };
 
-int banner_wayland_run(void) {
+int wnc_wayland_run(void) {
     wl_list_init(&g_surfaces);
     wl_list_init(&g_toplevels);
     wl_list_init(&g_constraints);
@@ -3211,7 +3210,7 @@ int banner_wayland_run(void) {
               rt ? rt : "(null)");
         return 1;
     }
-    banner_log("display", "Wayland compositor listening on %s/wayland-0", rt ? rt : "?");
+    wnc_log("display", "Wayland compositor listening on %s/wayland-0", rt ? rt : "?");
     wl_display_add_client_created_listener(display, &g_client_created);
 
     wl_global_create(display, &wl_compositor_interface, 6, NULL, bind_compositor);
@@ -3226,13 +3225,13 @@ int banner_wayland_run(void) {
     wl_global_create(display, &wp_presentation_interface, 2, NULL, bind_presentation);
     wl_global_create(display, &zwp_pointer_constraints_v1_interface, 1, NULL, bind_pointer_constraints);
     wl_global_create(display, &zwp_relative_pointer_manager_v1_interface, 1, NULL, bind_relative_pointer_manager);
-    banner_ext_init(display); /* clipboard, text input, toplevel icons (own files, see banner_ext.h) */
+    wnc_ext_init(display); /* clipboard, text input, toplevel icons (own files, see desktop_ext.h) */
     ahb_swapchain_init(display); /* zero-copy layers: banner_ahb_v1, advertised whenever a display
                                   * layer is possible; the mode event carries the live switch
                                   * (ahb_swapchain.h) */
-    banner_color_init(display);  /* HDR10 (opt-in): decides the gate from the app's request + the
+    wnc_color_init(display);  /* HDR10 (opt-in): decides the gate from the app's request + the
                                   * display + the layer path above; creates wp_color_manager_v1
-                                  * only when it is open (banner_color.h). Before any client can
+                                  * only when it is open (color_mgmt.h). Before any client can
                                   * bind zwp_linux_dmabuf_v1, whose table it widens. */
     wl_list_init(&g_pending_releases);
     g_release_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);

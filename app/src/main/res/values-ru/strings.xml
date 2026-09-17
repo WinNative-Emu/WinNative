@@ -2789,7 +2789,7 @@
     <string name="container_display_server">Дисплейный сервер</string>
     <string name="container_display_server_help">Экспериментально. Сеанс отрисовывается через встроенный композитор Wayland вместо X-сервера.</string>
     <string name="container_display_server_wayland_requirements">Для Wayland нужны GPU Adreno и Proton с поддержкой Wayland, включающий winewayland и драйвер Turnip для Wayland. Установите его в разделе «Содержимое».</string>
-    <string name="container_display_server_needs_wayland_proton">В этом Proton нет winewayland и драйвера Turnip для Wayland, поэтому используется X11. Установите слой Proton для Wayland в разделе «Содержимое», например .wcp proton-11.0-2.1-arm64ec-wayland от Banner, и выберите его как Proton контейнера.</string>
+    <string name="container_display_server_needs_wayland_proton">В этом Proton нет winewayland и драйвера Turnip для Wayland, поэтому используется X11. Установите слой Proton для Wayland в разделе «Содержимое» и выберите его как Proton контейнера.</string>
     <string name="wayland_unavailable_fallback">Wayland недоступен для этой игры. Запуск через X11.</string>
     <string name="wayland_needs_turnip_driver">Для показа игры Wayland нужен графический драйвер Turnip. Установите его в разделе «Содержимое» и выберите как графический драйвер.</string>
     <string name="settings_content_badge_online">Онлайн</string>

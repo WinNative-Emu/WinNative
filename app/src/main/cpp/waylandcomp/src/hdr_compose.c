@@ -2,7 +2,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "hdr_compose.h"
 #include "vk_loader.h"
-#include "vk_present.h" /* banner_log, vkp_gpu_name */
+#include "vk_present.h" /* wnc_log, vkp_gpu_name */
 #include <stdio.h>
 #include <string.h>
 
@@ -190,7 +190,7 @@ static int objects_ensure(void) {
         if (!(g_out[i].pipe = make_pipe(g_out[i].rp))) goto fail;
     }
     g_ready = 1;
-    banner_log("color", "HDR composition ready on %s: scenes that mix HDR and SDR content are put into one "
+    wnc_log("color", "HDR composition ready on %s: scenes that mix HDR and SDR content are put into one "
                "encoding (PQ BT.2020, or tone-mapped sRGB) instead of being shown washed out", vkp_gpu_name());
     return 0;
 fail:
@@ -200,7 +200,7 @@ fail:
         g_dev = keep;
     }
     g_ready = -1;
-    banner_log("error", "color: the HDR composition pass could not be built on this driver; HDR scenes that cannot "
+    wnc_log("error", "color: the HDR composition pass could not be built on this driver; HDR scenes that cannot "
                "stay on the game's own layer are shown the old way (washed out) this session");
     return -1;
 }

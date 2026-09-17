@@ -16,7 +16,7 @@
  *
  * Guest → Android: when a program sets a selection with a text mime, the compositor asks for it
  * once over a pipe on the event loop (non-blocking, 1 MiB cap, 3 s timeout) and hands the text
- * to the app (banner_on_clipboard_text → ClipboardManager). Android → guest: the app's text
+ * to the app (wnc_on_clipboard_text → ClipboardManager). Android → guest: the app's text
  * becomes the HOST selection; receive requests are answered with a non-blocking writer.
  */
 #define _GNU_SOURCE 1
@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include "banner_ext.h"
+#include "desktop_ext.h"
 #include "wlr-data-control-unstable-v1-server-protocol.h"
 
 #define CLIP_MAX_BYTES (1024 * 1024)
@@ -130,7 +130,7 @@ static int on_writer_writable(int fd, uint32_t mask, void *data) {
 
 static int on_writer_timeout(void *data) {
     struct writer *w = data;
-    banner_log("clipboard", "a program never read the clipboard text it asked for; giving up");
+    wnc_log("clipboard", "a program never read the clipboard text it asked for; giving up");
     writer_free(w);
     return 0;
 }
@@ -179,11 +179,11 @@ static void reader_finish(struct reader *r) {
             free(g_last_guest_text);
             g_last_guest_text = copy;
             g_last_guest_len = r->len;
-            banner_log("clipboard", "guest copied %zu bytes (%s)", r->len, r->mime);
-            banner_on_clipboard_text(copy, (int)r->len);
+            wnc_log("clipboard", "guest copied %zu bytes (%s)", r->len, r->mime);
+            wnc_on_clipboard_text(copy, (int)r->len);
         }
     } else {
-        banner_log("clipboard", "guest copied an empty text; Android clipboard left alone");
+        wnc_log("clipboard", "guest copied an empty text; Android clipboard left alone");
     }
     reader_free(r);
 }
@@ -192,7 +192,7 @@ static int on_reader_readable(int fd, uint32_t mask, void *data) {
     struct reader *r = data;
     for (;;) {
         if (r->len >= CLIP_MAX_BYTES) {
-            banner_log("clipboard", "guest text exceeds %d bytes; dropped", CLIP_MAX_BYTES);
+            wnc_log("clipboard", "guest text exceeds %d bytes; dropped", CLIP_MAX_BYTES);
             reader_free(r);
             return 0;
         }
@@ -215,7 +215,7 @@ static int on_reader_readable(int fd, uint32_t mask, void *data) {
 
 static int on_reader_timeout(void *data) {
     struct reader *r = data;
-    banner_log("clipboard", "timed out reading the guest's clipboard text (%zu bytes so far)", r->len);
+    wnc_log("clipboard", "timed out reading the guest's clipboard text (%zu bytes so far)", r->len);
     reader_free(r);
     return 0;
 }
@@ -251,7 +251,7 @@ static void offer_receive(struct wl_client *c, struct wl_resource *r, const char
     if (!o || o->gen != g_gen) { close(fd); return; }               /* stale offer */
     if (g_owner == OWNER_HOST) {
         if (is_text_mime(mime)) {
-            banner_log("clipboard", "Android clipboard → guest (%zu bytes) for %s", g_host_len, banner_client_name(c));
+            wnc_log("clipboard", "Android clipboard → guest (%zu bytes) for %s", g_host_len, wnc_client_name(c));
             writer_start(fd, g_host_text, g_host_len);
         } else {
             close(fd);
@@ -327,7 +327,7 @@ static void broadcast_selection(void) {
     wl_display_flush_clients(g_disp);
 }
 
-void banner_clipboard_keyboard_focus(struct wl_client *client) {
+void wnc_clipboard_keyboard_focus(struct wl_client *client) {
     struct device *d;
     if (client == g_kb_client) return;
     g_kb_client = client;
@@ -345,7 +345,7 @@ static void source_res_destroy(struct wl_resource *r) {
         g_src = NULL;
         g_owner = OWNER_NONE;
         if (g_reader) reader_free(g_reader);
-        banner_log("clipboard", "%s withdrew its clipboard contents", banner_client_name(wl_resource_get_client(r)));
+        wnc_log("clipboard", "%s withdrew its clipboard contents", wnc_client_name(wl_resource_get_client(r)));
         broadcast_selection();
     }
     for (int i = 0; i < s->nmimes; i++) free(s->mimes[i]);
@@ -396,9 +396,9 @@ static void set_selection(struct wl_client *c, struct wl_resource *source_res) {
             if (*list) strncat(list, ", ", sizeof(list) - strlen(list) - 1);
             strncat(list, s->mimes[i], sizeof(list) - strlen(list) - 1);
         }
-        banner_log("clipboard", "selection set by %s (%s)", banner_client_name(c), *list ? list : "no mime types");
+        wnc_log("clipboard", "selection set by %s (%s)", wnc_client_name(c), *list ? list : "no mime types");
     } else {
-        banner_log("clipboard", "%s cleared the clipboard", banner_client_name(c));
+        wnc_log("clipboard", "%s cleared the clipboard", wnc_client_name(c));
     }
     broadcast_selection();
     read_client_text();
@@ -415,7 +415,7 @@ static void device_res_destroy(struct wl_resource *r) {
 
 static void device_start_drag(struct wl_client *c, struct wl_resource *r, struct wl_resource *source,
                               struct wl_resource *origin, struct wl_resource *icon, uint32_t serial) {
-    banner_log("clipboard", "%s started a drag and drop; not supported, cancelled", banner_client_name(c));
+    wnc_log("clipboard", "%s started a drag and drop; not supported, cancelled", wnc_client_name(c));
     if (source) {
         struct source *s = wl_resource_get_user_data(source);
         if (s && s != g_src) source_send_cancelled(s);
@@ -512,7 +512,7 @@ void clipboard_host_text(char *utf8, size_t len) {
     if (!len) free(utf8);
     g_host_len = len;
     g_owner = len ? OWNER_HOST : OWNER_NONE;
-    banner_log("clipboard", len ? "Android clipboard → guest (%zu bytes)" : "Android clipboard cleared (%zu bytes)", len);
+    wnc_log("clipboard", len ? "Android clipboard → guest (%zu bytes)" : "Android clipboard cleared (%zu bytes)", len);
     broadcast_selection();
 }
 

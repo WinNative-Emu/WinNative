@@ -1,5 +1,5 @@
 /* JNI for frame generation on the Wayland backend (WaylandCompositor.nativeFrameGen* /
- * nativeSet*FrameGen* / nativeSetLsfgCachePath / nativeSetWinFgTuning). Every call only stores
+ * nativeSet*FrameGen* / nativeSetLsfgCachePath / nativeSetEngineTuning). Every call only stores
  * a value in framegen_bridge.c; the compositor thread picks it up on its next frame, so these
  * are safe from any thread and before the compositor is up (the app arms the engine from its
  * launch code while the SurfaceView is still coming). */
@@ -36,10 +36,10 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetFrameG
 }
 
 JNIEXPORT void JNICALL
-Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetWinFgTuning(JNIEnv *env, jclass clazz,
-                                                                      jint model, jint perfPreset) {
+Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetEngineTuning(JNIEnv *env, jclass clazz,
+                                                                 jint flowMinSide, jint targetFps) {
     (void)env; (void)clazz;
-    vkp_framegen_set_winfg_tuning((int)model, (int)perfPreset);
+    vkp_framegen_set_engine_tuning((int)flowMinSide, (int)targetFps);
 }
 
 JNIEXPORT jint JNICALL
@@ -63,4 +63,16 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeFrameGenS
     jfloatArray arr = (*env)->NewFloatArray(env, 6);
     if (arr) (*env)->SetFloatArrayRegion(env, arr, 0, 6, st);
     return arr;
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeFrameGenPresentedFrames(JNIEnv *env, jclass clazz) {
+    (void)env; (void)clazz;
+    return (jlong)vkp_framegen_total_presented();
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeFrameGenGeneratedFrames(JNIEnv *env, jclass clazz) {
+    (void)env; (void)clazz;
+    return (jlong)vkp_framegen_total_generated();
 }

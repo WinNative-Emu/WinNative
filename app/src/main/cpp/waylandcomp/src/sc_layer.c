@@ -5,7 +5,7 @@
 #define _GNU_SOURCE
 #include "sc_layer.h"
 #include "ahb_swapchain.h"
-#include "banner_color.h"
+#include "color_mgmt.h"
 #include "vk_present.h"
 #include <android/hardware_buffer.h>
 #include <android/native_window.h>
@@ -34,7 +34,7 @@
 
 /* The gralloc buffer handle behind an AHardwareBuffer (AOSP cutils/native_handle.h, which the NDK
  * does not ship; the layout is a stable ABI: fds first, then ints). */
-struct banner_native_handle { int version; int numFds; int numInts; int data[]; };
+struct wnc_native_handle { int version; int numFds; int numInts; int data[]; };
 
 /* ---- libandroid SurfaceControl API (dlsym) ---------------------------------------------------- */
 
@@ -44,12 +44,12 @@ typedef struct ASurfaceTransactionStats ASurfaceTransactionStats;
 typedef void (*sc_complete_fn)(void *context, ASurfaceTransactionStats *stats);
 
 /* <android/hdr_metadata.h> (NDK, API 29), declared here like the rest of this table: stable ABI. */
-struct banner_color_xy { float x, y; };
-struct banner_hdr_smpte2086 {
-    struct banner_color_xy displayPrimaryRed, displayPrimaryGreen, displayPrimaryBlue, whitePoint;
+struct wnc_color_xy { float x, y; };
+struct wnc_hdr_smpte2086 {
+    struct wnc_color_xy displayPrimaryRed, displayPrimaryGreen, displayPrimaryBlue, whitePoint;
     float maxLuminance, minLuminance;
 };
-struct banner_hdr_cta861_3 { float maxContentLightLevel, maxFrameAverageLightLevel; };
+struct wnc_hdr_cta861_3 { float maxContentLightLevel, maxFrameAverageLightLevel; };
 
 static struct {
     ASurfaceControl *(*createFromWindow)(ANativeWindow *, const char *);
@@ -69,11 +69,11 @@ static struct {
      * the layer simply carries no vote and the app's surface vote is all there is. */
     void (*setFrameRate)(ASurfaceTransaction *, ASurfaceControl *, float, int8_t);
     void (*setFrameRateStrategy)(ASurfaceTransaction *, ASurfaceControl *, float, int8_t, int8_t);
-    /* Colour (API 29), optional: only an HDR session ever calls them (banner_color.h's gate needs
+    /* Colour (API 29), optional: only an HDR session ever calls them (color_mgmt.h's gate needs
      * setBufferDataSpace; the metadata calls are sent when present). */
     void (*setBufferDataSpace)(ASurfaceTransaction *, ASurfaceControl *, int32_t);
-    void (*setHdrMetadata_smpte2086)(ASurfaceTransaction *, ASurfaceControl *, const struct banner_hdr_smpte2086 *);
-    void (*setHdrMetadata_cta861_3)(ASurfaceTransaction *, ASurfaceControl *, const struct banner_hdr_cta861_3 *);
+    void (*setHdrMetadata_smpte2086)(ASurfaceTransaction *, ASurfaceControl *, const struct wnc_hdr_smpte2086 *);
+    void (*setHdrMetadata_cta861_3)(ASurfaceTransaction *, ASurfaceControl *, const struct wnc_hdr_cta861_3 *);
     /* Not in the public NDK headers (vndk/hardware_buffer.h) but exported by libnativewindow.so on
      * every device; Mesa's Android WSI calls it for every gralloc buffer it imports. */
     const void *(*getNativeHandle)(const AHardwareBuffer *);
@@ -94,12 +94,12 @@ static int load_api(void) {
     if (!nw) nw = dlopen("libnativewindow.so", RTLD_NOW);
     api.getNativeHandle = nw ? dlsym(nw, "AHardwareBuffer_getNativeHandle") : NULL;
     if (!api.getNativeHandle) {
-        banner_log("layer", "unavailable: libnativewindow.so has no AHardwareBuffer_getNativeHandle");
+        wnc_log("layer", "unavailable: libnativewindow.so has no AHardwareBuffer_getNativeHandle");
         return -1;
     }
     void *lib = dlopen("libandroid.so", RTLD_NOW | RTLD_NOLOAD);
     if (!lib) lib = dlopen("libandroid.so", RTLD_NOW);
-    if (!lib) { banner_log("layer", "unavailable: dlopen(libandroid.so): %s", dlerror()); return -1; }
+    if (!lib) { wnc_log("layer", "unavailable: dlopen(libandroid.so): %s", dlerror()); return -1; }
 #define SYM(field, name) api.field = dlsym(lib, name)
     SYM(createFromWindow, "ASurfaceControl_createFromWindow");
     SYM(release, "ASurfaceControl_release");
@@ -124,7 +124,7 @@ static int load_api(void) {
     if (!api.createFromWindow || !api.release || !api.txCreate || !api.txDelete || !api.txApply ||
         !api.setBuffer || !api.setZOrder || !api.setVisibility || !api.setGeometry ||
         !api.setBufferTransparency || !api.reparent || !api.setOnComplete || !api.prevReleaseFence) {
-        banner_log("layer", "unavailable: libandroid.so lacks part of the ASurfaceControl API (Android 10+)");
+        wnc_log("layer", "unavailable: libandroid.so lacks part of the ASurfaceControl API (Android 10+)");
         return -1;
     }
     api.state = 1;
@@ -213,10 +213,10 @@ static AHardwareBuffer *g_blank;
 static void layers_init(void) {
     if (g_layers_ready) return;
     g_layers_ready = 1;
-    g_layers[SC_LAYER_GAME] = (struct layer){.name = "banner_wayland_game", .z = 1, .pool_n = POOL_MAX,
+    g_layers[SC_LAYER_GAME] = (struct layer){.name = "wnc_wayland_game", .z = 1, .pool_n = POOL_MAX,
                                              .cur_slot = -1, .votes_rate = 1, .fps_applied = -1.0f, .hr_applied = -1.0f,
                                              .ds_applied = -1};
-    g_layers[SC_LAYER_OVERLAY] = (struct layer){.name = "banner_wayland_overlay", .z = 2, .pool_n = 3,
+    g_layers[SC_LAYER_OVERLAY] = (struct layer){.name = "wnc_wayland_overlay", .z = 2, .pool_n = 3,
                                                 .cur_slot = -1, .votes_rate = 0, .fps_applied = -1.0f,
                                                 .hr_applied = -1.0f, .ds_applied = -1};
     for (int i = 0; i < SC_LAYER_COUNT; i++)
@@ -329,7 +329,7 @@ static void retire_sc(struct layer *l) {
         if (l->cur_token) ahb_swapchain_layer_released(l->cur_token, -1);
         api.release(l->sc);
     }
-    banner_log("layer", "%s: SurfaceControl retired (window %p)", l->name, (void *)l->win);
+    wnc_log("layer", "%s: SurfaceControl retired (window %p)", l->name, (void *)l->win);
     l->sc = NULL; l->win = NULL;
     l->shown = 0; l->cur_slot = -1; l->cur_token = NULL; l->geo_valid = 0;
     l->fps_applied = -1.0f; /* the next SurfaceControl carries no vote until it is re-applied */
@@ -367,7 +367,7 @@ static void drain_and_free_pools(void) {
 /* Native-handle sniff, the same one Mesa's u_gralloc fallback uses (u_gralloc_fallback.c): a QTI
  * gralloc private_handle_t carries the magic 'gmsm' as its first int and the UBWC flag
  * (PRIV_FLAGS_UBWC_ALIGNED, 0x08000000) in the next one. Returns 0 when the layout is unknown. */
-static int sniff_modifier(const struct banner_native_handle *h, uint64_t *mod) {
+static int sniff_modifier(const struct wnc_native_handle *h, uint64_t *mod) {
     const uint32_t gmsm = ('g' << 24) | ('m' << 16) | ('s' << 8) | 'm';
     if (!h || h->numFds < 1 || h->numInts < 2) return 0;
     if ((uint32_t)h->data[h->numFds] != gmsm) return 0;
@@ -386,7 +386,7 @@ static int g_alloc_failed; /* set by alloc_slot when gralloc or the import refus
  *   TIER_PLAIN  the same without the vendor bit (a gralloc that refuses unknown bits; what we asked before).
  *   TIER_LINEAR plus a CPU bit, so the layout is known to be linear even when the handle is unreadable. */
 enum { TIER_UBWC, TIER_PLAIN, TIER_LINEAR };
-#define BANNER_AHB_USAGE_VENDOR_UBWC (1ULL << 28) /* AHARDWAREBUFFER_USAGE_VENDOR_0 */
+#define WNC_AHB_USAGE_VENDOR_UBWC (1ULL << 28) /* AHARDWAREBUFFER_USAGE_VENDOR_0 */
 
 static const char *tier_name(int tier) {
     return tier == TIER_UBWC ? "asked for UBWC" : tier == TIER_PLAIN ? "no UBWC request" : "linear by request (CPU bit)";
@@ -403,22 +403,22 @@ static int alloc_slot(struct layer *l, struct slot *s, int w, int h, uint32_t fm
              * composer overlay (the display scans it out). See the tiers above for the rest. */
             .usage = AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT | AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
                      AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY |
-                     (tier == TIER_UBWC ? BANNER_AHB_USAGE_VENDOR_UBWC : 0) |
+                     (tier == TIER_UBWC ? WNC_AHB_USAGE_VENDOR_UBWC : 0) |
                      (tier == TIER_LINEAR ? AHARDWAREBUFFER_USAGE_CPU_READ_RARELY : 0)};
         AHardwareBuffer *ahb = NULL;
         if (AHardwareBuffer_allocate(&d, &ahb) != 0 || !ahb) {
             if (tier < TIER_LINEAR) {
-                banner_log("layer", "%s: gralloc refused a %dx%d pool buffer (%s): trying %s", l->name, w, h,
+                wnc_log("layer", "%s: gralloc refused a %dx%d pool buffer (%s): trying %s", l->name, w, h,
                            tier_name(tier), tier_name(tier + 1));
                 l->alloc_tier = tier + 1;
                 continue;
             }
-            banner_log("error", "layer: %s: AHardwareBuffer_allocate %dx%d (format %#x) failed", l->name, w, h, fmt);
+            wnc_log("error", "layer: %s: AHardwareBuffer_allocate %dx%d (format %#x) failed", l->name, w, h, fmt);
             g_alloc_failed = 1;
             return -1;
         }
         AHardwareBuffer_Desc got; AHardwareBuffer_describe(ahb, &got);
-        const struct banner_native_handle *nh = api.getNativeHandle(ahb);
+        const struct wnc_native_handle *nh = api.getNativeHandle(ahb);
         uint64_t mod = MOD_LINEAR;
         if (!sniff_modifier(nh, &mod)) {
             /* Not a handle we can read: the only layout we can assume is linear, and only if the buffer
@@ -426,7 +426,7 @@ static int alloc_slot(struct layer *l, struct slot *s, int w, int h, uint32_t fm
             if (tier < TIER_LINEAR) {
                 AHardwareBuffer_release(ahb);
                 l->alloc_tier = TIER_LINEAR;
-                banner_log("layer", "%s: gralloc handle layout unknown (%d fds, %d ints): using linear pool buffers",
+                wnc_log("layer", "%s: gralloc handle layout unknown (%d fds, %d ints): using linear pool buffers",
                            l->name, nh ? nh->numFds : -1, nh ? nh->numInts : -1);
                 continue;
             }
@@ -438,7 +438,7 @@ static int alloc_slot(struct layer *l, struct slot *s, int w, int h, uint32_t fm
         struct vkp_image *img = fd >= 0 ? vkp_image_import_dmabuf(fd, fmt == AHB_RGB10A2 ? DRM_ABGR2101010 : DRM_ABGR8888,
                                                                   mod, w, h, got.stride * 4, 0, 1) : NULL;
         if (!img) {
-            banner_log("layer", "%s: import of a %s %dx%d pool buffer (stride %u px) into the compositor's Turnip failed",
+            wnc_log("layer", "%s: import of a %s %dx%d pool buffer (stride %u px) into the compositor's Turnip failed",
                        l->name, mod == MOD_QCOM_COMPRESSED ? "UBWC" : "linear", w, h, got.stride);
             AHardwareBuffer_release(ahb);
             if (tier < TIER_LINEAR) { l->alloc_tier = tier + 1; continue; }
@@ -450,7 +450,7 @@ static int alloc_slot(struct layer *l, struct slot *s, int w, int h, uint32_t fm
         if (l->logged_w != w || l->logged_h != h || l->logged_fmt != fmt || l->logged_mod != mod ||
             l->logged_tier != tier) {
             l->logged_w = w; l->logged_h = h; l->logged_fmt = fmt; l->logged_mod = mod; l->logged_tier = tier;
-            banner_log("layer", "%s: pool buffers %dx%d%s: %s (%s), stride %u px, up to %d buffers (gralloc handle %d fds / %d ints)",
+            wnc_log("layer", "%s: pool buffers %dx%d%s: %s (%s), stride %u px, up to %d buffers (gralloc handle %d fds / %d ints)",
                        l->name, w, h, fmt == AHB_RGB10A2 ? " 10-bit RGBA1010102" : "",
                        mod == MOD_QCOM_COMPRESSED ? "UBWC (QCOM_COMPRESSED)" : "linear", tier_name(tier),
                        got.stride, l->pool_n, nh ? nh->numFds : -1, nh ? nh->numInts : -1);
@@ -531,10 +531,10 @@ void sc_layer_probe_dmabuf_fd(int fd) {
     struct { uint32_t flags; int32_t fd; } exp = {.flags = 1u /* DMA_BUF_SYNC_READ */, .fd = -1};
     /* DMA_BUF_IOCTL_EXPORT_SYNC_FILE = _IOWR('b', 2, struct dma_buf_export_sync_file) */
     if (ioctl(fd, _IOWR('b', 2, exp), &exp) == 0) {
-        banner_log("layer", "kernel exports sync_file fences from the game's dma-buf: zero-copy acquire fences can come from the buffer itself");
+        wnc_log("layer", "kernel exports sync_file fences from the game's dma-buf: zero-copy acquire fences can come from the buffer itself");
         if (exp.fd >= 0) close(exp.fd);
     } else {
-        banner_log("layer", "DMA_BUF_IOCTL_EXPORT_SYNC_FILE on the game's dma-buf failed (%s): acquire fences must be exported by the game's driver (sync_fd) instead",
+        wnc_log("layer", "DMA_BUF_IOCTL_EXPORT_SYNC_FILE on the game's dma-buf failed (%s): acquire fences must be exported by the game's driver (sync_fd) instead",
                    strerror(errno));
     }
 }
@@ -548,7 +548,7 @@ static int ensure_sc(struct layer *l) {
     if (l->sc && l->win != win) retire_sc(l);
     if (!l->sc) {
         l->sc = api.createFromWindow(win, l->name);
-        if (!l->sc) { banner_log("error", "layer: ASurfaceControl_createFromWindow(%s) failed", l->name); return -1; }
+        if (!l->sc) { wnc_log("error", "layer: ASurfaceControl_createFromWindow(%s) failed", l->name); return -1; }
         l->win = win;
         l->ds_applied = -1; l->md_applied = 0; l->hr_applied = -1.0f;
         ASurfaceTransaction *tx = api.txCreate();
@@ -558,7 +558,7 @@ static int ensure_sc(struct layer *l) {
             apply_frame_rate(tx, l);
             api.txApply(tx); api.txDelete(tx);
         }
-        banner_log("layer", "SurfaceControl \"%s\" created as a child of the screen surface (z=%d)", l->name, (int)l->z);
+        wnc_log("layer", "SurfaceControl \"%s\" created as a child of the screen surface (z=%d)", l->name, (int)l->z);
     }
     return 0;
 }
@@ -584,7 +584,7 @@ static void apply_geometry(ASurfaceTransaction *tx, struct layer *l, const int r
         l->geo_src = srcR; l->geo_dst = dstR; l->geo_valid = 1;
         char cov[96] = "";
         if (l->ds_applied > 0) coverage_text(l, cov, sizeof(cov));
-        banner_log("layer", "%s geometry: buffer %d,%d-%d,%d -> screen %d,%d-%d,%d%s%s%s", l->name,
+        wnc_log("layer", "%s geometry: buffer %d,%d-%d,%d -> screen %d,%d-%d,%d%s%s%s", l->name,
                    r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], cov[0] ? " (HDR layer " : "", cov, cov[0] ? ")" : "");
     }
 }
@@ -605,11 +605,11 @@ static void apply_frame_rate(ASurfaceTransaction *tx, struct layer *l) {
     }
     int first = l->fps_applied < 0.0f;
     l->fps_applied = want;
-    if (want > 0.0f) banner_log("layer", "display frame-rate vote on %s: %.2f Hz", l->name, want);
-    else if (!first) banner_log("layer", "display frame-rate vote on %s cleared (panel runs free)", l->name);
+    if (want > 0.0f) wnc_log("layer", "display frame-rate vote on %s: %.2f Hz", l->name, want);
+    else if (!first) wnc_log("layer", "display frame-rate vote on %s cleared (panel runs free)", l->name);
 }
 
-/* ---- colour (HDR, banner_color.h) -------------------------------------------------------------
+/* ---- colour (HDR, color_mgmt.h) -------------------------------------------------------------
  * The layer is told what its buffer's pixels MEAN — the dataspace (BT2020_PQ for an HDR10 frame) and
  * the game's mastering / content-light metadata — in the same transaction as the buffer, so the
  * display never shows an HDR frame decoded as sRGB or the other way round. A layer that has never been
@@ -629,67 +629,67 @@ static void coverage_text(const struct layer *l, char *out, size_t n) {
 
 /* API 35: ask the display for HDR headroom explicitly while the layer carries an HDR frame, and clear the
  * request (0 = no preference) when it stops. Only on change; a layer never tagged is never touched. */
-static void apply_headroom(ASurfaceTransaction *tx, struct layer *l, const struct banner_color *c) {
+static void apply_headroom(ASurfaceTransaction *tx, struct layer *l, const struct wnc_color *c) {
     static int said_missing;
     if (!api.setDesiredHdrHeadroom) {
         if (c && c->dataspace && !said_missing) {
             said_missing = 1;
-            banner_color_note_headroom_request(-1.0f);
-            banner_log("color", "HDR headroom request not available on %s (Android < 15 has no "
+            wnc_color_note_headroom_request(-1.0f);
+            wnc_log("color", "HDR headroom request not available on %s (Android < 15 has no "
                        "ASurfaceTransaction_setDesiredHdrHeadroom): the layer relies on Android's default", l->name);
         }
         return;
     }
-    const float want = (c && c->dataspace) ? banner_color_desired_headroom(c, NULL, 0) : 0.0f;
+    const float want = (c && c->dataspace) ? wnc_color_desired_headroom(c, NULL, 0) : 0.0f;
     if (l->hr_applied < 0.0f && want == 0.0f && !(c && c->dataspace)) return; /* never asked: leave it be */
     if (l->hr_applied >= 0.0f && fabsf(want - l->hr_applied) < 0.005f) return;
     char why[200] = "";
-    if (c && c->dataspace) banner_color_desired_headroom(c, why, sizeof(why));
+    if (c && c->dataspace) wnc_color_desired_headroom(c, why, sizeof(why));
     api.setDesiredHdrHeadroom(tx, l->sc, want);
     const int first = l->hr_applied < 0.0f;
     l->hr_applied = want;
-    banner_color_note_headroom_request(want);
+    wnc_color_note_headroom_request(want);
     if (want > 0.0f)
-        banner_log("color", "requested HDR headroom %.1fx on %s (%s)", want, l->name, why);
+        wnc_log("color", "requested HDR headroom %.1fx on %s (%s)", want, l->name, why);
     else if (c && c->dataspace)
-        banner_log("color", "no HDR headroom requested on %s: %s", l->name, why);
+        wnc_log("color", "no HDR headroom requested on %s: %s", l->name, why);
     else if (!first)
-        banner_log("color", "HDR headroom request on %s cleared (no preference): the frame on the layer is not HDR", l->name);
+        wnc_log("color", "HDR headroom request on %s cleared (no preference): the frame on the layer is not HDR", l->name);
 }
 
-static void apply_colour(ASurfaceTransaction *tx, struct layer *l, const struct banner_color *c) {
-    int32_t want = c ? c->dataspace : BANNER_ADATASPACE_UNKNOWN;
+static void apply_colour(ASurfaceTransaction *tx, struct layer *l, const struct wnc_color *c) {
+    int32_t want = c ? c->dataspace : WNC_ADATASPACE_UNKNOWN;
     uint32_t md = (c && c->dataspace) ? c->identity : 0;
     if (!api.setBufferDataSpace) return;
-    if (l->ds_applied < 0 && want == BANNER_ADATASPACE_UNKNOWN) return;   /* never tagged: leave it be */
+    if (l->ds_applied < 0 && want == WNC_ADATASPACE_UNKNOWN) return;   /* never tagged: leave it be */
     apply_headroom(tx, l, want ? c : NULL);
     if (want == l->ds_applied && md == l->md_applied) return;
     api.setBufferDataSpace(tx, l->sc, want);
-    struct banner_hdr_smpte2086 st;
-    struct banner_hdr_cta861_3 cta;
+    struct wnc_hdr_smpte2086 st;
+    struct wnc_hdr_cta861_3 cta;
     int st_on = c && c->dataspace && c->has_st2086, cta_on = c && c->dataspace && c->has_cta861;
     if (st_on) {
-        st = (struct banner_hdr_smpte2086){
+        st = (struct wnc_hdr_smpte2086){
             .displayPrimaryRed = {c->red[0], c->red[1]}, .displayPrimaryGreen = {c->green[0], c->green[1]},
             .displayPrimaryBlue = {c->blue[0], c->blue[1]}, .whitePoint = {c->white[0], c->white[1]},
             .maxLuminance = c->max_lum, .minLuminance = c->min_lum};
     }
-    if (cta_on) cta = (struct banner_hdr_cta861_3){.maxContentLightLevel = c->max_cll, .maxFrameAverageLightLevel = c->max_fall};
+    if (cta_on) cta = (struct wnc_hdr_cta861_3){.maxContentLightLevel = c->max_cll, .maxFrameAverageLightLevel = c->max_fall};
     /* NULL clears what a previous description set: metadata never outlives the frame it belongs to. */
     if (api.setHdrMetadata_smpte2086) api.setHdrMetadata_smpte2086(tx, l->sc, st_on ? &st : NULL);
     if (api.setHdrMetadata_cta861_3) api.setHdrMetadata_cta861_3(tx, l->sc, cta_on ? &cta : NULL);
     if (want) {
         char cov[96];
         coverage_text(l, cov, sizeof(cov));
-        banner_log("color", "%s: dataspace %s (%#x) set on the display layer for image description #%u%s%s; SMPTE 2086 "
-                   "%s, CTA-861.3 %s [%s]", l->name, want == BANNER_ADATASPACE_BT2020_PQ ? "BT2020_PQ" : "HDR",
+        wnc_log("color", "%s: dataspace %s (%#x) set on the display layer for image description #%u%s%s; SMPTE 2086 "
+                   "%s, CTA-861.3 %s [%s]", l->name, want == WNC_ADATASPACE_BT2020_PQ ? "BT2020_PQ" : "HDR",
                    (unsigned)want, c->identity, cov[0] ? ", " : "", cov,
                    st_on ? (api.setHdrMetadata_smpte2086 ? "sent" : "not supported by this Android") : "none given",
                    cta_on ? (api.setHdrMetadata_cta861_3 ? "sent" : "not supported by this Android") : "none given",
                    c->text);
     }
     else
-        banner_log("color", "%s: dataspace back to UNKNOWN (sRGB), HDR metadata cleared - the frame on the layer is "
+        wnc_log("color", "%s: dataspace back to UNKNOWN (sRGB), HDR metadata cleared - the frame on the layer is "
                    "not an HDR frame", l->name);
     l->ds_applied = want;
     l->md_applied = md;
@@ -710,7 +710,7 @@ void sc_layer_hdr_symbols(char *out, size_t size) {
 static void log_layer_count(void) {
     if (g_two_logged) return;
     g_two_logged = 1;
-    banner_log("layer", "%d display layers in use: \"%s\" (z=%d) and \"%s\" (z=%d) above it, both children of the "
+    wnc_log("layer", "%d display layers in use: \"%s\" (z=%d) and \"%s\" (z=%d) above it, both children of the "
                "screen surface; the app's own views (drawer, HUD, pointer) stay above both. %d is the cap - more "
                "would push SurfaceFlinger into GPU client composition",
                SC_LAYER_COUNT, g_layers[SC_LAYER_GAME].name, (int)g_layers[SC_LAYER_GAME].z,
@@ -747,7 +747,7 @@ static ASurfaceControl *swap_sc_begin(struct layer *l) {
     if (!win || win != l->win) return NULL;  /* the window changed: ensure_sc re-creates it anyway */
     ASurfaceControl *fresh = api.createFromWindow(win, l->name);
     if (!fresh) {
-        banner_log("error", "layer: %s: composition recovery could not create a new SurfaceControl", l->name);
+        wnc_log("error", "layer: %s: composition recovery could not create a new SurfaceControl", l->name);
         return NULL;
     }
     ASurfaceControl *old = l->sc;
@@ -759,14 +759,14 @@ static ASurfaceControl *swap_sc_begin(struct layer *l) {
     l->geo_valid = 0;
     l->fps_applied = -1.0f;
     l->ds_applied = -1; l->md_applied = 0; l->hr_applied = -1.0f;
-    banner_log("layer", "composition recovery: %s got a fresh SurfaceControl now that nothing is above "
+    wnc_log("layer", "composition recovery: %s got a fresh SurfaceControl now that nothing is above "
                "the game (measured on this panel: hardware composition does NOT return from this alone)", l->name);
     return old;
 }
 
 /* The transaction that puts pool slot `idx` of layer `l` on screen at `r`, as `color` (NULL = no
  * description). 0 = applied. */
-static int present_slot(struct layer *l, int idx, const int r[8], const struct banner_color *color) {
+static int present_slot(struct layer *l, int idx, const int r[8], const struct wnc_color *color) {
     struct slot *s = &l->slots[idx];
     ASurfaceTransaction *tx = api.txCreate();
     if (!tx) return -1;
@@ -791,7 +791,7 @@ static int present_slot(struct layer *l, int idx, const int r[8], const struct b
     api.txDelete(tx);
     l->cur_slot = idx;
     l->cur_token = NULL;
-    if (!l->shown) { l->shown = 1; banner_log("layer", "%s: layer shown", l->name); }
+    if (!l->shown) { l->shown = 1; wnc_log("layer", "%s: layer shown", l->name); }
     g_stat_layer_frames++;
     return 0;
 }
@@ -804,7 +804,7 @@ static void log_drop(struct layer *l) {
     l->drops_unlogged++;
     int64_t t = now_ns();
     if (!l->drop_logged_ns || t - l->drop_logged_ns > 30000000000LL) {
-        banner_log("layer", "%s: no free layer buffer (display still holds all %d): %u frame%s dropped%s", l->name,
+        wnc_log("layer", "%s: no free layer buffer (display still holds all %d): %u frame%s dropped%s", l->name,
                    l->pool_n, l->drops_unlogged, l->drops_unlogged == 1 ? "" : "s",
                    l->drop_logged_ns ? " since the last such line" : "");
         l->drop_logged_ns = t;
@@ -819,7 +819,7 @@ unsigned sc_layer_drops_take(void) {
 }
 
 int sc_layer_present_ahb(AHardwareBuffer *ahb, int w, int h, int acquire_fd, void *token, int scene_w, int scene_h,
-                         const struct banner_color *color, uint32_t ahb_format) {
+                         const struct wnc_color *color, uint32_t ahb_format) {
     struct layer *l = layer_of(SC_LAYER_GAME);
     int r[8];
     if (!ahb || !token || ensure_sc(l) != 0) goto unavailable;
@@ -861,16 +861,16 @@ int sc_layer_present_ahb(AHardwareBuffer *ahb, int w, int h, int acquire_fd, voi
     api.txDelete(tx);
     l->cur_slot = -1;
     l->cur_token = token;
-    if (!l->shown) { l->shown = 1; banner_log("layer", "%s: layer shown", l->name); }
+    if (!l->shown) { l->shown = 1; wnc_log("layer", "%s: layer shown", l->name); }
     if (!l->first_logged) { l->first_logged = 1; vkp_signal_first_frame(); }
-    if (color && color->dataspace) banner_color_frame_shown(color, BANNER_HDR_ZERO_COPY, ahb_format);
+    if (color && color->dataspace) wnc_color_frame_shown(color, WNC_HDR_ZERO_COPY, ahb_format);
     return 0;
 unavailable:
     if (acquire_fd >= 0) close(acquire_fd);
     return -1;
 }
 
-int sc_layer_present(struct vkp_image *src, int scene_w, int scene_h, const struct banner_color *color) {
+int sc_layer_present(struct vkp_image *src, int scene_w, int scene_h, const struct wnc_color *color) {
     struct layer *l = layer_of(SC_LAYER_GAME);
     if (!src || ensure_sc(l) != 0) return -1;
     int sw = vkp_image_width(src), sh = vkp_image_height(src);
@@ -884,10 +884,10 @@ int sc_layer_present(struct vkp_image *src, int scene_w, int scene_h, const stru
     if (idx < 0) { log_drop(l); return 0; }
     if (vkp_blit_image(src, l->slots[idx].img, wait_fd) != 0) return -1;
     if (present_slot(l, idx, r, color) != 0) return -1;
-    if (color && color->dataspace) banner_color_frame_shown(color, BANNER_HDR_LAYER_COPY, AHB_RGBA8);
+    if (color && color->dataspace) wnc_color_frame_shown(color, WNC_HDR_LAYER_COPY, AHB_RGBA8);
     if (!l->first_logged) {
         l->first_logged = 1;
-        banner_log("layer", "presenting %dx%d game frames on their own SurfaceControl layer (%s pool, %d buffers); "
+        wnc_log("layer", "presenting %dx%d game frames on their own SurfaceControl layer (%s pool, %d buffers); "
                    "HUD and pointer stay Android views above it", sw, sh,
                    l->pool_modifier == MOD_QCOM_COMPRESSED ? "UBWC" : "linear", l->pool_n);
         vkp_signal_first_frame();
@@ -911,7 +911,7 @@ int sc_layer_present_pass(const struct vkp_draw *draws, int n, int scene_w, int 
     if (present_slot(l, idx, r, NULL) != 0) return -1; /* the effects chain's result is 8-bit sRGB */
     if (!l->first_logged) {
         l->first_logged = 1;
-        banner_log("layer", "presenting %dx%d frames on their own SurfaceControl layer (%s pool, %d buffers); "
+        wnc_log("layer", "presenting %dx%d frames on their own SurfaceControl layer (%s pool, %d buffers); "
                    "HUD and pointer stay Android views above it", rw, rh,
                    l->pool_modifier == MOD_QCOM_COMPRESSED ? "UBWC" : "linear", l->pool_n);
         vkp_signal_first_frame();
@@ -930,7 +930,7 @@ int sc_layer_present_pass(const struct vkp_draw *draws, int n, int scene_w, int 
 static uint32_t g_hdr_pool_fmt = AHB_RGB10A2;
 
 int sc_layer_present_hdr_scene(const struct vkp_draw *draws, int n, const struct vkp_hdr_frame *hf,
-                               int scene_w, int scene_h, const struct banner_color *color) {
+                               int scene_w, int scene_h, const struct wnc_color *color) {
     struct layer *l = layer_of(SC_LAYER_GAME);
     int rw = 0, rh = 0, r[8];
     if (!draws || n <= 0 || !hf || ensure_sc(l) != 0) return -1;
@@ -944,7 +944,7 @@ int sc_layer_present_hdr_scene(const struct vkp_draw *draws, int n, const struct
     int idx = take_free_slot(l, rw, rh, fmt, &wait_fd);
     if (idx < 0 && g_alloc_failed && fmt == AHB_RGB10A2) {
         g_hdr_pool_fmt = AHB_RGBA8;
-        banner_log("color", "%s: this device will not make a 10-bit layer buffer (RGBA1010102): the HDR picture goes "
+        wnc_log("color", "%s: this device will not make a 10-bit layer buffer (RGBA1010102): the HDR picture goes "
                    "on 8-bit buffers instead (still tagged BT2020_PQ; less precision)", l->name);
         idx = take_free_slot(l, rw, rh, g_hdr_pool_fmt, &wait_fd);
     }
@@ -952,21 +952,21 @@ int sc_layer_present_hdr_scene(const struct vkp_draw *draws, int n, const struct
     if (vkp_pass_copy_to(l->slots[idx].img, wait_fd) != 0) return -1;
     if (present_slot(l, idx, r, tm ? NULL : color) != 0) return -1; /* tone-mapped = plain sRGB: no tag */
     if (color && color->dataspace)
-        banner_color_frame_shown(color, tm ? BANNER_HDR_TONEMAPPED : BANNER_HDR_COMPOSED, tm ? AHB_RGBA8 : g_hdr_pool_fmt);
+        wnc_color_frame_shown(color, tm ? WNC_HDR_TONEMAPPED : WNC_HDR_COMPOSED, tm ? AHB_RGBA8 : g_hdr_pool_fmt);
     static int said = -1;
     if (said != tm) {
         said = tm;
         if (tm)
-            banner_log("color", "tone-mapped picture on the game's display layer: %dx%d, %s 8-bit buffers, untagged "
+            wnc_log("color", "tone-mapped picture on the game's display layer: %dx%d, %s 8-bit buffers, untagged "
                        "(sRGB) - HDR output is switched off", rw, rh,
                        l->pool_modifier == MOD_QCOM_COMPRESSED ? "UBWC" : "linear");
         else {
             char cov[96];
             coverage_text(l, cov, sizeof(cov));
-            banner_log("color", "HDR picture on its own display layer: %dx%d, %s %s buffers, tagged %s%s%s", rw, rh,
+            wnc_log("color", "HDR picture on its own display layer: %dx%d, %s %s buffers, tagged %s%s%s", rw, rh,
                        l->pool_modifier == MOD_QCOM_COMPRESSED ? "UBWC" : "linear",
                        g_hdr_pool_fmt == AHB_RGB10A2 ? "10-bit" : "8-bit",
-                       color && color->dataspace == BANNER_ADATASPACE_BT2020_PQ ? "BT2020_PQ" : "HDR",
+                       color && color->dataspace == WNC_ADATASPACE_BT2020_PQ ? "BT2020_PQ" : "HDR",
                        cov[0] ? ", " : "", cov);
         }
     }
@@ -1019,13 +1019,13 @@ int sc_layer_overlay_affordable(void) {
         int first = g_overlay_declined < 0;
         g_overlay_declined = want;
         if (want)
-            banner_log("layer", "overlay layer declined: this display rotates every layer %d° and the game "
+            wnc_log("layer", "overlay layer declined: this display rotates every layer %d° and the game "
                        "layer is scaled %dx%d -> %dx%d, and on that combination a second layer drops the "
                        "whole frame to GPU composition for the rest of the session (measured). The window "
                        "above the game goes on the copy path instead - same picture, one blit.",
                        deg, sr[0], sr[1], ds[0], ds[1]);
         else if (!first)
-            banner_log("layer", "overlay layer allowed again: the game layer is no longer both rotated and "
+            wnc_log("layer", "overlay layer allowed again: the game layer is no longer both rotated and "
                        "scaled, so a second display layer costs nothing here");
     }
     return ok;
@@ -1076,7 +1076,7 @@ void sc_layer_hide(void) {
      * SurfaceControl, since it goes up and down with every effects/frame-generation toggle. */
     if (g_layers[SC_LAYER_OVERLAY].sc) sc_layer_hide_overlay();
     if (g_layers[SC_LAYER_GAME].shown) hide_layer(&g_layers[SC_LAYER_GAME]);
-    if (said) banner_log("layer", "layers hidden (scene is not a single fullscreen window)");
+    if (said) wnc_log("layer", "layers hidden (scene is not a single fullscreen window)");
 }
 
 void sc_layer_hide_overlay(void) {
@@ -1092,7 +1092,7 @@ void sc_layer_hide_overlay(void) {
      * buffers stay allocated for the next window. */
     if (l->shown) hide_layer(l);
     retire_sc(l);
-    banner_log("layer", "%s: gone (nothing is above the game any more)", l->name);
+    wnc_log("layer", "%s: gone (nothing is above the game any more)", l->name);
     /* ...and that is the half the measurement said is not enough: arm the game layer's
      * SurfaceControl swap, which the next frame performs (swap_sc_begin). */
     if (g_layers[SC_LAYER_GAME].sc) g_layers[SC_LAYER_GAME].recreate_pending = 1;

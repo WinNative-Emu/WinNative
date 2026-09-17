@@ -5,20 +5,19 @@ import android.view.Surface;
 import java.nio.charset.StandardCharsets;
 
 /**
- * JNI surface of the embedded Wayland compositor (libbannerwayland.so, ported from Bannerlator by
- * The412Banner). One compositor thread lives for the whole process; each game session begins with
+ * JNI surface of the embedded Wayland compositor (libwnwayland.so); see CREDITS.md for
+ * attribution. One compositor thread lives for the whole process; each game session begins with
  * {@link #nativeStartWithSurface} and ends with {@link #nativeEndSession}. Listener callbacks run
  * on the compositor thread and must marshal to the UI thread themselves.
  */
 public final class WaylandCompositor {
     static {
-        System.loadLibrary("bannerwayland");
+        System.loadLibrary("wnwayland");
     }
 
     private WaylandCompositor() {}
 
     public static final int HDR_MODE_OFF = 0, HDR_MODE_ON = 1, HDR_MODE_FORCE = 2;
-    public static final int FG_ENGINE_LSFG = 0, FG_ENGINE_WINFG = 1;
 
     /** Scale modes of the output mapping (mirrors the compositor's vkp_scale_mode). */
     public static final int SCALE_OFF = 0, SCALE_FIT = 1, SCALE_STRETCH = 2, SCALE_FILL = 3, SCALE_INTEGER = 4;
@@ -203,14 +202,19 @@ public final class WaylandCompositor {
                                                      boolean fxaa, boolean toon, boolean crt, boolean ntsc);
     public static native void nativeSetLookName(String name);
 
-    // Frame generation bridge. The WinNative build compiles the engine stub, so the compositor
-    // reports the engines unavailable and never generates.
+    // Frame generation. kind is ENGINE_LSFG or ENGINE_DIS; every setter is a store the compositor
+    // thread picks up on its next frame, so they are safe to call before the compositor is up.
+    public static final int ENGINE_LSFG = 0;
+    public static final int ENGINE_DIS = 1;
+
     public static native void nativeSetFrameGenEngine(int kind);
     public static native void nativeSetFrameGenArmed(boolean armed, int multiplier);
     public static native void nativeSetLsfgCachePath(String path);
     public static native void nativeSetFrameGenTuning(float flowScale, float refreshHz);
-    public static native void nativeSetWinFgTuning(int model, int perfPreset);
+    public static native void nativeSetEngineTuning(int flowMinSide, int targetFps);
     public static native int nativeFrameGenProblem();
     public static native String nativeFrameGenCapsReason();
     public static native float[] nativeFrameGenStats();
+    public static native long nativeFrameGenPresentedFrames();
+    public static native long nativeFrameGenGeneratedFrames();
 }

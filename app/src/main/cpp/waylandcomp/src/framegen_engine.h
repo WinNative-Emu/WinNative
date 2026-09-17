@@ -1,13 +1,11 @@
 #ifndef FRAMEGEN_ENGINE_H
 #define FRAMEGEN_ENGINE_H
 /*
- * C face of the C++ frame-generation engines for framegen_bridge.c.
+ * C face of the frame-generation engines for framegen_bridge.c.
  *
- * framegen_engine.cpp wraps lsfg::Engine (winlator/lsfg) and winfg::Engine (winlator/winfg)
- * unmodified - the same objects the X11 renderer (VulkanRendererContext) drives - and fills
- * their dispatch tables from the compositor's own Turnip entry points. The standalone
- * compositor build (no winlator tree) compiles framegen_engine_stub.c instead, which reports
- * "engines not built in" and generates nothing.
+ * framegen_engine.c drives vkr_lsfg and vkr_dis - the same engines the X11 renderer runs -
+ * on the compositor's own Turnip device. A build without the winlator tree compiles
+ * framegen_engine_stub.c instead, which reports "engines not built in" and generates nothing.
  *
  * Every function runs on the compositor thread.
  */
@@ -22,7 +20,7 @@ extern "C" {
 #endif
 
 /* Probe the physical device and build the VkDeviceCreateInfo pNext chain the LSFG chain needs
- * (vulkanMemoryModel + storage-image features; nothing for Win-FG). Returns the chain, or NULL
+ * (vulkanMemoryModel + storage-image features; nothing for DIS). Returns the chain, or NULL
  * when the device fails a gate. `ring_fmt` is the format the engines generate into; it must be
  * storage-capable for either engine. */
 const void *fge_probe(PFN_vkGetInstanceProcAddr gipa, VkInstance inst, VkPhysicalDevice pd,
@@ -39,14 +37,14 @@ const char *fge_caps_reason(void);
  * ring format probed at fge_probe - the FP16 scene of HDR frames (vk_present.c). */
 int fge_format_ok(VkFormat fmt);
 
-/* Create engine `kind` (LSFG needs the cache path; Win-FG ignores it). 0 = ready, -1 = failed.
+/* Create engine `kind` (LSFG needs the cache path; DIS ignores it). 0 = ready, -1 = failed.
  * Only one engine holds GPU resources at a time; a different kind replaces it. */
 int fge_start(int kind, const char *cache_path);
 void fge_stop(void);
 /* The engine came up but later found it cannot generate (chain build failed). */
 int fge_unavailable(void);
-void fge_configure(uint32_t multiplier, float flow_scale, float refresh_hz, int model,
-                   int perf_preset);
+void fge_configure(uint32_t multiplier, float flow_scale, float refresh_hz, int flow_min_side,
+                   int target_fps);   /* flow_min_side is DIS-only; target_fps paces both */
 /* Build/rebuild the chain for this extent; the guest extent for the flow pyramid is the same
  * (the Wayland scene is the game's own size in fullscreen). 1 = chain valid. */
 int fge_prepare(uint32_t w, uint32_t h, VkFormat fmt);
@@ -62,7 +60,7 @@ void fge_forget_targets(void);
 /* Engine-side telemetry: accepted generations, source rate (0 = engine has none), thermal. */
 void fge_telemetry(float *accepted, float *source_rate, float *thermal);
 const char *fge_engine_name(int kind);
-/* "lsfg-native"/"winfg-native" build provenance for the start log line. */
+/* "lsfg-native"/"dis-native" build provenance for the start log line. */
 const char *fge_build_info(void);
 
 #ifdef __cplusplus

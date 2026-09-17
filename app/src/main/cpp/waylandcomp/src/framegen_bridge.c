@@ -11,16 +11,16 @@
 #include <time.h>
 #include <android/log.h>
 
-void banner_log(const char *tag, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-#define FGLOG(...) banner_log("framegen", __VA_ARGS__)
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "BannerWayland", __VA_ARGS__)
+void wnc_log(const char *tag, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+#define FGLOG(...) wnc_log("framegen", __VA_ARGS__)
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "WNWayland", __VA_ARGS__)
 
 /* ---- app controls (written from any thread, read on the compositor thread) ------------- */
 static _Atomic int   g_kind = VKP_FG_ENGINE_LSFG;
 static _Atomic int   g_armed;
 static _Atomic int   g_mult = 2;
-static _Atomic int   g_model = 3;
-static _Atomic int   g_preset = 2;
+static _Atomic int   g_dis_min_side = 180;
+static _Atomic int   g_target_fps;
 static _Atomic int   g_cfg_dirty = 1;
 static float g_flow = 0.8f, g_refresh_hz;          /* under g_lock */
 static char *g_cache_path;                          /* under g_lock */
@@ -77,7 +77,8 @@ static int format_refused(VkFormat f) {
 
 /* ---- stats ------------------------------------------------------------------------- */
 static _Atomic unsigned g_stat_generated;           /* since the last stats_take */
-static uint64_t g_total_generated;
+static _Atomic uint64_t g_total_generated;
+static _Atomic uint64_t g_total_presented;
 static float g_presented_rate, g_source_rate;       /* smoothed, 0.5 s windows */
 static uint32_t g_present_accum, g_source_accum;
 static int64_t g_window_start_ns;
@@ -90,7 +91,7 @@ static int64_t now_ns(void) {
 /* ====================================================================== app controls */
 
 void vkp_framegen_set_engine(int kind) {
-    if (kind != VKP_FG_ENGINE_LSFG && kind != VKP_FG_ENGINE_WINFG) kind = VKP_FG_ENGINE_LSFG;
+    if (kind != VKP_FG_ENGINE_LSFG && kind != VKP_FG_ENGINE_DIS) kind = VKP_FG_ENGINE_LSFG;
     atomic_store(&g_kind, kind);
     atomic_store(&g_cfg_dirty, 1);
 }
@@ -125,9 +126,12 @@ void vkp_framegen_set_tuning(float flow_scale, float refresh_hz) {
     atomic_store(&g_cfg_dirty, 1);
 }
 
-void vkp_framegen_set_winfg_tuning(int model, int perf_preset) {
-    atomic_store(&g_model, model == 3 ? 3 : 4);
-    atomic_store(&g_preset, perf_preset < 0 ? 0 : perf_preset > 2 ? 2 : perf_preset);
+void vkp_framegen_set_engine_tuning(int flow_min_side, int target_fps) {
+    if (flow_min_side < 64) flow_min_side = 64;
+    if (flow_min_side > 1080) flow_min_side = 1080;
+    if (target_fps < 0) target_fps = 0;
+    atomic_store(&g_dis_min_side, flow_min_side);
+    atomic_store(&g_target_fps, target_fps);
     atomic_store(&g_cfg_dirty, 1);
 }
 
@@ -156,7 +160,7 @@ void vkp_framegen_stats(float out[6]) {
     float accepted = 0.0f, src = 0.0f, thermal = -1.0f;
     if (g_engine_ok) fge_telemetry(&accepted, &src, &thermal);
     /* Planned is what is generated; the governor is off on both paths. Our own measured
-     * source rate serves both engines (Win-FG measures none). */
+     * source rate serves both engines (DIS measures none). */
     out[0] = (float)g_planned;
     out[1] = (float)g_planned;
     out[2] = g_source_rate;
@@ -166,6 +170,9 @@ void vkp_framegen_stats(float out[6]) {
 }
 
 unsigned vkp_framegen_stats_take(void) { return atomic_exchange(&g_stat_generated, 0u); }
+
+uint64_t vkp_framegen_total_presented(void) { return atomic_load(&g_total_presented); }
+uint64_t vkp_framegen_total_generated(void) { return atomic_load(&g_total_generated); }
 
 /* ====================================================================== device setup */
 
@@ -185,9 +192,9 @@ void vkp_framegen_device_ready(VkDevice dev, VkQueue queue, uint32_t qfam, int f
     g_vk.GetPhysicalDeviceMemoryProperties(g_pd, &g_memprops);
     fge_device_ready(g_gipa, g_inst, g_pd, dev, queue, qfam, features_enabled);
     g_dev_ready = vk.CreateImage && vk.CreateImageView && vk.CmdPipelineBarrier;
-    FGLOG("engines ready on the compositor's device: LSFG Native %s (%s), Win-FG Native %s",
+    FGLOG("engines ready on the compositor's device: LSFG Native %s (%s), DIS Native %s",
           fge_caps_ok(VKP_FG_ENGINE_LSFG) ? "available" : "unavailable", fge_caps_reason(),
-          fge_caps_ok(VKP_FG_ENGINE_WINFG) ? "available" : "unavailable");
+          fge_caps_ok(VKP_FG_ENGINE_DIS) ? "available" : "unavailable");
 }
 
 void vkp_framegen_device_lost(void) { g_dev_lost = 1; }
@@ -329,7 +336,7 @@ static void log_arm_transition(int armed, int kind, int mult) {
         FGLOG("%s x%d armed (flow scale %.2f, panel %.0f Hz): real frames are presented one slot late "
               "with the interpolated frames ahead of them", fge_engine_name(kind), mult, (double)flow, (double)hz);
     } else {
-        FGLOG("frame generation off (%llu frames generated this session)", (unsigned long long)g_total_generated);
+        FGLOG("frame generation off (%llu frames generated this session)", (unsigned long long)atomic_load(&g_total_generated));
         g_generating_logged = 0;
     }
 }
@@ -348,7 +355,8 @@ int vkp_framegen_run(VkCommandBuffer cmd, VkImage scene, VkImageView scene_view,
     if (atomic_exchange(&g_cfg_dirty, 0)) {
         float flow, hz;
         pthread_mutex_lock(&g_lock); flow = g_flow; hz = g_refresh_hz; pthread_mutex_unlock(&g_lock);
-        fge_configure((uint32_t)mult, flow, hz, atomic_load(&g_model), atomic_load(&g_preset));
+        fge_configure((uint32_t)mult, flow, hz, atomic_load(&g_dis_min_side),
+                      atomic_load(&g_target_fps));
     }
     if (!fge_prepare((uint32_t)w, (uint32_t)h, fmt)) {
         if (fmt != VK_FORMAT_R8G8B8A8_UNORM && fge_unavailable()) {
@@ -365,7 +373,11 @@ int vkp_framegen_run(VkCommandBuffer cmd, VkImage scene, VkImageView scene_view,
         g_built_w = (uint32_t)w; g_built_h = (uint32_t)h; g_built_fmt = fmt;
         g_generating_logged = 0;
     }
-    uint32_t want = (uint32_t)(mult - 1);
+    /* With a target rate the pacer picks the generation count itself (it may exceed the
+     * multiplier to reach the target, as on X11), so the ring has to hold the engine's maximum
+     * rather than the multiplier's share. */
+    uint32_t want = atomic_load(&g_target_fps) > 0 ? (uint32_t)VKP_FG_MAX_GENERATIONS
+                                                   : (uint32_t)(mult - 1);
     if (!ensure_ring((uint32_t)w, (uint32_t)h, fmt, want)) {
         if (fmt != VK_FORMAT_R8G8B8A8_UNORM) { refuse_format(fmt, kind, w, h, "make its generation ring"); return 0; }
         FGLOG("no memory for the generation ring (%dx%d x%u); frame generation stays off", w, h, want);
@@ -440,9 +452,10 @@ void vkp_framegen_presented(int generated) {
     if (!g_window_start_ns) { g_window_start_ns = now; g_present_accum = 0; g_source_accum = 0; }
     g_present_accum += (uint32_t)generated + 1u;
     g_source_accum += 1u;
+    atomic_fetch_add(&g_total_presented, (uint64_t)generated + 1u);
     if (generated) {
         atomic_fetch_add(&g_stat_generated, (unsigned)generated);
-        g_total_generated += (uint64_t)generated;
+        atomic_fetch_add(&g_total_generated, (uint64_t)generated);
     }
     float elapsed = (float)(now - g_window_start_ns) / 1e9f;
     if (elapsed < 0.5f) return;                     /* half-second window, like the X11 renderer */

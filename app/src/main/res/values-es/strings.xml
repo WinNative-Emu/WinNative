@@ -2885,7 +2885,7 @@ Ruta instalada:
     <string name="container_display_server">Servidor de pantalla</string>
     <string name="container_display_server_help">Experimental. La sesión se dibuja a través del compositor Wayland integrado en lugar del servidor X.</string>
     <string name="container_display_server_wayland_requirements">Wayland necesita una GPU Adreno y un Proton compatible con Wayland que incluya winewayland y el controlador Turnip para Wayland. Instala uno desde Contenidos.</string>
-    <string name="container_display_server_needs_wayland_proton">Este Proton no incluye winewayland ni el controlador Turnip para Wayland, así que se usa X11. Instala una capa Proton Wayland desde Contenidos, por ejemplo el .wcp proton-11.0-2.1-arm64ec-wayland de Banner, y selecciónala como Proton del contenedor.</string>
+    <string name="container_display_server_needs_wayland_proton">Este Proton no incluye winewayland ni el controlador Turnip para Wayland, así que se usa X11. Instala una capa Proton Wayland desde Contenidos y selecciónala como Proton del contenedor.</string>
     <string name="wayland_unavailable_fallback">Wayland no está disponible para este juego. Iniciando en X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland necesita un controlador gráfico Turnip para mostrar el juego. Instala uno en Contenidos y selecciónalo como controlador gráfico.</string>
     <string name="settings_content_badge_online">En línea</string>

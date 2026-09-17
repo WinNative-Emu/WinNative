@@ -917,14 +917,36 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 + " refreshRate=" + refreshRate);
     }
 
+    /* The Wayland compositor hosts the engines itself, so it is armed from the same fields the
+     * X11 renderer is given; the setters are stores its thread picks up on its next frame. */
+    private void applyWaylandFrameGeneration() {
+        if (!waylandMode) return;
+
+        if (frameGenEnabled && frameGenCachePath != null) {
+            WaylandCompositor.nativeSetLsfgCachePath(frameGenCachePath);
+            WaylandCompositor.nativeSetFrameGenEngine(WaylandCompositor.ENGINE_LSFG);
+            WaylandCompositor.nativeSetEngineTuning(disFrameGenScale, frameGenTargetRate);
+            WaylandCompositor.nativeSetFrameGenTuning(frameGenFlowScale / 100f, frameGenRefreshRate);
+            WaylandCompositor.nativeSetFrameGenArmed(true, frameGenMultiplier);
+        } else if (disFrameGenEnabled) {
+            WaylandCompositor.nativeSetFrameGenEngine(WaylandCompositor.ENGINE_DIS);
+            WaylandCompositor.nativeSetEngineTuning(disFrameGenScale, disFrameGenTargetFps);
+            WaylandCompositor.nativeSetFrameGenTuning(frameGenFlowScale / 100f, frameGenRefreshRate);
+            WaylandCompositor.nativeSetFrameGenArmed(true, frameGenMultiplier);
+        } else {
+            WaylandCompositor.nativeSetFrameGenArmed(false, frameGenMultiplier);
+        }
+    }
+
     private void syncFrameGenerationHud() {
+        applyWaylandFrameGeneration();
         boolean ourFrameGen = (frameGenEnabled && frameGenCachePath != null) || disFrameGenEnabled;
         boolean systemFrameGen = !ourFrameGen && systemFrameGenHudEnabled;
         boolean active = ourFrameGen || systemFrameGen;
 
         FrameRating.OutputFrameSource source;
         if (ourFrameGen || frameGenEnabled || disFrameGenEnabled) {
-            source = frameGenOutputSource;
+            source = waylandMode ? waylandFrameGenOutputSource : frameGenOutputSource;
         } else if (systemFrameGen) {
             source = ensureSystemFrameGenMonitor();
         } else {
@@ -956,6 +978,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (systemFrameGenMonitor == null) {
             systemFrameGenMonitor = new SystemFrameGenMonitor(
                     () -> {
+                        if (waylandMode) return WaylandCompositor.nativeFrameGenPresentedFrames();
                         VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
                         return renderer != null ? renderer.getPresentedFrameCount() : 0L;
                     },
@@ -1034,6 +1057,19 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         handler.removeCallbacks(systemFrameGenPollRunnable);
         systemFrameGenPollRunnable = null;
     }
+
+    private final FrameRating.OutputFrameSource waylandFrameGenOutputSource =
+            new FrameRating.OutputFrameSource() {
+                @Override
+                public long getPresentedFrameCount() {
+                    return WaylandCompositor.nativeFrameGenPresentedFrames();
+                }
+
+                @Override
+                public long getGeneratedFrameCount() {
+                    return WaylandCompositor.nativeFrameGenGeneratedFrames();
+                }
+            };
 
     private final FrameRating.OutputFrameSource frameGenOutputSource =
             new FrameRating.OutputFrameSource() {
@@ -1194,6 +1230,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
 
         float refreshRate = applyDisFrameGenerationDisplayMode();
+        frameGenRefreshRate = refreshRate;
         renderer.setDisFrameGenerationScale(disFrameGenScale);
         renderer.setDisFrameGenerationTargetFps(disFrameGenTargetFps);
         renderer.setDisDebugFlow(disFrameGenDebugFlow);

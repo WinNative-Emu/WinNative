@@ -17,8 +17,9 @@ int fge_format_ok(VkFormat fmt) { (void)fmt; return 0; }
 int fge_start(int kind, const char *cache_path) { (void)kind; (void)cache_path; return -1; }
 void fge_stop(void) {}
 int fge_unavailable(void) { return 1; }
-void fge_configure(uint32_t multiplier, float flow_scale, float refresh_hz, int model, int perf_preset) {
-    (void)multiplier; (void)flow_scale; (void)refresh_hz; (void)model; (void)perf_preset;
+void fge_configure(uint32_t multiplier, float flow_scale, float refresh_hz, int flow_min_side,
+                   int target_fps) {
+    (void)multiplier; (void)flow_scale; (void)refresh_hz; (void)flow_min_side; (void)target_fps;
 }
 int fge_prepare(uint32_t w, uint32_t h, VkFormat fmt) { (void)w; (void)h; (void)fmt; return 0; }
 uint32_t fge_plan(uint32_t capacity, uint64_t source_frames, float presented_rate) {
@@ -35,5 +36,5 @@ void fge_forget_targets(void) {}
 void fge_telemetry(float *accepted, float *source_rate, float *thermal) {
     *accepted = 0.0f; *source_rate = 0.0f; *thermal = -1.0f;
 }
-const char *fge_engine_name(int kind) { return kind == 1 ? "Win-FG Native" : "LSFG Native"; }
+const char *fge_engine_name(int kind) { return kind == 1 ? "DIS Native" : "LSFG Native"; }
 const char *fge_build_info(void) { return "stub"; }

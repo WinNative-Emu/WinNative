@@ -1,8 +1,8 @@
 # Embedded Wayland compositor: runs a libwayland-server compositor in-process so games launched
-# through Wine's winewayland.drv present into it. Ported from Bannerlator (The412Banner); see
-# docs/WAYLAND-DISPLAY.md and CREDITS.md. Protocol glue is pre-generated in generated/ so no host
+# through Wine's winewayland.drv present into it. See docs/WAYLAND-DISPLAY.md for the design and
+# CREDITS.md for attribution. Protocol glue is pre-generated in generated/ so no host
 # wayland-scanner is needed at build time.
-add_library(bannerwayland SHARED
+add_library(wnwayland SHARED
         src/compositor.c
         src/vk_present.c
         src/effects_chain.c
@@ -10,7 +10,7 @@ add_library(bannerwayland SHARED
         src/sc_layer.c
         src/ahb_swapchain.c
         src/waylandcomp_jni.c
-        src/banner_ext.c
+        src/desktop_ext.c
         src/wl_clipboard.c
         src/wl_text_input.c
         src/wl_toplevel_icon.c
@@ -18,22 +18,21 @@ add_library(bannerwayland SHARED
         src/hdr_compose.c
         src/framegen_bridge.c
         src/framegen_jni.c
-        src/framegen_engine_stub.c
         generated/color-management-v1-protocol.c
         generated/xdg-shell-protocol.c
         generated/linux-dmabuf-v1-protocol.c
         generated/viewporter-protocol.c
-        generated/banner-desktop-v1-protocol.c
+        generated/desktop-v1-protocol.c
         generated/presentation-time-protocol.c
         generated/pointer-constraints-unstable-v1-protocol.c
         generated/relative-pointer-unstable-v1-protocol.c
         generated/wlr-data-control-unstable-v1-protocol.c
         generated/text-input-unstable-v3-protocol.c
         generated/xdg-toplevel-icon-v1-protocol.c
-        generated/banner-ahb-v1-protocol.c
+        generated/ahb-v1-protocol.c
 )
 
-target_include_directories(bannerwayland PRIVATE
+target_include_directories(wnwayland PRIVATE
         generated
         prebuilt/include
         src
@@ -42,9 +41,38 @@ target_include_directories(bannerwayland PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../adrenotools/include
 )
 
-# The frame-generation engines of the X11 renderer are not shared with this library in WinNative:
-# src/framegen_engine_stub.c reports every engine unavailable, so the compositor never generates.
-target_compile_definitions(bannerwayland PRIVATE BANNER_WAYLAND_FRAMEGEN_STUB=1)
+# The X11 renderer's frame-generation engines run here too, on the compositor's own Turnip
+# device. Their sources are compiled in rather than linked from libwinlator: both libraries keep
+# a private VkDispatch, so the visibility below must stay for the two copies not to merge.
+set(FRAMEGEN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../winlator/vk)
+if (TARGET dxbc AND EXISTS ${FRAMEGEN_DIR}/dis/vkr_dis.c)
+    target_sources(wnwayland PRIVATE
+            src/framegen_engine.c
+            ${FRAMEGEN_DIR}/vk_dispatch.c
+            ${FRAMEGEN_DIR}/dis/vkr_dis.c
+            ${FRAMEGEN_DIR}/lsfg/lsfg_dll.c
+            ${FRAMEGEN_DIR}/lsfg/lsfg_dxbc.cpp
+            ${FRAMEGEN_DIR}/lsfg/lsfg_common.cpp
+            ${FRAMEGEN_DIR}/lsfg/lsfg_shaders.cpp
+            ${FRAMEGEN_DIR}/lsfg/lsfg_mipmaps.cpp
+            ${FRAMEGEN_DIR}/lsfg/lsfg_generate.cpp
+            ${FRAMEGEN_DIR}/lsfg/lsfg_alpha.cpp
+            ${FRAMEGEN_DIR}/lsfg/lsfg_beta.cpp
+            ${FRAMEGEN_DIR}/lsfg/lsfg_gamma.cpp
+            ${FRAMEGEN_DIR}/lsfg/lsfg_delta.cpp
+            ${FRAMEGEN_DIR}/lsfg/lsfg_chain.cpp
+            ${FRAMEGEN_DIR}/lsfg/lsfg_pacer.cpp
+            ${FRAMEGEN_DIR}/lsfg/vkr_lsfg.cpp
+    )
+    target_include_directories(wnwayland PRIVATE ${FRAMEGEN_DIR} ${WINLATOR_GENERATED_DIR})
+    target_compile_definitions(wnwayland PRIVATE VK_USE_PLATFORM_ANDROID_KHR)
+    target_compile_options(wnwayland PRIVATE -fvisibility=hidden)
+    target_compile_features(wnwayland PRIVATE cxx_std_17)
+    target_link_libraries(wnwayland dxbc)
+    add_dependencies(wnwayland winlator_shaders)
+else()
+    target_sources(wnwayland PRIVATE src/framegen_engine_stub.c)
+endif()
 
 add_library(wayland-server SHARED IMPORTED)
 set_target_properties(wayland-server PROPERTIES IMPORTED_LOCATION
@@ -52,7 +80,7 @@ set_target_properties(wayland-server PROPERTIES IMPORTED_LOCATION
 
 # Vulkan is loaded at runtime through adrenotools (Turnip), never linked: the compositor needs the
 # driver's dma-buf import path, which the system Adreno driver lacks.
-target_link_libraries(bannerwayland
+target_link_libraries(wnwayland
         wayland-server
         adrenotools
         dl

@@ -4,7 +4,7 @@
  * missing. We send no icon_size (any size is fine) and `done` at bind, as the protocol asks.
  */
 #include <stdlib.h>
-#include "banner_ext.h"
+#include "desktop_ext.h"
 #include "xdg-toplevel-icon-v1-server-protocol.h"
 
 static void icon_destroy(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }

@@ -1,14 +1,12 @@
 #ifndef FRAMEGEN_BRIDGE_H
 #define FRAMEGEN_BRIDGE_H
 /*
- * Frame generation on the Wayland backend (feat/wayland-framegen).
+ * Frame generation on the Wayland backend.
  *
- * The two NATIVE engines the X11 renderer runs inside libwinlator's compositor - LSFG Native
- * (the user's Lossless.dll chain, lsfg/) and Win-FG Native (our own FSR3-derived optical-flow
- * chain, winfg/) - are hosted here inside the Wayland compositor's Turnip device. Both consume
- * consecutive presented frames and emit interpolated frames between them; the guest never
- * sees any of it. bionic-fg (the guest-side win-fg Vulkan layer) is X11-only and is not
- * ported: its frames are born inside the guest and have nothing to attach to here.
+ * The two engines the X11 renderer runs - LSFG (the user's Lossless.dll chain, vk/lsfg) and
+ * DIS (the dense inverse search optical-flow chain, vk/dis) - are hosted here on the Wayland
+ * compositor's Turnip device. Both consume consecutive presented frames and emit interpolated
+ * frames between them; the guest never sees any of it.
  *
  * Present order per scene frame (vk_present.c):
  *     scene  ->  effects  ->  FRAME GENERATION  ->  mapping/blit  ->  swapchain
@@ -28,7 +26,7 @@
 #endif
 #include <vulkan/vulkan.h>
 
-enum { VKP_FG_ENGINE_LSFG = 0, VKP_FG_ENGINE_WINFG = 1 };
+enum { VKP_FG_ENGINE_LSFG = 0, VKP_FG_ENGINE_DIS = 1 };
 /* Hard ceiling on generated frames per source frame (2x..4x -> 1..3), as on X11. */
 #define VKP_FG_MAX_GENERATIONS 3
 
@@ -40,8 +38,9 @@ void vkp_framegen_set_armed(int armed, int multiplier);
 void vkp_framegen_set_lsfg_cache_path(const char *path);
 /* Flow scale 0.25..1.0 and the panel's real refresh rate (the pacer never generates above it). */
 void vkp_framegen_set_tuning(float flow_scale, float refresh_hz);
-/* Win-FG Native: interpolation model (3/4) and performance preset (0..2). */
-void vkp_framegen_set_winfg_tuning(int model, int perf_preset);
+/* Flow resolution in pixels of the frame's short side (DIS only) and the target output rate
+ * both engines pace to (0 = follow the panel). */
+void vkp_framegen_set_engine_tuning(int flow_min_side, int target_fps);
 /* Same codes as VulkanRenderer.getFrameGenProblem(): -1 not known yet (device not up), 0 fine,
  * 1 the driver lacks what the selected engine needs (vkp_framegen_caps_reason says what),
  * 2 the engine failed to start / build its chain. */
@@ -53,11 +52,14 @@ const char *vkp_framegen_caps_reason(void);
 void vkp_framegen_stats(float out[6]);
 /* Generated frames presented since the last call (compositor.c, the 10 s stats line). */
 unsigned vkp_framegen_stats_take(void);
+/* Cumulative counters for the HUD's output-frame source; never reset within a process. */
+uint64_t vkp_framegen_total_presented(void);
+uint64_t vkp_framegen_total_generated(void);
 
 /* ---- vk_present.c: device setup (compositor thread) ----------------------------------- */
 /* Before vkCreateDevice: probe what the engines need on this physical device and return the
  * pNext chain to hang on VkDeviceCreateInfo (NULL when the device cannot run the LSFG chain -
- * Win-FG needs no feature). Owned by the bridge, valid until the next call. */
+ * DIS needs no feature). Owned by the bridge, valid until the next call. */
 const void *vkp_framegen_device_features(VkInstance inst, PFN_vkGetInstanceProcAddr gipa,
                                          VkPhysicalDevice pd);
 /* After the device exists (features_enabled = the chain above was accepted). */

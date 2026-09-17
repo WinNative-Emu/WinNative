@@ -12,8 +12,8 @@
  *                          an ASurfaceControl has no input channel, so touch and mouse keep
  *                          reaching the SurfaceView exactly as they did.
  *     +-- SurfaceView ..... the compositor's Vulkan swapchain; black while layer mode is up
- *          +-- z=1 "banner_wayland_game" ...... the one fullscreen game window
- *          +-- z=2 "banner_wayland_overlay" ... at most one window drawn ABOVE the game
+ *          +-- z=1 "wnc_wayland_game" ...... the one fullscreen game window
+ *          +-- z=2 "wnc_wayland_overlay" ... at most one window drawn ABOVE the game
  *
  * TWO layers is the hard cap (SC_LAYER_COUNT), and deliberately so: HWC composes only a few
  * layers before SurfaceFlinger falls back to GPU client composition, which would throw away the
@@ -71,7 +71,7 @@
 
 struct vkp_image;
 struct vkp_draw;
-struct banner_color;
+struct wnc_color;
 
 /* The layers, bottom first. The z-order is the array order (z = id + 1). */
 enum sc_layer_id { SC_LAYER_GAME = 0, SC_LAYER_OVERLAY = 1, SC_LAYER_COUNT = 2 };
@@ -84,7 +84,7 @@ int sc_layer_available(void);
  * Decides where a zero-copy acquire fence can come from; result goes to the session log. */
 void sc_layer_probe_dmabuf_fd(int fd);
 
-/* HDR (banner_color.h): can a display layer be told its buffer's colour encoding here
+/* HDR (color_mgmt.h): can a display layer be told its buffer's colour encoding here
  * (ASurfaceTransaction_setBufferDataSpace, Android 10+)? Part of the HDR gate. */
 int sc_layer_can_tag_hdr(void);
 /* Which of the colour calls this libandroid has, for the gate's log line. */
@@ -100,7 +100,7 @@ void sc_layer_hdr_symbols(char *out, size_t size);
  * free buffer), -1 = the layer path is unavailable this frame and the caller must draw the old way.
  * The copy into the layer buffer is 8-bit: an HDR frame keeps its tag (its colours stay right), and
  * loses precision. */
-int sc_layer_present(struct vkp_image *src, int scene_w, int scene_h, const struct banner_color *color);
+int sc_layer_present(struct vkp_image *src, int scene_w, int scene_h, const struct wnc_color *color);
 
 /* GAME layer, screen effects on: run the compositor pass (composite `draws` + the effects chain,
  * vkp_pass_begin) and put its result on the layer. Same return values as sc_layer_present. */
@@ -113,7 +113,7 @@ int sc_layer_present_pass(const struct vkp_draw *draws, int n, int scene_w, int 
  * Same return values as sc_layer_present. */
 struct vkp_hdr_frame;
 int sc_layer_present_hdr_scene(const struct vkp_draw *draws, int n, const struct vkp_hdr_frame *hf,
-                               int scene_w, int scene_h, const struct banner_color *color);
+                               int scene_w, int scene_h, const struct wnc_color *color);
 
 /* GAME layer, zero-copy (ahb_swapchain.c): show the game's own w x h AHardwareBuffer, gated by
  * acquire_fd (a sync_file the layer waits on before reading; owned by the callee, -1 = none).
@@ -124,7 +124,7 @@ int sc_layer_present_hdr_scene(const struct vkp_draw *draws, int n, const struct
  * frame (the caller draws the old way). `color` / `ahb_format`: the frame's image description (NULL =
  * none) and the buffer's AHARDWAREBUFFER_FORMAT_*, for the dataspace and the HDR evidence. */
 int sc_layer_present_ahb(AHardwareBuffer *ahb, int w, int h, int acquire_fd, void *token,
-                         int scene_w, int scene_h, const struct banner_color *color, uint32_t ahb_format);
+                         int scene_w, int scene_h, const struct wnc_color *color, uint32_t ahb_format);
 
 /* Vote a panel refresh rate for the layer the game presents on (VRR / refresh-rate matching), the
  * same rate and compatibility the app votes on its own surface with Surface.setFrameRate; 0 = no

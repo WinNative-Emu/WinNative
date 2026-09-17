@@ -2,7 +2,7 @@
  * Host → compositor message queue plus the init of the extension modules.
  *
  * The app's threads (UI thread, clipboard listener) hand text to the compositor through
- * banner_host_* ; the messages are queued under a mutex and a pipe byte wakes the wl event
+ * wnc_host_* ; the messages are queued under a mutex and a pipe byte wakes the wl event
  * loop, which drains them on the compositor thread — the only thread that may touch
  * wl_resources.
  */
@@ -13,9 +13,9 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <android/log.h>
-#include "banner_ext.h"
+#include "desktop_ext.h"
 #include "ahb_swapchain.h"
-#include "banner_color.h"
+#include "color_mgmt.h"
 
 enum host_kind { HOST_CLIPBOARD = 1, HOST_TEXT_COMMIT, HOST_TEXT_PREEDIT, HOST_TEXT_DELETE, HOST_ZERO_COPY, HOST_HDR_OUTPUT };
 
@@ -53,22 +53,22 @@ static void host_post(enum host_kind kind, const char *text, size_t len, int a, 
     }
 }
 
-void banner_host_clipboard_text(const char *utf8, int len) {
+void wnc_host_clipboard_text(const char *utf8, int len) {
     host_post(HOST_CLIPBOARD, utf8, len > 0 ? (size_t)len : 0, 0, 0);
 }
-void banner_host_text_commit(const char *utf8, int len) {
+void wnc_host_text_commit(const char *utf8, int len) {
     host_post(HOST_TEXT_COMMIT, utf8, len > 0 ? (size_t)len : 0, 0, 0);
 }
-void banner_host_text_preedit(const char *utf8, int len, int cursor_begin, int cursor_end) {
+void wnc_host_text_preedit(const char *utf8, int len, int cursor_begin, int cursor_end) {
     host_post(HOST_TEXT_PREEDIT, utf8, len > 0 ? (size_t)len : 0, cursor_begin, cursor_end);
 }
-void banner_host_text_delete(int before, int after) {
+void wnc_host_text_delete(int before, int after) {
     host_post(HOST_TEXT_DELETE, NULL, 0, before, after);
 }
-void banner_host_zero_copy(int on, int live) {
+void wnc_host_zero_copy(int on, int live) {
     host_post(HOST_ZERO_COPY, NULL, 0, on, live);
 }
-void banner_host_hdr_output(int on) {
+void wnc_host_hdr_output(int on) {
     host_post(HOST_HDR_OUTPUT, NULL, 0, on, 0);
 }
 
@@ -99,17 +99,17 @@ static int on_wake(int fd, uint32_t mask, void *data) {
             ahb_swapchain_set_mode(m->a, m->b);
             break;
         case HOST_HDR_OUTPUT:
-            banner_color_set_output(m->a);
+            wnc_color_set_output(m->a);
             break;
         }
         free(m->text);
         free(m);
     }
-    wl_display_flush_clients(banner_get_display());
+    wl_display_flush_clients(wnc_get_display());
     return 0;
 }
 
-void banner_ext_init(struct wl_display *display) {
+void wnc_ext_init(struct wl_display *display) {
     struct wl_event_loop *loop = wl_display_get_event_loop(display);
     if (pipe2(g_wake, O_CLOEXEC | O_NONBLOCK) == 0) {
         wl_event_loop_add_fd(loop, g_wake[0], WL_EVENT_READABLE, on_wake, NULL);
@@ -118,7 +118,7 @@ void banner_ext_init(struct wl_display *display) {
         pthread_mutex_unlock(&g_mu);
         if (queued) { char c = 1; ssize_t n = write(g_wake[1], &c, 1); (void)n; }
     } else
-        __android_log_print(ANDROID_LOG_ERROR, "BannerWayland", "host queue pipe failed");
+        __android_log_print(ANDROID_LOG_ERROR, "WNWayland", "host queue pipe failed");
     clipboard_init(display);
     text_input_init(display);
     toplevel_icon_init(display);

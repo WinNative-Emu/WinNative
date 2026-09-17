@@ -2895,7 +2895,7 @@ Installed path:
     <string name="container_display_server">Display Server</string>
     <string name="container_display_server_help">Experimental. The session draws through the embedded Wayland compositor instead of the X server.</string>
     <string name="container_display_server_wayland_requirements">Wayland needs an Adreno GPU and a Wayland-capable Proton with winewayland and the Wayland Turnip driver. Install one from Contents.</string>
-    <string name="container_display_server_needs_wayland_proton">This Proton has no winewayland or Wayland Turnip driver, so X11 is used. Install a Wayland Proton layer from Contents, such as Banner\'s proton-11.0-2.1-arm64ec-wayland .wcp, and select it as the container\'s Proton.</string>
+    <string name="container_display_server_needs_wayland_proton">This Proton has no winewayland or Wayland Turnip driver, so X11 is used. Install a Wayland Proton layer from Contents and select it as the container\'s Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland is not available for this game. Launching on X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland needs a Turnip graphics driver to show the game. Install one under Contents and select it as the graphics driver.</string>
     <string name="display_server_x11" translatable="false">X11</string>

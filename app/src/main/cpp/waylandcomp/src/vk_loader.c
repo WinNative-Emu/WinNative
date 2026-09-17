@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <android/log.h>
 
-#define TAG "BannerWayland"
+#define TAG "WNWayland"
 
 struct vk_api g_vk;
 static void *g_handle;

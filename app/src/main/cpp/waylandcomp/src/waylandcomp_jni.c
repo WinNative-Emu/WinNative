@@ -15,20 +15,20 @@
 #include <android/log.h>
 #include <android/native_window_jni.h>
 #include "vk_present.h"
-#include "banner_ext.h"
+#include "desktop_ext.h"
 #include "ahb_swapchain.h"
 #include "sc_layer.h"
 #include "effects_chain.h"
-#include "banner_color.h"
+#include "color_mgmt.h"
 
-extern int banner_wayland_run(void);
-extern void banner_wayland_set_log_dir(const char *dir);
-extern void banner_wayland_end_session(void);
-extern void banner_wayland_begin_session(void);
-extern void banner_wayland_send_pointer(int action, int x, int y);
-extern void banner_wayland_send_key(int evdev, int state);
-extern void banner_wayland_send_scene_input(int type, int a, int b);
-extern void banner_wayland_vsync(int64_t frame_time_ns);
+extern int wnc_wayland_run(void);
+extern void wnc_wayland_set_log_dir(const char *dir);
+extern void wnc_wayland_end_session(void);
+extern void wnc_wayland_begin_session(void);
+extern void wnc_wayland_send_pointer(int action, int x, int y);
+extern void wnc_wayland_send_key(int evdev, int state);
+extern void wnc_wayland_send_scene_input(int type, int a, int b);
+extern void wnc_wayland_vsync(int64_t frame_time_ns);
 extern volatile int g_fps_limit;
 extern volatile int g_hide_shell;
 extern volatile int g_zero_copy;
@@ -38,7 +38,7 @@ extern volatile int g_no_render_node;
 extern volatile int g_output_refresh_mhz;
 extern volatile int g_output_w, g_output_h;
 
-#define TAG "BannerWayland"
+#define TAG "WNWayland"
 
 static JavaVM *g_jvm;
 static jclass g_compositor_cls;      /* global ref */
@@ -78,7 +78,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 /* Called from vk_present.c on the compositor thread when the first client frame is
  * presented. Attaches to the JVM (this thread is a bare pthread) and calls back into
  * Java so the launch overlay can dismiss. Fires exactly once. */
-void banner_on_first_frame(void) {
+void wnc_on_first_frame(void) {
     if (!g_jvm || !g_compositor_cls || !g_on_first_frame) return;
     JNIEnv *env = NULL;
     int attached = 0;
@@ -109,7 +109,7 @@ static JNIEnv *thread_env(void) {
 }
 
 /* A window started presenting GPU frames (window = its description), or NULL when it closed. */
-void banner_on_game_surface(const char *window, const char *gpu) {
+void wnc_on_game_surface(const char *window, const char *gpu) {
     JNIEnv *env;
     if (!g_compositor_cls || !g_on_game_surface || !(env = thread_env())) return;
     jstring jw = window ? (*env)->NewStringUTF(env, window) : NULL;
@@ -122,7 +122,7 @@ void banner_on_game_surface(const char *window, const char *gpu) {
 
 /* The program behind the game window that just started presenting: its Linux pid and executable name
  * ("" = unknown). The app arms its launch-time CPU affinity on it. Compositor thread. */
-void banner_on_game_program(int pid, const char *program) {
+void wnc_on_game_program(int pid, const char *program) {
     JNIEnv *env;
     if (!g_compositor_cls || !g_on_game_program || !(env = thread_env())) return;
     jstring jp = (*env)->NewStringUTF(env, program ? program : "");
@@ -132,7 +132,7 @@ void banner_on_game_program(int pid, const char *program) {
 }
 
 /* One GPU frame from that window. */
-void banner_on_game_frame(void) {
+void wnc_on_game_frame(void) {
     JNIEnv *env;
     if (!g_compositor_cls || !g_on_game_frame || !(env = thread_env())) return;
     (*env)->CallStaticVoidMethod(env, g_compositor_cls, g_on_game_frame);
@@ -142,7 +142,7 @@ void banner_on_game_frame(void) {
 /* A program locked the pointer (locked = 1; the app's input path switches to deltas) or the lock
  * ended (locked = 0; x,y = where the pointer is now, in scene coordinates, for the app to re-sync
  * its own pointer to). Compositor thread. */
-void banner_on_pointer_lock(int locked, int x, int y) {
+void wnc_on_pointer_lock(int locked, int x, int y) {
     JNIEnv *env;
     if (!g_compositor_cls || !g_on_pointer_lock || !(env = thread_env())) return;
     (*env)->CallStaticVoidMethod(env, g_compositor_cls, g_on_pointer_lock, (jboolean)(locked != 0), (jint)x, (jint)y);
@@ -151,7 +151,7 @@ void banner_on_pointer_lock(int locked, int x, int y) {
 
 /* A program copied text (UTF-8, not NUL-terminated for the app's sake — a byte[] so emoji and
  * NULs survive JNI). Compositor thread. */
-void banner_on_clipboard_text(const char *utf8, int len) {
+void wnc_on_clipboard_text(const char *utf8, int len) {
     JNIEnv *env;
     if (!g_compositor_cls || !g_on_clipboard || !(env = thread_env())) return;
     jbyteArray arr = (*env)->NewByteArray(env, len);
@@ -164,7 +164,7 @@ void banner_on_clipboard_text(const char *utf8, int len) {
 
 /* A program started (enabled) or stopped accepting IME text; x,y,w,h = its caret rectangle in
  * scene pixels (all 0 = unknown). Compositor thread. */
-void banner_on_text_input(int enabled, const char *program, int x, int y, int w, int h) {
+void wnc_on_text_input(int enabled, const char *program, int x, int y, int w, int h) {
     JNIEnv *env;
     if (!g_compositor_cls || !g_on_text_input || !(env = thread_env())) return;
     jstring jp = (*env)->NewStringUTF(env, program ? program : "");
@@ -192,11 +192,11 @@ static void *comp_thread(void *arg) {
     if (before > COMPOSITOR_NICE && setpriority(PRIO_PROCESS, tid, COMPOSITOR_NICE) != 0) refused = errno ? errno : -1;
     const int after = getpriority(PRIO_PROCESS, tid);
     if (refused)
-        banner_log("perf", "compositor thread %d \"wl-compositor\": stays at nice %d, a higher priority was refused (%s)",
+        wnc_log("perf", "compositor thread %d \"wl-compositor\": stays at nice %d, a higher priority was refused (%s)",
                    (int)tid, after, refused > 0 ? strerror(refused) : "?");
     else
-        banner_log("perf", "compositor thread %d \"wl-compositor\": nice %d -> %d", (int)tid, before, after);
-    banner_wayland_run();
+        wnc_log("perf", "compositor thread %d \"wl-compositor\": nice %d -> %d", (int)tid, before, after);
+    wnc_wayland_run();
     __android_log_print(ANDROID_LOG_INFO, TAG, "compositor thread exited");
     if (t_attached) (*g_jvm)->DetachCurrentThread(g_jvm);
     t_env = NULL; t_attached = 0;
@@ -221,7 +221,7 @@ static char *dup_jstr(JNIEnv *env, jstring s) {
 }
 
 /* One compositor thread per process: WinNative keeps its process alive between sessions, so the
- * thread is started once and sessions begin and end on it (banner_wayland_begin/end_session). */
+ * thread is started once and sessions begin and end on it (wnc_wayland_begin/end_session). */
 static pthread_mutex_t g_start_lock = PTHREAD_MUTEX_INITIALIZER;
 static int g_started;
 
@@ -254,7 +254,7 @@ JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetLogDir(JNIEnv *env, jclass clazz,
                                                                                  jstring dir) {
     char *d = dup_jstr(env, dir);
-    banner_wayland_set_log_dir(d);
+    wnc_wayland_set_log_dir(d);
     free(d);
 }
 
@@ -264,7 +264,7 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetLogDir
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeEndSession(JNIEnv *env, jclass clazz) {
     vk_present_set_window(NULL);
-    banner_wayland_end_session();
+    wnc_wayland_end_session();
 }
 
 /* Headless start (no output window) — used for bring-up tests. */
@@ -272,7 +272,7 @@ JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeStart(JNIEnv *env, jclass clazz,
                                                              jstring xdgRuntimeDir) {
     set_runtime_dir(env, xdgRuntimeDir);
-    if (!start_thread()) banner_wayland_begin_session();
+    if (!start_thread()) wnc_wayland_begin_session();
 }
 
 /* Start with a real output Surface + the container's Turnip driver (adrenotools).
@@ -295,7 +295,7 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeStartWith
     if (!start_thread()) {
         /* Already running: this is a new session on the same compositor. The driver above is only
          * taken by the first start (the Vulkan device is up already). */
-        banner_wayland_begin_session();
+        wnc_wayland_begin_session();
         __android_log_print(ANDROID_LOG_INFO, TAG, "new session on the running compositor");
     }
 }
@@ -305,27 +305,27 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeStartWith
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSendPointer(
         JNIEnv *env, jclass clazz, jint action, jint x, jint y) {
-    banner_wayland_send_pointer(action, x, y);
+    wnc_wayland_send_pointer(action, x, y);
 }
 
 /* Inject a key event. evdev = Linux input keycode (KEY_A=30…); state 1=down 0=up. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSendKey(
         JNIEnv *env, jclass clazz, jint evdev, jint state) {
-    banner_wayland_send_key(evdev, state);
+    wnc_wayland_send_key(evdev, state);
 }
 
-/* App X-server input in scene (virtual desktop) coordinates; see banner_wayland_send_scene_input. */
+/* App X-server input in scene (virtual desktop) coordinates; see wnc_wayland_send_scene_input. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSendSceneInput(
         JNIEnv *env, jclass clazz, jint type, jint a, jint b) {
-    banner_wayland_send_scene_input(type, a, b);
+    wnc_wayland_send_scene_input(type, a, b);
 }
 
 /* One screen refresh (Choreographer frame callback, UI thread): the compositor draws once. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeVsync(JNIEnv *env, jclass clazz, jlong frameTimeNanos) {
-    banner_wayland_vsync((int64_t)frameTimeNanos);
+    wnc_wayland_vsync((int64_t)frameTimeNanos);
 }
 
 /* Shortcut launches: don't draw explorer's windows (desktop, taskbar), like X11's unviewable classes. */
@@ -340,9 +340,9 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetHideSh
  * thread flips the state, tells the bound games to rebuild their swapchains for it and redraws. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetZeroCopy(JNIEnv *env, jclass clazz, jboolean on) {
-    int live = banner_get_display() != NULL;
+    int live = wnc_get_display() != NULL;
     if (!live) g_zero_copy = on ? 1 : 0; /* read by ahb_swapchain_init before the queue drains */
-    banner_host_zero_copy(on ? 1 : 0, live);
+    wnc_host_zero_copy(on ? 1 : 0, live);
     __android_log_print(ANDROID_LOG_INFO, TAG, "zero-copy layer mode %s%s", on ? "on" : "off", live ? " (live)" : "");
 }
 
@@ -450,12 +450,12 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetScreen
 }
 
 /* One "display" line in the session log, written from Java: facts that live in the Android
- * framework (the panel's HDR capability) rather than in the compositor. banner_log() mirrors to
+ * framework (the panel's HDR capability) rather than in the compositor. wnc_log() mirrors to
  * logcat and appends to the session file when one is open, so this is safe at any point. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeLogDisplay(JNIEnv *env, jclass clazz, jstring message) {
     char *s = dup_jstr(env, message);
-    if (s) banner_log("display", "%s", s);
+    if (s) wnc_log("display", "%s", s);
     free(s);
 }
 
@@ -464,18 +464,18 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeLogDispla
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeLogPerf(JNIEnv *env, jclass clazz, jstring message) {
     char *s = dup_jstr(env, message);
-    if (s) banner_log("perf", "%s", s);
+    if (s) wnc_log("perf", "%s", s);
     free(s);
 }
 
-/* ---- HDR10 output, round 1 (banner_color.h / wl_color_mgmt.c) ---- */
+/* ---- HDR10 output, round 1 (color_mgmt.h / wl_color_mgmt.c) ---- */
 
 /* The opt-in: mode 0 off, 1 BANNER_WAYLAND_HDR=1, 2 =force (testing). Before the compositor starts. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetHdrRequest(JNIEnv *env, jclass clazz, jint mode,
         jstring source, jboolean dxvkHdr, jboolean zeroCopyForced) {
     char *s = dup_jstr(env, source);
-    banner_color_set_request((int)mode, s, dxvkHdr ? 1 : 0, zeroCopyForced ? 1 : 0);
+    wnc_color_set_request((int)mode, s, dxvkHdr ? 1 : 0, zeroCopyForced ? 1 : 0);
     free(s);
 }
 
@@ -485,7 +485,7 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetHdrDis
         jstring formats, jboolean hdr10, jfloat maxLum, jfloat maxAvg, jfloat minLum, jboolean ratioAvailable,
         jfloat ratio, jint api) {
     char *n = dup_jstr(env, name), *f = dup_jstr(env, formats);
-    banner_color_set_display((int)id, n, f, hdr10 ? 1 : 0, (float)maxLum, (float)maxAvg, (float)minLum,
+    wnc_color_set_display((int)id, n, f, hdr10 ? 1 : 0, (float)maxLum, (float)maxAvg, (float)minLum,
                              ratioAvailable ? 1 : 0, (float)ratio, (int)api);
     free(n); free(f);
 }
@@ -494,38 +494,38 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetHdrDis
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrSdrRatioSample(JNIEnv *env, jclass clazz, jfloat ratio,
         jboolean listener) {
-    banner_color_ratio_sample((float)ratio, listener ? 1 : 0);
+    wnc_color_ratio_sample((float)ratio, listener ? 1 : 0);
 }
 
 /* ms since an HDR frame last reached a display layer, -1 = never this session. Any thread. */
 JNIEXPORT jint JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrLastFrameAgeMs(JNIEnv *env, jclass clazz) {
-    return (jint)banner_color_last_frame_age_ms();
+    return (jint)wnc_color_last_frame_age_ms();
 }
 
 /* -1 = not decided yet, 0 = closed, 1 = open. Any thread. */
 JNIEXPORT jint JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrGateState(JNIEnv *env, jclass clazz) {
-    return (jint)banner_color_gate_state();
+    return (jint)wnc_color_gate_state();
 }
 
 /* The session is ending: the "HDR on screen: ..." summary line. Any thread, once. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrSessionEnd(JNIEnv *env, jclass clazz) {
-    banner_color_session_end();
+    wnc_color_session_end();
 }
 
 /* HDR frames really on screen right now (the HUD badge). Any thread. */
 JNIEXPORT jboolean JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrOnScreen(JNIEnv *env, jclass clazz) {
-    return banner_color_hdr_on_screen() ? JNI_TRUE : JNI_FALSE;
+    return wnc_color_hdr_on_screen() ? JNI_TRUE : JNI_FALSE;
 }
 
 /* One "color" line in the session log from Java. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeLogColor(JNIEnv *env, jclass clazz, jstring message) {
     char *s = dup_jstr(env, message);
-    if (s) banner_log("color", "%s", s);
+    if (s) wnc_log("color", "%s", s);
     free(s);
 }
 
@@ -534,7 +534,7 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeLogColor(
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeLog(JNIEnv *env, jclass clazz, jstring area, jstring message) {
     char *a = dup_jstr(env, area), *s = dup_jstr(env, message);
-    if (s) banner_log(a && a[0] ? a : "app", "%s", s);
+    if (s) wnc_log(a && a[0] ? a : "app", "%s", s);
     free(a);
     free(s);
 }
@@ -542,65 +542,65 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeLog(JNIEn
 /* SDR content's level inside an HDR picture, in nits (default 203). */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetHdrSdrWhite(JNIEnv *env, jclass clazz, jfloat nits) {
-    banner_color_set_sdr_white((float)nits);
+    wnc_color_set_sdr_white((float)nits);
 }
 
 /* The drawer's live HDR output switch: on = HDR frames as HDR, off = the same frames tone-mapped to SDR.
  * Applied on the compositor thread (logged there, with a redraw). */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetHdrOutput(JNIEnv *env, jclass clazz, jboolean on) {
-    if (banner_get_display()) banner_host_hdr_output(on ? 1 : 0);
-    else banner_color_set_output(on ? 1 : 0); /* no compositor thread yet: nothing is drawing either */
+    if (wnc_get_display()) wnc_host_hdr_output(on ? 1 : 0);
+    else wnc_color_set_output(on ? 1 : 0); /* no compositor thread yet: nothing is drawing either */
 }
 
 JNIEXPORT jboolean JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrOutput(JNIEnv *env, jclass clazz) {
-    return banner_color_output() ? JNI_TRUE : JNI_FALSE;
+    return wnc_color_output() ? JNI_TRUE : JNI_FALSE;
 }
 
 /* Device evidence for the HDR lines: thermal status + headroom, brightness + mode. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrEnvSample(JNIEnv *env, jclass clazz, jint thermal,
                                                                    jfloat headroom, jint brightness, jint mode) {
-    banner_color_env_sample((int)thermal, (float)headroom != (float)headroom ? -1.0f : (float)headroom,
+    wnc_color_env_sample((int)thermal, (float)headroom != (float)headroom ? -1.0f : (float)headroom,
                             (int)brightness, (int)mode);
 }
 
 /* Display.getHighestHdrSdrRatio() (Android 16+), <= 0 = not reported. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetHdrHighestRatio(JNIEnv *env, jclass clazz, jfloat ratio) {
-    banner_color_set_highest_ratio((float)ratio == (float)ratio ? (float)ratio : -1.0f);
+    wnc_color_set_highest_ratio((float)ratio == (float)ratio ? (float)ratio : -1.0f);
 }
 
 /* The HDR headroom the screen surface should ask for (HDR10 swapchain frames in the last 1.5 s), 0 = none. */
 JNIEXPORT jfloat JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrScreenHeadroom(JNIEnv *env, jclass clazz) {
-    return (jfloat)banner_color_screen_headroom(NULL, 0);
+    return (jfloat)wnc_color_screen_headroom(NULL, 0);
 }
 
 JNIEXPORT jstring JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrScreenHeadroomWhy(JNIEnv *env, jclass clazz) {
     char why[200];
-    banner_color_screen_headroom(why, sizeof(why));
+    wnc_color_screen_headroom(why, sizeof(why));
     return (*env)->NewStringUTF(env, why);
 }
 
 /* The app's screen-surface request, for the no-headroom lines: > 0 asked, 0 cleared, -1 not possible. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrNoteHeadroomRequest(JNIEnv *env, jclass clazz, jfloat ratio) {
-    banner_color_note_headroom_request((float)ratio);
+    wnc_color_note_headroom_request((float)ratio);
 }
 
 /* 0 none, 1 HDR frames on screen with headroom, 2 HDR frames on screen without headroom for 5 s+. */
 JNIEXPORT jint JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrState(JNIEnv *env, jclass clazz) {
-    return (jint)banner_color_hdr_state();
+    return (jint)wnc_color_hdr_state();
 }
 
 /* An HDR game's frames were shown tone-mapped to SDR in the last 1.5 s (the drawer's status line). */
 JNIEXPORT jboolean JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeHdrToneMappedOnScreen(JNIEnv *env, jclass clazz) {
-    return banner_color_tonemapped_on_screen() ? JNI_TRUE : JNI_FALSE;
+    return wnc_color_tonemapped_on_screen() ? JNI_TRUE : JNI_FALSE;
 }
 
 /* The Look the controls currently match (null = Custom) — only named in the session log. */
@@ -649,7 +649,7 @@ JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetClipboardText(JNIEnv *env, jclass clazz, jbyteArray utf8) {
     int len;
     char *buf = dup_bytes(env, utf8, &len);
-    banner_host_clipboard_text(buf ? buf : "", len);
+    wnc_host_clipboard_text(buf ? buf : "", len);
     free(buf);
 }
 
@@ -658,7 +658,7 @@ JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeTextInputCommit(JNIEnv *env, jclass clazz, jbyteArray utf8) {
     int len;
     char *buf = dup_bytes(env, utf8, &len);
-    if (buf && len) banner_host_text_commit(buf, len);
+    if (buf && len) wnc_host_text_commit(buf, len);
     free(buf);
 }
 
@@ -668,12 +668,12 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeTextInput
                                                                         jint cursorBegin, jint cursorEnd) {
     int len;
     char *buf = dup_bytes(env, utf8, &len);
-    banner_host_text_preedit(buf ? buf : "", len, cursorBegin, cursorEnd);
+    wnc_host_text_preedit(buf ? buf : "", len, cursorBegin, cursorEnd);
     free(buf);
 }
 
 /* The IME deleted characters around the caret. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeTextInputDelete(JNIEnv *env, jclass clazz, jint before, jint after) {
-    banner_host_text_delete(before, after);
+    wnc_host_text_delete(before, after);
 }

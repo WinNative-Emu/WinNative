@@ -2,11 +2,11 @@
  * See ahb_swapchain.h and ZERO_COPY_SPIKE.md. */
 #define _GNU_SOURCE
 #include "ahb_swapchain.h"
-#include "banner_color.h"
-#include "banner_ext.h"
+#include "color_mgmt.h"
+#include "desktop_ext.h"
 #include "sc_layer.h"
 #include "vk_present.h"
-#include "banner-ahb-v1-server-protocol.h"
+#include "ahb-v1-server-protocol.h"
 #include <android/hardware_buffer.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -22,10 +22,10 @@
 #define MOD_QCOM_COMPRESSED 0x0500000000000001ULL /* DRM_FORMAT_MOD_QCOM_COMPRESSED (UBWC) */
 
 /* linux/dma-buf.h (not in the NDK sysroot's older headers): sync_file export / import. */
-struct banner_dma_buf_sync_file { uint32_t flags; int32_t fd; };
-#define BANNER_DMA_BUF_SYNC_READ 1u
-#define BANNER_DMA_BUF_IOCTL_EXPORT_SYNC_FILE _IOWR('b', 2, struct banner_dma_buf_sync_file)
-#define BANNER_DMA_BUF_IOCTL_IMPORT_SYNC_FILE _IOW('b', 3, struct banner_dma_buf_sync_file)
+struct wnc_dma_buf_sync_file { uint32_t flags; int32_t fd; };
+#define WNC_DMA_BUF_SYNC_READ 1u
+#define WNC_DMA_BUF_IOCTL_EXPORT_SYNC_FILE _IOWR('b', 2, struct wnc_dma_buf_sync_file)
+#define WNC_DMA_BUF_IOCTL_IMPORT_SYNC_FILE _IOW('b', 3, struct wnc_dma_buf_sync_file)
 
 extern volatile int g_zero_copy;
 
@@ -90,9 +90,9 @@ static void buf_free(struct ahb_buf *ab) {
     if (ab->fence_src) { wl_event_source_remove(ab->fence_src); ab->fence_src = NULL; }
     if (ab->fence_fd >= 0) { close(ab->fence_fd); ab->fence_fd = -1; }
     wl_list_remove(&ab->link);
-    *banner_dmabuf_ahb_slot(ab->b) = NULL;
+    *wnc_dmabuf_ahb_slot(ab->b) = NULL;
     AHardwareBuffer_release(ab->ahb);
-    banner_dmabuf_unref(ab->b);
+    wnc_dmabuf_unref(ab->b);
     free(ab);
 }
 
@@ -113,7 +113,7 @@ static void on_buffer_resource_destroyed(struct wl_listener *l, void *data) {
 
 static void send_deferred_release(struct ahb_buf *ab) {
     if (ab->release_pending && ab->resource)
-        banner_release_buffer(ab->surface, ab->resource, ab->surface != NULL, ab->deferred_ns);
+        wnc_release_buffer(ab->surface, ab->resource, ab->surface != NULL, ab->deferred_ns);
     ab->release_pending = 0;
     ab->surface = NULL;
 }
@@ -138,14 +138,14 @@ static void handle_released(uint64_t id, int fd) {
     if (!ab) { if (fd >= 0) close(fd); return; }
     ab->on_layer = 0;
     if (fd >= 0) {
-        struct banner_dma_buf_sync_file imp = {.flags = BANNER_DMA_BUF_SYNC_READ, .fd = fd};
-        int dmabuf_fd = banner_dmabuf_fd(ab->b);
-        if (dmabuf_fd >= 0 && ioctl(dmabuf_fd, BANNER_DMA_BUF_IOCTL_IMPORT_SYNC_FILE, &imp) == 0) {
+        struct wnc_dma_buf_sync_file imp = {.flags = WNC_DMA_BUF_SYNC_READ, .fd = fd};
+        int dmabuf_fd = wnc_dmabuf_fd(ab->b);
+        if (dmabuf_fd >= 0 && ioctl(dmabuf_fd, WNC_DMA_BUF_IOCTL_IMPORT_SYNC_FILE, &imp) == 0) {
             close(fd);
         } else {
             if (!g_import_failed_logged) {
                 g_import_failed_logged = 1;
-                banner_log("layer", "zero-copy: DMA_BUF_IOCTL_IMPORT_SYNC_FILE failed (%s): releases wait for the display's fence here instead",
+                wnc_log("layer", "zero-copy: DMA_BUF_IOCTL_IMPORT_SYNC_FILE failed (%s): releases wait for the display's fence here instead",
                            strerror(errno));
             }
             /* Wait it out in the event loop (a sync_file is readable once signalled). */
@@ -196,23 +196,23 @@ void ahb_swapchain_layer_released(void *token, int release_fd) {
 /* ---- present */
 
 int ahb_swapchain_has_ahb(const struct dmabuf_buffer *b) {
-    return b && *banner_dmabuf_ahb_slot((struct dmabuf_buffer *)b) != NULL;
+    return b && *wnc_dmabuf_ahb_slot((struct dmabuf_buffer *)b) != NULL;
 }
 
 int ahb_swapchain_present(struct dmabuf_buffer *b, struct surface *s, int scene_w, int scene_h) {
-    struct ahb_buf *ab = b ? *banner_dmabuf_ahb_slot(b) : NULL;
+    struct ahb_buf *ab = b ? *wnc_dmabuf_ahb_slot(b) : NULL;
     if (!ab) return -1;
-    int dmabuf_fd = banner_dmabuf_fd(b);
+    int dmabuf_fd = wnc_dmabuf_fd(b);
     /* Acquire fence: the game's render fence, which its driver put into the dma-buf before the
      * commit (Mesa's implicit sync). The display waits on it, not the CPU. */
     int acquire = -1;
-    struct banner_dma_buf_sync_file exp = {.flags = BANNER_DMA_BUF_SYNC_READ, .fd = -1};
-    if (dmabuf_fd >= 0 && ioctl(dmabuf_fd, BANNER_DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &exp) == 0 && exp.fd >= 0) {
+    struct wnc_dma_buf_sync_file exp = {.flags = WNC_DMA_BUF_SYNC_READ, .fd = -1};
+    if (dmabuf_fd >= 0 && ioctl(dmabuf_fd, WNC_DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &exp) == 0 && exp.fd >= 0) {
         acquire = exp.fd;
     } else if (dmabuf_fd >= 0) {
         if (!g_export_failed_logged) {
             g_export_failed_logged = 1;
-            banner_log("layer", "zero-copy: DMA_BUF_IOCTL_EXPORT_SYNC_FILE failed (%s): waiting for each frame on the CPU instead",
+            wnc_log("layer", "zero-copy: DMA_BUF_IOCTL_EXPORT_SYNC_FILE failed (%s): waiting for each frame on the CPU instead",
                        strerror(errno));
         }
         struct pollfd p = {.fd = dmabuf_fd, .events = POLLIN}; /* readable = the writers are done */
@@ -220,7 +220,7 @@ int ahb_swapchain_present(struct dmabuf_buffer *b, struct surface *s, int scene_
         do { r = poll(&p, 1, 100); } while (r < 0 && errno == EINTR);
     }
     int r = sc_layer_present_ahb(ab->ahb, ab->w, ab->h, acquire, (void *)(uintptr_t)ab->id, scene_w, scene_h,
-                                 s ? banner_surface_color(s) : NULL, ab->format);
+                                 s ? wnc_surface_color(s) : NULL, ab->format);
     if (r < 0) return -1;
     if (r == 1) return 0; /* nothing of it on screen: not on the layer, nothing to release later */
     if (!ab->on_layer) {
@@ -231,8 +231,8 @@ int ahb_swapchain_present(struct dmabuf_buffer *b, struct surface *s, int scene_
     if (s && g_announced != s) {
         char name[160];
         g_announced = s;
-        banner_surface_describe(s, name, sizeof(name));
-        banner_log("layer", "zero-copy: presenting %s without a copy", name);
+        wnc_surface_describe(s, name, sizeof(name));
+        wnc_log("layer", "zero-copy: presenting %s without a copy", name);
     }
     return 0;
 }
@@ -245,7 +245,7 @@ int ahb_swapchain_last_frame_age_ms(void) {
 }
 
 int ahb_swapchain_defer_release(struct dmabuf_buffer *b, struct wl_resource *buffer, struct surface *s, int paced) {
-    struct ahb_buf *ab = b ? *banner_dmabuf_ahb_slot(b) : NULL;
+    struct ahb_buf *ab = b ? *wnc_dmabuf_ahb_slot(b) : NULL;
     if (!ab || !ab->on_layer || !buffer || ab->resource != buffer) return 0;
     ab->release_pending = 1;
     ab->deferred_ns = now_ns();
@@ -268,7 +268,7 @@ unsigned ahb_swapchain_stats_take(void) {
 int ahb_swapchain_advertised(void) { return g_advertised; }
 
 uint32_t ahb_swapchain_ahb_format(const struct dmabuf_buffer *b) {
-    struct ahb_buf *ab = b ? *banner_dmabuf_ahb_slot((struct dmabuf_buffer *)b) : NULL;
+    struct ahb_buf *ab = b ? *wnc_dmabuf_ahb_slot((struct dmabuf_buffer *)b) : NULL;
     return ab ? ab->format : 0;
 }
 
@@ -279,14 +279,14 @@ static void ahb_destroy(struct wl_client *c, struct wl_resource *r) { wl_resourc
 static void ahb_attach(struct wl_client *c, struct wl_resource *r, struct wl_resource *buffer, int32_t sock,
                        uint32_t width, uint32_t height, uint32_t stride, uint32_t mod_hi, uint32_t mod_lo,
                        uint32_t image_count) {
-    struct dmabuf_buffer *b = banner_dmabuf_from_resource(buffer);
+    struct dmabuf_buffer *b = wnc_dmabuf_from_resource(buffer);
     uint64_t modifier = ((uint64_t)mod_hi << 32) | mod_lo;
     if (!b) {
-        banner_log("layer", "zero-copy: %s attached an AHardwareBuffer to a non-dma-buf wl_buffer, ignored", banner_client_name(c));
+        wnc_log("layer", "zero-copy: %s attached an AHardwareBuffer to a non-dma-buf wl_buffer, ignored", wnc_client_name(c));
         close(sock);
         return;
     }
-    void **slot = banner_dmabuf_ahb_slot(b);
+    void **slot = wnc_dmabuf_ahb_slot(b);
     if (*slot) { close(sock); return; } /* once per buffer */
 
     /* The handle was written into the socket before the request was sent; a short wait is just
@@ -298,17 +298,17 @@ static void ahb_attach(struct wl_client *c, struct wl_resource *r, struct wl_res
     int rc = pr > 0 ? AHardwareBuffer_recvHandleFromUnixSocket(sock, &ahb) : -1;
     close(sock);
     if (rc != 0 || !ahb) {
-        banner_log("layer", "zero-copy: receiving %s's AHardwareBuffer failed (%s)", banner_client_name(c),
+        wnc_log("layer", "zero-copy: receiving %s's AHardwareBuffer failed (%s)", wnc_client_name(c),
                    pr > 0 ? "recvHandleFromUnixSocket" : "nothing on the socket");
         return;
     }
     AHardwareBuffer_Desc d;
     AHardwareBuffer_describe(ahb, &d);
     int bw, bh;
-    banner_dmabuf_size(b, &bw, &bh);
+    wnc_dmabuf_size(b, &bw, &bh);
     if ((int)d.width != bw || (int)d.height != bh || (int)width != bw || (int)height != bh) {
-        banner_log("layer", "zero-copy: %s's AHardwareBuffer is %ux%u but its wl_buffer %dx%d, ignored",
-                   banner_client_name(c), d.width, d.height, bw, bh);
+        wnc_log("layer", "zero-copy: %s's AHardwareBuffer is %ux%u but its wl_buffer %dx%d, ignored",
+                   wnc_client_name(c), d.width, d.height, bw, bh);
         AHardwareBuffer_release(ahb);
         return;
     }
@@ -317,7 +317,7 @@ static void ahb_attach(struct wl_client *c, struct wl_resource *r, struct wl_res
     if (!ab) { AHardwareBuffer_release(ahb); wl_client_post_no_memory(c); return; }
     ab->id = g_next_id++;
     ab->b = b;
-    banner_dmabuf_ref(b);
+    wnc_dmabuf_ref(b);
     ab->ahb = ahb;
     ab->w = bw; ab->h = bh;
     ab->stride = d.stride ? d.stride : stride;
@@ -335,8 +335,8 @@ static void ahb_attach(struct wl_client *c, struct wl_resource *r, struct wl_res
     if (g_last_chain.client != c || g_last_chain.w != bw || g_last_chain.h != bh ||
         g_last_chain.image_count != image_count || g_last_chain.modifier != modifier || g_last_chain.format != d.format) {
         g_last_chain = (struct chain_seen){c, bw, bh, image_count, modifier, d.format};
-        banner_log("layer", "zero-copy: AHB swapchain from %s (%u images, %dx%d, %s, %s, stride %u px)", banner_client_name(c),
-                   image_count, bw, bh, banner_ahb_format_name(d.format), modifier == MOD_QCOM_COMPRESSED ? "UBWC (QCOM_COMPRESSED)"
+        wnc_log("layer", "zero-copy: AHB swapchain from %s (%u images, %dx%d, %s, %s, stride %u px)", wnc_client_name(c),
+                   image_count, bw, bh, wnc_ahb_format_name(d.format), modifier == MOD_QCOM_COMPRESSED ? "UBWC (QCOM_COMPRESSED)"
                                        : modifier == 0 ? "linear" : "unknown modifier", ab->stride);
     }
 }
@@ -359,11 +359,11 @@ static void bind_ahb(struct wl_client *c, void *data, uint32_t ver, uint32_t id)
     wl_list_insert(&g_clients, wl_resource_get_link(r));
     /* The mode travels with the bind, so the client's registry roundtrip already has it when it
      * decides about its first swapchain. */
-    if (ver >= BANNER_AHB_V1_MODE_SINCE_VERSION) banner_ahb_v1_send_mode(r, g_zero_copy ? 1u : 0u);
+    if (ver >= WNC_AHB_V1_MODE_SINCE_VERSION) banner_ahb_v1_send_mode(r, g_zero_copy ? 1u : 0u);
     /* One line per program, not per surface-format query (each binds its own). */
     if (last_named != c) {
         last_named = c;
-        banner_log("layer", "zero-copy: %s bound banner_ahb_v1 version %u (%s)", banner_client_name(c), ver,
+        wnc_log("layer", "zero-copy: %s bound banner_ahb_v1 version %u (%s)", wnc_client_name(c), ver,
                    ver >= 2 ? "follows the live switch" : "version 1: decides from its launch environment only");
     }
 }
@@ -372,7 +372,7 @@ void ahb_swapchain_set_mode(int on, int live) {
     on = on ? 1 : 0;
     g_zero_copy = on;
     if (!g_advertised) {
-        if (live) banner_log("layer", "zero-copy switched %s from the drawer, but no display layer is available on this device: no change",
+        if (live) wnc_log("layer", "zero-copy switched %s from the drawer, but no display layer is available on this device: no change",
                              on ? "on" : "off");
         return;
     }
@@ -381,7 +381,7 @@ void ahb_swapchain_set_mode(int on, int live) {
     int told = 0;
     struct wl_resource *r;
     wl_resource_for_each(r, &g_clients) {
-        if (wl_resource_get_version(r) >= BANNER_AHB_V1_MODE_SINCE_VERSION) {
+        if (wl_resource_get_version(r) >= WNC_AHB_V1_MODE_SINCE_VERSION) {
             banner_ahb_v1_send_mode(r, (uint32_t)on);
             told++;
         }
@@ -390,37 +390,37 @@ void ahb_swapchain_set_mode(int on, int live) {
     memset(&g_last_chain, 0, sizeof(g_last_chain));
     g_announced = NULL;
     if (live)
-        banner_log("layer", "zero-copy switched %s from the drawer: %d bound program%s told to rebuild their swapchains%s",
+        wnc_log("layer", "zero-copy switched %s from the drawer: %d bound program%s told to rebuild their swapchains%s",
                    on ? "on" : "off", told, told == 1 ? "" : "s",
                    on ? "; frames go on the display layer once the new gralloc swapchain is up"
                       : "; gralloc frames still in flight stay on the layer (or take the copy path) until then");
     else
-        banner_log("layer", "zero-copy: %s at launch (%s)", on ? "on" : "off",
+        wnc_log("layer", "zero-copy: %s at launch (%s)", on ? "on" : "off",
                    on ? "BANNER_WAYLAND_ZERO_COPY=1: games present their own gralloc buffers on the display layer"
                       : "the drawer's Zero-copy presentation switch turns it on live");
-    if (live) wl_display_flush_clients(banner_get_display());
-    banner_request_redraw();
+    if (live) wl_display_flush_clients(wnc_get_display());
+    wnc_request_redraw();
 }
 
 void ahb_swapchain_init(struct wl_display *display) {
     wl_list_init(&g_bufs);
     wl_list_init(&g_clients);
     if (!sc_layer_available()) {
-        banner_log("layer", "zero-copy: no display layer on this device (see the line above): banner_ahb_v1 not advertised");
+        wnc_log("layer", "zero-copy: no display layer on this device (see the line above): banner_ahb_v1 not advertised");
         return;
     }
     g_loop = wl_display_get_event_loop(display);
     if (pipe2(g_rel_pipe, O_CLOEXEC | O_NONBLOCK) != 0) {
-        banner_log("error", "zero-copy: release pipe creation failed (%s); zero-copy presents disabled", strerror(errno));
+        wnc_log("error", "zero-copy: release pipe creation failed (%s); zero-copy presents disabled", strerror(errno));
         g_rel_pipe[0] = g_rel_pipe[1] = -1;
         return;
     }
     wl_event_loop_add_fd(g_loop, g_rel_pipe[0], WL_EVENT_READABLE, on_release_pipe, NULL);
     if (!wl_global_create(display, &banner_ahb_v1_interface, 2, NULL, bind_ahb)) {
-        banner_log("error", "zero-copy: banner_ahb_v1 global creation failed");
+        wnc_log("error", "zero-copy: banner_ahb_v1 global creation failed");
         return;
     }
     g_advertised = 1;
-    banner_log("layer", "zero-copy: banner_ahb_v1 version 2 advertised (games built for it present their own gralloc buffers while the switch is on)");
+    wnc_log("layer", "zero-copy: banner_ahb_v1 version 2 advertised (games built for it present their own gralloc buffers while the switch is on)");
     ahb_swapchain_set_mode(g_zero_copy, 0);
 }
