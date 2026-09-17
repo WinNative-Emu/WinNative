@@ -22,6 +22,7 @@
 
 #include <assert.h>    /* assert(3), */
 #include <errno.h>     /* E*, */
+#include <fcntl.h>     /* open(2), */
 #include <stdio.h>     /* fwrite(3), */
 #include <stdlib.h>    /* getenv(3), */
 #include <string.h>    /* strlen(3), strcpy(3), */
@@ -41,6 +42,8 @@
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "tracee/tracee.h"
+#include "tracee/mem.h"
+#include "tracee/reg.h"
 
 #define P(a) PROGRAM_FIELD(load_info->elf_header, *program_header, a)
 
@@ -348,6 +351,115 @@ static inline const char *get_loader_path(const Tracee *tracee) {
   return loader_path;
 }
 
+#define SHEBANG_MAX 256
+
+/**
+ * Read the "#!" line of @host_path into @interp and @argument (the rest of the
+ * line, one argument as the kernel passes it).  Returns 1 for a script, 0 for
+ * anything else, -errno on error.
+ */
+static int extract_shebang(const char *host_path, char interp[PATH_MAX],
+                           char argument[SHEBANG_MAX]) {
+  char line[SHEBANG_MAX];
+  char *start, *end, *tail;
+  ssize_t size;
+  int fd;
+
+  fd = open(host_path, O_RDONLY);
+  if (fd < 0)
+    return -errno;
+  size = read(fd, line, sizeof(line) - 1);
+  close(fd);
+  if (size < 2 || line[0] != '#' || line[1] != '!')
+    return 0;
+  line[size] = '\0';
+  end = strchr(line, '\n');
+  if (end != NULL)
+    *end = '\0';
+
+  start = line + 2;
+  while (*start == ' ' || *start == '\t')
+    start++;
+  end = start;
+  while (*end != '\0' && *end != ' ' && *end != '\t')
+    end++;
+  if (end == start || end - start >= PATH_MAX)
+    return -ENOEXEC;
+  memcpy(interp, start, end - start);
+  interp[end - start] = '\0';
+
+  while (*end == ' ' || *end == '\t')
+    end++;
+  tail = end + strlen(end);
+  while (tail > end && (tail[-1] == ' ' || tail[-1] == '\t' || tail[-1] == '\r'))
+    tail--;
+  *tail = '\0';
+  strcpy(argument, end);
+  return 1;
+}
+
+static word_t push_string(Tracee *tracee, const char *string) {
+  size_t size = strlen(string) + 1;
+  word_t address = alloc_mem(tracee, size);
+  if (address == 0 || write_data(tracee, address, string, size) < 0)
+    return 0;
+  return address;
+}
+
+/**
+ * Replace argv[0] of the current execve with "@interp [@argument] @file", as the
+ * kernel does for a script.  Returns -errno on error, 0 otherwise.
+ */
+static int prepend_shebang_argv(Tracee *tracee, const char *interp,
+                                const char *argument, const char *file) {
+  const size_t max_args = 1 << 16;
+  word_t old_argv = peek_reg(tracee, CURRENT, SYSARG_2);
+  word_t *argv;
+  size_t count = 0, head = 0, i;
+  word_t address;
+
+  argv = talloc_array(tracee->ctx, word_t, 4);
+  if (argv == NULL)
+    return -ENOMEM;
+  argv[head++] = push_string(tracee, interp);
+  if (argument[0] != '\0')
+    argv[head++] = push_string(tracee, argument);
+  argv[head++] = push_string(tracee, file);
+  for (i = 0; i < head; i++)
+    if (argv[i] == 0)
+      return -EFAULT;
+  count = head;
+
+  /* The caller's argv[0] names the script and is dropped; the rest follows.  */
+  if (old_argv != 0) {
+    for (i = 1;; i++) {
+      word_t item;
+      if (i > max_args)
+        return -E2BIG;
+      if (read_data(tracee, &item, old_argv + i * sizeof(word_t), sizeof(word_t)) < 0)
+        return -EFAULT;
+      if (item == 0)
+        break;
+      argv = talloc_realloc(tracee->ctx, argv, word_t, count + 2);
+      if (argv == NULL)
+        return -ENOMEM;
+      argv[count++] = item;
+    }
+  }
+  argv = talloc_realloc(tracee->ctx, argv, word_t, count + 1);
+  if (argv == NULL)
+    return -ENOMEM;
+  argv[count] = 0;
+
+  address = alloc_mem(tracee, (count + 1) * sizeof(word_t));
+  if (address == 0)
+    return -EFAULT;
+  if (write_data(tracee, address, argv, (count + 1) * sizeof(word_t)) < 0)
+    return -EFAULT;
+  poke_reg(tracee, SYSARG_2, address);
+  return 0;
+}
+
 /**
  * Extract all the information that will be required by
  * translate_load_*().  This function returns -errno if an error
@@ -359,6 +471,7 @@ int translate_execve_enter(Tracee *tracee) {
   char new_exe[PATH_MAX];
   const char *loader_path;
   int status;
+  int depth;
 
   if (IS_NOTIFICATION_PTRACED_LOAD_DONE(tracee)) {
     /* Syscalls can now be reported to its ptracer.  */
@@ -378,6 +491,29 @@ int translate_execve_enter(Tracee *tracee) {
   status = translate_and_check_exec(tracee, host_path, user_path);
   if (status < 0)
     return status;
+
+  /* A script runs its interpreter; the kernel allows four levels of them.  */
+  for (depth = 0;; depth++) {
+    char interp[PATH_MAX];
+    char argument[SHEBANG_MAX];
+
+    status = extract_shebang(host_path, interp, argument);
+    if (status < 0)
+      return status;
+    if (status == 0)
+      break;
+    if (depth == 4)
+      return -ELOOP;
+
+    status = prepend_shebang_argv(tracee, interp, argument, user_path);
+    if (status < 0)
+      return status;
+
+    strcpy(user_path, interp);
+    status = translate_and_check_exec(tracee, host_path, user_path);
+    if (status < 0)
+      return status;
+  }
 
   strcpy(new_exe, host_path);
   status = detranslate_path(tracee, new_exe, NULL);
