@@ -65,6 +65,48 @@ Facts that shape the plan:
   that the Linux runtime is not installed yet. A `.bin` is treated as a console image first, as it
   was before. Files with no extension are not offered yet.
 
+## What WayLandIE shows
+
+[WayLandIE](https://github.com/AstroCODEsky/WayLandIE) (2 commits, 2026-06) is the closest existing
+run at this: gamescope and native arm64 Steam on Android. Its shape is the shape planned above,
+which is worth knowing before building it.
+
+- **Root is only for the rootfs, not the display.** The display is an unprivileged app
+  (`io.waylandie.display`) presenting through `SurfaceControl` and `AHardwareBuffer`; it asks for no
+  special permissions. `chroot`/`lxc` backends need `su`; `proot` is the documented rootless
+  backend, with the caveat that dma-buf under proot is "experimental" and Steam/FEX/Proton "may be
+  poor" from the ptrace overhead. Root buys reliable device nodes and speed, not screen access.
+- **The compositor is a small custom libwayland-server** (no wlroots) that only accepts dma-buf
+  client buffers and forwards the fds to the app. `libwnwayland.so` already is that, with more
+  protocols.
+- **gamescope runs nested in it, as a Wayland client**, exactly as Phase 2 proposes:
+
+  ```
+  gamescope --backend wayland -f -e --expose-wayland --xwayland-count 2 --keep-alive \
+    --prefer-vk-device 5143:44050a31 -W 2688 -H 1216 -w 2688 -h 1216 -r 144 -o 144 \
+    [--max-scale 1] [--force-windows-fullscreen] -- <session child>
+  ```
+
+  with `VK_ICD_FILENAMES=.../freedreno_icd.aarch64.json` (Turnip),
+  `GAMESCOPE_DRM_RENDER_NODE=/dev/dri/renderD128`, `WLR_DRM_DEVICES=/dev/dri/renderD128`,
+  `GAMESCOPE_FORCE_GENERAL_QUEUE=1`, and OpenGL routed through Zink
+  (`MESA_LOADER_DRIVER_OVERRIDE=zink`, `LIBGL_KOPPER_DRI2=true`) because Steam's CEF needs GL.
+- **Input is bridged from Android**, not libinput: touch and keys go over the socket and are
+  injected as `wl_seat` events, with an XTEST fallback for X11 clients. No seatd, udev or evdev.
+  Same as our compositor's seat.
+- **Audio is PulseAudio** over a unix socket (`PULSE_LATENCY_MSEC=20`). We ship libpulse already.
+- **Steam is the native arm64 client** (`steamrtarm64/steam -gamepadui`, CEF forced to
+  ANGLE-on-Vulkan), with x86-64 games through Proton11ARM + FEX (`FEX_APP_CONFIG`,
+  `PROTON_USE_NTSYNC=1`). No box64. One game is named as working: Metro: Last Light Redux.
+- **What it does not give us:** no gamescope/wlroots/Xwayland build recipe, no packages, no pinned
+  versions - `gamescope` must already be in `PATH`, and its bundle is exported from the author's own
+  container and marked non-redistributable. No published logs, benchmarks or reproductions.
+
+Takeaways for the phases: Phase 1 should plan for chroot-quality device nodes without root, which
+argues for the prefixed-glibc model over proot; Phase 2's command line and env are settled; Phase 3
+can target native arm64 Steam first (Valve's `steamrtarm64`) and needs Zink for CEF, which means a
+Mesa GL build in the rootfs beside Turnip.
+
 ## What "a gamescope option" means
 
 Three layers, each usable on its own:
