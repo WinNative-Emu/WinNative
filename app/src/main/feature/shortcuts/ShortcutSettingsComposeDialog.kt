@@ -2361,6 +2361,9 @@ class ShortcutSettingsComposeDialog private constructor(
         isArm64EC = wineInfo.isArm64EC
         state.isArm64EC.value = isArm64EC
         state.wineVersionDisplay.value = formatWineVersionDisplay(wineInfo)
+        // The Wayland row keys its capability check on this, so it has to move with the container
+        // or the row keeps the previous container's verdict until the sheet is reopened.
+        state.wineVersionIdentifier.value = wineVersionStr
         rebuildEmulatorLists()
 
         selectByIdentifier(
