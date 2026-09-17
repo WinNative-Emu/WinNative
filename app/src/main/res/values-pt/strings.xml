@@ -2894,10 +2894,12 @@ Caminho instalado:
     <string name="container_display_server_needs_wayland_proton">Este Proton não inclui winewayland nem o controlador Turnip para Wayland, por isso é usado o X11. Instale uma camada Proton Wayland em Conteúdos e selecione-a como Proton do contentor.</string>
     <string name="wayland_unavailable_fallback">O Wayland não está disponível para este jogo. A iniciar em X11.</string>
     <string name="wayland_needs_turnip_driver">O Wayland precisa de um controlador gráfico Turnip para mostrar o jogo. Instale um em Conteúdos e selecione-o como controlador gráfico.</string>
-    <string name="container_runtime">Runtime</string>
-    <string name="container_runtime_help">Inicia o gamescope no runtime Linux sobre o compositor Wayland em vez do Wine. Os programas Linux e o cliente Steam nativo correm aqui.</string>
+    <string name="containers_gamescope_new">Criar contentor GameScope</string>
+    <string name="containers_gamescope_help">Os programas Linux e o cliente Steam nativo correm aqui, através do gamescope no compositor Wayland.</string>
+    <string name="containers_gamescope_create_failed">Não foi possível criar o contentor GameScope</string>
+    <string name="linux_apps_need_gamescope_container">Crie primeiro o contentor GameScope em Definições › Contentores.</string>
     <string name="linux_runtime_missing">O runtime Linux não está instalado, por isso este contentor ainda não pode iniciar.</string>
     <string name="container_display_server_gamescope">O Gamescope desenha sempre através do compositor Wayland.</string>
-    <string name="linux_runtime_windows_program">Este é um programa Windows. Defina o seu runtime como Wine nas definições do atalho para o iniciar.</string>
+    <string name="linux_runtime_windows_program">Este é um programa Windows. Mova-o para um contentor Wine nas definições do atalho para o iniciar.</string>
     <string name="settings_content_badge_online">Online</string>
 </resources>

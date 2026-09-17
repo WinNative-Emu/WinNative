@@ -89,6 +89,8 @@ private const val ContainerCardAspect = 1.2f
 
 data class ContainersScreenState(
     val containers: List<Container> = emptyList(),
+    /** The GameScope container, once it has been created; Linux programs and Steam boot into it. */
+    val gamescope: Container? = null,
     val dialog: ContainersDialogUiState = ContainersDialogUiState.None,
 )
 
@@ -130,6 +132,7 @@ data class ContainerStorageInfoUiState(
 fun ContainersScreen(
     state: ContainersScreenState,
     onAddContainer: () -> Unit,
+    onAddGamescope: () -> Unit,
     onRunContainer: (Container) -> Unit,
     onEditContainer: (Container) -> Unit,
     onDuplicateContainer: (Container) -> Unit,
@@ -192,6 +195,7 @@ fun ContainersScreen(
                                     when {
                                         cellIndex == 0 ->
                                             AddContainerCard(
+                                                label = stringResource(R.string.containers_list_new),
                                                 onClick = onAddContainer,
                                                 navRow = gyBase,
                                                 navCol = gxBase,
@@ -216,6 +220,47 @@ fun ContainersScreen(
                                 }
                             }
                         }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+                    SectionLabel(text = stringResource(R.string.containers_gamescope_section))
+                    Text(
+                        text = stringResource(R.string.containers_gamescope_help),
+                        color = ContainersTextSecondary,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 2.dp, bottom = 6.dp),
+                    )
+                    val gamescopeNavRow = rowCount * 2
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(cardSpacing),
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            val gamescope = state.gamescope
+                            if (gamescope == null) {
+                                AddContainerCard(
+                                    label = stringResource(R.string.containers_gamescope_new),
+                                    onClick = onAddGamescope,
+                                    navRow = gamescopeNavRow,
+                                    navCol = 0,
+                                )
+                            } else {
+                                key(gamescope.id) {
+                                    ContainerCard(
+                                        container = gamescope,
+                                        navRow = gamescopeNavRow,
+                                        navCol = 0,
+                                        onRun = { onRunContainer(gamescope) },
+                                        onEdit = { onEditContainer(gamescope) },
+                                        onDuplicate = null,
+                                        onInstallComponents = null,
+                                        onRemove = { onRemoveContainer(gamescope) },
+                                        onShowInfo = { onShowInfo(gamescope) },
+                                    )
+                                }
+                            }
+                        }
+                        for (i in 1 until columns) Spacer(Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(4.dp + navBarBottomPadding))
                 }
@@ -337,6 +382,7 @@ private fun SectionLabel(text: String) {
 
 @Composable
 private fun AddContainerCard(
+    label: String,
     onClick: () -> Unit,
     navRow: Int,
     navCol: Int,
@@ -383,7 +429,7 @@ private fun AddContainerCard(
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.containers_list_new),
+            text = label,
             color = ContainersTextSecondary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
@@ -399,8 +445,8 @@ private fun ContainerCard(
     navCol: Int,
     onRun: () -> Unit,
     onEdit: () -> Unit,
-    onDuplicate: () -> Unit,
-    onInstallComponents: () -> Unit,
+    onDuplicate: (() -> Unit)?,
+    onInstallComponents: (() -> Unit)?,
     onRemove: () -> Unit,
     onShowInfo: () -> Unit,
 ) {
@@ -432,15 +478,17 @@ private fun ContainerCard(
                 tint = ContainersTextSecondary,
             )
             Spacer(Modifier.weight(1f))
-            SmallVectorIconButton(
-                image = ComponentContainerIcon,
-                contentDescription = "Install components",
-                tint = ContainersAccent,
-                onClick = onInstallComponents,
-                navRow = navRow,
-                navCol = navCol,
-            )
-            Spacer(Modifier.width(8.dp))
+            if (onInstallComponents != null) {
+                SmallVectorIconButton(
+                    image = ComponentContainerIcon,
+                    contentDescription = "Install components",
+                    tint = ContainersAccent,
+                    onClick = onInstallComponents,
+                    navRow = navRow,
+                    navCol = navCol,
+                )
+                Spacer(Modifier.width(8.dp))
+            }
             Box {
                 SmallVectorIconButton(
                     image = Icons.Outlined.MoreVert,
@@ -455,13 +503,15 @@ private fun ContainerCard(
                     onDismissRequest = { menuExpanded = false },
                     containerColor = ContainersCard,
                 ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.common_ui_duplicate), color = ContainersTextPrimary) },
-                        onClick = {
-                            menuExpanded = false
-                            onDuplicate()
-                        },
-                    )
+                    if (onDuplicate != null) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.common_ui_duplicate), color = ContainersTextPrimary) },
+                            onClick = {
+                                menuExpanded = false
+                                onDuplicate()
+                            },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.container_config_storage_info), color = ContainersTextPrimary) },
                         onClick = {

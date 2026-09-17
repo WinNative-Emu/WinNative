@@ -2,9 +2,12 @@ package com.winlator.cmod.feature.library
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.widget.Toast
+import androidx.appcompat.content.res.AppCompatResources
 import com.winlator.cmod.R
-import com.winlator.cmod.feature.setup.SetupWizardActivity
+import com.winlator.cmod.runtime.container.Container
 import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.container.Shortcut
 import com.winlator.cmod.runtime.display.XServerDisplayActivity
@@ -12,6 +15,7 @@ import com.winlator.cmod.runtime.linux.LinuxRuntime
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.ui.toast.WinToast
 import java.io.File
+import java.io.FileOutputStream
 import java.util.Locale
 import java.util.UUID
 
@@ -23,6 +27,10 @@ object LinuxApps {
     const val KEY_RUNTIME = "runtime"
     const val RUNTIME_LINUX = "linux"
     const val EXEC = "linux:native"
+    const val KEY_SESSION = "linux_session"
+    const val SESSION_STEAM = "steam"
+    const val STEAM_SHORTCUT_NAME = "Steam"
+    private const val STEAM_ICON = "steam_client"
 
     /** Extensions Linux programs ship with. A bare ELF with no extension is not recognised. */
     val Extensions = setOf("appimage", "sh", "run", "bin", "elf", "x86_64", "x86", "aarch64", "arm64")
@@ -34,16 +42,75 @@ object LinuxApps {
     @JvmStatic
     fun isLinuxShortcut(shortcut: Shortcut): Boolean = shortcut.getExtra(KEY_RUNTIME) == RUNTIME_LINUX
 
-    /** Worker thread. Writes the shortcut into the preferred container's desktop directory. */
+    /** The library entry that opens the native Steam client. */
+    @JvmStatic
+    fun isSteamClientShortcut(shortcut: Shortcut): Boolean = shortcut.getExtra(KEY_SESSION) == SESSION_STEAM
+
+    @JvmStatic
+    fun gamescopeContainer(manager: ContainerManager): Container? =
+        manager.containers.firstOrNull { it.isGamescopeRuntime }
+
+    /**
+     * Writes the Steam entry into the GameScope container's desktop directory if it is missing,
+     * with an icon rendered from the app's own drawable.
+     */
+    @JvmStatic
+    fun ensureSteamShortcut(
+        context: Context,
+        container: Container,
+    ) {
+        val desktopDir = container.desktopDir
+        if (!desktopDir.exists()) desktopDir.mkdirs()
+        val shortcutFile = File(desktopDir, "$STEAM_SHORTCUT_NAME.desktop")
+        if (shortcutFile.exists()) return
+        renderSteamIcon(context, File(container.getIconsDir(64), "$STEAM_ICON.png"), 64)
+        renderSteamIcon(context, File(context.filesDir, "custom_icons/$STEAM_SHORTCUT_NAME.png"), 512)
+        val content =
+            buildString {
+                append("[Desktop Entry]\n")
+                append("Type=Application\n")
+                append("Name=$STEAM_SHORTCUT_NAME\n")
+                append("Exec=$EXEC\n")
+                append("Icon=$STEAM_ICON\n")
+                append("\n[Extra Data]\n")
+                append("game_source=CUSTOM\n")
+                append("custom_name=$STEAM_SHORTCUT_NAME\n")
+                append("$KEY_RUNTIME=$RUNTIME_LINUX\n")
+                append("$KEY_SESSION=$SESSION_STEAM\n")
+                append("${LibraryItemType.EXTRA_KEY}=${LibraryItemType.APPLICATION.key}\n")
+                append("uuid=${UUID.randomUUID()}\n")
+                append("container_id=${container.id}\n")
+                append("use_container_defaults=1\n")
+            }
+        FileUtils.writeString(shortcutFile, content)
+    }
+
+    /** The library card reads `custom_icons/<name>.png`; the desktop entry reads the container's icon dir. */
+    private fun renderSteamIcon(
+        context: Context,
+        file: File,
+        size: Int,
+    ) {
+        if (file.exists()) return
+        val drawable = AppCompatResources.getDrawable(context, R.drawable.library_steam_client) ?: return
+        file.parentFile?.mkdirs()
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, size, size)
+        drawable.draw(canvas)
+        FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    /** Worker thread. Writes the shortcut into the GameScope container's desktop directory. */
     fun create(
         context: Context,
         name: String,
         exePath: String,
         type: LibraryItemType,
     ): Boolean {
-        val container = SetupWizardActivity.getPreferredGameContainer(context, ContainerManager(context))
+        val container = gamescopeContainer(ContainerManager(context))
         if (container == null) {
-            SetupWizardActivity.promptToInstallWineOrCreateContainer(context)
+            WinToast.show(context, R.string.linux_apps_need_gamescope_container, Toast.LENGTH_LONG)
             return false
         }
         val desktopDir = container.desktopDir

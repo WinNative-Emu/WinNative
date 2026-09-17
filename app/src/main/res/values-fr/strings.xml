@@ -2897,11 +2897,13 @@ Chemin installé :
     <string name="container_display_server_needs_wayland_proton">Ce Proton n\'inclut ni winewayland ni le pilote Turnip pour Wayland, X11 est donc utilisé. Installez une couche Proton Wayland depuis Contenus, puis sélectionnez-la comme Proton du conteneur.</string>
     <string name="wayland_unavailable_fallback">Wayland n\'est pas disponible pour ce jeu. Lancement sur X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland a besoin d\'un pilote graphique Turnip pour afficher le jeu. Installez-en un dans Contenus et sélectionnez-le comme pilote graphique.</string>
-    <string name="container_runtime">Environnement d\'exécution</string>
-    <string name="container_runtime_help">Démarre gamescope dans l\'environnement Linux sur le compositeur Wayland au lieu de Wine. Les programmes Linux et le client Steam natif s\'exécutent ici.</string>
+    <string name="containers_gamescope_new">Créer le conteneur GameScope</string>
+    <string name="containers_gamescope_help">Les programmes Linux et le client Steam natif s\'exécutent ici, via gamescope sur le compositeur Wayland.</string>
+    <string name="containers_gamescope_create_failed">Impossible de créer le conteneur GameScope</string>
+    <string name="linux_apps_need_gamescope_container">Créez d\'abord le conteneur GameScope dans Paramètres › Conteneurs.</string>
     <string name="linux_runtime_missing">L\'environnement Linux n\'est pas installé, ce conteneur ne peut donc pas encore démarrer.</string>
     <string name="container_display_server_gamescope">Gamescope dessine toujours via le compositeur Wayland.</string>
-    <string name="linux_runtime_windows_program">Ceci est un programme Windows. Réglez son environnement sur Wine dans les paramètres du raccourci pour le lancer.</string>
+    <string name="linux_runtime_windows_program">Ceci est un programme Windows. Déplacez-le dans un conteneur Wine dans les paramètres du raccourci pour le lancer.</string>
     <string name="settings_content_badge_online">En ligne</string>
 </resources>
 

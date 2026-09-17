@@ -2801,10 +2801,12 @@
     <string name="container_display_server_needs_wayland_proton">В этом Proton нет winewayland и драйвера Turnip для Wayland, поэтому используется X11. Установите слой Proton для Wayland в разделе «Содержимое» и выберите его как Proton контейнера.</string>
     <string name="wayland_unavailable_fallback">Wayland недоступен для этой игры. Запуск через X11.</string>
     <string name="wayland_needs_turnip_driver">Для показа игры Wayland нужен графический драйвер Turnip. Установите его в разделе «Содержимое» и выберите как графический драйвер.</string>
-    <string name="container_runtime">Среда выполнения</string>
-    <string name="container_runtime_help">Запускает gamescope в среде Linux на композиторе Wayland вместо Wine. Здесь работают программы Linux и нативный клиент Steam.</string>
+    <string name="containers_gamescope_new">Создать контейнер GameScope</string>
+    <string name="containers_gamescope_help">Программы Linux и нативный клиент Steam запускаются здесь через gamescope на композиторе Wayland.</string>
+    <string name="containers_gamescope_create_failed">Не удалось создать контейнер GameScope</string>
+    <string name="linux_apps_need_gamescope_container">Сначала создайте контейнер GameScope в разделе Настройки › Контейнеры.</string>
     <string name="linux_runtime_missing">Среда выполнения Linux не установлена, поэтому этот контейнер пока нельзя запустить.</string>
     <string name="container_display_server_gamescope">Gamescope всегда рисует через композитор Wayland.</string>
-    <string name="linux_runtime_windows_program">Это программа Windows. Установите для неё среду Wine в настройках ярлыка, чтобы запустить.</string>
+    <string name="linux_runtime_windows_program">Это программа для Windows. Чтобы запустить её, перенесите её в контейнер Wine в настройках ярлыка.</string>
     <string name="settings_content_badge_online">Онлайн</string>
 </resources>

@@ -2907,13 +2907,14 @@ Installed path:
     <string name="container_display_server_needs_wayland_proton">This Proton has no winewayland or Wayland Turnip driver, so X11 is used. Install a Wayland Proton layer from Contents and select it as the container\'s Proton.</string>
     <string name="wayland_unavailable_fallback">Wayland is not available for this game. Launching on X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland needs a Turnip graphics driver to show the game. Install one under Contents and select it as the graphics driver.</string>
-    <string name="container_runtime">Runtime</string>
-    <string name="container_runtime_help">Boots gamescope in the Linux runtime on the Wayland compositor instead of Wine. Linux programs and the native Steam client run here.</string>
+    <string name="containers_gamescope_section" translatable="false">GameScope</string>
+    <string name="containers_gamescope_new">Create GameScope container</string>
+    <string name="containers_gamescope_help">Linux programs and the native Steam client run here, through gamescope on the Wayland compositor.</string>
+    <string name="containers_gamescope_create_failed">Failed to create the GameScope container</string>
+    <string name="linux_apps_need_gamescope_container">Create the GameScope container under Settings › Containers first.</string>
     <string name="linux_runtime_missing">The Linux runtime is not installed, so this container cannot start yet.</string>
     <string name="container_display_server_gamescope">Gamescope always draws through the Wayland compositor.</string>
-    <string name="linux_runtime_windows_program">This is a Windows program. Set its runtime to Wine in Shortcut Settings to start it.</string>
-    <string name="runtime_wine" translatable="false">Wine</string>
-    <string name="runtime_gamescope" translatable="false">Gamescope</string>
+    <string name="linux_runtime_windows_program">This is a Windows program. Move it to a Wine container in Shortcut Settings to start it.</string>
     <string name="display_server_x11" translatable="false">X11</string>
     <string name="display_server_wayland" translatable="false">Wayland</string>
     <string name="settings_content_badge_online">Online</string>

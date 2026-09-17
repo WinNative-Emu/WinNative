@@ -2895,10 +2895,12 @@
     <string name="container_display_server_needs_wayland_proton">この Proton には winewayland と Wayland 用 Turnip ドライバーが含まれていないため、X11 が使用されます。コンテンツから Wayland Proton レイヤーをインストールし、コンテナの Proton として選択してください。</string>
     <string name="wayland_unavailable_fallback">このゲームでは Wayland を利用できません。X11 で起動します。</string>
     <string name="wayland_needs_turnip_driver">Wayland でゲームを表示するには Turnip グラフィックドライバーが必要です。コンテンツからインストールし、グラフィックドライバーとして選択してください。</string>
-    <string name="container_runtime">ランタイム</string>
-    <string name="container_runtime_help">Wine の代わりに Wayland コンポジター上の Linux ランタイムで gamescope を起動します。Linux プログラムとネイティブ Steam クライアントはここで動作します。</string>
+    <string name="containers_gamescope_new">GameScope コンテナを作成</string>
+    <string name="containers_gamescope_help">Linux プログラムとネイティブ Steam クライアントは、Wayland コンポジター上の gamescope を通してここで動作します。</string>
+    <string name="containers_gamescope_create_failed">GameScope コンテナを作成できませんでした</string>
+    <string name="linux_apps_need_gamescope_container">まず設定 › コンテナで GameScope コンテナを作成してください。</string>
     <string name="linux_runtime_missing">Linux ランタイムがインストールされていないため、このコンテナはまだ起動できません。</string>
     <string name="container_display_server_gamescope">Gamescope は常に Wayland コンポジターを通して描画します。</string>
-    <string name="linux_runtime_windows_program">これは Windows プログラムです。起動するにはショートカット設定でランタイムを Wine に設定してください。</string>
+    <string name="linux_runtime_windows_program">これは Windows プログラムです。起動するには、ショートカット設定で Wine コンテナに移動してください。</string>
     <string name="settings_content_badge_online">オンライン</string>
 </resources>

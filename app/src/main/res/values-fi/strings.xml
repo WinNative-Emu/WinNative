@@ -2895,10 +2895,12 @@ Asennuspolku:
     <string name="container_display_server_needs_wayland_proton">Tässä Protonissa ei ole winewaylandia eikä Wayland Turnip -ajuria, joten käytetään X11:tä. Asenna Wayland-Proton-kerros Sisältö-näkymästä ja valitse se säiliön Protoniksi.</string>
     <string name="wayland_unavailable_fallback">Wayland ei ole käytettävissä tälle pelille. Käynnistetään X11:llä.</string>
     <string name="wayland_needs_turnip_driver">Wayland tarvitsee Turnip-näytönohjainajurin näyttääkseen pelin. Asenna sellainen Sisältö-näkymästä ja valitse se näytönohjainajuriksi.</string>
-    <string name="container_runtime">Ajoympäristö</string>
-    <string name="container_runtime_help">Käynnistää gamescopen Linux-ajoympäristössä Wayland-koostajan päällä Winen sijaan. Linux-ohjelmat ja natiivi Steam-asiakas toimivat täällä.</string>
+    <string name="containers_gamescope_new">Luo GameScope-säiliö</string>
+    <string name="containers_gamescope_help">Linux-ohjelmat ja natiivi Steam-asiakas toimivat täällä gamescopen kautta Wayland-koostajassa.</string>
+    <string name="containers_gamescope_create_failed">GameScope-säiliön luominen epäonnistui</string>
+    <string name="linux_apps_need_gamescope_container">Luo ensin GameScope-säiliö kohdassa Asetukset › Säiliöt.</string>
     <string name="linux_runtime_missing">Linux-ajoympäristöä ei ole asennettu, joten tätä konttia ei voi vielä käynnistää.</string>
     <string name="container_display_server_gamescope">Gamescope piirtää aina Wayland-koostajan kautta.</string>
-    <string name="linux_runtime_windows_program">Tämä on Windows-ohjelma. Aseta sen ajoympäristöksi Wine pikakuvakkeen asetuksissa käynnistääksesi sen.</string>
+    <string name="linux_runtime_windows_program">Tämä on Windows-ohjelma. Siirrä se Wine-säiliöön pikakuvakkeen asetuksissa käynnistääksesi sen.</string>
     <string name="settings_content_badge_online">Verkossa</string>
 </resources>

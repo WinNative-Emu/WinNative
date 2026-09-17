@@ -8910,6 +8910,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             args.add(LinuxRuntime.MODE_DESKTOP);
             return args;
         }
+        if (com.winlator.cmod.feature.library.LinuxApps.isSteamClientShortcut(shortcut)) {
+            args.add(LinuxRuntime.MODE_STEAM);
+            return args;
+        }
         if (com.winlator.cmod.feature.library.LinuxApps.isLinuxShortcut(shortcut)) {
             args.add(LinuxRuntime.MODE_RUN);
             args.add(shortcut.getExtra("custom_exe"));
@@ -8933,10 +8937,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             gamescopeMode = waylandMode && SessionKeepAliveService.isLinuxSessionActive();
             return;
         }
-        String runtime = shortcut != null
-                ? getShortcutSetting(Container.EXTRA_RUNTIME, container.getRuntime())
-                : container.getRuntime();
-        gamescopeMode = Container.RUNTIME_GAMESCOPE.equals(runtime) && !isDependencyInstall;
+        gamescopeMode = container.isGamescopeRuntime() && !isDependencyInstall;
         if (gamescopeMode) {
             // gamescope is a client of the compositor; the Wine checks below do not apply to it.
             if (!WineWaylandSupport.isAdrenoDevice(this)) {

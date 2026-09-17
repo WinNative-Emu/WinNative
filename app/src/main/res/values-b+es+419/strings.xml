@@ -2894,10 +2894,12 @@ Ruta instalada:
     <string name="container_display_server_needs_wayland_proton">Este Proton no incluye winewayland ni el controlador Turnip para Wayland, así que se usa X11. Instala una capa Proton Wayland desde Contenidos y selecciónala como Proton del contenedor.</string>
     <string name="wayland_unavailable_fallback">Wayland no está disponible para este juego. Iniciando en X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland necesita un controlador gráfico Turnip para mostrar el juego. Instala uno en Contenidos y selecciónalo como controlador gráfico.</string>
-    <string name="container_runtime">Entorno de ejecución</string>
-    <string name="container_runtime_help">Inicia gamescope en el entorno de ejecución de Linux sobre el compositor Wayland en lugar de Wine. Aquí se ejecutan los programas de Linux y el cliente nativo de Steam.</string>
+    <string name="containers_gamescope_new">Crear contenedor GameScope</string>
+    <string name="containers_gamescope_help">Los programas de Linux y el cliente nativo de Steam se ejecutan aquí, mediante gamescope en el compositor Wayland.</string>
+    <string name="containers_gamescope_create_failed">No se pudo crear el contenedor GameScope</string>
+    <string name="linux_apps_need_gamescope_container">Primero crea el contenedor GameScope en Ajustes › Contenedores.</string>
     <string name="linux_runtime_missing">El entorno de ejecución de Linux no está instalado, así que este contenedor aún no puede iniciarse.</string>
     <string name="container_display_server_gamescope">Gamescope siempre dibuja a través del compositor Wayland.</string>
-    <string name="linux_runtime_windows_program">Este es un programa de Windows. Cambia su entorno de ejecución a Wine en los ajustes del acceso directo para iniciarlo.</string>
+    <string name="linux_runtime_windows_program">Este es un programa de Windows. Muévelo a un contenedor de Wine en los ajustes del acceso directo para iniciarlo.</string>
     <string name="settings_content_badge_online">En línea</string>
 </resources>

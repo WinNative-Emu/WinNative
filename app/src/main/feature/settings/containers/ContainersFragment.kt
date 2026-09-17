@@ -22,6 +22,7 @@ import com.winlator.cmod.app.shell.UnifiedActivity
 import com.winlator.cmod.feature.settings.ContainerSettingsComposeDialog
 import com.winlator.cmod.feature.shortcuts.ShortcutsFragment
 import com.winlator.cmod.runtime.container.Container
+import com.winlator.cmod.runtime.container.ContainerCreation
 import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.content.ContentsManager
 import com.winlator.cmod.runtime.display.XServerDisplayActivity
@@ -59,6 +60,7 @@ class ContainersFragment : Fragment() {
                     ContainersScreen(
                         state = screenState,
                         onAddContainer = ::openAddContainer,
+                        onAddGamescope = ::addGamescopeContainer,
                         onRunContainer = ::runContainer,
                         onEditContainer = ::editContainer,
                         onDuplicateContainer = ::duplicateContainer,
@@ -92,7 +94,37 @@ class ContainersFragment : Fragment() {
     private fun loadContainersList() {
         val context = context ?: return
         manager = ContainerManager(context)
-        screenState = screenState.copy(containers = manager.containers.toList())
+        val all = manager.containers.toList()
+        screenState =
+            screenState.copy(
+                containers = all.filter { !it.isGamescopeRuntime },
+                gamescope = all.firstOrNull { it.isGamescopeRuntime },
+            )
+    }
+
+    private fun addGamescopeContainer() {
+        val context = context ?: return
+        if (!ImageFs.find(context).isUpToDate) {
+            WinToast.show(context, R.string.setup_wizard_system_image_not_installed, Toast.LENGTH_LONG)
+            return
+        }
+        val contentsManager = ContentsManager(context)
+        contentsManager.syncContents()
+        val runtime = ContainerCreation.newestInstalledRuntime(contentsManager)
+        if (runtime == null) {
+            WinToast.show(context, R.string.container_no_wine_installed, Toast.LENGTH_LONG)
+            return
+        }
+        val creatingPopup = ContainerProgressPopup(requireActivity(), R.string.containers_list_creating)
+        creatingPopup.show()
+        ContainerCreation.createGamescopeContainerAsync(context, manager, contentsManager, runtime) { created ->
+            creatingPopup.close()
+            if (!isAdded) return@createGamescopeContainerAsync
+            if (created == null) {
+                WinToast.show(context, R.string.containers_gamescope_create_failed, Toast.LENGTH_LONG)
+            }
+            loadContainersList()
+        }
     }
 
     private fun openAddContainer() {
