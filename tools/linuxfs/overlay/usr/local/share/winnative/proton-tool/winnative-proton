@@ -24,10 +24,22 @@ fi
 # server it launches tries to bind there.
 mkdir -p "$STEAM_COMPAT_DATA_PATH/fex-emu/Server"
 export FEX_ROOTFS=$rootfs FEX_PORTABLE=1
+# WinNative's own bionic FEXCore already owns the default per-uid FEXServer socket; sharing it
+# hands this process a server that knows nothing of the rootfs above, and the guest loader then
+# finds none of its libraries.
+export FEX_SERVERSOCKETPATH=${XDG_RUNTIME_DIR:-/tmp}/winnative-fex.sock
 export FEX_THUNKHOSTLIBS=$fex/usr/lib/aarch64-linux-gnu/fex-emu/HostThunks
 export FEX_THUNKGUESTLIBS=$fex/usr/share/fex-emu/GuestThunks
 if [ -z "$FEX_APP_CONFIG" ]; then
   printf '{\n  "Config": {},\n  "ThunksDB": {\n    "Vulkan": "1",\n    "GL": "1"\n  }\n}\n' > "$STEAM_COMPAT_DATA_PATH/winnative-fex.json"
   export FEX_APP_CONFIG=$STEAM_COMPAT_DATA_PATH/winnative-fex.json
 fi
+# The session's own preloads and library path are aarch64 and name the arm64 Steam runtime;
+# inherited by the emulated x86_64 process they only shadow its loader, so drop them the way
+# Valve's own FEX compatibility tool does. Proton builds the guest's paths itself.
+unset LD_LIBRARY_PATH
+# What stays is one library of our own: the app sandbox's seccomp filter answers openat2() with
+# ENOSYS, and that is how FEX resolves every guest path inside the runtime tree. Denied it, FEX
+# falls back to the host's root and the guest finds none of its libraries.
+export LD_PRELOAD=/usr/local/lib/libwnopenat2.so
 exec "$fex/usr/bin/FEX" /usr/bin/python3 "$proton/proton" "$verb" "$@"

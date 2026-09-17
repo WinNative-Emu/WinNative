@@ -49,5 +49,11 @@ ln -sfn "$steam_root" "$HOME/.steam/root"
 ln -sfn "$steam_root" "$HOME/.steam/steam"
 ln -sfn "$steam_root/steamrtarm64" "$HOME/.steam/bin64"
 ln -sfn "$steam_root/steamrtarm64" "$HOME/.steam/binarm64"
-ln -sfn "$steam_root/linuxarm64" "$HOME/.steam/sdk64"
+# The Steamworks SDK paths a game's steamclient stub is dlopened from, one per architecture.
+# Proton's lsteamclient runs emulated under FEX and loads the x86_64 (sdk64) or x86 (sdk32)
+# stub, which is only an IPC shim to the arm64 client over ~/.steam/steam.pipe; native arm64
+# games take sdkarm64. Pointing sdk64 at the arm64 tree hands the emulated loader a library it
+# cannot map and Steamworks aborts.
+ln -sfn "$steam_root/linux64" "$HOME/.steam/sdk64"
+ln -sfn "$steam_root/linux32" "$HOME/.steam/sdk32"
 ln -sfn "$steam_root/linuxarm64" "$HOME/.steam/sdkarm64"
