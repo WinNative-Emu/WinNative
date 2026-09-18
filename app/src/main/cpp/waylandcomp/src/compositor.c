@@ -827,13 +827,23 @@ static void feedback_discard_all(struct wl_list *list) {
     }
 }
 
+/* The refresh a presentation timestamp carries is the output's nominal interval - the same value
+ * every frame, matching the mode wl_output advertises. The measured one drives this compositor's
+ * own pacing and drifts by a few hundred microseconds a frame; reported here it reads as a mode
+ * change that often, and a client tracking the output's mode acts on every one of them. */
+static uint32_t output_refresh_ns(void) {
+    int mhz = g_output_refresh_mhz > 0 ? g_output_refresh_mhz : 60000;
+    return (uint32_t)(1000000000000LL / mhz);
+}
+
 static void feedback_present_all(struct wl_list *list, int64_t t) {
     struct wl_resource *fb, *tmp;
     uint64_t sec = (uint64_t)(t / 1000000000LL);
     uint32_t nsec = (uint32_t)(t % 1000000000LL);
+    uint32_t refresh = output_refresh_ns();
     wl_resource_for_each_safe(fb, tmp, list) {
         wp_presentation_feedback_send_presented(fb, (uint32_t)(sec >> 32), (uint32_t)sec, nsec,
-                                                (uint32_t)g_refresh_ns, 0, 0,
+                                                refresh, 0, 0,
                                                 WP_PRESENTATION_FEEDBACK_KIND_VSYNC);
         wl_resource_destroy(fb);
     }
