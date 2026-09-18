@@ -127,7 +127,12 @@ int connect(int fd, const struct sockaddr *addr, socklen_t len) {
   static connect_fn real;
   if (!real) real = (connect_fn)dlsym(RTLD_NEXT, "connect");
   int ret = real(fd, addr, len);
-  if (ret == 0 || errno == EINPROGRESS) record_port(fd, addr_port(addr, len));
+  if (ret == 0 || errno == EINPROGRESS) {
+    /* The caller goes on to test for EINPROGRESS, which the bookkeeping must not disturb. */
+    int saved = errno;
+    record_port(fd, addr_port(addr, len));
+    errno = saved;
+  }
   return ret;
 }
 

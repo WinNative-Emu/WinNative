@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -472,8 +473,18 @@ static FILE *synthesize(const char *table) {
     return out;
 }
 
+/* tracer.c */
+int wn_status_without_tracer(const char *path, int flags) __attribute__((visibility("hidden")));
+
 static FILE *open_stream(const char *symbol, const char *path, const char *mode) {
     typedef FILE *(*fopen_fn)(const char *, const char *);
+    int status = mode && mode[0] == 'r' && !strchr(mode, '+')
+            ? wn_status_without_tracer(path, O_RDONLY | O_CLOEXEC) : -1;
+    if (status >= 0) {
+        FILE *copy = fdopen(status, "r");
+        if (copy == NULL) close(status);
+        return copy;
+    }
     FILE *f = ((fopen_fn) dlsym(RTLD_NEXT, symbol))(path, mode);
     if (f || path == NULL || mode == NULL || mode[0] != 'r') return f;
     int saved = errno;
