@@ -395,3 +395,14 @@ int shmctl(int shmid, int cmd, struct shmid_ds *buf) {
     default: errno = EINVAL; return -1;
     }
 }
+
+/* Held across a fork so the child never inherits it locked by a thread it does not have; see the
+ * same handlers in drm.c. */
+static void lock_before_fork(void) { pthread_mutex_lock(&g_lock); }
+static void unlock_after_fork(void) { pthread_mutex_unlock(&g_lock); }
+/* The child's one thread did not lock it, so it is given a fresh mutex rather than an unlock. */
+static void reset_after_fork(void) { pthread_mutex_init(&g_lock, NULL); }
+
+__attribute__((constructor)) static void install_sysv_fork_handlers(void) {
+    pthread_atfork(lock_before_fork, unlock_after_fork, reset_after_fork);
+}

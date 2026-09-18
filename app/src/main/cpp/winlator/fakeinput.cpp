@@ -153,6 +153,29 @@ static bool vibration_enabled = true;
 static std::unordered_map<int, struct ff_effect> ff_effects;
 static int next_ff_id = 0;
 
+// fork() carries over only the calling thread, so a lock another thread was holding at that
+// instant stays held in the child by a thread that is not there to release it. Every hook below
+// takes controller_mutex, and the Steam client forks while its other threads are inside them, so
+// the child blocked on its first open() and never reached exec: the spawn never completed, the
+// client's main loop stalled past its own watchdog and it tore the session down.
+//
+// Taking the lock before the fork is what makes the copy consistent - no thread is part way
+// through the tables it guards. The parent then unlocks it. The child cannot: a recursive mutex
+// records the owning thread, the child's one thread has a new id, and unlocking one it does not
+// own is refused, which would leave the lock held for good. It gets a fresh mutex instead, which
+// is sound precisely because the fork was taken with the lock held.
+static void controller_fork_prepare() { controller_mutex.lock(); }
+static void controller_fork_parent() { controller_mutex.unlock(); }
+
+static void controller_fork_child() {
+  pthread_mutexattr_t attr;
+
+  pthread_mutexattr_init(&attr);
+  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(controller_mutex.native_handle(), &attr);
+  pthread_mutexattr_destroy(&attr);
+}
+
 namespace Logger {
 int log_enabled;
 
@@ -181,6 +204,9 @@ __attribute__((constructor)) static void library_init() {
   udev_data_dir = getenv("FAKE_UDEV_DATA_DIR");
   vibration_enabled =
       getenv("FAKE_EVDEV_VIBRATION") && atoi(getenv("FAKE_EVDEV_VIBRATION"));
+
+  pthread_atfork(controller_fork_prepare, controller_fork_parent,
+                 controller_fork_child);
 
   Logger::init();
 }

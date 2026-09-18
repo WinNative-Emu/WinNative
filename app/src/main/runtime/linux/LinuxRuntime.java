@@ -7,7 +7,10 @@ import android.system.Os;
 import android.system.StructStat;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -25,6 +28,8 @@ public final class LinuxRuntime {
   public static final String MODE_STEAM = "steam";
   public static final String MODE_RUN = "run";
   private static final String KGSL_DEVICE = "/dev/kgsl-3d0";
+  private static final String PRELOAD_ASSET_DIR = "linuxfs/usr/local/lib";
+  private static final String[] PRELOAD_LIBRARIES = {"libwninput.so", "libwnsession.so"};
 
   private LinuxRuntime() {}
 
@@ -175,6 +180,40 @@ public final class LinuxRuntime {
   private static void bind(List<String> cmd, String spec) {
     cmd.add("-b");
     cmd.add(spec);
+  }
+
+  /**
+   * The session's preload libraries, refreshed from the app's own copies.
+   *
+   * {@code /etc/ld.so.preload} in the rootfs names these, so they are loaded into every process the
+   * session runs and have to match the build that starts it - a rootfs installed by an earlier one
+   * carries older libraries, and the device has no way to replace them from outside the app. They
+   * are copied in whole rather than compared: together they are a few hundred kilobytes, and the
+   * copy lands through a rename, so a library another session still has mapped keeps the file it
+   * opened.
+   */
+  public static void syncPreloadLibraries(Context context) throws IOException {
+    File libDir = new File(rootDir(context), "usr/local/lib");
+    if (!libDir.isDirectory() && !libDir.mkdirs()) {
+      throw new IOException("could not create " + libDir.getPath());
+    }
+    for (String name : PRELOAD_LIBRARIES) {
+      File staged = new File(libDir, name + ".staged");
+      boolean installed = false;
+      try {
+        try (InputStream in = context.getAssets().open(PRELOAD_ASSET_DIR + "/" + name);
+            OutputStream out = new FileOutputStream(staged)) {
+          byte[] buffer = new byte[1 << 16];
+          for (int read = in.read(buffer); read > 0; read = in.read(buffer)) {
+            out.write(buffer, 0, read);
+          }
+        }
+        installed = staged.setExecutable(true, false) && staged.renameTo(new File(libDir, name));
+      } finally {
+        if (!installed) staged.delete();
+      }
+      if (!installed) throw new IOException("could not install " + name);
+    }
   }
 
   /** X access control and Steam look the session user up by uid: the app uid is root inside. */
