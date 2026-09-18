@@ -42,7 +42,10 @@ static int caller_is_sdl(void *caller) {
   Dl_info info;
   if (dladdr(caller, &info) == 0 || info.dli_fname == NULL)
     return 0;
-  return strstr(info.dli_fname, "libSDL") != NULL;
+  /* The client carries a second copy of SDL inside steamclient.so for controller discovery,
+   * which asks for udev on its own account. */
+  return strstr(info.dli_fname, "libSDL") != NULL
+      || strstr(info.dli_fname, "steamclient.so") != NULL;
 }
 
 void *dlopen(const char *file, int mode) {

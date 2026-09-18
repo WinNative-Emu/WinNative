@@ -11,6 +11,8 @@ import sys
 TOOL = "winnative-proton"
 TOOL_DIR = "/usr/local/share/winnative/proton-tool"
 TOKEN = re.compile(r'\s*(?:"((?:[^"\\]|\\.)*)"|([{}])|//[^\n]*)')
+# Steam's own Proton entries, which it runs through the Steam Linux Runtime's entry point.
+BUILTIN_TOOL = re.compile(r'^"proton', re.IGNORECASE)
 
 
 def tokenize(text):
@@ -79,6 +81,30 @@ def serialize(tokens):
     return "\n".join(out) + "\n"
 
 
+def redirect_builtin_tools(tokens, mapping):
+    """Points a game pinned to one of Steam's own Proton entries at this tool instead.
+
+    Those entries are launched through the Steam Linux Runtime's entry point, which builds a
+    container out of user namespaces this kernel does not have, so such a game never starts. This
+    tool runs the same Valve Proton without the container.
+    """
+    changed = False
+    i = mapping + 1
+    end = block_end(tokens, mapping)
+    while i < end:
+        if i + 1 < len(tokens) and tokens[i + 1] == "{":
+            child = i + 1
+            child_end = block_end(tokens, child)
+            for j in range(child + 1, child_end):
+                if tokens[j] == '"name"' and j + 1 < child_end and BUILTIN_TOOL.match(tokens[j + 1]):
+                    tokens[j + 1] = '"%s"' % TOOL
+                    changed = True
+            i = child_end + 1
+        else:
+            i += 2
+    return changed
+
+
 def register_default(config_path):
     with open(config_path, encoding="utf-8", errors="replace") as f:
         tokens = tokenize(f.read())
@@ -87,14 +113,20 @@ def register_default(config_path):
         return
     mapping = find_block(tokens[steam + 1:], ["CompatToolMapping"])
     entry = ['"0"', "{", '"name"', '"%s"' % TOOL, '"config"', '""', '"priority"', '"75"', "}"]
+    changed = False
     if mapping is None:
         end = block_end(tokens, steam)
         tokens[end:end] = ['"CompatToolMapping"', "{"] + entry + ["}"]
+        changed = True
     else:
         mapping += steam + 1
-        if find_block(tokens[mapping + 1:], ["0"]) is not None:
-            return
-        tokens[mapping + 1:mapping + 1] = entry
+        if find_block(tokens[mapping + 1:], ["0"]) is None:
+            tokens[mapping + 1:mapping + 1] = entry
+            changed = True
+        if redirect_builtin_tools(tokens, mapping):
+            changed = True
+    if not changed:
+        return
     tmp = config_path + ".winnative"
     with open(tmp, "w", encoding="utf-8") as f:
         f.write(serialize(tokens))
@@ -108,7 +140,8 @@ def main():
     link = os.path.join(tools, TOOL)
     if os.path.islink(link) and os.readlink(link) != TOOL_DIR:
         os.unlink(link)
-    if not os.path.exists(link):
+    # lexists, not exists: a link whose target is missing still occupies the name.
+    if not os.path.lexists(link):
         os.symlink(TOOL_DIR, link)
     config = os.path.join(steam_root, "config", "config.vdf")
     if os.path.isfile(config):
