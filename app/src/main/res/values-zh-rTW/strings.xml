@@ -152,6 +152,16 @@
     <string name="common_ui_path_not_found">找不到路徑</string>
     <string name="common_ui_storage_roots">儲存根目錄</string>
     <string name="common_ui_app_storage">應用程式儲存空間</string>
+    <string name="common_ui_move">移動</string>
+    <string name="library_games_move_game">移動遊戲</string>
+    <string name="library_games_move_to_app_storage_title">移動到應用程式儲存空間</string>
+    <string name="library_games_move_to_download_folder_title">移動到下載資料夾</string>
+    <string name="library_games_move_to_app_storage_confirm">將 %1$s 移動到應用程式自有儲存空間？原生 Steam 用戶端只能從該處執行遊戲。</string>
+    <string name="library_games_move_to_download_folder_confirm">將 %1$s 移回下載資料夾？原生 Steam 用戶端將無法再執行它。</string>
+    <string name="library_games_moving">正在移動遊戲</string>
+    <string name="library_games_move_done">已移動 %1$s</string>
+    <string name="library_games_move_failed">無法移動 %1$s</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">直接瀏覽本機資料夾</string>
     <string name="common_ui_no_folders_available_here">這裡沒有可用的資料夾</string>
     <string name="common_ui_grant_all_files_access_browse">請授予所有檔案存取權限，以直接瀏覽本機資料夾。</string>
@@ -2896,7 +2906,6 @@
     <string name="wayland_unavailable_fallback">此遊戲無法使用 Wayland，將改用 X11 啟動。</string>
     <string name="wayland_needs_turnip_driver">Wayland 需要 Turnip 圖形驅動程式才能顯示遊戲。請在「內容」中安裝並將其選為圖形驅動程式。</string>
     <string name="containers_gamescope_new">建立 GameScope 容器</string>
-    <string name="containers_gamescope_help">Linux 程式與原生 Steam 用戶端會在這裡透過 Wayland 合成器上的 gamescope 執行。</string>
     <string name="containers_gamescope_create_failed">無法建立 GameScope 容器</string>
     <string name="linux_apps_need_gamescope_container">請先在「設定 › 容器」中建立 GameScope 容器。</string>
     <string name="linux_runtime_missing">Linux 執行環境尚未安裝，因此此容器暫時無法啟動。</string>

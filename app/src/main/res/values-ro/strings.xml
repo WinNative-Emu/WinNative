@@ -152,6 +152,16 @@
     <string name="common_ui_path_not_found">Calea nu a fost găsită</string>
     <string name="common_ui_storage_roots">Locații de stocare</string>
     <string name="common_ui_app_storage">Stocarea aplicației</string>
+    <string name="common_ui_move">Mută</string>
+    <string name="library_games_move_game">Mută jocul</string>
+    <string name="library_games_move_to_app_storage_title">Mută în stocarea aplicației</string>
+    <string name="library_games_move_to_download_folder_title">Mută în folderul de descărcări</string>
+    <string name="library_games_move_to_app_storage_confirm">Muți %1$s în stocarea aplicației? Clientul Steam nativ poate rula un joc doar de acolo.</string>
+    <string name="library_games_move_to_download_folder_confirm">Muți %1$s înapoi în folderul de descărcări? Clientul Steam nativ nu îl va mai putea rula.</string>
+    <string name="library_games_moving">Se mută jocul</string>
+    <string name="library_games_move_done">%1$s a fost mutat</string>
+    <string name="library_games_move_failed">%1$s nu a putut fi mutat</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">Răsfoiește direct folderele locale</string>
     <string name="common_ui_no_folders_available_here">Niciun folder disponibil aici</string>
     <string name="common_ui_grant_all_files_access_browse">Acordă acces complet la fișiere pentru a răsfoi direct folderele locale.</string>
@@ -2897,7 +2907,6 @@ Cale instalata:
     <string name="wayland_unavailable_fallback">Wayland nu este disponibil pentru acest joc. Se lansează pe X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland are nevoie de un driver grafic Turnip pentru a afișa jocul. Instalează unul din Conținut și selectează-l ca driver grafic.</string>
     <string name="containers_gamescope_new">Creează containerul GameScope</string>
-    <string name="containers_gamescope_help">Programele Linux și clientul Steam nativ rulează aici, prin gamescope pe compozitorul Wayland.</string>
     <string name="containers_gamescope_create_failed">Containerul GameScope nu a putut fi creat</string>
     <string name="linux_apps_need_gamescope_container">Creează mai întâi containerul GameScope în Setări › Containere.</string>
     <string name="linux_runtime_missing">Mediul de execuție Linux nu este instalat, așa că acest container nu poate porni încă.</string>

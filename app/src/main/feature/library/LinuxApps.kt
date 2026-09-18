@@ -4,8 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.widget.Toast
-import androidx.appcompat.content.res.AppCompatResources
 import com.winlator.cmod.R
 import com.winlator.cmod.runtime.container.Container
 import com.winlator.cmod.runtime.container.ContainerManager
@@ -32,6 +33,7 @@ object LinuxApps {
     const val STEAM_SHORTCUT_NAME = "Steam"
     private const val STEAM_ICON = "steam_client"
     private const val STEAM_GROUND = 0xFF1B2838.toInt()
+    private const val STEAM_INK = 0xFFE7EEF5.toInt()
 
     /** Extensions Linux programs ship with. A bare ELF with no extension is not recognised. */
     val Extensions = setOf("appimage", "sh", "run", "bin", "elf", "x86_64", "x86", "aarch64", "arm64")
@@ -64,8 +66,10 @@ object LinuxApps {
         if (!desktopDir.exists()) desktopDir.mkdirs()
         val shortcutFile = File(desktopDir, "$STEAM_SHORTCUT_NAME.desktop")
         // The artwork is refreshed even for an entry that already exists, so an upgrade picks it up.
-        renderSteamIcon(context, File(container.getIconsDir(64), "$STEAM_ICON.png"), 64)
-        renderSteamCover(context, File(context.filesDir, "custom_icons/$STEAM_SHORTCUT_NAME.png"))
+        val stamp = File(context.filesDir, "custom_icons/.steam_art")
+        renderSteamIcon(File(container.getIconsDir(64), "$STEAM_ICON.png"), 64, stamp)
+        renderSteamCover(File(context.filesDir, "custom_icons/$STEAM_SHORTCUT_NAME.png"), stamp)
+        runCatching { stamp.writeText(ART_VERSION.toString()) }
         if (shortcutFile.exists()) return
         val content =
             buildString {
@@ -88,42 +92,66 @@ object LinuxApps {
     }
 
     /**
-     * The wide card the library draws, so the square glyph is not cropped: it is centred on the
-     * same dark ground the icon uses.
+     * The library artwork. Valve's marks are theirs to license, so the entry is drawn as the plain
+     * word instead of the client's logo: bold, letter-spaced, centred on the client's dark ground.
+     *
+     * [stamp] is what tells an install whose artwork was drawn by an older build to redraw it; the
+     * files are otherwise written once and left alone.
      */
-    private fun renderSteamCover(
-        context: Context,
-        file: File,
+    private const val ART_VERSION = 2
+
+    private fun steamArtIsCurrent(stamp: File): Boolean =
+        runCatching { stamp.readText().trim().toInt() }.getOrNull() == ART_VERSION
+
+    private fun drawSteamWordmark(
+        canvas: Canvas,
+        width: Int,
+        height: Int,
     ) {
-        if (file.exists()) return
-        val drawable = AppCompatResources.getDrawable(context, R.drawable.library_steam_client) ?: return
+        canvas.drawColor(STEAM_GROUND)
+        val text = "STEAM"
+        val paint =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = STEAM_INK
+                typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+                letterSpacing = 0.18f
+                textSize = height * 0.42f
+            }
+        // Shrink to fit rather than clip, so the word reads whole at every size it is drawn at.
+        val maxWidth = width * 0.78f
+        val measured = paint.measureText(text)
+        if (measured > maxWidth) paint.textSize *= maxWidth / measured
+        val metrics = paint.fontMetrics
+        val baseline = height / 2f - (metrics.ascent + metrics.descent) / 2f
+        // Centring accounts for the trailing letter space the paint adds after the last glyph.
+        canvas.drawText(text, width / 2f + paint.letterSpacing * paint.textSize / 2f, baseline, paint)
+    }
+
+    /** The wide card the library draws. */
+    private fun renderSteamCover(
+        file: File,
+        stamp: File,
+    ) {
+        if (file.exists() && steamArtIsCurrent(stamp)) return
         file.parentFile?.mkdirs()
         val width = 920
         val height = 430
-        val glyph = 300
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        canvas.drawColor(STEAM_GROUND)
-        val left = (width - glyph) / 2
-        val top = (height - glyph) / 2
-        drawable.setBounds(left, top, left + glyph, top + glyph)
-        drawable.draw(canvas)
+        drawSteamWordmark(Canvas(bitmap), width, height)
         FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     /** The library card reads `custom_icons/<name>.png`; the desktop entry reads the container's icon dir. */
     private fun renderSteamIcon(
-        context: Context,
         file: File,
         size: Int,
+        stamp: File,
     ) {
-        if (file.exists()) return
-        val drawable = AppCompatResources.getDrawable(context, R.drawable.library_steam_client) ?: return
+        if (file.exists() && steamArtIsCurrent(stamp)) return
         file.parentFile?.mkdirs()
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, size, size)
-        drawable.draw(canvas)
+        drawSteamWordmark(Canvas(bitmap), size, size)
         FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 

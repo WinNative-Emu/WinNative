@@ -151,6 +151,16 @@
     <string name="common_ui_select">Выбрать</string>
     <string name="common_ui_storage_roots">Корни хранилища</string>
     <string name="common_ui_app_storage">Хранилище приложения</string>
+    <string name="common_ui_move">Переместить</string>
+    <string name="library_games_move_game">Переместить игру</string>
+    <string name="library_games_move_to_app_storage_title">Переместить в хранилище приложения</string>
+    <string name="library_games_move_to_download_folder_title">Переместить в папку загрузок</string>
+    <string name="library_games_move_to_app_storage_confirm">Переместить %1$s в хранилище приложения? Нативный клиент Steam может запустить игру только оттуда.</string>
+    <string name="library_games_move_to_download_folder_confirm">Переместить %1$s обратно в папку загрузок? Нативный клиент Steam больше не сможет её запустить.</string>
+    <string name="library_games_moving">Перемещение игры</string>
+    <string name="library_games_move_done">%1$s перемещена</string>
+    <string name="library_games_move_failed">Не удалось переместить %1$s</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">Просматривать локальные папки напрямую</string>
     <string name="common_ui_no_folders_available_here">Здесь нет доступных папок</string>
     <string name="common_ui_grant_all_files_access_browse">Предоставьте полный доступ к файлам, чтобы просматривать папки напрямую.</string>
@@ -2803,7 +2813,6 @@
     <string name="wayland_unavailable_fallback">Wayland недоступен для этой игры. Запуск через X11.</string>
     <string name="wayland_needs_turnip_driver">Для показа игры Wayland нужен графический драйвер Turnip. Установите его в разделе «Содержимое» и выберите как графический драйвер.</string>
     <string name="containers_gamescope_new">Создать контейнер GameScope</string>
-    <string name="containers_gamescope_help">Программы Linux и нативный клиент Steam запускаются здесь через gamescope на композиторе Wayland.</string>
     <string name="containers_gamescope_create_failed">Не удалось создать контейнер GameScope</string>
     <string name="linux_apps_need_gamescope_container">Сначала создайте контейнер GameScope в разделе Настройки › Контейнеры.</string>
     <string name="linux_runtime_missing">Среда выполнения Linux не установлена, поэтому этот контейнер пока нельзя запустить.</string>

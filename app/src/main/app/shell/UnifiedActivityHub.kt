@@ -158,6 +158,7 @@ import com.winlator.cmod.app.db.PluviaDatabase
 import com.winlator.cmod.app.service.DownloadService
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.app.update.UpdateService
+import com.winlator.cmod.feature.library.LibraryCache
 import com.winlator.cmod.feature.library.LibraryContentFilters
 import com.winlator.cmod.feature.library.LibraryItemType
 import com.winlator.cmod.feature.library.LibraryStoreLinks
@@ -2110,6 +2111,13 @@ internal fun UnifiedActivity.LibraryCarousel(
     var mergedInstalledApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
     var installedApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
     var stableInstalledApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
+    // What the library drew last time, shown until this launch's own scan has an answer.
+    var libraryCacheLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val cached = withContext(Dispatchers.IO) { LibraryCache.load(context) }
+        if (stableInstalledApps.isEmpty()) stableInstalledApps = cached
+        libraryCacheLoaded = true
+    }
     var gogByPseudoId by remember { mutableStateOf<Map<Int, GOGGame>>(emptyMap()) }
     var libraryStoreLinks by remember { mutableStateOf(LibraryStoreLinkResult()) }
     var epicByPseudoId by remember { mutableStateOf<Map<Int, EpicGame>>(emptyMap()) }
@@ -2314,6 +2322,19 @@ internal fun UnifiedActivity.LibraryCarousel(
                         }
                     (allPlaytime["${searchKey}_last_played"] as? Long) ?: 0L
                 }
+
+            // Only a scan that had something to work from replaces the cache, so the first pass of
+            // a cold start cannot blank it; a sign-out leaves no catalogue and no credentials, and
+            // does.
+            val anyStoreSignedIn =
+                SteamService.hasStoredCredentials(context) ||
+                    EpicService.hasStoredCredentials(context) ||
+                    GOGAuthManager.isLoggedIn(context)
+            if (steamApps.isNotEmpty() || epicApps.isNotEmpty() || gogApps.isNotEmpty() ||
+                customApps.isNotEmpty() || !anyStoreSignedIn
+            ) {
+                LibraryCache.save(context, sorted)
+            }
 
             withContext(Dispatchers.Main) {
                 gogByPseudoId = gogMap
@@ -2574,7 +2595,7 @@ internal fun UnifiedActivity.LibraryCarousel(
     // DB (steamApps/epicApps/gogApps become non-empty) or if other sources
     // (custom apps, other stores) already have installed games.
     val awaitingStoreSync =
-        installedApps.isEmpty() && (
+        visibleInstalledApps.isEmpty() && (
             (isLoggedIn && steamApps.isEmpty()) ||
                 (epicApps.isEmpty() && EpicService.hasStoredCredentials(context)) ||
                 (gogApps.isEmpty() && GOGAuthManager.isLoggedIn(context))
@@ -2582,9 +2603,10 @@ internal fun UnifiedActivity.LibraryCarousel(
     // Only block the surface while the first library result is unresolved.
     // After that, keep the current content/empty state visible during
     // background refreshes so the UI does not flicker back to a spinner.
-    val initialLibraryLoadPending = !libraryLoaded
+    val initialLibraryLoadPending = !libraryLoaded && (!libraryCacheLoaded || visibleInstalledApps.isEmpty())
     val waitingForFirstEmptyStateResolution =
-        installedApps.isEmpty() && (processedScanToken !== scanInputToken || awaitingStoreSync || awaitingShortcutScan)
+        visibleInstalledApps.isEmpty() &&
+            (processedScanToken !== scanInputToken || awaitingStoreSync || awaitingShortcutScan)
     val showLoading = initialLibraryLoadPending || waitingForFirstEmptyStateResolution
     if (showLoading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

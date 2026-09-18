@@ -152,6 +152,16 @@
     <string name="common_ui_select">Valitse</string>
     <string name="common_ui_storage_roots">Tallennussijainnit</string>
     <string name="common_ui_app_storage">Sovelluksen tallennustila</string>
+    <string name="common_ui_move">Siirrä</string>
+    <string name="library_games_move_game">Siirrä peli</string>
+    <string name="library_games_move_to_app_storage_title">Siirrä sovelluksen tallennustilaan</string>
+    <string name="library_games_move_to_download_folder_title">Siirrä latauskansioon</string>
+    <string name="library_games_move_to_app_storage_confirm">Siirretäänkö %1$s sovelluksen omaan tallennustilaan? Natiivi Steam-asiakas voi suorittaa pelin vain sieltä.</string>
+    <string name="library_games_move_to_download_folder_confirm">Siirretäänkö %1$s takaisin latauskansioon? Natiivi Steam-asiakas ei enää voi suorittaa sitä.</string>
+    <string name="library_games_moving">Siirretään peliä</string>
+    <string name="library_games_move_done">%1$s siirretty</string>
+    <string name="library_games_move_failed">Peliä %1$s ei voitu siirtää</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">Selaa paikallisia kansioita suoraan</string>
     <string name="common_ui_no_folders_available_here">Täällä ei ole kansioita saatavilla</string>
     <string name="common_ui_grant_all_files_access_browse">Myönnä kaikkien tiedostojen käyttöoikeus selataksesi kansioita suoraan.</string>
@@ -2897,7 +2907,6 @@ Asennuspolku:
     <string name="wayland_unavailable_fallback">Wayland ei ole käytettävissä tälle pelille. Käynnistetään X11:llä.</string>
     <string name="wayland_needs_turnip_driver">Wayland tarvitsee Turnip-näytönohjainajurin näyttääkseen pelin. Asenna sellainen Sisältö-näkymästä ja valitse se näytönohjainajuriksi.</string>
     <string name="containers_gamescope_new">Luo GameScope-säiliö</string>
-    <string name="containers_gamescope_help">Linux-ohjelmat ja natiivi Steam-asiakas toimivat täällä gamescopen kautta Wayland-koostajassa.</string>
     <string name="containers_gamescope_create_failed">GameScope-säiliön luominen epäonnistui</string>
     <string name="linux_apps_need_gamescope_container">Luo ensin GameScope-säiliö kohdassa Asetukset › Säiliöt.</string>
     <string name="linux_runtime_missing">Linux-ajoympäristöä ei ole asennettu, joten tätä konttia ei voi vielä käynnistää.</string>

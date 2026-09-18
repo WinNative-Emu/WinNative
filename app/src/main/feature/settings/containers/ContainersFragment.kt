@@ -98,7 +98,7 @@ class ContainersFragment : Fragment() {
         screenState =
             screenState.copy(
                 containers = all.filter { !it.isGamescopeRuntime },
-                gamescope = all.firstOrNull { it.isGamescopeRuntime },
+                gamescope = all.filter { it.isGamescopeRuntime },
             )
     }
 

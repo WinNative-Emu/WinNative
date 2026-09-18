@@ -152,6 +152,16 @@
     <string name="common_ui_select">Seç</string>
     <string name="common_ui_storage_roots">Depolama Kökleri</string>
     <string name="common_ui_app_storage">Uygulama depolaması</string>
+    <string name="common_ui_move">Taşı</string>
+    <string name="library_games_move_game">Oyunu taşı</string>
+    <string name="library_games_move_to_app_storage_title">Uygulama depolamasına taşı</string>
+    <string name="library_games_move_to_download_folder_title">İndirme klasörüne taşı</string>
+    <string name="library_games_move_to_app_storage_confirm">%1$s uygulamanın kendi depolamasına taşınsın mı? Yerel Steam istemcisi bir oyunu yalnızca oradan çalıştırabilir.</string>
+    <string name="library_games_move_to_download_folder_confirm">%1$s indirme klasörüne geri taşınsın mı? Yerel Steam istemcisi artık çalıştıramayacak.</string>
+    <string name="library_games_moving">Oyun taşınıyor</string>
+    <string name="library_games_move_done">%1$s taşındı</string>
+    <string name="library_games_move_failed">%1$s taşınamadı</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">Yerel klasörlere doğrudan gözat</string>
     <string name="common_ui_no_folders_available_here">Burada mevcut klasör yok</string>
     <string name="common_ui_grant_all_files_access_browse">Klasörlere doğrudan gözatmak için tüm dosyalara erişim izni verin.</string>
@@ -2897,7 +2907,6 @@ Yüklü konum:
     <string name="wayland_unavailable_fallback">Bu oyun için Wayland kullanılamıyor. X11 ile başlatılıyor.</string>
     <string name="wayland_needs_turnip_driver">Wayland\'ın oyunu gösterebilmesi için bir Turnip grafik sürücüsü gerekir. İçerikler bölümünden kurun ve grafik sürücüsü olarak seçin.</string>
     <string name="containers_gamescope_new">GameScope kapsayıcısı oluştur</string>
-    <string name="containers_gamescope_help">Linux programları ve yerel Steam istemcisi burada, Wayland birleştiricisi üzerinde gamescope ile çalışır.</string>
     <string name="containers_gamescope_create_failed">GameScope kapsayıcısı oluşturulamadı</string>
     <string name="linux_apps_need_gamescope_container">Önce Ayarlar › Kapsayıcılar altında GameScope kapsayıcısını oluşturun.</string>
     <string name="linux_runtime_missing">Linux çalışma zamanı yüklü değil, bu yüzden bu kapsayıcı henüz başlatılamıyor.</string>

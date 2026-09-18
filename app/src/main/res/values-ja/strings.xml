@@ -152,6 +152,16 @@
     <string name="common_ui_select">選択</string>
     <string name="common_ui_storage_roots">ストレージのルート</string>
     <string name="common_ui_app_storage">アプリストレージ</string>
+    <string name="common_ui_move">移動</string>
+    <string name="library_games_move_game">ゲームを移動</string>
+    <string name="library_games_move_to_app_storage_title">アプリストレージへ移動</string>
+    <string name="library_games_move_to_download_folder_title">ダウンロードフォルダーへ移動</string>
+    <string name="library_games_move_to_app_storage_confirm">%1$s をアプリ専用ストレージへ移動しますか？ネイティブ Steam クライアントはそこからしかゲームを実行できません。</string>
+    <string name="library_games_move_to_download_folder_confirm">%1$s をダウンロードフォルダーへ戻しますか？ネイティブ Steam クライアントでは実行できなくなります。</string>
+    <string name="library_games_moving">ゲームを移動しています</string>
+    <string name="library_games_move_done">%1$s を移動しました</string>
+    <string name="library_games_move_failed">%1$s を移動できませんでした</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">ローカルフォルダを直接参照</string>
     <string name="common_ui_no_folders_available_here">ここに利用可能なフォルダはありません</string>
     <string name="common_ui_grant_all_files_access_browse">フォルダを直接参照するには、すべてのファイルへのアクセスを許可してください。</string>
@@ -2897,7 +2907,6 @@
     <string name="wayland_unavailable_fallback">このゲームでは Wayland を利用できません。X11 で起動します。</string>
     <string name="wayland_needs_turnip_driver">Wayland でゲームを表示するには Turnip グラフィックドライバーが必要です。コンテンツからインストールし、グラフィックドライバーとして選択してください。</string>
     <string name="containers_gamescope_new">GameScope コンテナを作成</string>
-    <string name="containers_gamescope_help">Linux プログラムとネイティブ Steam クライアントは、Wayland コンポジター上の gamescope を通してここで動作します。</string>
     <string name="containers_gamescope_create_failed">GameScope コンテナを作成できませんでした</string>
     <string name="linux_apps_need_gamescope_container">まず設定 › コンテナで GameScope コンテナを作成してください。</string>
     <string name="linux_runtime_missing">Linux ランタイムがインストールされていないため、このコンテナはまだ起動できません。</string>

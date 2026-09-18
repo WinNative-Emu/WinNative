@@ -201,6 +201,7 @@ import com.winlator.cmod.feature.sync.CloudSyncHelper
 import com.winlator.cmod.feature.sync.google.CloudSyncManager
 import com.winlator.cmod.feature.sync.google.GameSaveBackupManager
 import com.winlator.cmod.feature.sync.ui.CloudSavesContent
+import com.winlator.cmod.feature.library.LinuxApps
 import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.container.Shortcut
 import com.winlator.cmod.runtime.display.XServerDisplayActivity
@@ -407,6 +408,12 @@ internal fun UnifiedActivity.bootstrapStartupState() {
 
     lifecycleScope.launch(Dispatchers.IO) {
         val appContext = applicationContext
+        // The Steam entry's artwork is redrawn here as well as at container creation, so an
+        // install made by an earlier build picks up the current one.
+        runCatching {
+            val manager = ContainerManager(appContext)
+            LinuxApps.gamescopeContainer(manager)?.let { LinuxApps.ensureSteamShortcut(appContext, it) }
+        }.onFailure { Log.w("UnifiedActivity", "Could not refresh the Steam entry", it) }
         val resolvedLayoutMode =
             runCatching {
                 PrefManager.init(appContext)

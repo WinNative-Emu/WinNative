@@ -152,6 +152,16 @@
     <string name="common_ui_path_not_found">Stien blev ikke fundet</string>
     <string name="common_ui_storage_roots">Lagringsrødder</string>
     <string name="common_ui_app_storage">App-lager</string>
+    <string name="common_ui_move">Flyt</string>
+    <string name="library_games_move_game">Flyt spil</string>
+    <string name="library_games_move_to_app_storage_title">Flyt til app-lager</string>
+    <string name="library_games_move_to_download_folder_title">Flyt til downloadmappen</string>
+    <string name="library_games_move_to_app_storage_confirm">Flyt %1$s til appens eget lager? Den native Steam-klient kan kun køre et spil derfra.</string>
+    <string name="library_games_move_to_download_folder_confirm">Flyt %1$s tilbage til downloadmappen? Den native Steam-klient vil ikke længere kunne køre det.</string>
+    <string name="library_games_moving">Flytter spillet</string>
+    <string name="library_games_move_done">%1$s er flyttet</string>
+    <string name="library_games_move_failed">Kunne ikke flytte %1$s</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">Gennemse lokale mapper direkte</string>
     <string name="common_ui_no_folders_available_here">Ingen mapper tilgængelige her</string>
     <string name="common_ui_grant_all_files_access_browse">Giv fuld filadgang for at gennemse lokale mapper direkte.</string>
@@ -2899,7 +2909,6 @@ Installeret sti:
     <string name="wayland_unavailable_fallback">Wayland er ikke tilgængelig for dette spil. Starter på X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland kræver en Turnip-grafikdriver for at vise spillet. Installér en under Indhold, og vælg den som grafikdriver.</string>
     <string name="containers_gamescope_new">Opret GameScope-container</string>
-    <string name="containers_gamescope_help">Linux-programmer og den native Steam-klient kører her, gennem gamescope på Wayland-compositoren.</string>
     <string name="containers_gamescope_create_failed">GameScope-containeren kunne ikke oprettes</string>
     <string name="linux_apps_need_gamescope_container">Opret først GameScope-containeren under Indstillinger › Containere.</string>
     <string name="linux_runtime_missing">Linux-runtimen er ikke installeret, så denne container kan ikke starte endnu.</string>

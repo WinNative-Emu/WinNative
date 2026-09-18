@@ -152,6 +152,16 @@
     <string name="common_ui_select">เลือก</string>
     <string name="common_ui_storage_roots">รูทที่เก็บข้อมูล</string>
     <string name="common_ui_app_storage">ที่เก็บข้อมูลของแอป</string>
+    <string name="common_ui_move">ย้าย</string>
+    <string name="library_games_move_game">ย้ายเกม</string>
+    <string name="library_games_move_to_app_storage_title">ย้ายไปยังที่เก็บข้อมูลของแอป</string>
+    <string name="library_games_move_to_download_folder_title">ย้ายไปยังโฟลเดอร์ดาวน์โหลด</string>
+    <string name="library_games_move_to_app_storage_confirm">ย้าย %1$s ไปยังที่เก็บข้อมูลของแอปหรือไม่ ไคลเอ็นต์ Steam แบบเนทีฟเรียกใช้เกมได้จากที่นั่นเท่านั้น</string>
+    <string name="library_games_move_to_download_folder_confirm">ย้าย %1$s กลับไปยังโฟลเดอร์ดาวน์โหลดหรือไม่ ไคลเอ็นต์ Steam แบบเนทีฟจะเรียกใช้ไม่ได้อีก</string>
+    <string name="library_games_moving">กำลังย้ายเกม</string>
+    <string name="library_games_move_done">ย้าย %1$s แล้ว</string>
+    <string name="library_games_move_failed">ย้าย %1$s ไม่สำเร็จ</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">เรียกดูโฟลเดอร์ในเครื่องโดยตรง</string>
     <string name="common_ui_no_folders_available_here">ไม่มีโฟลเดอร์ที่นี่</string>
     <string name="common_ui_grant_all_files_access_browse">ให้สิทธิ์เข้าถึงไฟล์ทั้งหมดเพื่อเรียกดูโฟลเดอร์โดยตรง</string>
@@ -2896,7 +2906,6 @@
     <string name="wayland_unavailable_fallback">เกมนี้ไม่สามารถใช้ Wayland ได้ กำลังเปิดด้วย X11</string>
     <string name="wayland_needs_turnip_driver">Wayland ต้องใช้ไดรเวอร์กราฟิก Turnip เพื่อแสดงเกม ติดตั้งได้จากเนื้อหาแล้วเลือกเป็นไดรเวอร์กราฟิก</string>
     <string name="containers_gamescope_new">สร้างคอนเทนเนอร์ GameScope</string>
-    <string name="containers_gamescope_help">โปรแกรม Linux และไคลเอนต์ Steam แบบเนทีฟทำงานที่นี่ผ่าน gamescope บนคอมโพสิเตอร์ Wayland</string>
     <string name="containers_gamescope_create_failed">สร้างคอนเทนเนอร์ GameScope ไม่สำเร็จ</string>
     <string name="linux_apps_need_gamescope_container">โปรดสร้างคอนเทนเนอร์ GameScope ในการตั้งค่า › คอนเทนเนอร์ก่อน</string>
     <string name="linux_runtime_missing">ยังไม่ได้ติดตั้งรันไทม์ Linux จึงยังไม่สามารถเริ่มคอนเทนเนอร์นี้ได้</string>

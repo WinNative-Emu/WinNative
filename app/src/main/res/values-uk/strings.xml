@@ -152,6 +152,16 @@
     <string name="common_ui_path_not_found">Шлях не знайдено</string>
     <string name="common_ui_storage_roots">Сховища</string>
     <string name="common_ui_app_storage">Сховище застосунку</string>
+    <string name="common_ui_move">Перемістити</string>
+    <string name="library_games_move_game">Перемістити гру</string>
+    <string name="library_games_move_to_app_storage_title">Перемістити до сховища застосунку</string>
+    <string name="library_games_move_to_download_folder_title">Перемістити до теки завантажень</string>
+    <string name="library_games_move_to_app_storage_confirm">Перемістити %1$s до власного сховища застосунку? Нативний клієнт Steam може запустити гру лише звідти.</string>
+    <string name="library_games_move_to_download_folder_confirm">Перемістити %1$s назад до теки завантажень? Нативний клієнт Steam більше не зможе її запустити.</string>
+    <string name="library_games_moving">Переміщення гри</string>
+    <string name="library_games_move_done">%1$s переміщено</string>
+    <string name="library_games_move_failed">Не вдалося перемістити %1$s</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">Переглядати локальні теки безпосередньо</string>
     <string name="common_ui_no_folders_available_here">Тут немає доступних тек</string>
     <string name="common_ui_grant_all_files_access_browse">Надайте повний доступ до файлів, щоб безпосередньо переглядати локальні теки.</string>
@@ -2903,7 +2913,6 @@
     <string name="wayland_unavailable_fallback">Wayland недоступний для цієї гри. Запуск через X11.</string>
     <string name="wayland_needs_turnip_driver">Для показу гри Wayland потрібен графічний драйвер Turnip. Встановіть його в розділі «Вміст» і виберіть як графічний драйвер.</string>
     <string name="containers_gamescope_new">Створити контейнер GameScope</string>
-    <string name="containers_gamescope_help">Програми Linux і нативний клієнт Steam запускаються тут через gamescope на композиторі Wayland.</string>
     <string name="containers_gamescope_create_failed">Не вдалося створити контейнер GameScope</string>
     <string name="linux_apps_need_gamescope_container">Спочатку створіть контейнер GameScope у розділі Налаштування › Контейнери.</string>
     <string name="linux_runtime_missing">Середовище виконання Linux не встановлено, тому цей контейнер поки не можна запустити.</string>

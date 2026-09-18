@@ -152,6 +152,16 @@
     <string name="common_ui_path_not_found">Nie znaleziono ścieżki</string>
     <string name="common_ui_storage_roots">Lokalizacje pamięci</string>
     <string name="common_ui_app_storage">Pamięć aplikacji</string>
+    <string name="common_ui_move">Przenieś</string>
+    <string name="library_games_move_game">Przenieś grę</string>
+    <string name="library_games_move_to_app_storage_title">Przenieś do pamięci aplikacji</string>
+    <string name="library_games_move_to_download_folder_title">Przenieś do folderu pobierania</string>
+    <string name="library_games_move_to_app_storage_confirm">Przenieść %1$s do pamięci aplikacji? Natywny klient Steam może uruchomić grę tylko stamtąd.</string>
+    <string name="library_games_move_to_download_folder_confirm">Przenieść %1$s z powrotem do folderu pobierania? Natywny klient Steam nie będzie mógł jej uruchomić.</string>
+    <string name="library_games_moving">Przenoszenie gry</string>
+    <string name="library_games_move_done">Przeniesiono %1$s</string>
+    <string name="library_games_move_failed">Nie udało się przenieść %1$s</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">Przeglądaj lokalne foldery bezpośrednio</string>
     <string name="common_ui_no_folders_available_here">Brak dostępnych folderów w tej lokalizacji</string>
     <string name="common_ui_grant_all_files_access_browse">Przyznaj pełny dostęp do plików, aby bezpośrednio przeglądać lokalne foldery.</string>
@@ -2904,7 +2914,6 @@ Zainstalowana ścieżka:
     <string name="wayland_unavailable_fallback">Wayland nie jest dostępny dla tej gry. Uruchamianie na X11.</string>
     <string name="wayland_needs_turnip_driver">Wayland potrzebuje sterownika graficznego Turnip, aby wyświetlić grę. Zainstaluj go w Zawartości i wybierz jako sterownik graficzny.</string>
     <string name="containers_gamescope_new">Utwórz kontener GameScope</string>
-    <string name="containers_gamescope_help">Programy Linux i natywny klient Steam działają tutaj, przez gamescope na kompozytorze Wayland.</string>
     <string name="containers_gamescope_create_failed">Nie udało się utworzyć kontenera GameScope</string>
     <string name="linux_apps_need_gamescope_container">Najpierw utwórz kontener GameScope w Ustawienia › Kontenery.</string>
     <string name="linux_runtime_missing">Środowisko Linux nie jest zainstalowane, więc ten kontener nie może jeszcze wystartować.</string>

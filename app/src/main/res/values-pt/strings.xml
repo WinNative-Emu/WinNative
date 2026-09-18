@@ -152,6 +152,16 @@
     <string name="common_ui_select">Selecionar</string>
     <string name="common_ui_storage_roots">Raízes de Armazenamento</string>
     <string name="common_ui_app_storage">Armazenamento da app</string>
+    <string name="common_ui_move">Mover</string>
+    <string name="library_games_move_game">Mover jogo</string>
+    <string name="library_games_move_to_app_storage_title">Mover para o armazenamento da app</string>
+    <string name="library_games_move_to_download_folder_title">Mover para a pasta de transferências</string>
+    <string name="library_games_move_to_app_storage_confirm">Mover %1$s para o armazenamento da app? O cliente nativo do Steam só consegue executar um jogo a partir daí.</string>
+    <string name="library_games_move_to_download_folder_confirm">Mover %1$s de volta para a pasta de transferências? O cliente nativo do Steam deixará de o conseguir executar.</string>
+    <string name="library_games_moving">A mover o jogo</string>
+    <string name="library_games_move_done">%1$s movido</string>
+    <string name="library_games_move_failed">Não foi possível mover %1$s</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">Procurar pastas locais diretamente</string>
     <string name="common_ui_no_folders_available_here">Nenhuma pasta disponível aqui</string>
     <string name="common_ui_grant_all_files_access_browse">Conceda acesso a todos os ficheiros para procurar pastas diretamente.</string>
@@ -2896,7 +2906,6 @@ Caminho instalado:
     <string name="wayland_unavailable_fallback">O Wayland não está disponível para este jogo. A iniciar em X11.</string>
     <string name="wayland_needs_turnip_driver">O Wayland precisa de um controlador gráfico Turnip para mostrar o jogo. Instale um em Conteúdos e selecione-o como controlador gráfico.</string>
     <string name="containers_gamescope_new">Criar contentor GameScope</string>
-    <string name="containers_gamescope_help">Os programas Linux e o cliente Steam nativo correm aqui, através do gamescope no compositor Wayland.</string>
     <string name="containers_gamescope_create_failed">Não foi possível criar o contentor GameScope</string>
     <string name="linux_apps_need_gamescope_container">Crie primeiro o contentor GameScope em Definições › Contentores.</string>
     <string name="linux_runtime_missing">O runtime Linux não está instalado, por isso este contentor ainda não pode iniciar.</string>

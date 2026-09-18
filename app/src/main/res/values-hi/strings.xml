@@ -151,6 +151,16 @@
     <string name="common_ui_select">चुनें</string>
     <string name="common_ui_storage_roots">स्टोरेज रूट</string>
     <string name="common_ui_app_storage">ऐप स्टोरेज</string>
+    <string name="common_ui_move">ले जाएँ</string>
+    <string name="library_games_move_game">गेम ले जाएँ</string>
+    <string name="library_games_move_to_app_storage_title">ऐप स्टोरेज में ले जाएँ</string>
+    <string name="library_games_move_to_download_folder_title">डाउनलोड फ़ोल्डर में ले जाएँ</string>
+    <string name="library_games_move_to_app_storage_confirm">%1$s को ऐप के अपने स्टोरेज में ले जाएँ? नेटिव Steam क्लाइंट गेम केवल वहीं से चला सकता है।</string>
+    <string name="library_games_move_to_download_folder_confirm">%1$s को वापस डाउनलोड फ़ोल्डर में ले जाएँ? नेटिव Steam क्लाइंट इसे फिर नहीं चला पाएगा।</string>
+    <string name="library_games_moving">गेम ले जाया जा रहा है</string>
+    <string name="library_games_move_done">%1$s ले जाया गया</string>
+    <string name="library_games_move_failed">%1$s को ले जाया नहीं जा सका</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">स्थानीय फ़ोल्डर सीधे ब्राउज़ करें</string>
     <string name="common_ui_no_folders_available_here">यहाँ कोई फ़ोल्डर उपलब्ध नहीं</string>
     <string name="common_ui_grant_all_files_access_browse">फ़ोल्डरों को सीधे ब्राउज़ करने के लिए सभी फ़ाइलों तक पहुंच प्रदान करें।</string>
@@ -2832,7 +2842,6 @@
     <string name="wayland_unavailable_fallback">इस गेम के लिए Wayland उपलब्ध नहीं है। X11 पर लॉन्च किया जा रहा है।</string>
     <string name="wayland_needs_turnip_driver">गेम दिखाने के लिए Wayland को Turnip ग्राफ़िक्स ड्राइवर चाहिए। सामग्री से एक इंस्टॉल करें और उसे ग्राफ़िक्स ड्राइवर के रूप में चुनें।</string>
     <string name="containers_gamescope_new">GameScope कंटेनर बनाएँ</string>
-    <string name="containers_gamescope_help">Linux प्रोग्राम और नेटिव Steam क्लाइंट यहाँ Wayland कंपोज़िटर पर gamescope के ज़रिये चलते हैं।</string>
     <string name="containers_gamescope_create_failed">GameScope कंटेनर नहीं बनाया जा सका</string>
     <string name="linux_apps_need_gamescope_container">पहले सेटिंग्स › कंटेनर में GameScope कंटेनर बनाएँ।</string>
     <string name="linux_runtime_missing">Linux रनटाइम इंस्टॉल नहीं है, इसलिए यह कंटेनर अभी शुरू नहीं हो सकता।</string>
