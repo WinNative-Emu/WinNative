@@ -8935,6 +8935,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add(LinuxRuntime.SESSION_SCRIPT);
         guest.addAll(session);
 
+        com.winlator.cmod.runtime.linux.LinuxNetworkLinkComponent networkLink =
+                new com.winlator.cmod.runtime.linux.LinuxNetworkLinkComponent(
+                        this, LinuxRuntime.rootDir(this),
+                        NetworkingSettings.driverOrDefault(getShortcutSetting(NetworkingSettings.EXTRA_DRIVER,
+                                container.getExtra(NetworkingSettings.EXTRA_DRIVER, NetworkingSettings.DEFAULT_DRIVER))),
+                        getShortcutSetting(NetworkingSettings.EXTRA_MAC,
+                                container.getExtra(NetworkingSettings.EXTRA_MAC, "")));
+        networkLink.publish();
+        environment.addComponent(networkLink);
+
         EnvVars hostEnv = new EnvVars();
         hostEnv.put("PROOT_LOADER", LinuxRuntime.prootLoader(this).getPath());
         hostEnv.put("PROOT_TMP_DIR", getCacheDir().getPath());
