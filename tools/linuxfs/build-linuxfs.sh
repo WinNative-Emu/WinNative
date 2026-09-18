@@ -122,10 +122,7 @@ aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread -o rootfs/usr/local/lib/l
 # SDL through /dev/input nodes backed by the app's input rings.
 aarch64-linux-gnu-g++ -shared -fPIC -O2 -Wall -Wno-attributes -Wno-nonnull-compare -pthread \
   -o rootfs/usr/local/lib/libwninput.so "$here/../../app/src/main/cpp/winlator/fakeinput.cpp" -ldl
-# openat2() is denied by the app sandbox's seccomp filter; FEX resolves every guest path with it.
-aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -o rootfs/usr/local/lib/libwnopenat2.so "$here/fex/openat2.c" -ldl
-aarch64-linux-gnu-strip rootfs/usr/local/lib/libwnsession.so rootfs/usr/local/lib/libwninput.so \
-  rootfs/usr/local/lib/libwnopenat2.so
+aarch64-linux-gnu-strip rootfs/usr/local/lib/libwnsession.so rootfs/usr/local/lib/libwninput.so
 mkdir -p rootfs/dev rootfs/proc rootfs/sys rootfs/tmp rootfs/root rootfs/run/user
 chmod 1777 rootfs/tmp
 # The dynamic loader takes its search path from here; ldconfig cannot run without the target CPU.

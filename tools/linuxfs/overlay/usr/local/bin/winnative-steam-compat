@@ -1,7 +1,16 @@
 #!/usr/bin/python3
-# Registers winnative-proton with the native Steam client: linked into compatibilitytools.d and
-# set as the default tool for Windows titles (CompatToolMapping "0" in config.vdf) when the user
-# has not chosen one. Run before the client starts; it rewrites config.vdf on exit.
+# Registers Valve's own ARM64 Proton with the native Steam client as a tool of this runtime.
+#
+# The depot is exactly what is wanted here - arm64ec Wine with FEX as the x86 layer - but its
+# toolmanifest declares require_tool_appid 4185400, the arm64 Steam Linux Runtime, so the client
+# stacks pressure-vessel underneath it. Pressure-vessel builds its container out of unprivileged
+# user namespaces, which an Android app never gets, and the launch is dropped without a word: no
+# window, no log, straight back to the library.
+#
+# So the depot is re-registered under a name of ours: every entry symlinked, so nothing is copied
+# and the client still updates the real depot, beside a toolmanifest that leaves out that line.
+# Proton takes its base directory from dirname(sys.argv[0]) without resolving it, so it reads
+# files/ back through the symlink and runs on this rootfs.
 #
 #   winnative-steam-compat <steam root>
 import os
@@ -9,10 +18,52 @@ import re
 import sys
 
 TOOL = "winnative-proton"
-TOOL_DIR = "/usr/local/share/winnative/proton-tool"
+# Newest first; the client installs whichever the user has, and either one runs here.
+SOURCES = ("Proton Experimental (ARM64)", "Proton 11.0 (ARM64)")
+# Written by us; everything else in the depot is symlinked through.
+OWN_FILES = ("toolmanifest.vdf", "compatibilitytool.vdf")
+# Where the app binds the user's own game library inside the session.
+LIBRARY = "/mnt/winnative"
 TOKEN = re.compile(r'\s*(?:"((?:[^"\\]|\\.)*)"|([{}])|//[^\n]*)')
 # Steam's own Proton entries, which it runs through the Steam Linux Runtime's entry point.
 BUILTIN_TOOL = re.compile(r'^"proton', re.IGNORECASE)
+# Steam's own tools and runtimes live in steamapps beside the games; they are not titles and must
+# not be mapped to a compatibility tool.
+NOT_GAMES = frozenset((
+    "228980",    # Steamworks Common Redistributables
+    "1070560",   # Steam Linux Runtime 1.0 (scout)
+    "1391110",   # Steam Linux Runtime 2.0 (soldier)
+    "1493710",   # Proton Experimental
+    "3127680",   # FEX
+    "4183110",   # Steam Linux Runtime 4.0
+    "4185400",   # Steam Linux Runtime 4.0 - Arm64
+    "4427310",   # Proton Experimental (ARM64)
+    "4628740",   # Proton 11.0 (ARM64)
+))
+
+TOOLMANIFEST = '''"manifest"
+{
+\t"version"\t\t"2"
+\t"commandline"\t\t"/proton %verb%"
+\t"use_sessions"\t\t"1"
+\t"compatmanager_layer_name"\t\t"proton"
+}
+'''
+
+COMPAT_TOOL_VDF = '''"compatibilitytools"
+{
+\t"compat_tools"
+\t{
+\t\t"%s"
+\t\t{
+\t\t\t"install_path"\t\t"."
+\t\t\t"display_name"\t\t"Proton ARM64 (WinNative)"
+\t\t\t"from_oslist"\t\t"windows"
+\t\t\t"to_oslist"\t\t"linux"
+\t\t}
+\t}
+}
+''' % TOOL
 
 
 def tokenize(text):
@@ -105,7 +156,23 @@ def redirect_builtin_tools(tokens, mapping):
     return changed
 
 
-def register_default(config_path):
+def installed_apps(steam_root):
+    """App ids of the titles the client has installed, its own tools and runtimes excluded."""
+    apps = set()
+    for library in (steam_root, LIBRARY):
+        steamapps = os.path.join(library, "steamapps")
+        try:
+            names = os.listdir(steamapps)
+        except OSError:
+            continue
+        for name in names:
+            m = re.fullmatch(r"appmanifest_(\d+)\.acf", name)
+            if m and m.group(1) not in NOT_GAMES:
+                apps.add(m.group(1))
+    return sorted(apps, key=int)
+
+
+def register_default(config_path, apps=()):
     with open(config_path, encoding="utf-8", errors="replace") as f:
         tokens = tokenize(f.read())
     steam = find_block(tokens, ["InstallConfigStore", "Software", "Valve", "Steam"])
@@ -125,6 +192,17 @@ def register_default(config_path):
             changed = True
         if redirect_builtin_tools(tokens, mapping):
             changed = True
+        # "0" is the client's "Steam Play for all other titles", and it only decides how a title is
+        # installed: anything already installed as a Linux build keeps running as one. An entry per
+        # installed title is what the client's own Compatibility checkbox writes, and is what moves
+        # a title across.
+        for app in apps:
+            if find_block(tokens[mapping + 1:], [app]) is not None:
+                continue
+            tokens[mapping + 1:mapping + 1] = [
+                '"%s"' % app, "{", '"name"', '"%s"' % TOOL,
+                '"config"', '""', '"priority"', '"250"', "}"]
+            changed = True
     if not changed:
         return
     tmp = config_path + ".winnative"
@@ -133,19 +211,65 @@ def register_default(config_path):
     os.replace(tmp, config_path)
 
 
+def find_depot(steam_root):
+    for name in SOURCES:
+        depot = os.path.join(steam_root, "steamapps", "common", name)
+        if os.path.isfile(os.path.join(depot, "proton")):
+            return depot
+    return None
+
+
+def discard(path):
+    """Clears a name so a link may take it, leaving anything that is not ours alone."""
+    if os.path.islink(path) or os.path.isfile(path):
+        os.unlink(path)
+
+
+def register_tool(steam_root, depot):
+    """Mirrors the depot into compatibilitytools.d, minus its require_tool_appid."""
+    tool_dir = os.path.join(steam_root, "compatibilitytools.d", TOOL)
+    # An earlier release linked the whole directory; the mirror takes its place.
+    if os.path.islink(tool_dir):
+        os.unlink(tool_dir)
+    os.makedirs(tool_dir, exist_ok=True)
+    wanted = set(OWN_FILES)
+    for name in os.listdir(depot):
+        if name in OWN_FILES:
+            continue
+        wanted.add(name)
+        link = os.path.join(tool_dir, name)
+        target = os.path.join(depot, name)
+        if os.path.islink(link) and os.readlink(link) == target:
+            continue
+        discard(link)
+        if not os.path.lexists(link):
+            os.symlink(target, link)
+    # A name the depot no longer carries, left by an older version of it.
+    for name in os.listdir(tool_dir):
+        if name not in wanted:
+            discard(os.path.join(tool_dir, name))
+    for name, body in (("toolmanifest.vdf", TOOLMANIFEST),
+                       ("compatibilitytool.vdf", COMPAT_TOOL_VDF)):
+        path = os.path.join(tool_dir, name)
+        discard(path)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(body)
+
+
 def main():
     steam_root = sys.argv[1]
-    tools = os.path.join(steam_root, "compatibilitytools.d")
-    os.makedirs(tools, exist_ok=True)
-    link = os.path.join(tools, TOOL)
-    if os.path.islink(link) and os.readlink(link) != TOOL_DIR:
-        os.unlink(link)
-    # lexists, not exists: a link whose target is missing still occupies the name.
-    if not os.path.lexists(link):
-        os.symlink(TOOL_DIR, link)
+    depot = find_depot(steam_root)
+    if depot is None:
+        print("winnative-steam-compat: no ARM64 Proton depot yet; the client fetches it on first use",
+              file=sys.stderr)
+        return
+    register_tool(steam_root, depot)
+    print("winnative-steam-compat: registered %s from %s" % (TOOL, os.path.basename(depot)))
     config = os.path.join(steam_root, "config", "config.vdf")
     if os.path.isfile(config):
-        register_default(config)
+        apps = installed_apps(steam_root)
+        register_default(config, apps)
+        print("winnative-steam-compat: %d installed title(s) set to %s" % (len(apps), TOOL))
 
 
 if __name__ == "__main__":

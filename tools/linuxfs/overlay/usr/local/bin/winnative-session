@@ -10,8 +10,11 @@ export HOME=${HOME:-/root}
 mode=${1:-desktop}
 shift || true
 if [ -n "${WN_LOG:-}" ] && [ -z "${WN_INSIDE:-}" ]; then
+  mkdir -p "$(dirname "$WN_LOG")" 2>/dev/null
   exec >>"$WN_LOG" 2>&1
   echo "== winnative-session $(date) mode=$mode $*"
+  echo "== uid=$(id -u) size=${WN_WIDTH:-?}x${WN_HEIGHT:-?} fps=${WN_FPS:-0} icd=${VK_ICD_FILENAMES:-none}"
+  echo "== gamescope: $(gamescope --version 2>&1 | head -1)"
 fi
 export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
@@ -62,17 +65,38 @@ case $mode in
   steam)
     winnative-steam-install || exit $?
     steam_root=$XDG_DATA_HOME/Steam
-    winnative-steam-library "$steam_root"
-    winnative-steam-compat "$steam_root"
+    # Register the games the app downloaded (bound at /mnt/winnative) with the client, and the
+    # ARM64 Proton that lets it launch the Windows ones. Neither is worth losing the session over.
+    winnative-steam-library "$steam_root" || true
+    winnative-steam-compat "$steam_root" || true
     export STEAM_RUNTIME=1
     export LD_LIBRARY_PATH=$steam_root/steamrtarm64:$steam_root/steamrtarm64/panorama${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
     export SDL_VIDEO_X11_DGAMOUSE=0
+    # The compatibility tool runs Valve's arm64 Proton, which the client fetches like any depot.
+    # Asked for on the command line the first time, so a Windows title has it before it is needed.
+    if [ ! -f "$steam_root/steamapps/appmanifest_4427310.acf" ]; then
+      set -- "$@" steam://install/4427310
+    fi
+    # An app id left in ~/.wn-autolaunch is handed to the client as a URL, so a launch can be
+    # reproduced without touching the screen while the runtime is being brought up.
+    if [ -s "$HOME/.wn-autolaunch" ]; then
+      _wn_app=$(cat "$HOME/.wn-autolaunch")
+      # A bare app id runs the game; a full steam:// URL is passed through, which is how a
+      # validate or an install is driven without touching the screen.
+      case $_wn_app in
+        steam://*) _wn_url=$_wn_app ;;
+        *) _wn_url=steam://rungameid/$_wn_app ;;
+      esac
+      echo "== autolaunch $_wn_url"
+      set -- "$@" "$_wn_url"
+    fi
     # The client exits 42 when it has updated itself and wants a fresh start (steam.sh does this).
     while :; do
       "$steam_root/steamrtarm64/steam" -gamepadui -clientbeta publicbeta \
         -no-cef-sandbox -cef-force-gpu -cef-ozone-platform=x11 \
         -cef-use-gl=angle -cef-use-angle=vulkan "$@"
       rc=$?
+      echo "== steam exited rc=$rc"
       [ "$rc" -eq 42 ] || exit "$rc"
     done
     ;;

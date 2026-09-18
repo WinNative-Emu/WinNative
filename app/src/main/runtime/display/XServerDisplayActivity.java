@@ -8887,7 +8887,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("XDG_SESSION_TYPE=wayland");
         guest.add("WAYLAND_DISPLAY=wayland-0");
         guest.add("GAMESCOPE_FORCE_GENERAL_QUEUE=1");
-        guest.add("LD_PRELOAD=/usr/local/lib/libwnsession.so:/usr/local/lib/libwninput.so");
+        // The session's own preloads are named by /etc/ld.so.preload in the runtime, not here:
+        // the Steam client rebuilds LD_PRELOAD for every process it starts and appends its overlay
+        // without a separator, which silently drops whatever was already in the variable.
         File devInputDir = new File(imageFs.getRootDir(), "dev/input");
         FakeInputWriter.prepareRingSlots(devInputDir, 4);
         String inputRings = FakeInputWriter.getRingEnv(devInputDir);
