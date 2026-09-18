@@ -103,6 +103,7 @@ import com.winlator.cmod.shared.util.KeyValueSet;
 import com.winlator.cmod.shared.util.Callback;
 import com.winlator.cmod.shared.util.OnExtractFileListener;
 import com.winlator.cmod.shared.ui.dialog.PreloaderDialog;
+import com.winlator.cmod.runtime.system.LinuxTaskList;
 import com.winlator.cmod.runtime.system.ProcessHelper;
 import com.winlator.cmod.runtime.system.SessionKeepAliveService;
 import com.winlator.cmod.shared.android.RefreshRateUtils;
@@ -201,6 +202,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Timer;
@@ -588,6 +590,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private int savedRenderMode = XServerSurfaceView.RENDERMODE_WHEN_DIRTY;
     private Timer taskManagerTimer;
     private final ArrayList<TaskManagerProcess> taskManagerAccum = new ArrayList<>();
+    /** UI thread only: the pid behind each name the GameScope task manager is showing. */
+    private final LinkedHashMap<String, Integer> linuxTaskPids = new LinkedHashMap<>();
     private boolean taskManagerCpuExpanded = false;
     private boolean taskManagerPaneVisible = false;
     private CPUStatus.AppCpuSample prevTaskCpuSample;
@@ -6343,6 +6347,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
                     @Override
                     public void onTaskManagerEndProcess(String name) {
+                        if (gamescopeMode) {
+                            Integer pid = linuxTaskPids.get(name);
+                            if (pid != null) ProcessHelper.terminateProcess(pid);
+                            return;
+                        }
                         if (winHandler != null) winHandler.killProcess(name);
                     }
 
@@ -6464,6 +6473,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void startTaskManagerPolling() {
+        if (gamescopeMode) {
+            startLinuxTaskManagerPolling();
+            return;
+        }
         if (winHandler == null) return;
         stopTaskManagerPolling();
         winHandler.setOnGetProcessInfoListener(new OnGetProcessInfoListener() {
@@ -6486,12 +6499,55 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }, 0, 1000);
     }
 
+    /**
+     * A GameScope session has no Wine to ask, so its processes are read from /proc. The scan
+     * touches a few files per process and so runs off the UI thread; only the finished list is
+     * handed back to it.
+     */
+    private void startLinuxTaskManagerPolling() {
+        stopTaskManagerPolling();
+        Timer timer = new Timer();
+        taskManagerTimer = timer;
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                ArrayList<LinuxTaskList.Task> tasks = LinuxTaskList.list();
+                runOnUiThread(() -> {
+                    if (taskManagerTimer != timer) return;
+                    pushLinuxTaskManagerProcesses(tasks);
+                    pushTaskManagerSystemStats();
+                });
+            }
+        }, 0, 1000);
+    }
+
+    /** UI thread. */
+    private void pushLinuxTaskManagerProcesses(ArrayList<LinuxTaskList.Task> tasks) {
+        if (drawerStateHolder == null) return;
+        linuxTaskPids.clear();
+        ArrayList<TaskManagerProcess> processes = new ArrayList<>();
+        for (LinuxTaskList.Task task : tasks) {
+            linuxTaskPids.put(task.name, task.pid);
+            processes.add(new TaskManagerProcess(
+                    task.pid, task.name, task.memory, task.affinityMask, false));
+        }
+        TaskManagerPaneState current = drawerStateHolder.getTaskManagerState();
+        drawerStateHolder.setTaskManagerState(new TaskManagerPaneState(
+                processes,
+                current.getCpuPercent(),
+                current.getCpuCoreCount(),
+                current.getCpuCorePercents(),
+                current.getMemoryPercent(),
+                current.getMemoryDetail()));
+    }
+
     private void stopTaskManagerPolling() {
         if (taskManagerTimer != null) {
             taskManagerTimer.cancel();
             taskManagerTimer = null;
         }
         if (winHandler != null) winHandler.setOnGetProcessInfoListener(null);
+        linuxTaskPids.clear();
         taskManagerAccum.clear();
         taskManagerCpuExpanded = false;
         prevTaskCpuSample = null;
