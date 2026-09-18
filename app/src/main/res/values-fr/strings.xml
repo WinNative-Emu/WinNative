@@ -151,6 +151,7 @@
     <string name="common_ui_enter_path">Saisir le chemin</string>
     <string name="common_ui_path_not_found">Chemin introuvable</string>
     <string name="common_ui_storage_roots">Emplacements de stockage</string>
+    <string name="common_ui_app_storage">Stockage de l\'application</string>
     <string name="common_ui_browse_local_folders_directly">Parcourir directement les dossiers locaux</string>
     <string name="common_ui_no_folders_available_here">Aucun dossier disponible ici</string>
     <string name="common_ui_grant_all_files_access_browse">Accordez l\'accès complet aux fichiers pour parcourir directement les dossiers locaux.</string>

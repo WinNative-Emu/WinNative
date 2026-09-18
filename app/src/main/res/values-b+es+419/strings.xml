@@ -151,6 +151,7 @@
     <string name="store_game_branch_switch_installed">Versión establecida en %1$s. Usa Buscar actualización para cambiar los archivos instalados.</string>
     <string name="common_ui_select">Seleccionar</string>
     <string name="common_ui_storage_roots">Raíces de almacenamiento</string>
+    <string name="common_ui_app_storage">Almacenamiento de la app</string>
     <string name="common_ui_browse_local_folders_directly">Explorar carpetas locales directamente</string>
     <string name="common_ui_no_folders_available_here">No hay carpetas disponibles aquí</string>
     <string name="common_ui_grant_all_files_access_browse">Concede acceso a todos los archivos para explorar carpetas directamente.</string>

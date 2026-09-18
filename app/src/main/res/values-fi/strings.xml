@@ -151,6 +151,7 @@
     <string name="store_game_branch_switch_installed">Versioksi asetettu %1$s. Vaihda asennetut tiedostot Tarkista päivitykset -toiminnolla.</string>
     <string name="common_ui_select">Valitse</string>
     <string name="common_ui_storage_roots">Tallennussijainnit</string>
+    <string name="common_ui_app_storage">Sovelluksen tallennustila</string>
     <string name="common_ui_browse_local_folders_directly">Selaa paikallisia kansioita suoraan</string>
     <string name="common_ui_no_folders_available_here">Täällä ei ole kansioita saatavilla</string>
     <string name="common_ui_grant_all_files_access_browse">Myönnä kaikkien tiedostojen käyttöoikeus selataksesi kansioita suoraan.</string>

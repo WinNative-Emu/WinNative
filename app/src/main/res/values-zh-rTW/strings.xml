@@ -151,6 +151,7 @@
     <string name="common_ui_enter_path">輸入路徑</string>
     <string name="common_ui_path_not_found">找不到路徑</string>
     <string name="common_ui_storage_roots">儲存根目錄</string>
+    <string name="common_ui_app_storage">應用程式儲存空間</string>
     <string name="common_ui_browse_local_folders_directly">直接瀏覽本機資料夾</string>
     <string name="common_ui_no_folders_available_here">這裡沒有可用的資料夾</string>
     <string name="common_ui_grant_all_files_access_browse">請授予所有檔案存取權限，以直接瀏覽本機資料夾。</string>

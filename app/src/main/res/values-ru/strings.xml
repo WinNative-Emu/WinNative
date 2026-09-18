@@ -150,6 +150,7 @@
     <string name="store_game_branch_switch_installed">Выбрана версия %1$s. Нажмите «Проверить обновления», чтобы переключить установленные файлы.</string>
     <string name="common_ui_select">Выбрать</string>
     <string name="common_ui_storage_roots">Корни хранилища</string>
+    <string name="common_ui_app_storage">Хранилище приложения</string>
     <string name="common_ui_browse_local_folders_directly">Просматривать локальные папки напрямую</string>
     <string name="common_ui_no_folders_available_here">Здесь нет доступных папок</string>
     <string name="common_ui_grant_all_files_access_browse">Предоставьте полный доступ к файлам, чтобы просматривать папки напрямую.</string>

@@ -152,6 +152,7 @@
     <string name="store_game_branch_switch_installed">Version set to %1$s. Check for Update to switch the installed files.</string>
     <string name="common_ui_select">Select</string>
     <string name="common_ui_storage_roots">Storage Roots</string>
+    <string name="common_ui_app_storage">App storage</string>
     <string name="common_ui_browse_local_folders_directly">Browse local folders directly</string>
     <string name="common_ui_no_folders_available_here">No folders available here</string>
     <string name="common_ui_grant_all_files_access_browse">Grant all file access to browse folders directly.</string>

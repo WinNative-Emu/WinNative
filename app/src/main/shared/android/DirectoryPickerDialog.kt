@@ -296,6 +296,11 @@ object DirectoryPickerDialog {
         if (!ensureAllFilesAccess(activity)) return
 
         val roots = buildRootDirectories(activity)
+        // Offered first, because it is the only root a game library can be installed to intact.
+        val selectableRoots =
+            StoragePathUtils.appPrivateGamesRoot(activity)?.let { appRoot ->
+                listOf(ManagedRoot(activity.getString(R.string.common_ui_app_storage), appRoot.path)) + extraRoots
+            } ?: extraRoots
         val initialDir = resolveInitialDirectory(initialPath, roots)
 
         val dialog =
@@ -363,7 +368,7 @@ object DirectoryPickerDialog {
                                     mode = mode,
                                     allowedExtensions = allowedExtensions,
                                     managedRoots = managedRoots,
-                                    extraRoots = extraRoots,
+                                    extraRoots = selectableRoots,
                                     containers = containers,
                                     onRunFile = onRunFile,
                                     onCreateShortcut = onCreateShortcut,

@@ -151,6 +151,7 @@
     <string name="store_game_branch_switch_installed">Sürüm %1$s olarak ayarlandı. Kurulu dosyaları değiştirmek için Güncelleme Denetle\'yi kullanın.</string>
     <string name="common_ui_select">Seç</string>
     <string name="common_ui_storage_roots">Depolama Kökleri</string>
+    <string name="common_ui_app_storage">Uygulama depolaması</string>
     <string name="common_ui_browse_local_folders_directly">Yerel klasörlere doğrudan gözat</string>
     <string name="common_ui_no_folders_available_here">Burada mevcut klasör yok</string>
     <string name="common_ui_grant_all_files_access_browse">Klasörlere doğrudan gözatmak için tüm dosyalara erişim izni verin.</string>

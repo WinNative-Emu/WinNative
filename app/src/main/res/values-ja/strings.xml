@@ -151,6 +151,7 @@
     <string name="store_game_branch_switch_installed">バージョンを %1$s に設定しました。「更新を確認」でインストール済みのファイルを切り替えてください。</string>
     <string name="common_ui_select">選択</string>
     <string name="common_ui_storage_roots">ストレージのルート</string>
+    <string name="common_ui_app_storage">アプリストレージ</string>
     <string name="common_ui_browse_local_folders_directly">ローカルフォルダを直接参照</string>
     <string name="common_ui_no_folders_available_here">ここに利用可能なフォルダはありません</string>
     <string name="common_ui_grant_all_files_access_browse">フォルダを直接参照するには、すべてのファイルへのアクセスを許可してください。</string>

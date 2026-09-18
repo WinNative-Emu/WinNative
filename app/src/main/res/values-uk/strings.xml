@@ -151,6 +151,7 @@
     <string name="common_ui_enter_path">Введіть шлях</string>
     <string name="common_ui_path_not_found">Шлях не знайдено</string>
     <string name="common_ui_storage_roots">Сховища</string>
+    <string name="common_ui_app_storage">Сховище застосунку</string>
     <string name="common_ui_browse_local_folders_directly">Переглядати локальні теки безпосередньо</string>
     <string name="common_ui_no_folders_available_here">Тут немає доступних тек</string>
     <string name="common_ui_grant_all_files_access_browse">Надайте повний доступ до файлів, щоб безпосередньо переглядати локальні теки.</string>

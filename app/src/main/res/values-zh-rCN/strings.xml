@@ -151,6 +151,7 @@
     <string name="common_ui_enter_path">输入路径</string>
     <string name="common_ui_path_not_found">找不到路径</string>
     <string name="common_ui_storage_roots">存储根目录</string>
+    <string name="common_ui_app_storage">应用存储</string>
     <string name="common_ui_browse_local_folders_directly">直接浏览本地文件夹</string>
     <string name="common_ui_no_folders_available_here">此处没有可用的文件夹</string>
     <string name="common_ui_grant_all_files_access_browse">请授予所有文件访问权限以直接浏览本地文件夹。</string>

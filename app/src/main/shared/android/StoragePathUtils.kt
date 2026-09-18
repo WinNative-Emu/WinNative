@@ -125,6 +125,23 @@ object StoragePathUtils {
         return roots.values.toList()
     }
 
+    /**
+     * The app's own games directory, offered next to the device's volumes.
+     *
+     * Shared storage is not a filesystem here: it is served over FUSE by the media provider, which
+     * refuses a symlink, drops the mode a chmod asks for, and is mounted noexec. A game library
+     * needs all three - the client sets the executable bit after an install, Proton's prefixes and
+     * the Steam runtime are built out of symlinks, and a native title is an ELF that has to run.
+     * The app's own directory is on the same partition as shared storage, so a library kept here
+     * costs no extra space and behaves like a real disk.
+     */
+    @JvmStatic
+    fun appPrivateGamesRoot(context: Context): File? {
+        val root = File(context.dataDir, "Games")
+        if (!root.isDirectory && !root.mkdirs()) return null
+        return root.takeIf(::canBrowse)
+    }
+
     @JvmStatic
     fun buildBrowsableStorageRoots(context: Context): List<File> {
         val roots = linkedMapOf<String, File>()

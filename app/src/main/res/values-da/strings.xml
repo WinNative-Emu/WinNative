@@ -151,6 +151,7 @@
     <string name="common_ui_enter_path">Indtast sti</string>
     <string name="common_ui_path_not_found">Stien blev ikke fundet</string>
     <string name="common_ui_storage_roots">Lagringsrødder</string>
+    <string name="common_ui_app_storage">App-lager</string>
     <string name="common_ui_browse_local_folders_directly">Gennemse lokale mapper direkte</string>
     <string name="common_ui_no_folders_available_here">Ingen mapper tilgængelige her</string>
     <string name="common_ui_grant_all_files_access_browse">Giv fuld filadgang for at gennemse lokale mapper direkte.</string>

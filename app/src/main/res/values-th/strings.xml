@@ -151,6 +151,7 @@
     <string name="store_game_branch_switch_installed">ตั้งเวอร์ชันเป็น %1$s แล้ว ใช้ตรวจสอบการอัปเดตเพื่อสลับไฟล์ที่ติดตั้งไว้</string>
     <string name="common_ui_select">เลือก</string>
     <string name="common_ui_storage_roots">รูทที่เก็บข้อมูล</string>
+    <string name="common_ui_app_storage">ที่เก็บข้อมูลของแอป</string>
     <string name="common_ui_browse_local_folders_directly">เรียกดูโฟลเดอร์ในเครื่องโดยตรง</string>
     <string name="common_ui_no_folders_available_here">ไม่มีโฟลเดอร์ที่นี่</string>
     <string name="common_ui_grant_all_files_access_browse">ให้สิทธิ์เข้าถึงไฟล์ทั้งหมดเพื่อเรียกดูโฟลเดอร์โดยตรง</string>

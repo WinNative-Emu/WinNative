@@ -151,6 +151,7 @@
     <string name="store_game_branch_switch_installed">Versjon satt til %1$s. Bruk Se etter oppdatering for å bytte de installerte filene.</string>
     <string name="common_ui_select">Velg</string>
     <string name="common_ui_storage_roots">Lagringsrøtter</string>
+    <string name="common_ui_app_storage">App-lagring</string>
     <string name="common_ui_browse_local_folders_directly">Bla gjennom lokale mapper direkte</string>
     <string name="common_ui_no_folders_available_here">Ingen mapper tilgjengelig her</string>
     <string name="common_ui_grant_all_files_access_browse">Gi tilgang til alle filer for å bla gjennom mapper direkte.</string>

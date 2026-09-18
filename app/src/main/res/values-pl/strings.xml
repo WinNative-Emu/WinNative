@@ -151,6 +151,7 @@
     <string name="common_ui_enter_path">Wprowadź ścieżkę</string>
     <string name="common_ui_path_not_found">Nie znaleziono ścieżki</string>
     <string name="common_ui_storage_roots">Lokalizacje pamięci</string>
+    <string name="common_ui_app_storage">Pamięć aplikacji</string>
     <string name="common_ui_browse_local_folders_directly">Przeglądaj lokalne foldery bezpośrednio</string>
     <string name="common_ui_no_folders_available_here">Brak dostępnych folderów w tej lokalizacji</string>
     <string name="common_ui_grant_all_files_access_browse">Przyznaj pełny dostęp do plików, aby bezpośrednio przeglądać lokalne foldery.</string>

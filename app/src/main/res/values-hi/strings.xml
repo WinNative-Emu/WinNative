@@ -150,6 +150,7 @@
     <string name="store_game_branch_switch_installed">संस्करण %1$s पर सेट किया गया। इंस्टॉल फ़ाइलें बदलने के लिए अपडेट की जाँच करें।</string>
     <string name="common_ui_select">चुनें</string>
     <string name="common_ui_storage_roots">स्टोरेज रूट</string>
+    <string name="common_ui_app_storage">ऐप स्टोरेज</string>
     <string name="common_ui_browse_local_folders_directly">स्थानीय फ़ोल्डर सीधे ब्राउज़ करें</string>
     <string name="common_ui_no_folders_available_here">यहाँ कोई फ़ोल्डर उपलब्ध नहीं</string>
     <string name="common_ui_grant_all_files_access_browse">फ़ोल्डरों को सीधे ब्राउज़ करने के लिए सभी फ़ाइलों तक पहुंच प्रदान करें।</string>

@@ -151,6 +151,7 @@
     <string name="store_game_branch_switch_installed">Versão definida para %1$s. Use Procurar Atualização para trocar os ficheiros instalados.</string>
     <string name="common_ui_select">Selecionar</string>
     <string name="common_ui_storage_roots">Raízes de Armazenamento</string>
+    <string name="common_ui_app_storage">Armazenamento da app</string>
     <string name="common_ui_browse_local_folders_directly">Procurar pastas locais diretamente</string>
     <string name="common_ui_no_folders_available_here">Nenhuma pasta disponível aqui</string>
     <string name="common_ui_grant_all_files_access_browse">Conceda acesso a todos os ficheiros para procurar pastas diretamente.</string>

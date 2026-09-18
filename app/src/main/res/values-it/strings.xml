@@ -151,6 +151,7 @@
     <string name="common_ui_enter_path">Inserisci percorso</string>
     <string name="common_ui_path_not_found">Percorso non trovato</string>
     <string name="common_ui_storage_roots">Percorsi di archiviazione</string>
+    <string name="common_ui_app_storage">Memoria dell\'app</string>
     <string name="common_ui_browse_local_folders_directly">Sfoglia direttamente le cartelle locali</string>
     <string name="common_ui_no_folders_available_here">Nessuna cartella disponibile qui</string>
     <string name="common_ui_grant_all_files_access_browse">Concedi l\'accesso completo ai file per sfogliare direttamente le cartelle locali.</string>

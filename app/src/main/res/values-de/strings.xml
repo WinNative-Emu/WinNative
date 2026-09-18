@@ -151,6 +151,7 @@
     <string name="common_ui_enter_path">Pfad eingeben</string>
     <string name="common_ui_path_not_found">Pfad nicht gefunden</string>
     <string name="common_ui_storage_roots">Speicherorte</string>
+    <string name="common_ui_app_storage">App-Speicher</string>
     <string name="common_ui_browse_local_folders_directly">Lokale Ordner direkt durchsuchen</string>
     <string name="common_ui_no_folders_available_here">Hier sind keine Ordner verfügbar</string>
     <string name="common_ui_grant_all_files_access_browse">Gewähre Vollzugriff auf Dateien, um lokale Ordner direkt zu durchsuchen.</string>

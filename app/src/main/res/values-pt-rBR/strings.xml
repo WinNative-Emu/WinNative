@@ -151,6 +151,7 @@
     <string name="common_ui_enter_path">Inserir caminho</string>
     <string name="common_ui_path_not_found">Caminho não encontrado</string>
     <string name="common_ui_storage_roots">Locais de armazenamento</string>
+    <string name="common_ui_app_storage">Armazenamento do app</string>
     <string name="common_ui_browse_local_folders_directly">Navegar pelas pastas locais diretamente</string>
     <string name="common_ui_no_folders_available_here">Nenhuma pasta disponível aqui</string>
     <string name="common_ui_grant_all_files_access_browse">Conceda acesso total aos arquivos para navegar pelas pastas locais diretamente.</string>
