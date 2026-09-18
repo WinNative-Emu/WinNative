@@ -11,6 +11,7 @@
 #include <spawn.h>
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <linux/netlink.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -96,9 +97,19 @@ typedef int (*listen_fn)(int, int);
 typedef int (*connect_fn)(int, const struct sockaddr *, socklen_t);
 typedef int (*accept4_fn)(int, struct sockaddr *, socklen_t *, int);
 
+/* udevmon.c: a stand-in for the netlink socket the sandbox refuses, bound here without the kernel. */
+__attribute__((visibility("hidden"))) int wn_udevmon_stand_in(int fd);
+
 int bind(int fd, const struct sockaddr *addr, socklen_t len) {
   static bind_fn real;
   if (!real) real = (bind_fn)dlsym(RTLD_NEXT, "bind");
+  if (wn_udevmon_stand_in(fd)) {
+    if (addr == NULL || len < sizeof(struct sockaddr_nl) || addr->sa_family != AF_NETLINK) {
+      errno = EINVAL;
+      return -1;
+    }
+    return 0;
+  }
   int ret = real(fd, addr, len);
   if (ret == 0) record_port(fd, 0);
   return ret;
