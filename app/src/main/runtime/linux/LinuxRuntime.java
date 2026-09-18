@@ -28,8 +28,16 @@ public final class LinuxRuntime {
   public static final String MODE_STEAM = "steam";
   public static final String MODE_RUN = "run";
   private static final String KGSL_DEVICE = "/dev/kgsl-3d0";
-  private static final String PRELOAD_ASSET_DIR = "linuxfs/usr/local/lib";
-  private static final String[] PRELOAD_LIBRARIES = {"libwninput.so", "libwnsession.so"};
+  /** Refreshed into the rootfs at every session start; see {@link #syncSessionFiles}. */
+  private static final String[] SESSION_FILES = {
+    "usr/local/lib/libwninput.so",
+    "usr/local/lib/libwnsession.so",
+    "usr/local/bin/winnative-seed-redists",
+    "usr/local/bin/winnative-session",
+    "usr/local/bin/winnative-steam-compat",
+    "usr/local/bin/winnative-steam-install",
+    "usr/local/bin/winnative-steam-library",
+  };
 
   private LinuxRuntime() {}
 
@@ -183,36 +191,38 @@ public final class LinuxRuntime {
   }
 
   /**
-   * The session's preload libraries, refreshed from the app's own copies.
+   * The session's own files, refreshed from the app's copies: the preload libraries that
+   * {@code /etc/ld.so.preload} names, and the scripts the session runs.
    *
-   * {@code /etc/ld.so.preload} in the rootfs names these, so they are loaded into every process the
-   * session runs and have to match the build that starts it - a rootfs installed by an earlier one
-   * carries older libraries, and the device has no way to replace them from outside the app. They
-   * are copied in whole rather than compared: together they are a few hundred kilobytes, and the
-   * copy lands through a rename, so a library another session still has mapped keeps the file it
+   * They have to match the build that starts the session - a rootfs installed by an earlier one
+   * carries older copies, and the device has no way to replace them from outside the app. They are
+   * copied in whole rather than compared: together they are a few hundred kilobytes, and each copy
+   * lands through a rename, so a library another session still has mapped keeps the file it
    * opened.
    */
-  public static void syncPreloadLibraries(Context context) throws IOException {
-    File libDir = new File(rootDir(context), "usr/local/lib");
-    if (!libDir.isDirectory() && !libDir.mkdirs()) {
-      throw new IOException("could not create " + libDir.getPath());
-    }
-    for (String name : PRELOAD_LIBRARIES) {
-      File staged = new File(libDir, name + ".staged");
+  public static void syncSessionFiles(Context context) throws IOException {
+    File root = rootDir(context);
+    for (String path : SESSION_FILES) {
+      File target = new File(root, path);
+      File dir = target.getParentFile();
+      if (!dir.isDirectory() && !dir.mkdirs()) {
+        throw new IOException("could not create " + dir.getPath());
+      }
+      File staged = new File(dir, target.getName() + ".staged");
       boolean installed = false;
       try {
-        try (InputStream in = context.getAssets().open(PRELOAD_ASSET_DIR + "/" + name);
+        try (InputStream in = context.getAssets().open(DIR + "/" + path);
             OutputStream out = new FileOutputStream(staged)) {
           byte[] buffer = new byte[1 << 16];
           for (int read = in.read(buffer); read > 0; read = in.read(buffer)) {
             out.write(buffer, 0, read);
           }
         }
-        installed = staged.setExecutable(true, false) && staged.renameTo(new File(libDir, name));
+        installed = staged.setExecutable(true, false) && staged.renameTo(target);
       } finally {
         if (!installed) staged.delete();
       }
-      if (!installed) throw new IOException("could not install " + name);
+      if (!installed) throw new IOException("could not install " + path);
     }
   }
 

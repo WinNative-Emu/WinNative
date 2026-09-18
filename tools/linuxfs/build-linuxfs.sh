@@ -123,10 +123,13 @@ aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread -o rootfs/usr/local/lib/l
 aarch64-linux-gnu-g++ -shared -fPIC -O2 -Wall -Wno-attributes -Wno-nonnull-compare -pthread \
   -o rootfs/usr/local/lib/libwninput.so "$here/../../app/src/main/cpp/winlator/fakeinput.cpp" -ldl
 aarch64-linux-gnu-strip rootfs/usr/local/lib/libwnsession.so rootfs/usr/local/lib/libwninput.so
-# The app ships the same two and refreshes them into an installed rootfs at every session start,
-# so a build and the rootfs it boots never disagree about what is preloaded.
+# The app ships the same two, and the session's scripts, and refreshes them into an installed
+# rootfs at every session start, so a build and the rootfs it boots never disagree about them.
 install -Dm644 rootfs/usr/local/lib/libwnsession.so "$here/../../app/src/main/assets/linuxfs/usr/local/lib/libwnsession.so"
 install -Dm644 rootfs/usr/local/lib/libwninput.so "$here/../../app/src/main/assets/linuxfs/usr/local/lib/libwninput.so"
+for script in "$here"/overlay/usr/local/bin/winnative-*; do
+  install -Dm644 "$script" "$here/../../app/src/main/assets/linuxfs/usr/local/bin/$(basename "$script")"
+done
 mkdir -p rootfs/dev rootfs/proc rootfs/sys rootfs/tmp rootfs/root rootfs/run/user
 chmod 1777 rootfs/tmp
 # The dynamic loader takes its search path from here; ldconfig cannot run without the target CPU.

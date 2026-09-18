@@ -8866,7 +8866,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
         try {
             LinuxRuntime.writeAccounts(this);
-            LinuxRuntime.syncPreloadLibraries(this);
+            LinuxRuntime.syncSessionFiles(this);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
