@@ -132,6 +132,7 @@ import com.winlator.cmod.runtime.wine.WineStartMenuCreator;
 import com.winlator.cmod.runtime.wine.WineThemeManager;
 import com.winlator.cmod.runtime.wine.WineUtils;
 import com.winlator.cmod.runtime.compat.fexcore.FEXCoreManager;
+import com.winlator.cmod.runtime.compat.fexcore.FEXCorePresetManager;
 import com.winlator.cmod.runtime.compat.gamefixes.GameFixes;
 import com.winlator.cmod.runtime.audio.alsaserver.ALSAClient;
 import com.winlator.cmod.runtime.input.ControllerAssignmentDialog;
@@ -8159,9 +8160,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
             String rawShortcutFEXCorePreset = (shortcut != null && !shortcutUsesContainerDefaults())
                     ? shortcut.getExtra("fexcorePreset") : "";
-            String effectiveFEXCorePreset = shortcut != null
-                    ? getShortcutSetting("fexcorePreset", container.getFEXCorePreset())
-                    : container.getFEXCorePreset();
+            String effectiveFEXCorePreset = effectiveFEXCorePreset();
             Log.d("XServerDisplayActivity", "FEXCore preset source=shortcutOrContainer shortcutRaw='" +
                     rawShortcutFEXCorePreset + "' container='" + container.getFEXCorePreset() +
                     "' effective='" + effectiveFEXCorePreset + "'");
@@ -8917,7 +8916,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     )
             );
         }
-        for (String entry : effectiveUserEnv().toStringArray()) guest.add(entry);
+        // The games the client starts run under FEX, which a Wine session configures from the
+        // container's preset. Nothing did so here, so anything the client launched ran on FEX's
+        // bare defaults - single-block translation, no store ordering - and a multithreaded x86
+        // title can sit at its loading screen for good waiting on a store it never sees. The
+        // user's own variables are merged over the preset, so an explicit one still wins.
+        EnvVars userEnv = effectiveUserEnv();
+        EnvVars sessionEnv = FEXCorePresetManager.getEnvVars(this, effectiveFEXCorePreset());
+        FEXCorePresetManager.normalizeSmcChecksEnvVars(sessionEnv, userEnv);
+        sessionEnv.putAll(userEnv);
+        for (String entry : sessionEnv.toStringArray()) guest.add(entry);
         guest.add("WN_WIDTH=" + xServer.screenInfo.width);
         guest.add("WN_HEIGHT=" + xServer.screenInfo.height);
         guest.add("WN_FPS=" + Math.max(0, runtimeFpsLimit));
@@ -9033,6 +9041,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         String v = env != null ? env.get(name) : null;
         if (v == null || v.isEmpty()) return fallback;
         return v.equals("1") || v.equalsIgnoreCase("true") || v.equalsIgnoreCase("on");
+    }
+
+    /** The FEXCore preset a launch runs under: the shortcut's when it has one, else the container's. */
+    private String effectiveFEXCorePreset() {
+        return shortcut != null
+                ? getShortcutSetting("fexcorePreset", container.getFEXCorePreset())
+                : container.getFEXCorePreset();
     }
 
     private EnvVars effectiveUserEnv() {
