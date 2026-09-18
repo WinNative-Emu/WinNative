@@ -69,6 +69,9 @@ case $mode in
     # ARM64 Proton that lets it launch the Windows ones. Neither is worth losing the session over.
     winnative-steam-library "$steam_root" || true
     winnative-steam-compat "$steam_root" || true
+    # Steam runs a game's shared redistributables inside its prefix on first launch; marking
+    # them as already run keeps those x86 installers from starting under emulation at all.
+    winnative-seed-redists "$steam_root" || true
     export STEAM_RUNTIME=1
     export LD_LIBRARY_PATH=$steam_root/steamrtarm64:$steam_root/steamrtarm64/panorama${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
     export SDL_VIDEO_X11_DGAMOUSE=0
