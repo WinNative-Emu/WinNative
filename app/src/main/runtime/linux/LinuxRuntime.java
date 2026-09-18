@@ -6,6 +6,7 @@ import android.system.ErrnoException;
 import android.system.Os;
 import android.system.StructStat;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
+import com.winlator.cmod.shared.io.FileUtils;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -188,6 +189,16 @@ public final class LinuxRuntime {
   private static void bind(List<String> cmd, String spec) {
     cmd.add("-b");
     cmd.add(spec);
+  }
+
+  /**
+   * Empties the directory standing in for /dev/shm. On a real system nothing in it outlives the
+   * processes that made it; here the files stay, and the client alone leaves some fifty megabytes
+   * of streams behind every time it runs.
+   */
+  public static void clearSharedMemory(Context context) {
+    File shm = new File(context.getCacheDir(), "shm");
+    if (shm.isDirectory()) FileUtils.clear(shm);
   }
 
   /**
