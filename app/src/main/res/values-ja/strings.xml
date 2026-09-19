@@ -254,7 +254,7 @@
     <string name="linux_client_button">Linux クライアント</string>
     <string name="linux_client_title">Linux Steam クライアント</string>
     <string name="linux_client_install_message">WinNative から Linux ランタイムを、Valve から Steam クライアントをダウンロードし、両方をインストールします。ダウンロードは 1 GB を超えるため Wi-Fi を使用してください。</string>
-    <string name="linux_client_installed_message">Linux ランタイムと Steam クライアントはインストール済みです。</string>
+    <string name="linux_client_installed_message">Linux ランタイムと Steam クライアントはインストール済みで、Steam はライブラリにあります。</string>
     <string name="linux_client_failed_message">インストールが完了しませんでした。接続を確認してもう一度お試しください。</string>
     <string name="linux_client_no_space_message">空き容量が不足しています: %1$s 必要で、空きは %2$s です。</string>
     <string name="linux_client_stage_connect">接続中</string>
@@ -262,6 +262,7 @@
     <string name="linux_client_stage_install_runtime">Linux ランタイムをインストール中</string>
     <string name="linux_client_stage_download_steam">Steam クライアントをダウンロード中</string>
     <string name="linux_client_stage_install_steam">Steam クライアントをインストール中</string>
+    <string name="linux_client_stage_library">Steam をライブラリに追加中</string>
     <string name="linux_client_progress_amount">%1$s / %2$s</string>
     <string name="linux_client_retry">再試行</string>
     <string name="linux_client_busy">Linux Steam クライアントはまだインストール中です。完了してからもう一度お試しください。</string>

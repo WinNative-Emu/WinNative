@@ -91,6 +91,7 @@ private fun linuxClientMessage(state: State): String? {
                 Formatter.formatShortFileSize(context, state.needed),
                 Formatter.formatShortFileSize(context, state.available),
             )
+        is State.Blocked -> stringResource(state.message)
         is State.Working -> null
     }
 }
@@ -106,6 +107,7 @@ private fun WorkingBody(state: State.Working) {
                 Stage.INSTALL_RUNTIME -> R.string.linux_client_stage_install_runtime
                 Stage.DOWNLOAD_STEAM -> R.string.linux_client_stage_download_steam
                 Stage.INSTALL_STEAM -> R.string.linux_client_stage_install_steam
+                Stage.LIBRARY -> R.string.linux_client_stage_library
             },
         )
     val known = state.total > 0
@@ -146,19 +148,23 @@ private fun LinuxClientFooter(
     onCancelInstall: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // The last step writes the container in one go and cannot be stopped part way.
+    val single = state is State.Installed || (state is State.Working && state.stage == Stage.LIBRARY)
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (state is State.Installed) Arrangement.End else Arrangement.SpaceBetween,
+        horizontalArrangement = if (single) Arrangement.End else Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when (state) {
             State.Installed ->
                 PopupTextAction(stringResource(R.string.common_ui_ok), accent, onDismiss, isEntry = true)
             is State.Working -> {
-                PopupTextAction(stringResource(R.string.common_ui_cancel), DialogTextSecondary, onCancelInstall)
+                if (!single) {
+                    PopupTextAction(stringResource(R.string.common_ui_cancel), DialogTextSecondary, onCancelInstall)
+                }
                 PopupTextAction(stringResource(R.string.common_ui_ok), accent, onDismiss, isEntry = true)
             }
-            State.Failed, is State.NoSpace -> {
+            State.Failed, is State.NoSpace, is State.Blocked -> {
                 PopupTextAction(stringResource(R.string.common_ui_cancel), DialogTextSecondary, onDismiss)
                 PopupTextAction(stringResource(R.string.linux_client_retry), accent, onStart, isEntry = true)
             }

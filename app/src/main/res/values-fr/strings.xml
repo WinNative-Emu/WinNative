@@ -253,7 +253,7 @@
     <string name="linux_client_button">Client Linux</string>
     <string name="linux_client_title">Client Steam Linux</string>
     <string name="linux_client_install_message">Télécharge l\'environnement Linux depuis WinNative et le client Steam depuis Valve, puis installe les deux. Le téléchargement dépasse 1 Go, utilisez donc le Wi-Fi.</string>
-    <string name="linux_client_installed_message">L\'environnement Linux et le client Steam sont installés.</string>
+    <string name="linux_client_installed_message">L\'environnement Linux et le client Steam sont installés, et Steam est dans la Bibliothèque.</string>
     <string name="linux_client_failed_message">L\'installation n\'a pas abouti. Vérifiez votre connexion et réessayez.</string>
     <string name="linux_client_no_space_message">Espace libre insuffisant : %1$s nécessaires, %2$s disponibles.</string>
     <string name="linux_client_stage_connect">Connexion</string>
@@ -261,6 +261,7 @@
     <string name="linux_client_stage_install_runtime">Installation de l\'environnement Linux</string>
     <string name="linux_client_stage_download_steam">Téléchargement du client Steam</string>
     <string name="linux_client_stage_install_steam">Installation du client Steam</string>
+    <string name="linux_client_stage_library">Ajout de Steam à la Bibliothèque</string>
     <string name="linux_client_progress_amount">%1$s sur %2$s</string>
     <string name="linux_client_retry">Réessayer</string>
     <string name="linux_client_busy">Le client Steam Linux est encore en cours d\'installation. Réessayez une fois terminé.</string>

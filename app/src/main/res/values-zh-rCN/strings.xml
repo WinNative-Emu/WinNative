@@ -253,7 +253,7 @@
     <string name="linux_client_button">Linux 客户端</string>
     <string name="linux_client_title">Linux Steam 客户端</string>
     <string name="linux_client_install_message">从 WinNative 下载 Linux 运行时，从 Valve 下载 Steam 客户端，然后安装两者。下载超过 1 GB，请使用 Wi-Fi。</string>
-    <string name="linux_client_installed_message">Linux 运行时和 Steam 客户端已安装。</string>
+    <string name="linux_client_installed_message">Linux 运行时和 Steam 客户端已安装，Steam 已在游戏库中。</string>
     <string name="linux_client_failed_message">安装未完成。请检查网络连接后重试。</string>
     <string name="linux_client_no_space_message">可用空间不足：需要 %1$s，可用 %2$s。</string>
     <string name="linux_client_stage_connect">正在连接</string>
@@ -261,6 +261,7 @@
     <string name="linux_client_stage_install_runtime">正在安装 Linux 运行时</string>
     <string name="linux_client_stage_download_steam">正在下载 Steam 客户端</string>
     <string name="linux_client_stage_install_steam">正在安装 Steam 客户端</string>
+    <string name="linux_client_stage_library">正在将 Steam 添加到游戏库</string>
     <string name="linux_client_progress_amount">%1$s / %2$s</string>
     <string name="linux_client_retry">重试</string>
     <string name="linux_client_busy">Linux Steam 客户端仍在安装。请在完成后重试。</string>

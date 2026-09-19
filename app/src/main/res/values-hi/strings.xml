@@ -251,7 +251,7 @@
     <string name="linux_client_button">Linux क्लाइंट</string>
     <string name="linux_client_title">Linux Steam क्लाइंट</string>
     <string name="linux_client_install_message">WinNative से Linux रनटाइम और Valve से Steam क्लाइंट डाउनलोड करता है, फिर दोनों इंस्टॉल करता है। डाउनलोड 1 GB से अधिक है, इसलिए Wi-Fi का उपयोग करें।</string>
-    <string name="linux_client_installed_message">Linux रनटाइम और Steam क्लाइंट इंस्टॉल हैं।</string>
+    <string name="linux_client_installed_message">Linux रनटाइम और Steam क्लाइंट इंस्टॉल हैं, और Steam लाइब्रेरी में है।</string>
     <string name="linux_client_failed_message">इंस्टॉल पूरा नहीं हुआ। अपना कनेक्शन जाँचें और फिर से प्रयास करें।</string>
     <string name="linux_client_no_space_message">पर्याप्त खाली जगह नहीं है: %1$s चाहिए और %2$s उपलब्ध है।</string>
     <string name="linux_client_stage_connect">कनेक्ट हो रहा है</string>
@@ -259,6 +259,7 @@
     <string name="linux_client_stage_install_runtime">Linux रनटाइम इंस्टॉल हो रहा है</string>
     <string name="linux_client_stage_download_steam">Steam क्लाइंट डाउनलोड हो रहा है</string>
     <string name="linux_client_stage_install_steam">Steam क्लाइंट इंस्टॉल हो रहा है</string>
+    <string name="linux_client_stage_library">Steam को लाइब्रेरी में जोड़ा जा रहा है</string>
     <string name="linux_client_progress_amount">%2$s में से %1$s</string>
     <string name="linux_client_retry">फिर से प्रयास करें</string>
     <string name="linux_client_busy">Linux Steam क्लाइंट अभी इंस्टॉल हो रहा है। पूरा होने पर फिर से प्रयास करें।</string>

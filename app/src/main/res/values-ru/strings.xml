@@ -257,7 +257,7 @@
     <string name="linux_client_button">Клиент Linux</string>
     <string name="linux_client_title">Клиент Steam для Linux</string>
     <string name="linux_client_install_message">Загружает среду выполнения Linux с WinNative и клиент Steam с серверов Valve, затем устанавливает оба. Объём загрузки больше 1 ГБ, поэтому используйте Wi-Fi.</string>
-    <string name="linux_client_installed_message">Среда выполнения Linux и клиент Steam установлены.</string>
+    <string name="linux_client_installed_message">Среда выполнения Linux и клиент Steam установлены, а Steam есть в Библиотеке.</string>
     <string name="linux_client_failed_message">Установка не завершилась. Проверьте подключение и повторите попытку.</string>
     <string name="linux_client_no_space_message">Недостаточно свободного места: нужно %1$s, доступно %2$s.</string>
     <string name="linux_client_stage_connect">Подключение</string>
@@ -265,6 +265,7 @@
     <string name="linux_client_stage_install_runtime">Установка среды выполнения Linux</string>
     <string name="linux_client_stage_download_steam">Загрузка клиента Steam</string>
     <string name="linux_client_stage_install_steam">Установка клиента Steam</string>
+    <string name="linux_client_stage_library">Добавление Steam в Библиотеку</string>
     <string name="linux_client_progress_amount">%1$s из %2$s</string>
     <string name="linux_client_retry">Повторить</string>
     <string name="linux_client_busy">Клиент Steam для Linux ещё устанавливается. Повторите попытку после завершения.</string>

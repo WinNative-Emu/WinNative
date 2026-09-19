@@ -253,7 +253,7 @@
     <string name="linux_client_button">Linux-klient</string>
     <string name="linux_client_title">Linux Steam-klient</string>
     <string name="linux_client_install_message">Downloader Linux-runtimen fra WinNative og Steam-klienten fra Valve og installerer begge. Downloaden er over 1 GB, så brug Wi-Fi.</string>
-    <string name="linux_client_installed_message">Linux-runtimen og Steam-klienten er installeret.</string>
+    <string name="linux_client_installed_message">Linux-runtimen og Steam-klienten er installeret, og Steam er i Bibliotek.</string>
     <string name="linux_client_failed_message">Installationen blev ikke fuldført. Tjek din forbindelse, og prøv igen.</string>
     <string name="linux_client_no_space_message">Ikke nok ledig plads: %1$s kræves, og %2$s er ledig.</string>
     <string name="linux_client_stage_connect">Forbinder</string>
@@ -261,6 +261,7 @@
     <string name="linux_client_stage_install_runtime">Installerer Linux-runtimen</string>
     <string name="linux_client_stage_download_steam">Downloader Steam-klienten</string>
     <string name="linux_client_stage_install_steam">Installerer Steam-klienten</string>
+    <string name="linux_client_stage_library">Tilføjer Steam til Bibliotek</string>
     <string name="linux_client_progress_amount">%1$s af %2$s</string>
     <string name="linux_client_retry">Prøv igen</string>
     <string name="linux_client_busy">Linux Steam-klienten installeres stadig. Prøv igen, når den er færdig.</string>

@@ -6,6 +6,15 @@ import android.os.SystemClock
 import android.system.ErrnoException
 import android.system.Os
 import android.util.Log
+import androidx.annotation.StringRes
+import com.winlator.cmod.R
+import com.winlator.cmod.feature.library.LinuxApps
+import com.winlator.cmod.runtime.container.Container
+import com.winlator.cmod.runtime.container.ContainerCreation
+import com.winlator.cmod.runtime.container.ContainerManager
+import com.winlator.cmod.runtime.content.ContentProfile
+import com.winlator.cmod.runtime.content.ContentsManager
+import com.winlator.cmod.runtime.display.environment.ImageFs
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.io.TarCompressorUtils
 import com.winlator.cmod.shared.util.OnExtractFileListener
@@ -32,8 +41,8 @@ import org.json.JSONObject
 /**
  * Installs what the GameScope container needs for the native Steam client: the Linux runtime,
  * published as a release asset of WinNative's Components repository, then the arm64 Steam client
- * from Valve's update servers. Valve's client is not redistributable, so it always comes from
- * Valve. winnative-steam-install performs the same client steps inside a session and skips them
+ * from Valve's update servers, and finally the GameScope container with its Steam library entry.
+ * Valve's client is not redistributable, so it always comes from Valve. winnative-steam-install performs the same client steps inside a session and skips them
  * once the stamp written here exists.
  */
 object LinuxClientInstaller {
@@ -52,7 +61,7 @@ object LinuxClientInstaller {
     private const val STEAM_UNPACK_FACTOR = 3L
     private const val PROGRESS_INTERVAL_MS = 100L
 
-    enum class Stage { CONNECT, DOWNLOAD_RUNTIME, INSTALL_RUNTIME, DOWNLOAD_STEAM, INSTALL_STEAM }
+    enum class Stage { CONNECT, DOWNLOAD_RUNTIME, INSTALL_RUNTIME, DOWNLOAD_STEAM, INSTALL_STEAM, LIBRARY }
 
     sealed interface State {
         data object Checking : State
@@ -66,9 +75,14 @@ object LinuxClientInstaller {
         data object Failed : State
 
         data class NoSpace(val needed: Long, val available: Long) : State
+
+        /** The GameScope container cannot be created; [message] says what is missing. */
+        data class Blocked(@StringRes val message: Int) : State
     }
 
     private class NoSpaceException(val needed: Long, val available: Long) : IOException()
+
+    private class BlockedException(@StringRes val messageRes: Int) : IOException()
 
     private class Part(val name: String, val file: String, val size: Long, val sha256: String)
 
@@ -82,7 +96,9 @@ object LinuxClientInstaller {
 
     val isWorking: Boolean get() = mutableState.value is State.Working
 
-    fun isInstalled(context: Context): Boolean = LinuxRuntime.isInstalled(context) && isSteamInstalled(context)
+    /** Worker thread. */
+    fun isInstalled(context: Context): Boolean =
+        LinuxRuntime.isInstalled(context) && isSteamInstalled(context) && gamescopeContainer(context) != null
 
     /** Reads what is on disk, off the calling thread, unless an install is running. */
     fun refresh(context: Context) {
@@ -114,8 +130,11 @@ object LinuxClientInstaller {
             try {
                 FileUtils.delete(work)
                 if (!work.mkdirs()) throw IOException("Could not create $work")
+                // Checked first, so a device that cannot hold the container is told before the download.
+                if (gamescopeContainer(context) == null) requireContainerRuntime(context)
                 if (!LinuxRuntime.isInstalled(context)) installRuntime(context, work)
                 if (!isSteamInstalled(context)) installSteam(context, work)
+                addToLibrary(context)
                 State.Installed
             } catch (e: CancellationException) {
                 discard(context, work)
@@ -123,6 +142,8 @@ object LinuxClientInstaller {
                 throw e
             } catch (e: NoSpaceException) {
                 State.NoSpace(e.needed, e.available)
+            } catch (e: BlockedException) {
+                State.Blocked(e.messageRes)
             } catch (e: Exception) {
                 Log.w(TAG, "Linux client install failed", e)
                 State.Failed
@@ -211,6 +232,32 @@ object LinuxClientInstaller {
             throw IOException("Could not move the runtime into place")
         }
         FileUtils.delete(retired)
+    }
+
+    private fun gamescopeContainer(context: Context): Container? = LinuxApps.gamescopeContainer(ContainerManager(context))
+
+    /** What creating the GameScope container needs: the system image and a Wine or Proton to build it from. */
+    private fun requireContainerRuntime(context: Context): Pair<ContentsManager, ContentProfile> {
+        if (!ImageFs.find(context).isUpToDate) throw BlockedException(R.string.setup_wizard_system_image_not_installed)
+        val contents = ContentsManager(context)
+        contents.syncContents()
+        val runtime =
+            ContainerCreation.newestInstalledRuntime(contents)
+                ?: throw BlockedException(R.string.container_no_wine_installed)
+        return contents to runtime
+    }
+
+    /** Creates the GameScope container if there is none and makes sure it carries the Steam entry. */
+    private fun addToLibrary(context: Context) {
+        mutableState.value = State.Working(Stage.LIBRARY, 0, 0)
+        val manager = ContainerManager(context)
+        val container =
+            LinuxApps.gamescopeContainer(manager) ?: run {
+                val (contents, runtime) = requireContainerRuntime(context)
+                ContainerCreation.createGamescopeContainer(context, manager, contents, runtime)
+                    ?: throw BlockedException(R.string.containers_gamescope_create_failed)
+            }
+        LinuxApps.ensureSteamShortcut(context, container)
     }
 
     private fun isSteamInstalled(context: Context): Boolean {

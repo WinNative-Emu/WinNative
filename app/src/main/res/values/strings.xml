@@ -255,7 +255,7 @@
     <string name="linux_client_button">Linux Client</string>
     <string name="linux_client_title">Linux Steam Client</string>
     <string name="linux_client_install_message">Downloads the Linux runtime from WinNative and the Steam client from Valve, then installs both. The download is over 1 GB, so use Wi-Fi.</string>
-    <string name="linux_client_installed_message">The Linux runtime and the Steam client are installed.</string>
+    <string name="linux_client_installed_message">The Linux runtime and the Steam client are installed, and Steam is in the Library.</string>
     <string name="linux_client_failed_message">The install did not finish. Check your connection and try again.</string>
     <string name="linux_client_no_space_message">Not enough free space: %1$s is needed and %2$s is available.</string>
     <string name="linux_client_stage_connect">Connecting</string>
@@ -263,6 +263,7 @@
     <string name="linux_client_stage_install_runtime">Installing the Linux runtime</string>
     <string name="linux_client_stage_download_steam">Downloading the Steam client</string>
     <string name="linux_client_stage_install_steam">Installing the Steam client</string>
+    <string name="linux_client_stage_library">Adding Steam to the Library</string>
     <string name="linux_client_progress_amount">%1$s of %2$s</string>
     <string name="linux_client_retry">Retry</string>
     <string name="linux_client_busy">The Linux Steam Client is still installing. Try again when it finishes.</string>

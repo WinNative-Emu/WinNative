@@ -254,7 +254,7 @@
     <string name="linux_client_button">Cliente Linux</string>
     <string name="linux_client_title">Cliente Steam para Linux</string>
     <string name="linux_client_install_message">Transfere o runtime Linux do WinNative e o cliente Steam da Valve e instala ambos. A transferência ultrapassa 1 GB, por isso use Wi-Fi.</string>
-    <string name="linux_client_installed_message">O runtime Linux e o cliente Steam estão instalados.</string>
+    <string name="linux_client_installed_message">O runtime Linux e o cliente Steam estão instalados, e o Steam está na Biblioteca.</string>
     <string name="linux_client_failed_message">A instalação não terminou. Verifique a ligação e tente novamente.</string>
     <string name="linux_client_no_space_message">Espaço livre insuficiente: são necessários %1$s e estão disponíveis %2$s.</string>
     <string name="linux_client_stage_connect">A ligar</string>
@@ -262,6 +262,7 @@
     <string name="linux_client_stage_install_runtime">A instalar o runtime Linux</string>
     <string name="linux_client_stage_download_steam">A transferir o cliente Steam</string>
     <string name="linux_client_stage_install_steam">A instalar o cliente Steam</string>
+    <string name="linux_client_stage_library">A adicionar o Steam à Biblioteca</string>
     <string name="linux_client_progress_amount">%1$s de %2$s</string>
     <string name="linux_client_retry">Tentar novamente</string>
     <string name="linux_client_busy">O cliente Steam para Linux ainda está a ser instalado. Tente novamente quando terminar.</string>

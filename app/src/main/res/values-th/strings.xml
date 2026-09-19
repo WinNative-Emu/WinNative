@@ -254,7 +254,7 @@
     <string name="linux_client_button">ไคลเอ็นต์ Linux</string>
     <string name="linux_client_title">ไคลเอ็นต์ Steam สำหรับ Linux</string>
     <string name="linux_client_install_message">ดาวน์โหลดรันไทม์ Linux จาก WinNative และไคลเอ็นต์ Steam จาก Valve แล้วติดตั้งทั้งสองอย่าง การดาวน์โหลดมีขนาดเกิน 1 GB จึงควรใช้ Wi-Fi</string>
-    <string name="linux_client_installed_message">ติดตั้งรันไทม์ Linux และไคลเอ็นต์ Steam แล้ว</string>
+    <string name="linux_client_installed_message">ติดตั้งรันไทม์ Linux และไคลเอ็นต์ Steam แล้ว และ Steam อยู่ในคลังแล้ว</string>
     <string name="linux_client_failed_message">การติดตั้งไม่เสร็จสมบูรณ์ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง</string>
     <string name="linux_client_no_space_message">พื้นที่ว่างไม่พอ: ต้องใช้ %1$s และมีว่าง %2$s</string>
     <string name="linux_client_stage_connect">กำลังเชื่อมต่อ</string>
@@ -262,6 +262,7 @@
     <string name="linux_client_stage_install_runtime">กำลังติดตั้งรันไทม์ Linux</string>
     <string name="linux_client_stage_download_steam">กำลังดาวน์โหลดไคลเอ็นต์ Steam</string>
     <string name="linux_client_stage_install_steam">กำลังติดตั้งไคลเอ็นต์ Steam</string>
+    <string name="linux_client_stage_library">กำลังเพิ่ม Steam ลงในคลัง</string>
     <string name="linux_client_progress_amount">%1$s จาก %2$s</string>
     <string name="linux_client_retry">ลองอีกครั้ง</string>
     <string name="linux_client_busy">ไคลเอ็นต์ Steam สำหรับ Linux ยังติดตั้งไม่เสร็จ ลองอีกครั้งเมื่อติดตั้งเสร็จ</string>

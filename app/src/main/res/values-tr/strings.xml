@@ -254,7 +254,7 @@
     <string name="linux_client_button">Linux İstemcisi</string>
     <string name="linux_client_title">Linux Steam İstemcisi</string>
     <string name="linux_client_install_message">Linux çalışma zamanını WinNative\'den, Steam istemcisini Valve\'dan indirir ve ikisini de kurar. İndirme 1 GB\'ı aştığı için Wi-Fi kullanın.</string>
-    <string name="linux_client_installed_message">Linux çalışma zamanı ve Steam istemcisi kurulu.</string>
+    <string name="linux_client_installed_message">Linux çalışma zamanı ve Steam istemcisi kurulu, Steam de Kütüphane\'de.</string>
     <string name="linux_client_failed_message">Kurulum tamamlanmadı. Bağlantınızı kontrol edip yeniden deneyin.</string>
     <string name="linux_client_no_space_message">Yeterli boş alan yok: %1$s gerekli, %2$s kullanılabilir.</string>
     <string name="linux_client_stage_connect">Bağlanıyor</string>
@@ -262,6 +262,7 @@
     <string name="linux_client_stage_install_runtime">Linux çalışma zamanı kuruluyor</string>
     <string name="linux_client_stage_download_steam">Steam istemcisi indiriliyor</string>
     <string name="linux_client_stage_install_steam">Steam istemcisi kuruluyor</string>
+    <string name="linux_client_stage_library">Steam Kütüphane\'ye ekleniyor</string>
     <string name="linux_client_progress_amount">%1$s / %2$s</string>
     <string name="linux_client_retry">Yeniden dene</string>
     <string name="linux_client_busy">Linux Steam İstemcisi hâlâ kuruluyor. Bittiğinde yeniden deneyin.</string>

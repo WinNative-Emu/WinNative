@@ -276,20 +276,30 @@ object ContainerCreation {
         runtime: ContentProfile,
         callback: Callback<Container?>,
     ) {
-        val name = uniqueName(containerManager, GAMESCOPE_CONTAINER_NAME)
-        val data = buildLaunchReadyData(context, contentsManager, name, ContentsManager.getEntryName(runtime))
         val handler = Handler(Looper.getMainLooper())
         Thread {
-            val container = containerManager.createContainer(data, contentsManager)
-            if (container != null) {
-                applyLaunchReadyDefaults(context, contentsManager, container)
-                container.setRuntime(Container.RUNTIME_GAMESCOPE)
-                container.setDisplayBackend(Container.DISPLAY_BACKEND_WAYLAND)
-                container.saveData()
-                LinuxApps.ensureSteamShortcut(context, container)
-            }
+            val container = createGamescopeContainer(context, containerManager, contentsManager, runtime)
             handler.post { callback.call(container) }
         }.start()
+    }
+
+    /** Worker thread. [createGamescopeContainerAsync] without the thread; null when creation fails. */
+    @JvmStatic
+    fun createGamescopeContainer(
+        context: Context,
+        containerManager: ContainerManager,
+        contentsManager: ContentsManager,
+        runtime: ContentProfile,
+    ): Container? {
+        val name = uniqueName(containerManager, GAMESCOPE_CONTAINER_NAME)
+        val data = buildLaunchReadyData(context, contentsManager, name, ContentsManager.getEntryName(runtime))
+        val container = containerManager.createContainer(data, contentsManager) ?: return null
+        applyLaunchReadyDefaults(context, contentsManager, container)
+        container.setRuntime(Container.RUNTIME_GAMESCOPE)
+        container.setDisplayBackend(Container.DISPLAY_BACKEND_WAYLAND)
+        container.saveData()
+        LinuxApps.ensureSteamShortcut(context, container)
+        return container
     }
 
     @JvmStatic
