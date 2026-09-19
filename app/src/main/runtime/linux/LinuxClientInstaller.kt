@@ -100,6 +100,9 @@ object LinuxClientInstaller {
     fun isInstalled(context: Context): Boolean =
         LinuxRuntime.isInstalled(context) && isSteamInstalled(context) && gamescopeContainer(context) != null
 
+    /** Worker thread. Whether the runtime and the client are on disk, so an install only has the container left to make. */
+    fun isDownloaded(context: Context): Boolean = LinuxRuntime.isInstalled(context) && isSteamInstalled(context)
+
     /** Reads what is on disk, off the calling thread, unless an install is running. */
     fun refresh(context: Context) {
         val appContext = context.applicationContext

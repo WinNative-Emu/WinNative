@@ -54,11 +54,12 @@ object LinuxApps {
     fun gamescopeContainer(manager: ContainerManager): Container? =
         manager.containers.firstOrNull { it.isGamescopeRuntime }
 
-    /** Worker thread. The GameScope container when it exists but its Steam entry has been removed. */
+    /** Worker thread. Whether the Library lacks the Steam entry, also when there is no GameScope container yet. */
     @JvmStatic
-    fun containerMissingSteamShortcut(context: Context): Container? =
-        gamescopeContainer(ContainerManager(context))
-            ?.takeUnless { File(it.desktopDir, "$STEAM_SHORTCUT_NAME.desktop").exists() }
+    fun isSteamShortcutMissing(context: Context): Boolean {
+        val container = gamescopeContainer(ContainerManager(context)) ?: return true
+        return !File(container.desktopDir, "$STEAM_SHORTCUT_NAME.desktop").exists()
+    }
 
     /**
      * Writes the Steam entry into the GameScope container's desktop directory if it is missing,

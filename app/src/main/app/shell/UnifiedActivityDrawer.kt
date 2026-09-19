@@ -165,6 +165,7 @@ import com.winlator.cmod.feature.settings.SettingsNavItem
 import com.winlator.cmod.feature.setup.SetupWizardActivity
 import com.winlator.cmod.feature.library.LibraryItemType
 import com.winlator.cmod.feature.library.LinuxApps
+import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutUtils
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutArtwork
 import com.winlator.cmod.feature.artwork.SteamArtworkScraper
@@ -784,7 +785,10 @@ internal fun UnifiedActivity.DrawerSwitchCard(
 }
 
 @Composable
-internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
+internal fun UnifiedActivity.AddCustomGameDialog(
+    onDismiss: () -> Unit,
+    onInstallLinuxClient: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var selectedExePath by remember { mutableStateOf<String?>(null) }
@@ -806,13 +810,24 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
     val registry = remember { PaneNavRegistry() }
     var steamRestorable by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        steamRestorable = withContext(Dispatchers.IO) { LinuxApps.containerMissingSteamShortcut(context) != null }
+        steamRestorable = withContext(Dispatchers.IO) { LinuxApps.isSteamShortcutMissing(context) }
     }
     val restoreSteam: () -> Unit = {
         isAdding = true
         scope.launch(Dispatchers.IO) {
-            val container = LinuxApps.containerMissingSteamShortcut(context)
-            val added = container == null || runCatching { LinuxApps.ensureSteamShortcut(context, container) }.isSuccess
+            val container = LinuxApps.gamescopeContainer(ContainerManager(context))
+            if (container == null) {
+                // The entry lives in the GameScope container, which the Linux Client install creates.
+                val downloaded = LinuxClientInstaller.isDownloaded(context)
+                withContext(Dispatchers.Main) {
+                    isAdding = false
+                    onDismiss()
+                    if (downloaded) LinuxClientInstaller.start(context)
+                    onInstallLinuxClient()
+                }
+                return@launch
+            }
+            val added = runCatching { LinuxApps.ensureSteamShortcut(context, container) }.isSuccess
             withContext(Dispatchers.Main) {
                 isAdding = false
                 val name = LinuxApps.STEAM_SHORTCUT_NAME

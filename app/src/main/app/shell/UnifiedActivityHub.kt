@@ -165,6 +165,8 @@ import com.winlator.cmod.feature.library.LibraryStoreLinks
 import com.winlator.cmod.feature.library.LibraryStoreOption
 import com.winlator.cmod.feature.library.LibraryStoreTransfer
 import com.winlator.cmod.feature.settings.InputControlsFragment
+import com.winlator.cmod.feature.settings.LinuxClientDialog
+import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.feature.settings.SettingsFocusZone
 import com.winlator.cmod.feature.settings.SettingsHost
 import com.winlator.cmod.feature.settings.SettingsNavBridge
@@ -342,6 +344,15 @@ internal fun UnifiedActivity.UnifiedHub() {
     val isGogLoggedIn by GOGAuthManager.isLoggedInFlow.collectAsState()
     val steamApps by db.steamAppDao().getAllOwnedApps().collectAsState(initial = emptyList())
     val context = LocalContext.current
+    var showLinuxClient by rememberSaveable { mutableStateOf(false) }
+    val linuxClient by LinuxClientInstaller.state.collectAsState()
+    // An install finishing adds the Steam entry, which the Library has to read again to show.
+    LaunchedEffect(linuxClient) {
+        if (linuxClient is LinuxClientInstaller.State.Installed) localLibraryRefreshKey++
+    }
+    LaunchedEffect(showLinuxClient) {
+        if (showLinuxClient && !LinuxClientInstaller.isWorking) LinuxClientInstaller.refresh(context)
+    }
     val persona by SteamService.instance?.localPersona?.collectAsState()
         ?: remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
@@ -1204,10 +1215,22 @@ internal fun UnifiedActivity.UnifiedHub() {
     }
 
     if (showAddCustomGame) {
-        AddCustomGameDialog(onDismiss = {
-            showAddCustomGame = false
-            localLibraryRefreshKey++
-        })
+        AddCustomGameDialog(
+            onDismiss = {
+                showAddCustomGame = false
+                localLibraryRefreshKey++
+            },
+            onInstallLinuxClient = { showLinuxClient = true },
+        )
+    }
+
+    if (showLinuxClient) {
+        LinuxClientDialog(
+            state = linuxClient,
+            onStart = { LinuxClientInstaller.start(context) },
+            onCancelInstall = { LinuxClientInstaller.cancel() },
+            onDismiss = { showLinuxClient = false },
+        )
     }
 
     chatFriend?.let { cf ->
