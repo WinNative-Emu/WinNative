@@ -21,7 +21,7 @@ TOOL = "winnative-proton"
 # Newest first; the client installs whichever the user has, and either one runs here.
 SOURCES = ("Proton Experimental (ARM64)", "Proton 11.0 (ARM64)")
 # Written by us; everything else in the depot is symlinked through.
-OWN_FILES = ("toolmanifest.vdf", "compatibilitytool.vdf")
+OWN_FILES = ("toolmanifest.vdf", "compatibilitytool.vdf", "winnative-launch")
 # Where the app binds the user's own game library inside the session.
 LIBRARY = "/mnt/winnative"
 TOKEN = re.compile(r'\s*(?:"((?:[^"\\]|\\.)*)"|([{}])|//[^\n]*)')
@@ -44,10 +44,30 @@ NOT_GAMES = frozenset((
 TOOLMANIFEST = '''"manifest"
 {
 \t"version"\t\t"2"
-\t"commandline"\t\t"/proton %verb%"
+\t"commandline"\t\t"/winnative-launch %verb%"
 \t"use_sessions"\t\t"1"
 \t"compatmanager_layer_name"\t\t"proton"
 }
+'''
+
+# The client preloads its overlay library into every game. In a gamescope session the overlay is
+# the client's own window, which gamescope layers over the game, so the library draws nothing - but
+# it also stands in front of open() and read() on /dev/input. It lets Wine open the session's pad
+# and then answers every read of it with nothing: the game sees a controller that never reports,
+# and Wine's HID thread spins a core on a descriptor that is always ready and always empty.
+# Proton is started without it; anything else the user preloads is kept.
+LAUNCHER = '''#!/bin/sh
+kept=
+IFS=': '
+for lib in $LD_PRELOAD; do
+  case $lib in
+    */gameoverlayrenderer.so) ;;
+    *) kept=${kept:+$kept:}$lib ;;
+  esac
+done
+unset IFS
+if [ -n "$kept" ]; then export LD_PRELOAD="$kept"; else unset LD_PRELOAD; fi
+exec "$(dirname "$0")/proton" "$@"
 '''
 
 COMPAT_TOOL_VDF = '''"compatibilitytools"
@@ -249,11 +269,13 @@ def register_tool(steam_root, depot):
         if name not in wanted:
             discard(os.path.join(tool_dir, name))
     for name, body in (("toolmanifest.vdf", TOOLMANIFEST),
-                       ("compatibilitytool.vdf", COMPAT_TOOL_VDF)):
+                       ("compatibilitytool.vdf", COMPAT_TOOL_VDF),
+                       ("winnative-launch", LAUNCHER)):
         path = os.path.join(tool_dir, name)
         discard(path)
         with open(path, "w", encoding="utf-8") as f:
             f.write(body)
+    os.chmod(os.path.join(tool_dir, "winnative-launch"), 0o755)
 
 
 def main():
