@@ -13,11 +13,16 @@
  * it, so the monitor is live and silent, which is the most the kernel would deliver in a
  * container anyway. The real socket is tried first, so this stays out of the way wherever a
  * monitor could genuinely be created.
+ *
+ * Wine is left without one. Its HID bus reads the session's pads itself only when its SDL bus
+ * cannot start, and that is the path inputudev.c describes them on. Given a monitor the SDL bus
+ * comes up and takes the pads over from it.
  */
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <linux/netlink.h>
 #include <pthread.h>
 #include <string.h>
@@ -71,6 +76,22 @@ static int is_stand_in(int fd) {
   return found;
 }
 
+static int is_wine_process(void) {
+  static int known;
+  if (known == 0) {
+    char exe[PATH_MAX];
+    ssize_t n = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+    const char *name = exe;
+    if (n > 0) {
+      exe[n] = '\0';
+      name = strrchr(exe, '/');
+      name = name != NULL ? name + 1 : exe;
+    }
+    known = n > 0 && strncmp(name, "wine", 4) == 0 ? 1 : -1;
+  }
+  return known == 1;
+}
+
 static int make_stand_in(int type) {
   int sv[2];
   int saved = errno;
@@ -110,6 +131,11 @@ int socket(int domain, int type, int protocol) {
   fd = real_socket(domain, type, protocol);
   if (fd >= 0 || domain != AF_NETLINK || protocol != NETLINK_KOBJECT_UEVENT)
     return fd;
+  int refused = errno;
+  if (is_wine_process()) {
+    errno = refused;
+    return -1;
+  }
   return make_stand_in(type);
 }
 

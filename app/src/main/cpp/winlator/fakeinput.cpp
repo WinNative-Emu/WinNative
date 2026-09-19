@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cerrno>
+#include <climits>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -51,6 +52,10 @@ static constexpr uint16_t GAMEPAD_VENDOR_ID_BASE = 0x1234;
 static constexpr uint16_t GAMEPAD_PRODUCT_ID_BASE = 0x5678;
 static constexpr uint16_t GAMEPAD_VERSION = 0x0110;
 static constexpr const char *GAMEPAD_NAME_TEMPLATE = "Generic HID Gamepad %d";
+// The gamepad Steam Input presents to a game, and the name SDL reads its slot from.
+static constexpr uint16_t STEAM_VIRTUAL_VENDOR_ID = 0x28de;
+static constexpr uint16_t STEAM_VIRTUAL_PRODUCT_ID = 0x11ff;
+static constexpr const char *STEAM_VIRTUAL_NAME_TEMPLATE = "Microsoft X-Box 360 pad %d";
 static constexpr const char *GAMEPAD_PHYS_TEMPLATE = "usb-fakeinput/input%d";
 static constexpr const char *GAMEPAD_UNIQ_TEMPLATE = "0000000000%02d";
 static constexpr uint8_t GAMEPAD_AXIS_COUNT = 8;
@@ -461,6 +466,7 @@ open_fake_input_ring(const char *event, int flags) {
   int slot = get_event_number(event);
   std::string ring_path = get_ring_path_for_slot(slot);
   if (ring_path.empty()) {
+    Logger::log("No input ring is configured for %s (slot %d)\n", event, slot);
     errno = ENODEV;
     return -1;
   }
@@ -483,6 +489,7 @@ open_fake_input_ring(const char *event, int flags) {
   FakeInputRingHeader *ring =
       reinterpret_cast<FakeInputRingHeader *>(mapping);
   if (!ring_header_is_valid(ring)) {
+    Logger::log("Input ring %s has no valid header\n", ring_path.c_str());
     munmap(mapping, FAKE_INPUT_RING_SIZE);
     syscall(SYS_close, fd);
     errno = ENODEV;
@@ -508,6 +515,29 @@ open_fake_input_ring(const char *event, int flags) {
   Logger::log("Adding ring-backed controller, fd %d event %s slot %d\n", fd,
               event, slot);
   return fd;
+}
+
+// Under the Steam client a pad it manages is hidden from the game: the client lists it in
+// SDL_GAMECONTROLLER_IGNORE_DEVICES, its overlay refuses the game's open() of the node, and the
+// game is meant to see Steam Input's virtual gamepad instead. That one is a uinput device, which
+// does not exist here, so the game was left with no controller at all. With
+// FAKE_EVDEV_STEAM_VIRTUAL set the pad carries the virtual gamepad's identity for every process
+// but the client's own, which must keep seeing the pad as the physical one it reads.
+__attribute__((visibility("hidden"))) static bool presents_steam_virtual() {
+  static int known;
+  if (known == 0) {
+    const char *enabled = getenv("FAKE_EVDEV_STEAM_VIRTUAL");
+    char exe[PATH_MAX];
+    ssize_t length = enabled && atoi(enabled) ? readlink("/proc/self/exe", exe, sizeof(exe) - 1) : -1;
+    bool client = false;
+    if (length > 0) {
+      exe[length] = '\0';
+      const char *name = strrchr(exe, '/');
+      client = !strncmp(name ? name + 1 : exe, "steam", 5);
+    }
+    known = length > 0 && !client ? 1 : -1;
+  }
+  return known == 1;
 }
 
 __attribute__((visibility("hidden"))) static void
@@ -933,14 +963,21 @@ EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
     struct input_id id;
     memset(&id, 0, sizeof(id));
     id.bustype = 0x03;
-    id.vendor = static_cast<uint16_t>(GAMEPAD_VENDOR_ID_BASE + event_number);
-    id.product = static_cast<uint16_t>(GAMEPAD_PRODUCT_ID_BASE + event_number);
+    if (presents_steam_virtual()) {
+      id.vendor = STEAM_VIRTUAL_VENDOR_ID;
+      id.product = STEAM_VIRTUAL_PRODUCT_ID;
+    } else {
+      id.vendor = static_cast<uint16_t>(GAMEPAD_VENDOR_ID_BASE + event_number);
+      id.product = static_cast<uint16_t>(GAMEPAD_PRODUCT_ID_BASE + event_number);
+    }
     id.version = GAMEPAD_VERSION;
     memcpy(argp, (void *)&id, sizeof(id));
     return 0;
   } else if (type == 0x45 && number == 0x6) {
     Logger::log("Hooking ioctl EVIOCGNAME for event %s\n", event);
-    copy_slot_ioctl_string(op, argp, GAMEPAD_NAME_TEMPLATE, event_number);
+    copy_slot_ioctl_string(op, argp,
+                           presents_steam_virtual() ? STEAM_VIRTUAL_NAME_TEMPLATE : GAMEPAD_NAME_TEMPLATE,
+                           event_number);
     return 0;
   } else if (type == 0x45 && number == 0x7) {
     Logger::log("Hooking ioctl EVIOCGPHYS for event %s\n", event);

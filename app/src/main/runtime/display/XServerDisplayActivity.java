@@ -8897,6 +8897,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (!inputRings.isEmpty()) guest.add("FAKE_EVDEV_MEMFD_PATHS=" + inputRings);
         guest.add("FAKE_EVDEV_DIR=" + devInputDir.getPath());
         guest.add("FAKE_EVDEV_VIBRATION=1");
+        // Steam Input hides a pad it manages from the game and shows it a virtual one instead, which
+        // needs /dev/uinput: the pads carry that identity themselves for everything but the client.
+        guest.add("FAKE_EVDEV_STEAM_VIRTUAL=1");
         // No udev runs in the runtime: SDL and Steam's hidapi must scan /dev/input themselves.
         guest.add("SDL_JOYSTICK_DISABLE_UDEV=1");
         guest.add("SDL_HIDAPI_JOYSTICK_DISABLE_UDEV=1");
