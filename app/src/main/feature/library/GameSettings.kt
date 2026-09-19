@@ -3135,9 +3135,11 @@ private fun ReshadeFloatSlider(
                 color = TextSecondary,
                 fontSize = SettingLabelSize,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = 0.3.sp
+                letterSpacing = 0.3.sp,
+                // Both children were unweighted, so a long localized label was measured
+                // against the whole row and left the value chip nothing.
+                modifier = Modifier.weight(1f)
             )
-            Spacer(Modifier.weight(1f))
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
@@ -3851,7 +3853,7 @@ private fun WineSection(
                     offset = localeMenuOffset.value,
                     shape = RoundedCornerShape(8.dp),
                     containerColor = CardSurface,
-                    modifier = Modifier.height(300.dp)
+                    modifier = Modifier.heightIn(max = 300.dp)
                 ) {
                     state.localeOptions.value.forEach { locale ->
                         DropdownMenuItem(
@@ -4520,7 +4522,7 @@ private fun EnvVarRow(
                 shape = RoundedCornerShape(8.dp),
                 containerColor = CardSurface,
                 modifier = Modifier
-                    .height(360.dp)
+                    .heightIn(max = 360.dp)
                     .width(260.dp)
             ) {
                 DropdownMenuItem(
@@ -4865,7 +4867,7 @@ private fun EnvValueMultiDropdown(
             shape = RoundedCornerShape(8.dp),
             containerColor = CardSurface,
             modifier = Modifier
-                .height(320.dp)
+                .heightIn(max = 320.dp)
                 .width(260.dp)
         ) {
             options.forEach { opt ->
@@ -5485,7 +5487,7 @@ private fun ExecArgsHelper(onArgSelected: (String) -> Unit) {
             shape = RoundedCornerShape(8.dp),
             containerColor = CardSurface,
             modifier = Modifier
-                .height(360.dp)
+                .heightIn(max = 360.dp)
                 .width(240.dp)
         ) {
             ExtraArgPresets.forEach { group ->
@@ -6086,8 +6088,8 @@ private fun FrameGenPresetSlider(
                 fontSize = SettingLabelSize,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.3.sp,
+                modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.weight(1f))
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
@@ -6178,9 +6180,11 @@ private fun SettingSlider(
                 color = TextSecondary,
                 fontSize = SettingLabelSize,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = 0.3.sp
+                letterSpacing = 0.3.sp,
+                // Both children were unweighted, so a long localized label was measured
+                // against the whole row and left the value chip nothing.
+                modifier = Modifier.weight(1f)
             )
-            Spacer(Modifier.weight(1f))
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))

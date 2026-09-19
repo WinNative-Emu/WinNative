@@ -249,6 +249,8 @@ import com.winlator.cmod.shared.ui.JoystickGridScroll
 import com.winlator.cmod.shared.ui.JoystickListScroll
 import com.winlator.cmod.shared.ui.ListView
 import com.winlator.cmod.shared.ui.widget.chasingBorder
+import com.winlator.cmod.shared.ui.layout.isPortraitLayout
+import com.winlator.cmod.shared.ui.layout.isCompactWidth
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.Lazy
@@ -298,7 +300,15 @@ internal fun UnifiedActivity.LibraryDetailPopupFrame(
             contentAlignment = Alignment.Center,
         ) {
             val panelMaxWidth = if (wide) 440.dp else 360.dp
-            val panelWidthFraction = if (wide) 0.72f else 0.58f
+            // 0.58f/0.72f are landscape fractions: at phone width 0.58f gives a ~213 dp
+            // panel whose labels and footer buttons wrap mid-word. In portrait take the
+            // full available width and let panelMaxWidth do the capping.
+            val panelWidthFraction =
+                when {
+                    isPortraitLayout() -> 1f
+                    wide -> 0.72f
+                    else -> 0.58f
+                }
             val panelMaxHeight = (maxHeight - 16.dp).coerceAtLeast(240.dp)
 
             Surface(
@@ -394,9 +404,18 @@ internal fun UnifiedActivity.GameSettingsDialogFrame(
                     .windowInsetsPadding(WindowInsets.navigationBars),
             contentAlignment = Alignment.Center,
         ) {
+            val dialogMaxWidth = (maxWidth - 32.dp).coerceAtLeast(200.dp)
             val widthModifier =
                 if (wide) {
-                    Modifier.widthIn(min = 320.dp, max = (maxWidth - 32.dp).coerceAtMost(560.dp))
+                    // coerceAtMost can drop the max below the 320 dp min on a narrow screen,
+                    // and then min wins and the dialog is wider than its parent.
+                    val wideMax = dialogMaxWidth.coerceAtMost(560.dp)
+                    Modifier.widthIn(min = minOf(320.dp, wideMax), max = wideMax)
+                } else if (isCompactWidth()) {
+                    // The narrow frame is the per-game settings dialog for every tab but
+                    // CloudSaves; capped at 280 dp inside a 400 dp window its label/control
+                    // rows lose the label entirely.
+                    Modifier.fillMaxWidth().widthIn(max = dialogMaxWidth)
                 } else {
                     Modifier.widthIn(min = 200.dp, max = 280.dp)
                 }
@@ -758,7 +777,7 @@ internal fun UnifiedActivity.HeroBootDialog(
             title = title,
             icon = Icons.Outlined.DesktopWindows,
             accentColor = Accent,
-            modifier = Modifier.widthIn(min = 220.dp, max = 290.dp),
+            modifier = Modifier.widthIn(min = 220.dp, max = 360.dp),
             content = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -2336,7 +2355,9 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                                 color = TextSecondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(end = 16.dp),
+                                // Unweighted, this measured at its full intrinsic width before
+                                // the weighted sub-screen title and starved it to nothing.
+                                modifier = Modifier.weight(1f, fill = false).padding(end = 16.dp),
                             )
                         }
                         HorizontalDivider(color = CardBorder, thickness = 0.5.dp)

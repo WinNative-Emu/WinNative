@@ -102,6 +102,7 @@ import com.winlator.cmod.shared.ui.nav.paneNavItem
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.focus.focusProperties
 import com.winlator.cmod.shared.ui.outlinedSwitchColors
+import com.winlator.cmod.shared.ui.layout.isCompactWidth
 
 // Palette (mirrors DebugScreen / StoresScreen)
 private val BgDark = Color(0xFF11111C)
@@ -628,7 +629,9 @@ private fun SettingsDropdownCard(
                                 highlightColor = NavHighlight,
                                 tapToSelect = true,
                             ).padding(horizontal = 10.dp, vertical = 7.dp)
-                            .widthIn(max = 180.dp),
+                            // 180 dp opposite the weighted title/subtitle column leaves it
+                            // about 118 dp on a phone and the subtitle wraps to four lines.
+                            .widthIn(max = if (isCompactWidth()) 132.dp else 180.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -1159,7 +1162,9 @@ private fun SmallActionButton(
     Box(
         modifier =
             Modifier
-                .width(104.dp)
+                // Two of these at a fixed 104 dp sit opposite weighted label columns; a
+                // minimum lets them shrink to their text on a narrow screen instead.
+                .widthIn(min = 88.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xFF222232))
                 .border(1.dp, textColor.copy(alpha = 0.30f), RoundedCornerShape(8.dp))

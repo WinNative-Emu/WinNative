@@ -225,6 +225,7 @@ import com.winlator.cmod.shared.android.RefreshRateUtils
 import com.winlator.cmod.shared.io.StorageUtils
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.ui.CarouselView
+import com.winlator.cmod.shared.ui.layout.isCompactWidth
 import com.winlator.cmod.shared.ui.layout.isPortraitLayout
 import com.winlator.cmod.shared.ui.layout.screenWidthDp
 import com.winlator.cmod.shared.ui.dialog.PopupDialog
@@ -1249,7 +1250,8 @@ internal fun UnifiedActivity.UnifiedHub() {
             Box(
                 modifier =
                     Modifier
-                        .width(320.dp)
+                        .widthIn(max = 320.dp)
+                        .fillMaxWidth(0.9f)
                         .clip(RoundedCornerShape(20.dp))
                         .background(SurfaceDark)
                         .border(1.dp, Accent.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
@@ -1364,8 +1366,11 @@ internal fun UnifiedActivity.GlassesSettingsSheet(onDismiss: () -> Unit) {
                     Spacer(Modifier.width(10.dp))
                     Text(gm.modelName(), color = TextPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Two 'weight(1f)' columns inside a 0.82f-wide dialog leave about 130 dp each at
+                // phone width: the 60/90/120 Hz chips shrink to ~38 dp and the sliders become stubs.
+                // Stack them in portrait instead.
+                val glassesColumnA: @Composable (Modifier) -> Unit = { columnModifier ->
+                    Column(modifier = columnModifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             GlassesLabel(stringResource(R.string.glasses_panel_refresh))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1394,11 +1399,24 @@ internal fun UnifiedActivity.GlassesSettingsSheet(onDismiss: () -> Unit) {
                                 settings.threeD, Modifier.weight(1f)) { gm.set3D(it) }
                         }
                     }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                }
+                val glassesColumnB: @Composable (Modifier) -> Unit = { columnModifier ->
+                    Column(modifier = columnModifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         GlassesPercentSlider(stringResource(R.string.session_drawer_output_brightness),
                             brightness, brightnessMax) { gm.setBrightness(it) }
                         GlassesPercentSlider(stringResource(R.string.session_drawer_output_volume),
                             volume, volumeMax) { gm.setVolume(it) }
+                    }
+                }
+                if (isPortraitLayout()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        glassesColumnA(Modifier.fillMaxWidth())
+                        glassesColumnB(Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                        glassesColumnA(Modifier.weight(1f))
+                        glassesColumnB(Modifier.weight(1f))
                     }
                 }
             }
@@ -1523,6 +1541,10 @@ internal fun UnifiedActivity.TopBar(
     }
 
     val portraitTopBar = isPortraitLayout()
+    // With a controller paired, the left and right groups of the bar need more than its
+    // width at phone sizes. The badges are the least important part, so drop them there
+    // rather than letting the two groups collide.
+    val showControllerBadges = isControllerConnected && !isCompactWidth()
     val topBarWidth = screenWidthDp()
     val topBarView = androidx.compose.ui.platform.LocalView.current
     val topBarDensity = androidx.compose.ui.platform.LocalDensity.current
@@ -1625,7 +1647,7 @@ internal fun UnifiedActivity.TopBar(
                                 }
                             }
                         }
-                        if (isControllerConnected) {
+                        if (showControllerBadges) {
                             ControllerBadge(
                                 "L1",
                                 Modifier.align(Alignment.CenterStart).padding(start = 4.dp),
@@ -1669,7 +1691,7 @@ internal fun UnifiedActivity.TopBar(
                         }
                     }
                 }
-                if (isControllerConnected) {
+                if (showControllerBadges) {
                     Spacer(Modifier.width(4.dp))
                     ControllerBadge(if (isPS) "\u2261" else "Start")
                 }
@@ -1740,7 +1762,7 @@ internal fun UnifiedActivity.TopBar(
                         }
                     }
                 }
-                if (isControllerConnected) {
+                if (showControllerBadges) {
                     Spacer(Modifier.width(4.dp))
                     ControllerBadge("L3")
                 }
@@ -1787,7 +1809,7 @@ internal fun UnifiedActivity.TopBar(
                 ) {
                     Icon(Icons.Outlined.FilterList, contentDescription = "Filter", tint = Accent, modifier = Modifier.size(24.dp))
                 }
-                if (isControllerConnected) {
+                if (showControllerBadges) {
                     Spacer(Modifier.width(4.dp))
                     ControllerBadge("Select")
                 }
@@ -1806,7 +1828,7 @@ internal fun UnifiedActivity.TopBar(
                 ) {
                     Icon(Icons.Outlined.People, contentDescription = "Friends", tint = Accent, modifier = Modifier.size(24.dp))
                 }
-                if (isControllerConnected && navRightInset <= 0.dp) {
+                if (showControllerBadges && navRightInset <= 0.dp) {
                     Spacer(Modifier.width(8.dp))
                     Box(
                         modifier =
@@ -1828,7 +1850,7 @@ internal fun UnifiedActivity.TopBar(
     }
 
     val guideOverflowContent: @Composable (Modifier) -> Unit = { guideModifier ->
-        if (isControllerConnected && navRightInset > 0.dp) {
+        if (showControllerBadges && navRightInset > 0.dp) {
             Box(
                 modifier =
                     guideModifier
@@ -1861,12 +1883,25 @@ internal fun UnifiedActivity.TopBar(
                     )
                     .height(UnifiedTopBarHeight),
         ) {
-            if (!portraitTopBar) {
+            if (portraitTopBar) {
+                // Both groups used to be absolutely aligned inside this Box with no width
+                // arbitration between them, so at phone width the right group (zIndex 2)
+                // painted over the search and settings buttons. A Row makes them share the bar.
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    leftContent(Modifier.fillMaxHeight())
+                    Spacer(Modifier.weight(1f))
+                    rightContent(Modifier.fillMaxHeight())
+                }
+                guideOverflowContent(Modifier.align(Alignment.CenterEnd))
+            } else {
                 tabsContent(Modifier.align(Alignment.Center).zIndex(1f))
+                leftContent(Modifier.align(Alignment.CenterStart).fillMaxHeight())
+                rightContent(Modifier.align(Alignment.CenterEnd).fillMaxHeight().zIndex(2f))
+                guideOverflowContent(Modifier.align(Alignment.CenterEnd))
             }
-            leftContent(Modifier.align(Alignment.CenterStart).fillMaxHeight())
-            rightContent(Modifier.align(Alignment.CenterEnd).fillMaxHeight().zIndex(2f))
-            guideOverflowContent(Modifier.align(Alignment.CenterEnd))
         }
 
         if (portraitTopBar) {

@@ -63,6 +63,13 @@
 // Fewest SOR sweeps a level that still runs the solver gets.
 #define DIS_VR_SOR_FLOOR 2u
 
+// Flow resolutions at or below this (the Fast preset: 180 px on the shorter side) are cheap
+// enough per pixel to afford the Balance preset's refinement budget. Fast keeps its own pixel
+// budget; only the algorithm parameters come from Balance, because a coarse pyramid refined
+// with the minimal profile is what makes the Fast flow field look blocky.
+#define DIS_FAST_TIER_MAX_SIDE 216u
+#define DIS_FAST_TIER_MIN_RUNG 2u
+
 
 #define DIS_SET_SAMPLERS 5u
 #define DIS_SET_STORAGE 1u
@@ -670,12 +677,21 @@ typedef struct {
     uint32_t vr_levels;
 } DisRefine;
 
-static DisRefine dis_refine_for(uint32_t generations) {
-    if (generations >= 3u) {
+static DisRefine dis_refine_for(uint32_t generations, uint32_t flow_min_side) {
+    // The refinement ladder is indexed by how many frames this pass has to feed. A Fast-class
+    // flow resolution is lifted to at least the Balance rung so it never falls back to the
+    // single-level variational refinement, which is what the low pixel budget cannot hide.
+    uint32_t rung = generations;
+    if (flow_min_side != 0u && flow_min_side <= DIS_FAST_TIER_MAX_SIDE &&
+        rung < DIS_FAST_TIER_MIN_RUNG) {
+        rung = DIS_FAST_TIER_MIN_RUNG;
+    }
+
+    if (rung >= 3u) {
         const DisRefine r = {2u, 5u, 2u, DIS_MAX_LEVELS};
         return r;
     }
-    if (generations == 2u) {
+    if (rung == 2u) {
         const DisRefine r = {2u, 4u, 1u, DIS_MAX_LEVELS};
         return r;
     }
@@ -1539,7 +1555,7 @@ void vkr_dis_process(VkrDis* d, VkCommandBuffer cmd, VkImage source, uint32_t wi
 
     dis_prime_layouts(d, cmd);
 
-    const DisRefine refine = dis_refine_for(generations);
+    const DisRefine refine = dis_refine_for(generations, d->flow_min_side);
     const uint32_t L = d->levels;
     const uint32_t coarse = L - 1;
     const uint32_t w = d->built_extent.width;

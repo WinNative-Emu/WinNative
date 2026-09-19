@@ -635,11 +635,12 @@ private fun Chip(
 @Composable
 private fun SelectionPill(
     text: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Row(
         modifier =
-            Modifier
+            modifier
                 .heightIn(min = 30.dp)
                 .clip(RoundedCornerShape(InputFieldCorner))
                 .background(InputField)
@@ -659,6 +660,8 @@ private fun SelectionPill(
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            // Unweighted, a long value pushed the chevron out of a constrained pill.
+            modifier = Modifier.weight(1f, fill = false),
         )
         Spacer(Modifier.width(8.dp))
         Icon(
@@ -2013,7 +2016,9 @@ private fun <T> OptionDropdown(
     var expanded by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = InputTextSecondary, fontSize = InputPrimaryTextSize, modifier = Modifier.weight(1f))
-        Box {
+        // Unweighted, the pill was measured against the whole row first and a long enum
+        // value ('Toggle on press and release') left the label wrapping mid-word.
+        Box(Modifier.weight(1f, fill = false)) {
             SelectionPill(text = optionLabel(current), onClick = { expanded = true })
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = InputCard) {
                 options.forEach { option ->
@@ -2052,14 +2057,26 @@ private fun BindingPicker(
     var category by remember { mutableStateOf(categoryOf(binding)) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = InputTextSecondary, fontSize = InputPrimaryTextSize, modifier = Modifier.weight(1f))
-        PillDropdown(category, BindingCategory.values().toList(), { prettyEnum(it.name) }) { newCategory ->
+        // Two unweighted pills took ~250-300 dp of a ~370 dp row between them, leaving the
+        // label a few dp; weighting them caps each at a third.
+        PillDropdown(
+            category,
+            BindingCategory.values().toList(),
+            { prettyEnum(it.name) },
+            modifier = Modifier.weight(1f, fill = false),
+        ) { newCategory ->
             if (newCategory != category) {
                 category = newCategory
                 if (categoryOf(binding) != newCategory) onBinding(Binding.NONE)
             }
         }
         Spacer(Modifier.width(8.dp))
-        PillDropdown(binding, optionsFor(category), { it.toString() }) { onBinding(it) }
+        PillDropdown(
+            binding,
+            optionsFor(category),
+            { it.toString() },
+            modifier = Modifier.weight(1f, fill = false),
+        ) { onBinding(it) }
     }
 }
 
@@ -2447,6 +2464,7 @@ private fun GyroscopeCard(
                     )
                     SelectionPill(
                         text = state.gyroscopeActivatorLabel,
+                        modifier = Modifier.weight(1f, fill = false),
                         onClick = actions.onGyroscopeActivatorClick,
                     )
                 }
@@ -2711,6 +2729,7 @@ private fun SteamControllerCard(
                             Spacer(Modifier.width(8.dp))
                             SelectionPill(
                                 text = state.steamPaddleLabels.getOrNull(index) ?: "",
+                                modifier = Modifier.weight(1f, fill = false),
                                 onClick = { actions.onSteamPaddleClick(index) },
                             )
                         }

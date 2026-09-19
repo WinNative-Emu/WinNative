@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -134,13 +135,20 @@ private fun RetroCheatsScreen(
             Modifier
                 .fillMaxSize()
                 .background(ScrimColor.copy(alpha = 0.62f))
-                .windowInsetsPadding(WindowInsets.systemBars),
+                .windowInsetsPadding(WindowInsets.systemBars)
+                // The dialog is a fixed height taken from maxHeight, so without this the
+                // soft keyboard covers the name/code fields and the Save row below them.
+                .imePadding(),
         contentAlignment = Alignment.Center,
     ) {
         val dialogWidth = (maxWidth - 32.dp).coerceAtMost(560.dp)
         val dialogHeight = (maxHeight - 40.dp).coerceIn(340.dp, 680.dp)
         Surface(
-            modifier = Modifier.widthIn(min = 320.dp, max = dialogWidth).fillMaxWidth().height(dialogHeight),
+            modifier =
+                Modifier
+                    .widthIn(min = minOf(320.dp, dialogWidth), max = dialogWidth)
+                    .fillMaxWidth()
+                    .height(dialogHeight),
             shape = RoundedCornerShape(16.dp),
             color = BgDark,
             border = BorderStroke(1.dp, CardBorder),

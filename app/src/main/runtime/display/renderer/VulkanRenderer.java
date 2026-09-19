@@ -185,8 +185,30 @@ public class VulkanRenderer
         lastGuestPresentNs = System.nanoTime();
     }
 
+    // A guest present used to wake the render thread straight away. That ran composition on
+    // the guest's clock while the swapchain still presents on vsync, so the two rates beat
+    // against each other: two guest presents inside one vsync interval collapsed into a single
+    // composite (a dropped guest frame) and an interval without one repeated the previous frame.
+    // Arming the Choreographer callback instead composites at most once per vsync and in phase
+    // with it, at the cost of up to one vsync of latency before the composite starts.
     public void requestRenderImmediate() {
+        wakeSources.incrementAndGet(WAKE_GUEST_PRESENT);
+        if (!renderRequested.compareAndSet(false, true)) return;
+
+        // Posting directly is thread-safe: Choreographer forwards to its looper itself, and a
+        // handler hop here would arm past the next doFrame.
+        Choreographer choreographer = mainChoreographer;
+        if (choreographer != null) {
+            choreographer.postFrameCallback(coalescedRenderCallback);
+            return;
+        }
+        // Before the Choreographer has been bound on the main thread, fall back to the old
+        // unsynchronised wake so the first frames still reach the screen.
+        renderRequested.set(false);
         xServerView.requestRender();
+        mainHandler.post(() -> {
+            if (mainChoreographer == null) mainChoreographer = Choreographer.getInstance();
+        });
     }
 
     public long takeGuestPresentDelta() {
@@ -212,14 +234,15 @@ public class VulkanRenderer
     public static final int WAKE_WINHANDLER = 8;
     public static final int WAKE_INPUTVIEW = 9;
     public static final int WAKE_SETTING = 10;
+    public static final int WAKE_GUEST_PRESENT = 11;
     private final java.util.concurrent.atomic.AtomicLongArray wakeSources =
-            new java.util.concurrent.atomic.AtomicLongArray(11);
+            new java.util.concurrent.atomic.AtomicLongArray(12);
 
     public String takeWakeBreakdown() {
         StringBuilder sb = new StringBuilder();
         String[] names =
                 {"other", "content", "geometry", "window", "cursor", "frame", "suppressed",
-                 "pointer", "winhandler", "inputview", "setting"};
+                 "pointer", "winhandler", "inputview", "setting", "guest"};
         for (int i = 0; i < names.length; i++) {
             sb.append(' ').append(names[i]).append('=').append(wakeSources.getAndSet(i, 0));
         }

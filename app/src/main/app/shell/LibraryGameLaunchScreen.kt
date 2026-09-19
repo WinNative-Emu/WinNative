@@ -114,6 +114,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.winlator.cmod.R
 import com.winlator.cmod.shared.ui.layout.isPortraitLayout
+import com.winlator.cmod.shared.ui.layout.screenWidthDp
 import androidx.compose.runtime.CompositionLocalProvider
 import com.winlator.cmod.shared.ui.focus.controllerFocusGlow
 import com.winlator.cmod.shared.ui.outlinedSwitchColors
@@ -210,9 +211,19 @@ internal fun LibraryGameLaunchScreen(
     Box(Modifier.fillMaxSize()) {
         val edgePadding = 22.dp
         val bottomPadding = 20.dp
-        val actionIconSize = 46.dp
         val actionIconSpacing = 8.dp
-        val actionWidth = actionIconSize * actionIconCount + actionIconSpacing * (actionIconCount - 1).coerceAtLeast(0)
+        // Six icons at 46 dp plus their gaps come to 316 dp, which is exactly the room left
+        // on a 360 dp phone after the edge padding and none at all once the navigation-bar
+        // insets apply. Shrink the icons to whatever fits instead of overflowing the row.
+        val actionIconGaps = actionIconSpacing * (actionIconCount - 1).coerceAtLeast(0)
+        val actionRowMaxWidth = (screenWidthDp() - edgePadding * 2).coerceAtLeast(120.dp)
+        val actionIconSize =
+            if (actionIconCount > 0) {
+                minOf(46.dp, (actionRowMaxWidth - actionIconGaps) / actionIconCount)
+            } else {
+                46.dp
+            }
+        val actionWidth = actionIconSize * actionIconCount + actionIconGaps
         val playHeight = 56.dp
         val contentGap = 18.dp
         val horizontalNavInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)
@@ -261,19 +272,32 @@ internal fun LibraryGameLaunchScreen(
             }
         }
 
+        // The horizontal scrim is tuned for the landscape left-hand content column. In
+        // portrait the content spans the full width, so its right-hand text would sit over
+        // the transparent band and lose contrast; darken from the bottom there instead.
+        val heroScrimStops =
+            arrayOf(
+                0.0f to LaunchBlack.copy(alpha = 0.9f),
+                0.36f to LaunchBlack.copy(alpha = 0.58f),
+                0.72f to LaunchBlack.copy(alpha = 0.18f),
+                1.0f to LaunchBlack.copy(alpha = 0.62f),
+            )
         Box(
             Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.horizontalGradient(
-                        colorStops =
-                            arrayOf(
-                                0.0f to LaunchBlack.copy(alpha = 0.9f),
-                                0.36f to LaunchBlack.copy(alpha = 0.58f),
-                                0.72f to LaunchBlack.copy(alpha = 0.18f),
-                                1.0f to LaunchBlack.copy(alpha = 0.62f),
-                            ),
-                    ),
+                    if (isPortraitLayout()) {
+                        Brush.verticalGradient(
+                            colorStops =
+                                arrayOf(
+                                    0.0f to LaunchBlack.copy(alpha = 0.18f),
+                                    0.45f to LaunchBlack.copy(alpha = 0.58f),
+                                    1.0f to LaunchBlack.copy(alpha = 0.9f),
+                                ),
+                        )
+                    } else {
+                        Brush.horizontalGradient(colorStops = heroScrimStops)
+                    },
                 ),
         )
         Box(
@@ -438,7 +462,10 @@ internal fun LibraryGameLaunchScreen(
                         LaunchAltEngineToggle(
                             label = altEngineLabel,
                             checked = altEngineEnabled,
-                            width = actionWidth,
+                            // In portrait the action block already fills the width; pinning the
+                            // toggle to actionWidth clipped it on narrow phones.
+                            modifier =
+                                if (portraitHero) Modifier.fillMaxWidth() else Modifier.width(actionWidth),
                             onCheckedChange = onAltEngineChange,
                         )
                     }
@@ -666,7 +693,7 @@ internal fun LaunchDangerConfirmMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         offset = DpOffset(x = 0.dp, y = (-56).dp),
-        modifier = Modifier.width(286.dp),
+        modifier = Modifier.width(minOf(286.dp, screenWidthDp() - 32.dp)),
         shape = RoundedCornerShape(12.dp),
         containerColor = LaunchCard,
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
@@ -763,7 +790,7 @@ internal fun LaunchDangerConfirmDialog(
                 Surface(
                     modifier =
                         Modifier
-                            .width(286.dp)
+                            .width(minOf(286.dp, screenWidthDp() - 32.dp))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -1363,12 +1390,11 @@ private fun GameStatChip(
 private fun LaunchAltEngineToggle(
     label: String,
     checked: Boolean,
-    width: Dp,
+    modifier: Modifier,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .width(width)
+        modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White.copy(alpha = 0.06f))
             .clickable { onCheckedChange(!checked) }

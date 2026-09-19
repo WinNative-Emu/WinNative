@@ -425,8 +425,16 @@ class UnifiedActivity :
 
     val storeHeaderVisible = kotlinx.coroutines.flow.MutableStateFlow(true)
 
+    // Must agree with the grid itself, which uses DeviceProfileSettings.libraryColumns with the
+    // current orientation. gridColumnsForWidth ignores orientation, so on a profile that varies
+    // by orientation the controller's focus index addressed a different cell than the one drawn.
     internal val storeColumns: Int
-        get() = com.winlator.cmod.shared.ui.gridColumnsForWidth(resources.configuration.screenWidthDp)
+        get() =
+            com.winlator.cmod.app.config.DeviceProfileSettings.libraryColumns(
+                this,
+                resources.configuration.screenWidthDp,
+                resources.configuration.screenHeightDp > resources.configuration.screenWidthDp,
+            )
 
     var storeGridState: androidx.compose.foundation.lazy.grid.LazyGridState? = null
 
