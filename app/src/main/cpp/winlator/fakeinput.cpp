@@ -540,6 +540,24 @@ __attribute__((visibility("hidden"))) static bool presents_steam_virtual() {
   return known == 1;
 }
 
+// The virtual gamepad is an X-Box 360 pad, whose triggers are ABS_Z and ABS_RZ. Wine places a
+// gamepad's axes by their position among the ones it advertises, so the triggers have to sit
+// where that pad has them: as ABS_GAS and ABS_BRAKE they follow the sticks, the right stick
+// lands on the left trigger, and a released right trigger reads as the right stick held up.
+__attribute__((visibility("hidden"))) static uint16_t presented_abs_code(uint16_t code) {
+  if (!presents_steam_virtual()) return code;
+  if (code == ABS_BRAKE) return ABS_Z;
+  if (code == ABS_GAS) return ABS_RZ;
+  return code;
+}
+
+__attribute__((visibility("hidden"))) static uint16_t ring_abs_code(uint16_t code) {
+  if (!presents_steam_virtual()) return code;
+  if (code == ABS_Z) return ABS_BRAKE;
+  if (code == ABS_RZ) return ABS_GAS;
+  return code;
+}
+
 __attribute__((visibility("hidden"))) static void
 copy_slot_ioctl_string(int op, void *argp, const char *format, int event_number) {
   size_t size = _IOC_SIZE(op);
@@ -1026,8 +1044,10 @@ EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
     bitmask[ABS_Y / 8] |= (1 << (ABS_Y % 8));
     bitmask[ABS_RX / 8] |= (1 << (ABS_RX % 8));
     bitmask[ABS_RY / 8] |= (1 << (ABS_RY % 8));
-    bitmask[ABS_GAS / 8] |= (1 << (ABS_GAS % 8));
-    bitmask[ABS_BRAKE / 8] |= (1 << (ABS_BRAKE % 8));
+    for (uint16_t trigger : {ABS_GAS, ABS_BRAKE}) {
+      uint16_t code = presented_abs_code(trigger);
+      bitmask[code / 8] |= (1 << (code % 8));
+    }
     bitmask[ABS_HAT0X / 8] |= (1 << (ABS_HAT0X % 8));
     bitmask[ABS_HAT0Y / 8] |= (1 << (ABS_HAT0Y % 8));
     return copy_ioctl_bits(op, argp, bitmask);
@@ -1065,15 +1085,16 @@ EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
     Logger::log("Hooking ioctl EVIOCGABS(ABS) for event %s\n", event);
     struct input_absinfo abs_info;
     memset(&abs_info, 0, sizeof(abs_info));
-    if (number >= 0x40 && number <= 0x44) {
-      abs_info.value = 0;
-      abs_info.minimum = -32768;
-      abs_info.maximum = 32767;
-    } else if (number >= 0x49 && number <= 0x4A) {
+    uint16_t code = ring_abs_code(number - 0x40);
+    if (code == ABS_GAS || code == ABS_BRAKE) {
       abs_info.value = 0;
       abs_info.minimum = 0;
       abs_info.maximum = 255;
-    } else if (number >= 0x50 && number <= 0x51) {
+    } else if (code <= ABS_RY) {
+      abs_info.value = 0;
+      abs_info.minimum = -32768;
+      abs_info.maximum = 32767;
+    } else if (code == ABS_HAT0X || code == ABS_HAT0Y) {
       abs_info.value = 0;
       abs_info.minimum = -1;
       abs_info.maximum = 1;
@@ -1081,7 +1102,7 @@ EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
     SnapshotState snap;
     if (!wait_snapshot(controller->second, guard, snap)) return -1;
     for (int i = 0; i < 8; ++i)
-      if (kSnapshotAxisCodes[i] == number - 0x40) abs_info.value = snap.axes[i];
+      if (kSnapshotAxisCodes[i] == code) abs_info.value = snap.axes[i];
     memcpy(argp, &abs_info, std::min<size_t>(_IOC_SIZE(op), sizeof(abs_info)));
     return 0;
   } else if (type == 0x45 && number == 0x90) {
@@ -1177,8 +1198,11 @@ EXPORT ssize_t read(int fd, void *buf, size_t count) {
                                        FAKE_INPUT_RING_HEADER_SIZE;
           for (size_t i = 0; i < events; ++i) {
             size_t index = (fake.read_seq + i) % FAKE_INPUT_RING_CAPACITY;
-            memcpy(static_cast<uint8_t *>(buf) + i * FAKE_INPUT_EVENT_SIZE,
-                   ring_events + index * FAKE_INPUT_EVENT_SIZE, FAKE_INPUT_EVENT_SIZE);
+            struct input_event ev;
+            memcpy(&ev, ring_events + index * FAKE_INPUT_EVENT_SIZE, FAKE_INPUT_EVENT_SIZE);
+            if (ev.type == EV_ABS) ev.code = presented_abs_code(ev.code);
+            memcpy(static_cast<uint8_t *>(buf) + i * FAKE_INPUT_EVENT_SIZE, &ev,
+                   FAKE_INPUT_EVENT_SIZE);
           }
           // A producer can lap the reader while it copies. Discard that copy
           // instead of delivering torn/overwritten events or losing a release.
@@ -1202,6 +1226,7 @@ EXPORT ssize_t read(int fd, void *buf, size_t count) {
         ev.type = kNeutralEvents[index].type;
         ev.code = kNeutralEvents[index].code;
         ev.value = keyframe_value(fake, ev.type, ev.code);
+        if (ev.type == EV_ABS) ev.code = presented_abs_code(ev.code);
         memcpy(static_cast<uint8_t *>(buf) + i * FAKE_INPUT_EVENT_SIZE,
                &ev, FAKE_INPUT_EVENT_SIZE);
         --fake.keyframe_remaining;
