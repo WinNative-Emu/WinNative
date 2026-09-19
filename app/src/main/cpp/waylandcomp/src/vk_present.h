@@ -79,6 +79,7 @@ struct vkp_draw {
     struct vkp_image *img;
     float sx, sy, sw, sh;
     int dx, dy, dw, dh;
+    int blend;                /* translucent: composed over what is under it (blend_pass.h) */
 };
 
 // The GPU the renderer runs on ("Adreno (TM) 750"), empty before the device is up.

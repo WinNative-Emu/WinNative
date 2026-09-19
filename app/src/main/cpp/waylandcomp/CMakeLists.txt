@@ -16,6 +16,7 @@ add_library(wnwayland SHARED
         src/wl_toplevel_icon.c
         src/wl_color_mgmt.c
         src/hdr_compose.c
+        src/blend_pass.c
         src/framegen_bridge.c
         src/framegen_jni.c
         generated/color-management-v1-protocol.c

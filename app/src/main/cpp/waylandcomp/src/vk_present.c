@@ -7,6 +7,7 @@
 #include "effects_chain.h"
 #include "framegen_bridge.h"
 #include "hdr_compose.h"
+#include "blend_pass.h"
 #include "color_mgmt.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +33,8 @@ struct vkp_image {
     void *map;                /* shm images: persistently mapped linear memory */
     VkDeviceSize offset, row_pitch;
     int in_general;           /* shm images: moved from PREINITIALIZED to GENERAL */
+    VkFormat fmt;
+    int sampled;              /* created with SAMPLED usage: the alpha pass can read it */
 };
 
 static ANativeWindow *g_window;  /* the window frames go to; compositor thread only */
@@ -230,6 +233,7 @@ static void destroy_swapchain(void) {
     if (g_dev_state != 1) return;
     g_vk.DeviceWaitIdle(g_dev);
     reset_sync();
+    for (uint32_t i = 0; i < g_nimg; i++) blendp_forget_image(g_images[i]);
     if (g_swapchain) g_vk.DestroySwapchainKHR(g_dev, g_swapchain, NULL);
     g_swapchain = VK_NULL_HANDLE;
     g_swap_md_identity = 0; /* a new swapchain gets the metadata again */
@@ -525,6 +529,7 @@ static int dev_init(void) {
 
     vkp_effects_bind_device(g_dev, g_pd, &g_memprops);
     hdrc_bind_device(g_dev, &g_memprops);
+    blendp_bind_device(g_dev);
     g_dev_state = 1;
     reset_sync();
     init_black_image();
@@ -874,8 +879,8 @@ const char *vkp_modifier_name(uint64_t modifier) {
 }
 
 /* Can the driver create the image vkp_image_import_dmabuf() creates for this format+modifier
- * (2D, DRM_FORMAT_MODIFIER tiling, TRANSFER_SRC, dma-buf memory) — and import it? */
-static int modifier_importable(VkFormat fmt, uint64_t modifier) {
+ * (2D, DRM_FORMAT_MODIFIER tiling, this usage, dma-buf memory) — and import it? */
+static int modifier_importable(VkFormat fmt, uint64_t modifier, VkImageUsageFlags usage) {
     if (!g_vk.GetPhysicalDeviceImageFormatProperties2) return 1; /* can't ask; the create will tell */
     VkPhysicalDeviceExternalImageFormatInfo ext = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO,
@@ -886,7 +891,7 @@ static int modifier_importable(VkFormat fmt, uint64_t modifier) {
     VkPhysicalDeviceImageFormatInfo2 info = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2, .pNext = &mod,
         .format = fmt, .type = VK_IMAGE_TYPE_2D, .tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
-        .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT};
+        .usage = usage};
     VkExternalImageFormatProperties extp = {.sType = VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES};
     VkImageFormatProperties2 props = {.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2, .pNext = &extp};
     if (g_vk.GetPhysicalDeviceImageFormatProperties2(g_pd, &info, &props) != VK_SUCCESS) return 0;
@@ -914,7 +919,7 @@ int vkp_dmabuf_modifiers(uint32_t drm_format, uint64_t *out, int max) {
         if (m != VKP_MOD_LINEAR && m != VKP_MOD_QCOM_COMPRESSED) why = "unknown layout";
         else if (props[i].drmFormatModifierPlaneCount != 1) why = "not single-plane";
         else if (!(props[i].drmFormatModifierTilingFeatures & VK_FORMAT_FEATURE_BLIT_SRC_BIT)) why = "no blit source";
-        else if (!modifier_importable(fmt, m)) why = "not importable as a dma-buf";
+        else if (!modifier_importable(fmt, m, VK_IMAGE_USAGE_TRANSFER_SRC_BIT)) why = "not importable as a dma-buf";
         if (why) {
             LOGI("dmabuf: %c%c%c%c %s reported by the driver but not advertised: %s",
                  drm_format & 0xff, (drm_format >> 8) & 0xff, (drm_format >> 16) & 0xff,
@@ -942,6 +947,11 @@ struct vkp_image *vkp_image_import_dmabuf(int fd, uint32_t drm_format, uint64_t 
     struct vkp_image *img = calloc(1, sizeof(*img));
     if (!img) return NULL;
     img->w = w; img->h = h; img->dmabuf = 1; img->blit_dst = as_blit_dst ? 1 : 0;
+    img->fmt = drm_to_vk(drm_format);
+    /* Sampled as well where the driver says this layout can be: only then can the alpha pass read it. */
+    const VkImageUsageFlags sampled_usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    img->sampled = !as_blit_dst && g_vk.GetPhysicalDeviceImageFormatProperties2 &&
+                   modifier_importable(img->fmt, modifier, sampled_usage);
 
     VkSubresourceLayout plane = {.offset = offset, .rowPitch = stride};
     VkImageDrmFormatModifierExplicitCreateInfoEXT modInfo = {
@@ -952,10 +962,11 @@ struct vkp_image *vkp_image_import_dmabuf(int fd, uint32_t drm_format, uint64_t 
         .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT};
     VkImageCreateInfo ici = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, .pNext = &extImg,
-        .imageType = VK_IMAGE_TYPE_2D, .format = drm_to_vk(drm_format), .extent = {w, h, 1},
+        .imageType = VK_IMAGE_TYPE_2D, .format = img->fmt, .extent = {w, h, 1},
         .mipLevels = 1, .arrayLayers = 1, .samples = VK_SAMPLE_COUNT_1_BIT,
         .tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
-        .usage = as_blit_dst ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        .usage = as_blit_dst ? VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                 : img->sampled ? sampled_usage : VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE, .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
     VkResult cr = g_vk.CreateImage(g_dev, &ici, NULL, &img->image);
     if (cr != VK_SUCCESS) {
@@ -1008,18 +1019,34 @@ struct vkp_image *vkp_image_import_dmabuf(int fd, uint32_t drm_format, uint64_t 
     return img;
 }
 
+/* Whether the alpha pass can read a wl_shm image: linear B8G8R8A8, sampled with a linear filter. */
+static int shm_sampled(void) {
+    static int known;
+    if (!known) {
+        const VkFormatFeatureFlags need = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+                                          VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+        VkFormatProperties2 fp = {.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2};
+        if (g_vk.GetPhysicalDeviceFormatProperties2)
+            g_vk.GetPhysicalDeviceFormatProperties2(g_pd, VK_FORMAT_B8G8R8A8_UNORM, &fp);
+        known = (fp.formatProperties.linearTilingFeatures & need) == need ? 1 : -1;
+    }
+    return known == 1;
+}
+
 struct vkp_image *vkp_image_create_shm(int w, int h) {
     if (w <= 0 || h <= 0 || dev_init() != 0) return NULL;
 
     struct vkp_image *img = calloc(1, sizeof(*img));
     if (!img) return NULL;
     img->w = w; img->h = h;
+    img->fmt = VK_FORMAT_B8G8R8A8_UNORM;
+    img->sampled = shm_sampled();
 
     VkImageCreateInfo ici = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, .imageType = VK_IMAGE_TYPE_2D,
-        .format = VK_FORMAT_B8G8R8A8_UNORM, .extent = {w, h, 1}, .mipLevels = 1, .arrayLayers = 1,
+        .format = img->fmt, .extent = {w, h, 1}, .mipLevels = 1, .arrayLayers = 1,
         .samples = VK_SAMPLE_COUNT_1_BIT, .tiling = VK_IMAGE_TILING_LINEAR,
-        .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT, .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (img->sampled ? VK_IMAGE_USAGE_SAMPLED_BIT : 0), .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED};
     if (g_vk.CreateImage(g_dev, &ici, NULL, &img->image) != VK_SUCCESS) { free(img); return NULL; }
 
@@ -1062,6 +1089,7 @@ int vkp_image_height(const struct vkp_image *img) { return img ? img->h : 0; }
 void vkp_image_destroy(struct vkp_image *img) {
     if (!img) return;
     if (g_dev) {
+        blendp_forget_image(img->image);
         if (img->map) g_vk.UnmapMemory(g_dev, img->mem);
         if (img->image) g_vk.DestroyImage(g_dev, img->image, NULL);
         if (img->mem) g_vk.FreeMemory(g_dev, img->mem, NULL);
@@ -1111,8 +1139,22 @@ static int draw_to_scene_blit(const struct vkp_draw *d, int scene_w, int scene_h
     return map_draw(d, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, (float)scene_w, (float)scene_h, blit);
 }
 
+/* One draw onto a composition target (in TRANSFER_DST_OPTIMAL): a translucent surface through the
+ * alpha pass where that can read it, everything else - and any surface it cannot take - as a blit. */
+static void record_draw(VkCommandBuffer cmd, const struct vkp_draw *d, const VkImageBlit *blit, VkImage target,
+                        VkFormat target_fmt, int target_w, int target_h, VkFilter filter) {
+    const struct vkp_image *im = d->img;
+    if (d->blend && im->sampled &&
+        blendp_draw(cmd, im->image, im->fmt, im->w, im->h, !im->dmabuf, target, target_fmt, target_w, target_h,
+                    blit) == 0)
+        return;
+    g_vk.CmdBlitImage(cmd, im->image, im->dmabuf ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL,
+                      target, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, blit, filter);
+}
+
 static void destroy_scene_image(void) {
     if (g_scene.img) hdrc_forget_image(g_scene.img); /* the HDR pass may have drawn into it */
+    if (g_scene.img) blendp_forget_image(g_scene.img);
     if (g_scene.img) g_vk.DestroyImage(g_dev, g_scene.img, NULL);
     if (g_scene.mem) g_vk.FreeMemory(g_dev, g_scene.mem, NULL);
     memset(&g_scene, 0, sizeof(g_scene));
@@ -1150,6 +1192,7 @@ static int ensure_scene_image(int w, int h) {
 static int ensure_img(struct vkp_img_slot *s, int w, int h, VkFormat fmt, VkImageUsageFlags usage, const char *what) {
     if (s->img && s->w == w && s->h == h && s->fmt == fmt) return 0;
     if (s->img) hdrc_forget_image(s->img);
+    if (s->img) blendp_forget_image(s->img);
     if (s->img) g_vk.DestroyImage(g_dev, s->img, NULL);
     if (s->mem) g_vk.FreeMemory(g_dev, s->mem, NULL);
     memset(s, 0, sizeof(*s));
@@ -1190,7 +1233,8 @@ static int compose_hdr(VkCommandBuffer cmd, const struct vkp_draw *draws, int n,
                        int scene_w, int scene_h, VkImage out, VkFormat out_fmt, enum hdrc_mode mode) {
     if (!hf || !hf->is_hdr || n <= 0) return -1;
     if (ensure_img(&g_mixed, scene_w, scene_h, HDR_FMT,
-                   VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                   VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                    "HDR composition (mixed)") != 0)
         return -1;
     VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
@@ -1214,9 +1258,7 @@ static int compose_hdr(VkCommandBuffer cmd, const struct vkp_draw *draws, int n,
         VkImageBlit blit;
         if (!draws[i].img || !draw_to_scene_blit(&draws[i], scene_w, scene_h, &blit)) continue;
         /* A blit converts UNORM to UNORM by value: 8-bit sRGB and 10-bit PQ both land unchanged. */
-        g_vk.CmdBlitImage(cmd, draws[i].img->image,
-                          draws[i].img->dmabuf ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL,
-                          g_mixed.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+        record_draw(cmd, &draws[i], &blit, g_mixed.img, HDR_FMT, scene_w, scene_h, VK_FILTER_LINEAR);
         if (hf->is_hdr[i] && lowest_hdr < 0) lowest_hdr = i;
     }
     static int truncated_said;
@@ -1249,6 +1291,7 @@ static void device_lost(const char *where) {
     vkp_framegen_device_lost();
     wnc_log("error", "GPU device lost (VK_ERROR_DEVICE_LOST in %s): the compositor has stopped presenting; "
                "restart the session", where);
+    for (uint32_t i = 0; i < g_nimg; i++) blendp_forget_image(g_images[i]);
     if (g_swapchain) g_vk.DestroySwapchainKHR(g_dev, g_swapchain, NULL);
     g_swapchain = VK_NULL_HANDLE;
     if (g_surface) g_vk.DestroySurfaceKHR(g_inst, g_surface, NULL);
@@ -1547,6 +1590,7 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
     VkCommandBufferBeginInfo bi = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
     g_vk.BeginCommandBuffer(cmd, &bi);
+    blendp_begin_frame();
     VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
     /* Source images: take dmabufs from the client's queue family, move shm images to
@@ -1600,7 +1644,7 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
     if (!(hf && pass)) {
         for (int i = n - 1; i >= 0 && !covered; i--) {
             const struct vkp_draw *d = &draws[i];
-            if (!d->img || d->dx > 0 || d->dy > 0 || d->dx + d->dw < scene_w || d->dy + d->dh < scene_h) continue;
+            if (!d->img || d->blend || d->dx > 0 || d->dy > 0 || d->dx + d->dw < scene_w || d->dy + d->dh < scene_h) continue;
             covered = pass ? draw_to_scene_blit(d, scene_w, scene_h, &cover_blit) : draw_to_blit(d, &cover_blit);
         }
     }
@@ -1633,10 +1677,9 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
         VkImageBlit blit;
         if (!draws[i].img) continue;
         if (pass ? !draw_to_scene_blit(&draws[i], scene_w, scene_h, &blit) : !draw_to_blit(&draws[i], &blit)) continue;
-        g_vk.CmdBlitImage(cmd, draws[i].img->image,
-                          draws[i].img->dmabuf ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL,
-                          target, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit,
-                          pass ? VK_FILTER_LINEAR : blit_filter);
+        record_draw(cmd, &draws[i], &blit, target, pass ? scene_fmt : g_swap_fmt,
+                    pass ? scene_w : (int)g_extent.width, pass ? scene_h : (int)g_extent.height,
+                    pass ? VK_FILTER_LINEAR : blit_filter);
         drawn++;
     }
 
@@ -1971,6 +2014,7 @@ static int pass_begin_impl(int scene_w, int scene_h, const struct vkp_draw *draw
     VkCommandBufferBeginInfo bi = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
     g_vk.BeginCommandBuffer(cmd, &bi);
+    blendp_begin_frame();
     VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
     /* Same acquisition as vkp_render's compositor pass: the sources come from the client's queue
@@ -2030,9 +2074,8 @@ static int pass_begin_impl(int scene_w, int scene_h, const struct vkp_draw *draw
         for (int i = 0; i < n; i++) {
             VkImageBlit blit;
             if (!draws[i].img || !draw_to_scene_blit(&draws[i], scene_w, scene_h, &blit)) continue;
-            g_vk.CmdBlitImage(cmd, draws[i].img->image,
-                              draws[i].img->dmabuf ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL,
-                              g_scene.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+            record_draw(cmd, &draws[i], &blit, g_scene.img, VK_FORMAT_R8G8B8A8_UNORM, scene_w, scene_h,
+                        VK_FILTER_LINEAR);
         }
         if (vkp_effects_active()) vkp_effects_set_formats(VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM);
     }
