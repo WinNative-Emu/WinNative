@@ -164,7 +164,9 @@ import com.winlator.cmod.feature.library.LibraryItemType
 import com.winlator.cmod.feature.library.LibraryStoreLinks
 import com.winlator.cmod.feature.library.LibraryStoreOption
 import com.winlator.cmod.feature.library.LibraryStoreTransfer
+import com.winlator.cmod.feature.library.LinuxApps
 import com.winlator.cmod.feature.settings.InputControlsFragment
+import com.winlator.cmod.feature.stores.steam.enums.AppType
 import com.winlator.cmod.feature.settings.LinuxClientDialog
 import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.feature.settings.SettingsFocusZone
@@ -2110,7 +2112,14 @@ internal fun UnifiedActivity.LibraryCarousel(
                                 SteamApp(
                                     id = customId,
                                     name = displayName,
-                                    type = LibraryItemType.of(shortcut).appType,
+                                    // The Steam client is how its games are reached, so it shows with
+                                    // them rather than behind the Applications filter, which starts off.
+                                    type =
+                                        if (LinuxApps.isSteamClientShortcut(shortcut)) {
+                                            AppType.game
+                                        } else {
+                                            LibraryItemType.of(shortcut).appType
+                                        },
                                     developer = "Custom",
                                     gameDir = gameDir,
                                 )
