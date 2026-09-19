@@ -369,7 +369,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status) {
       const unsigned long default_ptrace_options =
           (PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK |
            PTRACE_O_TRACEVFORKDONE | PTRACE_O_TRACEEXEC | PTRACE_O_TRACECLONE |
-           PTRACE_O_TRACEEXIT);
+           PTRACE_O_TRACEEXIT | PTRACE_O_EXITKILL);
 
       /* Distinguish some events from others and
        * automatically trace each new process with

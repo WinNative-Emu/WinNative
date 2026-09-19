@@ -132,6 +132,11 @@
 #ifndef PTRACE_O_TRACEEXIT
 #define PTRACE_O_TRACEEXIT 0x00000040
 #endif
+/* A tracee that outlives the tracer keeps the seccomp filter with nobody to answer
+ * it: every filtered syscall fails with ENOSYS and the process spins for good. */
+#ifndef PTRACE_O_EXITKILL
+#define PTRACE_O_EXITKILL 0x00100000
+#endif
 #ifndef PTRACE_O_TRACESECCOMP
 #define PTRACE_O_TRACESECCOMP 0x00000080
 #endif
