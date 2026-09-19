@@ -243,7 +243,7 @@
     <string name="library_games_select_exe_provide_name">选择 exe 文件并输入名称</string>
     <string name="library_games_sign_in_prompt">登录商店或添加自定义游戏来构建您的游戏库。</string>
     <string name="library_games_add_title">添加游戏或应用</string>
-    <string name="library_games_add_linux_steam">添加 Linux Steam 客户端</string>
+    <string name="library_games_add_linux_steam">添加 Steam 客户端</string>
     <string name="library_games_type">类型</string>
     <string name="library_games_type_game">游戏</string>
     <string name="library_games_type_app">应用</string>

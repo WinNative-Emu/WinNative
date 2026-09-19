@@ -12,7 +12,6 @@ import com.winlator.cmod.feature.library.LinuxApps
 import com.winlator.cmod.runtime.container.Container
 import com.winlator.cmod.runtime.container.ContainerCreation
 import com.winlator.cmod.runtime.container.ContainerManager
-import com.winlator.cmod.runtime.content.ContentProfile
 import com.winlator.cmod.runtime.content.ContentsManager
 import com.winlator.cmod.runtime.display.environment.ImageFs
 import com.winlator.cmod.shared.io.FileUtils
@@ -98,10 +97,7 @@ object LinuxClientInstaller {
 
     /** Worker thread. */
     fun isInstalled(context: Context): Boolean =
-        LinuxRuntime.isInstalled(context) && isSteamInstalled(context) && gamescopeContainer(context) != null
-
-    /** Worker thread. Whether the runtime and the client are on disk, so an install only has the container left to make. */
-    fun isDownloaded(context: Context): Boolean = LinuxRuntime.isInstalled(context) && isSteamInstalled(context)
+        LinuxRuntime.isInstalled(context) && isSteamInstalled(context) && !LinuxApps.isSteamShortcutMissing(context)
 
     /** Reads what is on disk, off the calling thread, unless an install is running. */
     fun refresh(context: Context) {
@@ -134,7 +130,7 @@ object LinuxClientInstaller {
                 FileUtils.delete(work)
                 if (!work.mkdirs()) throw IOException("Could not create $work")
                 // Checked first, so a device that cannot hold the container is told before the download.
-                if (gamescopeContainer(context) == null) requireContainerRuntime(context)
+                if (gamescopeContainer(context) == null) requireSystemImage(context)
                 if (!LinuxRuntime.isInstalled(context)) installRuntime(context, work)
                 if (!isSteamInstalled(context)) installSteam(context, work)
                 addToLibrary(context)
@@ -239,15 +235,9 @@ object LinuxClientInstaller {
 
     private fun gamescopeContainer(context: Context): Container? = LinuxApps.gamescopeContainer(ContainerManager(context))
 
-    /** What creating the GameScope container needs: the system image and a Wine or Proton to build it from. */
-    private fun requireContainerRuntime(context: Context): Pair<ContentsManager, ContentProfile> {
+    /** Containers live in the system image, so the GameScope container cannot be made without it. */
+    private fun requireSystemImage(context: Context) {
         if (!ImageFs.find(context).isUpToDate) throw BlockedException(R.string.setup_wizard_system_image_not_installed)
-        val contents = ContentsManager(context)
-        contents.syncContents()
-        val runtime =
-            ContainerCreation.newestInstalledRuntime(contents)
-                ?: throw BlockedException(R.string.container_no_wine_installed)
-        return contents to runtime
     }
 
     /** Creates the GameScope container if there is none and makes sure it carries the Steam entry. */
@@ -256,7 +246,10 @@ object LinuxClientInstaller {
         val manager = ContainerManager(context)
         val container =
             LinuxApps.gamescopeContainer(manager) ?: run {
-                val (contents, runtime) = requireContainerRuntime(context)
+                requireSystemImage(context)
+                val contents = ContentsManager(context)
+                contents.syncContents()
+                val runtime = ContainerCreation.newestInstalledRuntime(contents)
                 ContainerCreation.createGamescopeContainer(context, manager, contents, runtime)
                     ?: throw BlockedException(R.string.containers_gamescope_create_failed)
             }

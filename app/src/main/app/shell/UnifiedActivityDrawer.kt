@@ -818,11 +818,10 @@ internal fun UnifiedActivity.AddCustomGameDialog(
             val container = LinuxApps.gamescopeContainer(ContainerManager(context))
             if (container == null) {
                 // The entry lives in the GameScope container, which the Linux Client install creates.
-                val downloaded = LinuxClientInstaller.isDownloaded(context)
                 withContext(Dispatchers.Main) {
                     isAdding = false
                     onDismiss()
-                    if (downloaded) LinuxClientInstaller.start(context)
+                    LinuxClientInstaller.start(context)
                     onInstallLinuxClient()
                 }
                 return@launch

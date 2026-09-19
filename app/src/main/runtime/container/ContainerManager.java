@@ -220,6 +220,37 @@ public class ContainerManager {
             });
   }
 
+  /**
+   * A container without a Wine prefix, for the GameScope runtime: its sessions never start Wine,
+   * so it only holds settings and library entries and needs no Wine or Proton to be installed.
+   */
+  public Container createPrefixlessContainer(JSONObject data) {
+    try {
+      int id = maxContainerId + 1;
+      File containerDir = new File(homeDir, ImageFs.USER + "-" + id);
+      while (containerDir.exists()) {
+        id++;
+        containerDir = new File(homeDir, ImageFs.USER + "-" + id);
+      }
+      data.put("id", id);
+      Container container = new Container(id, this);
+      container.setRootDir(containerDir);
+      container.loadData(data);
+      File desktopDir = container.getDesktopDir();
+      if (!desktopDir.isDirectory() && !desktopDir.mkdirs()) {
+        FileUtils.delete(containerDir);
+        return null;
+      }
+      container.saveData();
+      maxContainerId = Math.max(maxContainerId, id);
+      containers.add(container);
+      return container;
+    } catch (Throwable e) {
+      Log.e("ContainerManager", "Error creating prefixless container", e);
+    }
+    return null;
+  }
+
   public Container createContainer(JSONObject data, ContentsManager contentsManager) {
     try {
       int id = maxContainerId + 1;

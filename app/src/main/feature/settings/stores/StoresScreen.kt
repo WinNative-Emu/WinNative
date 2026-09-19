@@ -218,7 +218,10 @@ fun StoresScreen(
                         label = stringResource(R.string.linux_client_button),
                         textColor = if (installed) StatusGreen else Accent,
                         icon = if (installed) Icons.Outlined.Check else Icons.Outlined.ArrowDownward,
-                        onClick = { linuxClientDialog = true },
+                        onClick = {
+                            if (!installed) LinuxClientInstaller.start(context)
+                            linuxClientDialog = true
+                        },
                     )
                 },
             )

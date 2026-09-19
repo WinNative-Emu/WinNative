@@ -111,10 +111,6 @@ class ContainersFragment : Fragment() {
         val contentsManager = ContentsManager(context)
         contentsManager.syncContents()
         val runtime = ContainerCreation.newestInstalledRuntime(contentsManager)
-        if (runtime == null) {
-            WinToast.show(context, R.string.container_no_wine_installed, Toast.LENGTH_LONG)
-            return
-        }
         val creatingPopup = ContainerProgressPopup(requireActivity(), R.string.containers_list_creating)
         creatingPopup.show()
         ContainerCreation.createGamescopeContainerAsync(context, manager, contentsManager, runtime) { created ->

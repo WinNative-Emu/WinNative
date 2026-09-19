@@ -243,7 +243,7 @@
     <string name="library_games_select_exe_provide_name">Selecteaza un exe si introdu un nume</string>
     <string name="library_games_sign_in_prompt">Autentifica-te intr-un magazin sau adauga un joc personalizat pentru a-ti construi biblioteca.</string>
     <string name="library_games_add_title">Adaugă joc sau aplicație</string>
-    <string name="library_games_add_linux_steam">Adaugă Client Steam pentru Linux</string>
+    <string name="library_games_add_linux_steam">Adaugă clientul Steam</string>
     <string name="library_games_type">Tip</string>
     <string name="library_games_type_game">Joc</string>
     <string name="library_games_type_app">Aplicație</string>

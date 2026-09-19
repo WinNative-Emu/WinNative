@@ -9795,6 +9795,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private boolean ensureRequestedWineVersionInstalled() {
+        // A GameScope session starts the Linux runtime and never Wine.
+        if (container.isGamescopeRuntime() && !isDependencyInstall && WineWaylandSupport.isAdrenoDevice(this)) {
+            return true;
+        }
         if (SetupWizardActivity.isWineVersionInstalled(this, wineVersion)) {
             return true;
         }

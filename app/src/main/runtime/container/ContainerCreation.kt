@@ -273,7 +273,7 @@ object ContainerCreation {
         context: Context,
         containerManager: ContainerManager,
         contentsManager: ContentsManager,
-        runtime: ContentProfile,
+        runtime: ContentProfile?,
         callback: Callback<Container?>,
     ) {
         val handler = Handler(Looper.getMainLooper())
@@ -283,17 +283,27 @@ object ContainerCreation {
         }.start()
     }
 
-    /** Worker thread. [createGamescopeContainerAsync] without the thread; null when creation fails. */
+    /**
+     * Worker thread. [createGamescopeContainerAsync] without the thread; null when creation fails.
+     * Without a [runtime] the container gets no Wine prefix, which its sessions never use.
+     */
     @JvmStatic
     fun createGamescopeContainer(
         context: Context,
         containerManager: ContainerManager,
         contentsManager: ContentsManager,
-        runtime: ContentProfile,
+        runtime: ContentProfile?,
     ): Container? {
         val name = uniqueName(containerManager, GAMESCOPE_CONTAINER_NAME)
-        val data = buildLaunchReadyData(context, contentsManager, name, ContentsManager.getEntryName(runtime))
-        val container = containerManager.createContainer(data, contentsManager) ?: return null
+        val created =
+            if (runtime != null) {
+                val data = buildLaunchReadyData(context, contentsManager, name, ContentsManager.getEntryName(runtime))
+                containerManager.createContainer(data, contentsManager)
+            } else {
+                val data = buildLaunchReadyData(context, contentsManager, name, WineInfo.MAIN_WINE_VERSION.identifier())
+                containerManager.createPrefixlessContainer(data)
+            }
+        val container = created ?: return null
         applyLaunchReadyDefaults(context, contentsManager, container)
         container.setRuntime(Container.RUNTIME_GAMESCOPE)
         container.setDisplayBackend(Container.DISPLAY_BACKEND_WAYLAND)

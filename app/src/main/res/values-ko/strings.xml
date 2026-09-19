@@ -243,7 +243,7 @@
     <string name="library_games_select_exe_provide_name">exe를 선택하고 이름을 입력하세요</string>
     <string name="library_games_sign_in_prompt">스토어에 로그인하거나 사용자 지정 게임을 추가하여 라이브러리를 구성하세요.</string>
     <string name="library_games_add_title">게임 또는 앱 추가</string>
-    <string name="library_games_add_linux_steam">Linux Steam 클라이언트 추가</string>
+    <string name="library_games_add_linux_steam">Steam 클라이언트 추가</string>
     <string name="library_games_type">유형</string>
     <string name="library_games_type_game">게임</string>
     <string name="library_games_type_app">앱</string>

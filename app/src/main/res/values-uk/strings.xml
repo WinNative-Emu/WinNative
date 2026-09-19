@@ -247,7 +247,7 @@
     <string name="library_games_select_exe_provide_name">Виберіть exe та вкажіть назву</string>
     <string name="library_games_sign_in_prompt">Увійдіть до магазину або додайте користувацьку гру, щоб побудувати свою бібліотеку.</string>
     <string name="library_games_add_title">Додати гру або застосунок</string>
-    <string name="library_games_add_linux_steam">Додати Клієнт Steam для Linux</string>
+    <string name="library_games_add_linux_steam">Додати клієнт Steam</string>
     <string name="library_games_type">Тип</string>
     <string name="library_games_type_game">Гра</string>
     <string name="library_games_type_app">Застосунок</string>
