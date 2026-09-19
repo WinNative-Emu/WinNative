@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Percorsi di archiviazione</string>
     <string name="common_ui_app_storage">Memoria dell\'app</string>
     <string name="common_ui_move">Sposta</string>
-    <string name="library_games_move_game">Sposta gioco</string>
-    <string name="library_games_move_to_app_storage_title">Sposta nella memoria dell\'app</string>
-    <string name="library_games_move_to_download_folder_title">Sposta nella cartella dei download</string>
-    <string name="library_games_move_to_app_storage_confirm">Spostare %1$s nella memoria dell\'app? Il client Steam nativo può avviare un gioco solo da lì.</string>
-    <string name="library_games_move_to_download_folder_confirm">Riportare %1$s nella cartella dei download? Il client Steam nativo non potrà più avviarlo.</string>
+    <string name="library_games_move_to_app_storage_title">Sposta in interna</string>
+    <string name="library_games_move_to_download_folder_title">Sposta in esterna</string>
+    <string name="library_games_move_to_app_storage_confirm">Spostare %1$s nella memoria interna?</string>
+    <string name="library_games_move_to_download_folder_confirm">Spostare %1$s nella memoria esterna?</string>
     <string name="library_games_moving">Spostamento del gioco</string>
     <string name="library_games_move_done">%1$s spostato</string>
     <string name="library_games_move_failed">Impossibile spostare %1$s</string>

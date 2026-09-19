@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Lagringsrötter</string>
     <string name="common_ui_app_storage">Applagring</string>
     <string name="common_ui_move">Flytta</string>
-    <string name="library_games_move_game">Flytta spel</string>
-    <string name="library_games_move_to_app_storage_title">Flytta till applagring</string>
-    <string name="library_games_move_to_download_folder_title">Flytta till nedladdningsmappen</string>
-    <string name="library_games_move_to_app_storage_confirm">Flytta %1$s till appens eget lagring? Den nativa Steam-klienten kan bara köra ett spel därifrån.</string>
-    <string name="library_games_move_to_download_folder_confirm">Flytta %1$s tillbaka till nedladdningsmappen? Den nativa Steam-klienten kan då inte köra det.</string>
+    <string name="library_games_move_to_app_storage_title">Flytta till intern</string>
+    <string name="library_games_move_to_download_folder_title">Flytta till extern</string>
+    <string name="library_games_move_to_app_storage_confirm">Flytta %1$s till intern lagring?</string>
+    <string name="library_games_move_to_download_folder_confirm">Flytta %1$s till extern lagring?</string>
     <string name="library_games_moving">Flyttar spelet</string>
     <string name="library_games_move_done">%1$s har flyttats</string>
     <string name="library_games_move_failed">Kunde inte flytta %1$s</string>

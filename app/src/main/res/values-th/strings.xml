@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">รูทที่เก็บข้อมูล</string>
     <string name="common_ui_app_storage">ที่เก็บข้อมูลของแอป</string>
     <string name="common_ui_move">ย้าย</string>
-    <string name="library_games_move_game">ย้ายเกม</string>
-    <string name="library_games_move_to_app_storage_title">ย้ายไปยังที่เก็บข้อมูลของแอป</string>
-    <string name="library_games_move_to_download_folder_title">ย้ายไปยังโฟลเดอร์ดาวน์โหลด</string>
-    <string name="library_games_move_to_app_storage_confirm">ย้าย %1$s ไปยังที่เก็บข้อมูลของแอปหรือไม่ ไคลเอ็นต์ Steam แบบเนทีฟเรียกใช้เกมได้จากที่นั่นเท่านั้น</string>
-    <string name="library_games_move_to_download_folder_confirm">ย้าย %1$s กลับไปยังโฟลเดอร์ดาวน์โหลดหรือไม่ ไคลเอ็นต์ Steam แบบเนทีฟจะเรียกใช้ไม่ได้อีก</string>
+    <string name="library_games_move_to_app_storage_title">ย้ายไปภายใน</string>
+    <string name="library_games_move_to_download_folder_title">ย้ายไปภายนอก</string>
+    <string name="library_games_move_to_app_storage_confirm">ย้าย %1$s ไปยังที่เก็บข้อมูลภายในหรือไม่</string>
+    <string name="library_games_move_to_download_folder_confirm">ย้าย %1$s ไปยังที่เก็บข้อมูลภายนอกหรือไม่</string>
     <string name="library_games_moving">กำลังย้ายเกม</string>
     <string name="library_games_move_done">ย้าย %1$s แล้ว</string>
     <string name="library_games_move_failed">ย้าย %1$s ไม่สำเร็จ</string>

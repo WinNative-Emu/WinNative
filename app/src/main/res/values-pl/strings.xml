@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Lokalizacje pamięci</string>
     <string name="common_ui_app_storage">Pamięć aplikacji</string>
     <string name="common_ui_move">Przenieś</string>
-    <string name="library_games_move_game">Przenieś grę</string>
-    <string name="library_games_move_to_app_storage_title">Przenieś do pamięci aplikacji</string>
-    <string name="library_games_move_to_download_folder_title">Przenieś do folderu pobierania</string>
-    <string name="library_games_move_to_app_storage_confirm">Przenieść %1$s do pamięci aplikacji? Natywny klient Steam może uruchomić grę tylko stamtąd.</string>
-    <string name="library_games_move_to_download_folder_confirm">Przenieść %1$s z powrotem do folderu pobierania? Natywny klient Steam nie będzie mógł jej uruchomić.</string>
+    <string name="library_games_move_to_app_storage_title">Przenieś do wewnętrznej</string>
+    <string name="library_games_move_to_download_folder_title">Przenieś do zewnętrznej</string>
+    <string name="library_games_move_to_app_storage_confirm">Przenieść %1$s do pamięci wewnętrznej?</string>
+    <string name="library_games_move_to_download_folder_confirm">Przenieść %1$s do pamięci zewnętrznej?</string>
     <string name="library_games_moving">Przenoszenie gry</string>
     <string name="library_games_move_done">Przeniesiono %1$s</string>
     <string name="library_games_move_failed">Nie udało się przenieść %1$s</string>

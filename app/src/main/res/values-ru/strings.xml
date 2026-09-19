@@ -152,11 +152,10 @@
     <string name="common_ui_storage_roots">Корни хранилища</string>
     <string name="common_ui_app_storage">Хранилище приложения</string>
     <string name="common_ui_move">Переместить</string>
-    <string name="library_games_move_game">Переместить игру</string>
-    <string name="library_games_move_to_app_storage_title">Переместить в хранилище приложения</string>
-    <string name="library_games_move_to_download_folder_title">Переместить в папку загрузок</string>
-    <string name="library_games_move_to_app_storage_confirm">Переместить %1$s в хранилище приложения? Нативный клиент Steam может запустить игру только оттуда.</string>
-    <string name="library_games_move_to_download_folder_confirm">Переместить %1$s обратно в папку загрузок? Нативный клиент Steam больше не сможет её запустить.</string>
+    <string name="library_games_move_to_app_storage_title">Переместить во внутреннюю</string>
+    <string name="library_games_move_to_download_folder_title">Переместить во внешнюю</string>
+    <string name="library_games_move_to_app_storage_confirm">Переместить %1$s во внутреннее хранилище?</string>
+    <string name="library_games_move_to_download_folder_confirm">Переместить %1$s во внешнее хранилище?</string>
     <string name="library_games_moving">Перемещение игры</string>
     <string name="library_games_move_done">%1$s перемещена</string>
     <string name="library_games_move_failed">Не удалось переместить %1$s</string>

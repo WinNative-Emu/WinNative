@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Lagringsrødder</string>
     <string name="common_ui_app_storage">App-lager</string>
     <string name="common_ui_move">Flyt</string>
-    <string name="library_games_move_game">Flyt spil</string>
-    <string name="library_games_move_to_app_storage_title">Flyt til app-lager</string>
-    <string name="library_games_move_to_download_folder_title">Flyt til downloadmappen</string>
-    <string name="library_games_move_to_app_storage_confirm">Flyt %1$s til appens eget lager? Den native Steam-klient kan kun køre et spil derfra.</string>
-    <string name="library_games_move_to_download_folder_confirm">Flyt %1$s tilbage til downloadmappen? Den native Steam-klient vil ikke længere kunne køre det.</string>
+    <string name="library_games_move_to_app_storage_title">Flyt til intern</string>
+    <string name="library_games_move_to_download_folder_title">Flyt til ekstern</string>
+    <string name="library_games_move_to_app_storage_confirm">Flyt %1$s til internt lager?</string>
+    <string name="library_games_move_to_download_folder_confirm">Flyt %1$s til eksternt lager?</string>
     <string name="library_games_moving">Flytter spillet</string>
     <string name="library_games_move_done">%1$s er flyttet</string>
     <string name="library_games_move_failed">Kunne ikke flytte %1$s</string>

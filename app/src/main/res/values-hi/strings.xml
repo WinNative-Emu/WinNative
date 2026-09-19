@@ -152,11 +152,10 @@
     <string name="common_ui_storage_roots">स्टोरेज रूट</string>
     <string name="common_ui_app_storage">ऐप स्टोरेज</string>
     <string name="common_ui_move">ले जाएँ</string>
-    <string name="library_games_move_game">गेम ले जाएँ</string>
-    <string name="library_games_move_to_app_storage_title">ऐप स्टोरेज में ले जाएँ</string>
-    <string name="library_games_move_to_download_folder_title">डाउनलोड फ़ोल्डर में ले जाएँ</string>
-    <string name="library_games_move_to_app_storage_confirm">%1$s को ऐप के अपने स्टोरेज में ले जाएँ? नेटिव Steam क्लाइंट गेम केवल वहीं से चला सकता है।</string>
-    <string name="library_games_move_to_download_folder_confirm">%1$s को वापस डाउनलोड फ़ोल्डर में ले जाएँ? नेटिव Steam क्लाइंट इसे फिर नहीं चला पाएगा।</string>
+    <string name="library_games_move_to_app_storage_title">इंटरनल में ले जाएँ</string>
+    <string name="library_games_move_to_download_folder_title">एक्सटर्नल में ले जाएँ</string>
+    <string name="library_games_move_to_app_storage_confirm">%1$s को इंटरनल स्टोरेज में ले जाएँ?</string>
+    <string name="library_games_move_to_download_folder_confirm">%1$s को एक्सटर्नल स्टोरेज में ले जाएँ?</string>
     <string name="library_games_moving">गेम ले जाया जा रहा है</string>
     <string name="library_games_move_done">%1$s ले जाया गया</string>
     <string name="library_games_move_failed">%1$s को ले जाया नहीं जा सका</string>

@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Emplacements de stockage</string>
     <string name="common_ui_app_storage">Stockage de l\'application</string>
     <string name="common_ui_move">Déplacer</string>
-    <string name="library_games_move_game">Déplacer le jeu</string>
-    <string name="library_games_move_to_app_storage_title">Déplacer vers le stockage de l\'application</string>
-    <string name="library_games_move_to_download_folder_title">Déplacer vers le dossier de téléchargement</string>
-    <string name="library_games_move_to_app_storage_confirm">Déplacer %1$s vers le stockage de l\'application ? Le client Steam natif ne peut lancer un jeu que depuis cet emplacement.</string>
-    <string name="library_games_move_to_download_folder_confirm">Redéplacer %1$s vers le dossier de téléchargement ? Le client Steam natif ne pourra plus le lancer.</string>
+    <string name="library_games_move_to_app_storage_title">Déplacer vers l\'interne</string>
+    <string name="library_games_move_to_download_folder_title">Déplacer vers l\'externe</string>
+    <string name="library_games_move_to_app_storage_confirm">Déplacer %1$s vers le stockage interne ?</string>
+    <string name="library_games_move_to_download_folder_confirm">Déplacer %1$s vers le stockage externe ?</string>
     <string name="library_games_moving">Déplacement du jeu</string>
     <string name="library_games_move_done">%1$s déplacé</string>
     <string name="library_games_move_failed">Impossible de déplacer %1$s</string>

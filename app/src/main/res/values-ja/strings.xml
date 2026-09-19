@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">ストレージのルート</string>
     <string name="common_ui_app_storage">アプリストレージ</string>
     <string name="common_ui_move">移動</string>
-    <string name="library_games_move_game">ゲームを移動</string>
-    <string name="library_games_move_to_app_storage_title">アプリストレージへ移動</string>
-    <string name="library_games_move_to_download_folder_title">ダウンロードフォルダーへ移動</string>
-    <string name="library_games_move_to_app_storage_confirm">%1$s をアプリ専用ストレージへ移動しますか？ネイティブ Steam クライアントはそこからしかゲームを実行できません。</string>
-    <string name="library_games_move_to_download_folder_confirm">%1$s をダウンロードフォルダーへ戻しますか？ネイティブ Steam クライアントでは実行できなくなります。</string>
+    <string name="library_games_move_to_app_storage_title">内部へ移動</string>
+    <string name="library_games_move_to_download_folder_title">外部へ移動</string>
+    <string name="library_games_move_to_app_storage_confirm">%1$s を内部ストレージへ移動しますか？</string>
+    <string name="library_games_move_to_download_folder_confirm">%1$s を外部ストレージへ移動しますか？</string>
     <string name="library_games_moving">ゲームを移動しています</string>
     <string name="library_games_move_done">%1$s を移動しました</string>
     <string name="library_games_move_failed">%1$s を移動できませんでした</string>

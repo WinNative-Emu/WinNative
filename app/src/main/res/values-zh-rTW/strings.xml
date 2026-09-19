@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">儲存根目錄</string>
     <string name="common_ui_app_storage">應用程式儲存空間</string>
     <string name="common_ui_move">移動</string>
-    <string name="library_games_move_game">移動遊戲</string>
-    <string name="library_games_move_to_app_storage_title">移動到應用程式儲存空間</string>
-    <string name="library_games_move_to_download_folder_title">移動到下載資料夾</string>
-    <string name="library_games_move_to_app_storage_confirm">將 %1$s 移動到應用程式自有儲存空間？原生 Steam 用戶端只能從該處執行遊戲。</string>
-    <string name="library_games_move_to_download_folder_confirm">將 %1$s 移回下載資料夾？原生 Steam 用戶端將無法再執行它。</string>
+    <string name="library_games_move_to_app_storage_title">移至內部</string>
+    <string name="library_games_move_to_download_folder_title">移至外部</string>
+    <string name="library_games_move_to_app_storage_confirm">將 %1$s 移至內部儲存空間？</string>
+    <string name="library_games_move_to_download_folder_confirm">將 %1$s 移至外部儲存空間？</string>
     <string name="library_games_moving">正在移動遊戲</string>
     <string name="library_games_move_done">已移動 %1$s</string>
     <string name="library_games_move_failed">無法移動 %1$s</string>

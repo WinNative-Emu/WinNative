@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Depolama Kökleri</string>
     <string name="common_ui_app_storage">Uygulama depolaması</string>
     <string name="common_ui_move">Taşı</string>
-    <string name="library_games_move_game">Oyunu taşı</string>
-    <string name="library_games_move_to_app_storage_title">Uygulama depolamasına taşı</string>
-    <string name="library_games_move_to_download_folder_title">İndirme klasörüne taşı</string>
-    <string name="library_games_move_to_app_storage_confirm">%1$s uygulamanın kendi depolamasına taşınsın mı? Yerel Steam istemcisi bir oyunu yalnızca oradan çalıştırabilir.</string>
-    <string name="library_games_move_to_download_folder_confirm">%1$s indirme klasörüne geri taşınsın mı? Yerel Steam istemcisi artık çalıştıramayacak.</string>
+    <string name="library_games_move_to_app_storage_title">Dahiliye taşı</string>
+    <string name="library_games_move_to_download_folder_title">Hariciye taşı</string>
+    <string name="library_games_move_to_app_storage_confirm">%1$s dahili depolamaya taşınsın mı?</string>
+    <string name="library_games_move_to_download_folder_confirm">%1$s harici depolamaya taşınsın mı?</string>
     <string name="library_games_moving">Oyun taşınıyor</string>
     <string name="library_games_move_done">%1$s taşındı</string>
     <string name="library_games_move_failed">%1$s taşınamadı</string>

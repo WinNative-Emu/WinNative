@@ -14,14 +14,10 @@ import kotlin.coroutines.coroutineContext
 import timber.log.Timber
 
 /**
- * Moves an installed game between the download folder the user picked and the app's own storage.
- *
- * Shared storage is served over FUSE, which is mounted noexec, refuses a symlink and drops the mode
- * a chmod asks for. The native Steam client needs all three - it sets the executable bit after an
- * install, builds a Proton prefix out of symlinks, and runs a native title straight from the
- * library - so a game kept on shared storage can be downloaded but not played by it. The app's own
- * directory is on the same partition, so the move costs no extra space and, when the two are the
- * same filesystem, is a rename rather than a copy.
+ * Moves an installed game between the download folder the user picked (external) and the app's
+ * own storage (internal). The native Steam client runs a game from either. The app's own directory
+ * is on the same partition, so the move costs no extra space and, when the two are the same
+ * filesystem, is a rename rather than a copy.
  */
 object LibraryStorageMove {
     /** Where a game currently sits, and so which way [move] would take it. */
@@ -52,7 +48,7 @@ object LibraryStorageMove {
     /**
      * Worker thread - resolves the install path. Returns the move this game is due, or null when
      * there is nothing sensible to offer: no install on disk, a download still running, no second
-     * root to move to, or a download folder that is already app-private and so already playable.
+     * root to move to, or a download folder that is itself inside the app's own storage.
      */
     fun plan(
         context: Context,
@@ -70,8 +66,8 @@ object LibraryStorageMove {
         val dataDir = context.dataDir.absoluteFile
         val appRoot = appStorageRoot(context) ?: return null
         val downloadRoot = downloadRoot(context)
-        // A download folder inside the app's own directory is already executable, so a game there
-        // has nothing to gain from either move and neither direction is offered.
+        // A download folder inside the app's own directory leaves no second location, so neither
+        // direction is offered.
         if (isUnder(sourceDir, dataDir) && (downloadRoot == null || isUnder(downloadRoot, dataDir))) return null
 
         val toAppStorage = !isUnder(sourceDir, dataDir)

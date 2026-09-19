@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Locații de stocare</string>
     <string name="common_ui_app_storage">Stocarea aplicației</string>
     <string name="common_ui_move">Mută</string>
-    <string name="library_games_move_game">Mută jocul</string>
-    <string name="library_games_move_to_app_storage_title">Mută în stocarea aplicației</string>
-    <string name="library_games_move_to_download_folder_title">Mută în folderul de descărcări</string>
-    <string name="library_games_move_to_app_storage_confirm">Muți %1$s în stocarea aplicației? Clientul Steam nativ poate rula un joc doar de acolo.</string>
-    <string name="library_games_move_to_download_folder_confirm">Muți %1$s înapoi în folderul de descărcări? Clientul Steam nativ nu îl va mai putea rula.</string>
+    <string name="library_games_move_to_app_storage_title">Mută în internă</string>
+    <string name="library_games_move_to_download_folder_title">Mută în externă</string>
+    <string name="library_games_move_to_app_storage_confirm">Muți %1$s în stocarea internă?</string>
+    <string name="library_games_move_to_download_folder_confirm">Muți %1$s în stocarea externă?</string>
     <string name="library_games_moving">Se mută jocul</string>
     <string name="library_games_move_done">%1$s a fost mutat</string>
     <string name="library_games_move_failed">%1$s nu a putut fi mutat</string>

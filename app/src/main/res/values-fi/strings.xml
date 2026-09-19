@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Tallennussijainnit</string>
     <string name="common_ui_app_storage">Sovelluksen tallennustila</string>
     <string name="common_ui_move">Siirrä</string>
-    <string name="library_games_move_game">Siirrä peli</string>
-    <string name="library_games_move_to_app_storage_title">Siirrä sovelluksen tallennustilaan</string>
-    <string name="library_games_move_to_download_folder_title">Siirrä latauskansioon</string>
-    <string name="library_games_move_to_app_storage_confirm">Siirretäänkö %1$s sovelluksen omaan tallennustilaan? Natiivi Steam-asiakas voi suorittaa pelin vain sieltä.</string>
-    <string name="library_games_move_to_download_folder_confirm">Siirretäänkö %1$s takaisin latauskansioon? Natiivi Steam-asiakas ei enää voi suorittaa sitä.</string>
+    <string name="library_games_move_to_app_storage_title">Siirrä sisäiseen</string>
+    <string name="library_games_move_to_download_folder_title">Siirrä ulkoiseen</string>
+    <string name="library_games_move_to_app_storage_confirm">Siirretäänkö %1$s sisäiseen tallennustilaan?</string>
+    <string name="library_games_move_to_download_folder_confirm">Siirretäänkö %1$s ulkoiseen tallennustilaan?</string>
     <string name="library_games_moving">Siirretään peliä</string>
     <string name="library_games_move_done">%1$s siirretty</string>
     <string name="library_games_move_failed">Peliä %1$s ei voitu siirtää</string>

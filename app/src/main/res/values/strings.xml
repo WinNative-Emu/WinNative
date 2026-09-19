@@ -154,11 +154,10 @@
     <string name="common_ui_storage_roots">Storage Roots</string>
     <string name="common_ui_app_storage">App storage</string>
     <string name="common_ui_move">Move</string>
-    <string name="library_games_move_game">Move Game</string>
-    <string name="library_games_move_to_app_storage_title">Move to app storage</string>
-    <string name="library_games_move_to_download_folder_title">Move to downloads folder</string>
-    <string name="library_games_move_to_app_storage_confirm">Move %1$s into the app\'s own storage? The native Steam client can only run a game from there.</string>
-    <string name="library_games_move_to_download_folder_confirm">Move %1$s back to your downloads folder? The native Steam client will no longer be able to run it.</string>
+    <string name="library_games_move_to_app_storage_title">Move to Internal</string>
+    <string name="library_games_move_to_download_folder_title">Move to External</string>
+    <string name="library_games_move_to_app_storage_confirm">Move %1$s to internal storage?</string>
+    <string name="library_games_move_to_download_folder_confirm">Move %1$s to external storage?</string>
     <string name="library_games_moving">Moving game</string>
     <string name="library_games_move_done">%1$s moved</string>
     <string name="library_games_move_failed">Could not move %1$s</string>

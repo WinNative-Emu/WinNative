@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Locais de armazenamento</string>
     <string name="common_ui_app_storage">Armazenamento do app</string>
     <string name="common_ui_move">Mover</string>
-    <string name="library_games_move_game">Mover jogo</string>
-    <string name="library_games_move_to_app_storage_title">Mover para o armazenamento do app</string>
-    <string name="library_games_move_to_download_folder_title">Mover para a pasta de downloads</string>
-    <string name="library_games_move_to_app_storage_confirm">Mover %1$s para o armazenamento do app? O cliente nativo da Steam só consegue executar um jogo a partir dali.</string>
-    <string name="library_games_move_to_download_folder_confirm">Mover %1$s de volta para a pasta de downloads? O cliente nativo da Steam não conseguirá mais executá-lo.</string>
+    <string name="library_games_move_to_app_storage_title">Mover para interno</string>
+    <string name="library_games_move_to_download_folder_title">Mover para externo</string>
+    <string name="library_games_move_to_app_storage_confirm">Mover %1$s para o armazenamento interno?</string>
+    <string name="library_games_move_to_download_folder_confirm">Mover %1$s para o armazenamento externo?</string>
     <string name="library_games_moving">Movendo o jogo</string>
     <string name="library_games_move_done">%1$s movido</string>
     <string name="library_games_move_failed">Não foi possível mover %1$s</string>

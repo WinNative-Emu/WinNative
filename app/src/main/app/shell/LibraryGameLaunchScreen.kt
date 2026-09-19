@@ -188,8 +188,8 @@ internal fun LibraryGameLaunchScreen(
     onCheckForUpdate: () -> Unit = {},
     onWorkshop: () -> Unit = {},
     /**
-     * Where this game would go if moved, or null when it is already somewhere the native client
-     * can run it. Drives the one "Move Game" entry, which only ever offers the other location.
+     * Where this game would go if moved, or null when there is nowhere to move it. Drives the one
+     * move entry, which only ever offers the other location.
      */
     moveTarget: LibraryStorageMove.Target? = null,
     onMoveGame: () -> Unit = {},
@@ -1002,7 +1002,14 @@ private fun SourceTag(
             if (moveTarget != null) {
                 LaunchSourceMenuItem(
                     icon = Icons.Outlined.DriveFileMove,
-                    label = stringResource(R.string.library_games_move_game),
+                    label =
+                        stringResource(
+                            if (moveTarget == LibraryStorageMove.Target.APP_STORAGE) {
+                                R.string.library_games_move_to_app_storage_title
+                            } else {
+                                R.string.library_games_move_to_download_folder_title
+                            },
+                        ),
                     enabled = areSteamActionsEnabled,
                 ) { menuOpen = false; onMoveGame() }
             }

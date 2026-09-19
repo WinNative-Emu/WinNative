@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Speicherorte</string>
     <string name="common_ui_app_storage">App-Speicher</string>
     <string name="common_ui_move">Verschieben</string>
-    <string name="library_games_move_game">Spiel verschieben</string>
-    <string name="library_games_move_to_app_storage_title">In den App-Speicher verschieben</string>
-    <string name="library_games_move_to_download_folder_title">In den Download-Ordner verschieben</string>
-    <string name="library_games_move_to_app_storage_confirm">%1$s in den eigenen Speicher der App verschieben? Der native Steam-Client kann ein Spiel nur von dort starten.</string>
-    <string name="library_games_move_to_download_folder_confirm">%1$s zurück in den Download-Ordner verschieben? Der native Steam-Client kann es dann nicht mehr starten.</string>
+    <string name="library_games_move_to_app_storage_title">Nach intern verschieben</string>
+    <string name="library_games_move_to_download_folder_title">Nach extern verschieben</string>
+    <string name="library_games_move_to_app_storage_confirm">%1$s in den internen Speicher verschieben?</string>
+    <string name="library_games_move_to_download_folder_confirm">%1$s in den externen Speicher verschieben?</string>
     <string name="library_games_moving">Spiel wird verschoben</string>
     <string name="library_games_move_done">%1$s verschoben</string>
     <string name="library_games_move_failed">%1$s konnte nicht verschoben werden</string>

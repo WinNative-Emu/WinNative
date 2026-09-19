@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">Сховища</string>
     <string name="common_ui_app_storage">Сховище застосунку</string>
     <string name="common_ui_move">Перемістити</string>
-    <string name="library_games_move_game">Перемістити гру</string>
-    <string name="library_games_move_to_app_storage_title">Перемістити до сховища застосунку</string>
-    <string name="library_games_move_to_download_folder_title">Перемістити до теки завантажень</string>
-    <string name="library_games_move_to_app_storage_confirm">Перемістити %1$s до власного сховища застосунку? Нативний клієнт Steam може запустити гру лише звідти.</string>
-    <string name="library_games_move_to_download_folder_confirm">Перемістити %1$s назад до теки завантажень? Нативний клієнт Steam більше не зможе її запустити.</string>
+    <string name="library_games_move_to_app_storage_title">Перемістити до внутрішньої</string>
+    <string name="library_games_move_to_download_folder_title">Перемістити до зовнішньої</string>
+    <string name="library_games_move_to_app_storage_confirm">Перемістити %1$s до внутрішнього сховища?</string>
+    <string name="library_games_move_to_download_folder_confirm">Перемістити %1$s до зовнішнього сховища?</string>
     <string name="library_games_moving">Переміщення гри</string>
     <string name="library_games_move_done">%1$s переміщено</string>
     <string name="library_games_move_failed">Не вдалося перемістити %1$s</string>

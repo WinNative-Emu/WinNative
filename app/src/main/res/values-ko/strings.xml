@@ -153,11 +153,10 @@
     <string name="common_ui_storage_roots">저장소 루트</string>
     <string name="common_ui_app_storage">앱 저장소</string>
     <string name="common_ui_move">이동</string>
-    <string name="library_games_move_game">게임 이동</string>
-    <string name="library_games_move_to_app_storage_title">앱 저장소로 이동</string>
-    <string name="library_games_move_to_download_folder_title">다운로드 폴더로 이동</string>
-    <string name="library_games_move_to_app_storage_confirm">%1$s을(를) 앱 전용 저장소로 이동할까요? 네이티브 Steam 클라이언트는 그곳에서만 게임을 실행할 수 있습니다.</string>
-    <string name="library_games_move_to_download_folder_confirm">%1$s을(를) 다운로드 폴더로 되돌릴까요? 네이티브 Steam 클라이언트에서는 더 이상 실행할 수 없습니다.</string>
+    <string name="library_games_move_to_app_storage_title">내부로 이동</string>
+    <string name="library_games_move_to_download_folder_title">외부로 이동</string>
+    <string name="library_games_move_to_app_storage_confirm">%1$s을(를) 내부 저장소로 이동할까요?</string>
+    <string name="library_games_move_to_download_folder_confirm">%1$s을(를) 외부 저장소로 이동할까요?</string>
     <string name="library_games_moving">게임 이동 중</string>
     <string name="library_games_move_done">%1$s 이동 완료</string>
     <string name="library_games_move_failed">%1$s을(를) 이동할 수 없습니다</string>
