@@ -249,7 +249,21 @@
     <string name="library_games_select_executable_or_rom">Seleziona un eseguibile o una ROM per console</string>
     <string name="library_games_added">%1$s aggiunto</string>
     <string name="library_games_add_failed">Impossibile aggiungere %1$s</string>
-    <string name="linux_runtime_not_installed">Il runtime Linux non è ancora installato, quindi %1$s non può essere avviato.</string>
+    <string name="linux_runtime_not_installed">Il runtime Linux non è ancora installato, quindi %1$s non può essere avviato. Installalo con Client Linux in Impostazioni > Negozi.</string>
+    <string name="linux_client_button">Client Linux</string>
+    <string name="linux_client_title">Client Steam per Linux</string>
+    <string name="linux_client_install_message">Scarica il runtime Linux da WinNative e il client Steam da Valve, poi li installa entrambi. Il download supera 1 GB, quindi usa il Wi-Fi.</string>
+    <string name="linux_client_installed_message">Il runtime Linux e il client Steam sono installati.</string>
+    <string name="linux_client_failed_message">L\'installazione non è stata completata. Controlla la connessione e riprova.</string>
+    <string name="linux_client_no_space_message">Spazio libero insufficiente: servono %1$s e ne sono disponibili %2$s.</string>
+    <string name="linux_client_stage_connect">Connessione</string>
+    <string name="linux_client_stage_download_runtime">Download del runtime Linux</string>
+    <string name="linux_client_stage_install_runtime">Installazione del runtime Linux</string>
+    <string name="linux_client_stage_download_steam">Download del client Steam</string>
+    <string name="linux_client_stage_install_steam">Installazione del client Steam</string>
+    <string name="linux_client_progress_amount">%1$s di %2$s</string>
+    <string name="linux_client_retry">Riprova</string>
+    <string name="linux_client_busy">Il client Steam per Linux è ancora in installazione. Riprova al termine.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Negozi</string>
@@ -2910,7 +2924,7 @@ Percorso installato:
     <string name="containers_gamescope_new">Crea contenitore GameScope</string>
     <string name="containers_gamescope_create_failed">Impossibile creare il contenitore GameScope</string>
     <string name="linux_apps_need_gamescope_container">Crea prima il contenitore GameScope in Impostazioni › Contenitori.</string>
-    <string name="linux_runtime_missing">Il runtime Linux non è installato, quindi questo container non può ancora avviarsi.</string>
+    <string name="linux_runtime_missing">Il runtime Linux non è installato, quindi questo container non può ancora avviarsi. Installalo con Client Linux in Impostazioni > Negozi.</string>
     <string name="container_display_server_gamescope">Gamescope disegna sempre tramite il compositor Wayland.</string>
     <string name="linux_runtime_windows_program">Questo è un programma Windows. Spostalo in un contenitore Wine nelle impostazioni del collegamento per avviarlo.</string>
     <string name="settings_content_badge_online">Online</string>

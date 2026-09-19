@@ -169,8 +169,16 @@ one so a reattach resolves to gamescope and not Wine.
 ARM packages (gamescope 3.16.29, Xwayland 24.1, Mesa 26.2 with Turnip and Zink, pcmanfm, foot,
 PulseAudio and X client libraries, ibus and glib for steamwebhelper) plus the `overlay/` scripts
 and fake `/proc` files. It contains no Valve software. `LinuxRuntime.isInstalled` checks for
-gamescope, the session script, and the packaged proot binaries. Installing it into the app is not
-yet wired (see below).
+gamescope, the session script, and the packaged proot binaries.
+
+**Installing.** Settings > Stores > Steam > Linux Client (`LinuxClientInstaller`) installs the
+runtime and then the Steam client in one go. The runtime is the `linuxfs.tar.zst` asset of the
+`Assets` release on WinNative-Emu/Components (zstd 19, 128 MiB window), checked against the
+SHA-256 in `linuxfs.json` and unpacked by the app's native extractor into a staging directory that
+replaces `files/linuxfs` only once it is complete; a runtime being replaced keeps its `root` home.
+`build-linuxfs.sh` writes both files; upload them, plus the package list, to that release. The
+client steps are the ones below, done by the app with a progress bar; Valve's zips carry a short
+prefix Android's own zip reader refuses, so they are read with Commons Compress.
 
 **Steam.** `winnative-steam-install` reads Valve's `steam_client_publicbeta_linuxarm64` manifest
 from the client-update CDN, downloads the `*_all` and `*_linuxarm64_linuxarm64` zips (sha256
@@ -237,9 +245,6 @@ On the NP06J (Adreno 840, Android 16, app uid 10516), 2026-09-17:
 - `build-linuxfs.sh` now cross-builds Turnip (`build-turnip.sh`; meson, ninja and the aarch64
   toolchain on the build host); `linuxfs.tar.zst` has not been regenerated with it yet - the
   device rootfs was updated file by file.
-- **Installing the runtime.** `linuxfs.tar.zst` has no download or import path in the app yet;
-  for now it is extracted by hand into `files/linuxfs`. It should become a content profile, and
-  the importer must copy hard links as files (toybox tar cannot create them).
 - Shortcut Settings still shows the Wine pages for a Linux entry; a Linux settings page is owed.
 - Extensionless ELFs in the picker; AppImage icons.
 - gamescope logs `Changed refresh` on every presentation-feedback event because the compositor's

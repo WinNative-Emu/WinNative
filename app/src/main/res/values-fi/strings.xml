@@ -250,7 +250,21 @@
     <string name="library_games_select_executable_or_rom">Valitse suoritettava tiedosto tai konsolin ROM</string>
     <string name="library_games_added">%1$s lisätty</string>
     <string name="library_games_add_failed">Kohdetta %1$s ei voitu lisätä</string>
-    <string name="linux_runtime_not_installed">Linux-ajoympäristöä ei ole vielä asennettu, joten kohdetta %1$s ei voi käynnistää.</string>
+    <string name="linux_runtime_not_installed">Linux-ajoympäristöä ei ole vielä asennettu, joten kohdetta %1$s ei voi käynnistää. Asenna se kohdasta Linux-asiakas valikossa Asetukset > Kaupat.</string>
+    <string name="linux_client_button">Linux-asiakas</string>
+    <string name="linux_client_title">Linux Steam -asiakas</string>
+    <string name="linux_client_install_message">Lataa Linux-ajoympäristön WinNativelta ja Steam-asiakkaan Valvelta ja asentaa molemmat. Lataus on yli 1 Gt, joten käytä Wi-Fiä.</string>
+    <string name="linux_client_installed_message">Linux-ajoympäristö ja Steam-asiakas on asennettu.</string>
+    <string name="linux_client_failed_message">Asennus ei valmistunut. Tarkista yhteys ja yritä uudelleen.</string>
+    <string name="linux_client_no_space_message">Vapaata tilaa ei ole tarpeeksi: tarvitaan %1$s, käytettävissä on %2$s.</string>
+    <string name="linux_client_stage_connect">Yhdistetään</string>
+    <string name="linux_client_stage_download_runtime">Ladataan Linux-ajoympäristöä</string>
+    <string name="linux_client_stage_install_runtime">Asennetaan Linux-ajoympäristöä</string>
+    <string name="linux_client_stage_download_steam">Ladataan Steam-asiakasta</string>
+    <string name="linux_client_stage_install_steam">Asennetaan Steam-asiakasta</string>
+    <string name="linux_client_progress_amount">%1$s / %2$s</string>
+    <string name="linux_client_retry">Yritä uudelleen</string>
+    <string name="linux_client_busy">Linux Steam -asiakasta asennetaan yhä. Yritä uudelleen, kun asennus on valmis.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Kaupat</string>
@@ -2908,7 +2922,7 @@ Asennuspolku:
     <string name="containers_gamescope_new">Luo GameScope-säiliö</string>
     <string name="containers_gamescope_create_failed">GameScope-säiliön luominen epäonnistui</string>
     <string name="linux_apps_need_gamescope_container">Luo ensin GameScope-säiliö kohdassa Asetukset › Säiliöt.</string>
-    <string name="linux_runtime_missing">Linux-ajoympäristöä ei ole asennettu, joten tätä konttia ei voi vielä käynnistää.</string>
+    <string name="linux_runtime_missing">Linux-ajoympäristöä ei ole asennettu, joten tätä konttia ei voi vielä käynnistää. Asenna se kohdasta Linux-asiakas valikossa Asetukset > Kaupat.</string>
     <string name="container_display_server_gamescope">Gamescope piirtää aina Wayland-koostajan kautta.</string>
     <string name="linux_runtime_windows_program">Tämä on Windows-ohjelma. Siirrä se Wine-säiliöön pikakuvakkeen asetuksissa käynnistääksesi sen.</string>
     <string name="settings_content_badge_online">Verkossa</string>

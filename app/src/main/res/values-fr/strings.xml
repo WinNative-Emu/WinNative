@@ -249,7 +249,21 @@
     <string name="library_games_select_executable_or_rom">Sélectionnez un exécutable ou une ROM de console</string>
     <string name="library_games_added">%1$s ajouté</string>
     <string name="library_games_add_failed">Impossible d\'ajouter %1$s</string>
-    <string name="linux_runtime_not_installed">L\'environnement Linux n\'est pas encore installé, %1$s ne peut donc pas démarrer.</string>
+    <string name="linux_runtime_not_installed">L\'environnement Linux n\'est pas encore installé, %1$s ne peut donc pas démarrer. Installez-le avec Client Linux dans Paramètres > Boutiques.</string>
+    <string name="linux_client_button">Client Linux</string>
+    <string name="linux_client_title">Client Steam Linux</string>
+    <string name="linux_client_install_message">Télécharge l\'environnement Linux depuis WinNative et le client Steam depuis Valve, puis installe les deux. Le téléchargement dépasse 1 Go, utilisez donc le Wi-Fi.</string>
+    <string name="linux_client_installed_message">L\'environnement Linux et le client Steam sont installés.</string>
+    <string name="linux_client_failed_message">L\'installation n\'a pas abouti. Vérifiez votre connexion et réessayez.</string>
+    <string name="linux_client_no_space_message">Espace libre insuffisant : %1$s nécessaires, %2$s disponibles.</string>
+    <string name="linux_client_stage_connect">Connexion</string>
+    <string name="linux_client_stage_download_runtime">Téléchargement de l\'environnement Linux</string>
+    <string name="linux_client_stage_install_runtime">Installation de l\'environnement Linux</string>
+    <string name="linux_client_stage_download_steam">Téléchargement du client Steam</string>
+    <string name="linux_client_stage_install_steam">Installation du client Steam</string>
+    <string name="linux_client_progress_amount">%1$s sur %2$s</string>
+    <string name="linux_client_retry">Réessayer</string>
+    <string name="linux_client_busy">Le client Steam Linux est encore en cours d\'installation. Réessayez une fois terminé.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Boutiques</string>
@@ -2910,7 +2924,7 @@ Chemin installé :
     <string name="containers_gamescope_new">Créer le conteneur GameScope</string>
     <string name="containers_gamescope_create_failed">Impossible de créer le conteneur GameScope</string>
     <string name="linux_apps_need_gamescope_container">Créez d\'abord le conteneur GameScope dans Paramètres › Conteneurs.</string>
-    <string name="linux_runtime_missing">L\'environnement Linux n\'est pas installé, ce conteneur ne peut donc pas encore démarrer.</string>
+    <string name="linux_runtime_missing">L\'environnement Linux n\'est pas installé, ce conteneur ne peut donc pas encore démarrer. Installez-le avec Client Linux dans Paramètres > Boutiques.</string>
     <string name="container_display_server_gamescope">Gamescope dessine toujours via le compositeur Wayland.</string>
     <string name="linux_runtime_windows_program">Ceci est un programme Windows. Déplacez-le dans un conteneur Wine dans les paramètres du raccourci pour le lancer.</string>
     <string name="settings_content_badge_online">En ligne</string>

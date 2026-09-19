@@ -251,7 +251,21 @@
     <string name="library_games_select_executable_or_rom">Select an executable or console ROM</string>
     <string name="library_games_added">%1$s added</string>
     <string name="library_games_add_failed">Could not add %1$s</string>
-    <string name="linux_runtime_not_installed">The Linux runtime is not installed yet, so %1$s cannot be started.</string>
+    <string name="linux_runtime_not_installed">The Linux runtime is not installed yet, so %1$s cannot be started. Install it with Linux Client in Settings > Stores.</string>
+    <string name="linux_client_button">Linux Client</string>
+    <string name="linux_client_title">Linux Steam Client</string>
+    <string name="linux_client_install_message">Downloads the Linux runtime from WinNative and the Steam client from Valve, then installs both. The download is over 1 GB, so use Wi-Fi.</string>
+    <string name="linux_client_installed_message">The Linux runtime and the Steam client are installed.</string>
+    <string name="linux_client_failed_message">The install did not finish. Check your connection and try again.</string>
+    <string name="linux_client_no_space_message">Not enough free space: %1$s is needed and %2$s is available.</string>
+    <string name="linux_client_stage_connect">Connecting</string>
+    <string name="linux_client_stage_download_runtime">Downloading the Linux runtime</string>
+    <string name="linux_client_stage_install_runtime">Installing the Linux runtime</string>
+    <string name="linux_client_stage_download_steam">Downloading the Steam client</string>
+    <string name="linux_client_stage_install_steam">Installing the Steam client</string>
+    <string name="linux_client_progress_amount">%1$s of %2$s</string>
+    <string name="linux_client_retry">Retry</string>
+    <string name="linux_client_busy">The Linux Steam Client is still installing. Try again when it finishes.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Stores</string>
@@ -2921,7 +2935,7 @@ Installed path:
     <string name="containers_gamescope_new">Create GameScope container</string>
     <string name="containers_gamescope_create_failed">Failed to create the GameScope container</string>
     <string name="linux_apps_need_gamescope_container">Create the GameScope container under Settings › Containers first.</string>
-    <string name="linux_runtime_missing">The Linux runtime is not installed, so this container cannot start yet.</string>
+    <string name="linux_runtime_missing">The Linux runtime is not installed, so this container cannot start yet. Install it with Linux Client in Settings > Stores.</string>
     <string name="container_display_server_gamescope">Gamescope always draws through the Wayland compositor.</string>
     <string name="linux_runtime_windows_program">This is a Windows program. Move it to a Wine container in Shortcut Settings to start it.</string>
     <string name="display_server_x11" translatable="false">X11</string>

@@ -250,7 +250,21 @@
     <string name="library_games_select_executable_or_rom">実行ファイルまたはコンソールROMを選択</string>
     <string name="library_games_added">%1$s を追加しました</string>
     <string name="library_games_add_failed">%1$s を追加できませんでした</string>
-    <string name="linux_runtime_not_installed">Linux ランタイムがまだインストールされていないため、%1$s を起動できません。</string>
+    <string name="linux_runtime_not_installed">Linux ランタイムがまだインストールされていないため、%1$s を起動できません。設定 > ストア の Linux クライアント からインストールしてください。</string>
+    <string name="linux_client_button">Linux クライアント</string>
+    <string name="linux_client_title">Linux Steam クライアント</string>
+    <string name="linux_client_install_message">WinNative から Linux ランタイムを、Valve から Steam クライアントをダウンロードし、両方をインストールします。ダウンロードは 1 GB を超えるため Wi-Fi を使用してください。</string>
+    <string name="linux_client_installed_message">Linux ランタイムと Steam クライアントはインストール済みです。</string>
+    <string name="linux_client_failed_message">インストールが完了しませんでした。接続を確認してもう一度お試しください。</string>
+    <string name="linux_client_no_space_message">空き容量が不足しています: %1$s 必要で、空きは %2$s です。</string>
+    <string name="linux_client_stage_connect">接続中</string>
+    <string name="linux_client_stage_download_runtime">Linux ランタイムをダウンロード中</string>
+    <string name="linux_client_stage_install_runtime">Linux ランタイムをインストール中</string>
+    <string name="linux_client_stage_download_steam">Steam クライアントをダウンロード中</string>
+    <string name="linux_client_stage_install_steam">Steam クライアントをインストール中</string>
+    <string name="linux_client_progress_amount">%1$s / %2$s</string>
+    <string name="linux_client_retry">再試行</string>
+    <string name="linux_client_busy">Linux Steam クライアントはまだインストール中です。完了してからもう一度お試しください。</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">ストア</string>
@@ -2908,7 +2922,7 @@
     <string name="containers_gamescope_new">GameScope コンテナを作成</string>
     <string name="containers_gamescope_create_failed">GameScope コンテナを作成できませんでした</string>
     <string name="linux_apps_need_gamescope_container">まず設定 › コンテナで GameScope コンテナを作成してください。</string>
-    <string name="linux_runtime_missing">Linux ランタイムがインストールされていないため、このコンテナはまだ起動できません。</string>
+    <string name="linux_runtime_missing">Linux ランタイムがインストールされていないため、このコンテナはまだ起動できません。設定 > ストア の Linux クライアント からインストールしてください。</string>
     <string name="container_display_server_gamescope">Gamescope は常に Wayland コンポジターを通して描画します。</string>
     <string name="linux_runtime_windows_program">これは Windows プログラムです。起動するには、ショートカット設定で Wine コンテナに移動してください。</string>
     <string name="settings_content_badge_online">オンライン</string>

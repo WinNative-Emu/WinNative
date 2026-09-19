@@ -253,7 +253,21 @@
     <string name="library_games_select_executable_or_rom">Выберите исполняемый файл или ROM консоли</string>
     <string name="library_games_added">%1$s добавлено</string>
     <string name="library_games_add_failed">Не удалось добавить %1$s</string>
-    <string name="linux_runtime_not_installed">Среда выполнения Linux ещё не установлена, поэтому %1$s нельзя запустить.</string>
+    <string name="linux_runtime_not_installed">Среда выполнения Linux ещё не установлена, поэтому %1$s нельзя запустить. Установите её кнопкой Клиент Linux в разделе Настройки > Магазины.</string>
+    <string name="linux_client_button">Клиент Linux</string>
+    <string name="linux_client_title">Клиент Steam для Linux</string>
+    <string name="linux_client_install_message">Загружает среду выполнения Linux с WinNative и клиент Steam с серверов Valve, затем устанавливает оба. Объём загрузки больше 1 ГБ, поэтому используйте Wi-Fi.</string>
+    <string name="linux_client_installed_message">Среда выполнения Linux и клиент Steam установлены.</string>
+    <string name="linux_client_failed_message">Установка не завершилась. Проверьте подключение и повторите попытку.</string>
+    <string name="linux_client_no_space_message">Недостаточно свободного места: нужно %1$s, доступно %2$s.</string>
+    <string name="linux_client_stage_connect">Подключение</string>
+    <string name="linux_client_stage_download_runtime">Загрузка среды выполнения Linux</string>
+    <string name="linux_client_stage_install_runtime">Установка среды выполнения Linux</string>
+    <string name="linux_client_stage_download_steam">Загрузка клиента Steam</string>
+    <string name="linux_client_stage_install_steam">Установка клиента Steam</string>
+    <string name="linux_client_progress_amount">%1$s из %2$s</string>
+    <string name="linux_client_retry">Повторить</string>
+    <string name="linux_client_busy">Клиент Steam для Linux ещё устанавливается. Повторите попытку после завершения.</string>
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Магазины</string>
     <string name="stores_accounts_steam_integration_title">Steam</string>
@@ -2814,7 +2828,7 @@
     <string name="containers_gamescope_new">Создать контейнер GameScope</string>
     <string name="containers_gamescope_create_failed">Не удалось создать контейнер GameScope</string>
     <string name="linux_apps_need_gamescope_container">Сначала создайте контейнер GameScope в разделе Настройки › Контейнеры.</string>
-    <string name="linux_runtime_missing">Среда выполнения Linux не установлена, поэтому этот контейнер пока нельзя запустить.</string>
+    <string name="linux_runtime_missing">Среда выполнения Linux не установлена, поэтому этот контейнер пока нельзя запустить. Установите её кнопкой Клиент Linux в разделе Настройки > Магазины.</string>
     <string name="container_display_server_gamescope">Gamescope всегда рисует через композитор Wayland.</string>
     <string name="linux_runtime_windows_program">Это программа для Windows. Чтобы запустить её, перенесите её в контейнер Wine в настройках ярлыка.</string>
     <string name="settings_content_badge_online">Онлайн</string>

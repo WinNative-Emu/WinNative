@@ -12,6 +12,7 @@ import com.winlator.cmod.runtime.container.Container
 import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.container.Shortcut
 import com.winlator.cmod.runtime.display.XServerDisplayActivity
+import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.runtime.linux.LinuxRuntime
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.ui.toast.WinToast
@@ -199,6 +200,10 @@ object LinuxApps {
         shortcut: Shortcut,
     ) {
         val name = shortcut.getExtra("custom_name").ifEmpty { shortcut.name }
+        if (LinuxClientInstaller.isWorking) {
+            WinToast.show(context, context.getString(R.string.linux_client_busy), Toast.LENGTH_LONG)
+            return
+        }
         if (!LinuxRuntime.isInstalled(context)) {
             WinToast.show(context, context.getString(R.string.linux_runtime_not_installed, name), Toast.LENGTH_LONG)
             return

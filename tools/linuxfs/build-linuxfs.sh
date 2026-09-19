@@ -92,7 +92,7 @@ while read -r entry; do
     --exclude=.PKGINFO --exclude=.MTREE --exclude=.INSTALL --exclude=.BUILDINFO --exclude=.CHANGELOG
 done < pkglist.txt
 
-chmod -R u+w rootfs
+chmod -R u+rwX rootfs
 # Arch's Turnip only knows the msm DRM kernel driver; Android reaches the Adreno through KGSL.
 # build-turnip.sh cross-builds Mesa's Turnip with the KGSL backend against this rootfs.
 "$here/build-turnip.sh" "$work/turnip" "$work/rootfs"
@@ -153,5 +153,12 @@ proot -q "$(command -v qemu-aarch64-static)" -r rootfs -w / -b /dev -b /proc /bi
   for d in /usr/share/icons/*/; do [ -f "$d/index.theme" ] && gtk-update-icon-cache -q -t -f "$d"; done
   rm -rf /root/.cache' >/dev/null
 
-tar -C rootfs -cf - . | zstd -T0 -19 -o "$out" --force
-ls -la "$out"
+# Level 19 with a 128 MiB window: the same libraries recur across the tree, and the app's decoder
+# accepts that window by default, so the archive shrinks while unpacking stays as fast as zstd is.
+tar -C rootfs -cf - . | zstd -T0 -19 --long=27 -o "$out" --force
+# What the app's installer checks before it unpacks: the archive's digest and size, and the bytes
+# it writes, counting a hard-linked file once as tar stores it.
+unpacked=$(find rootfs -type f -printf '%i %s\n' | sort -u | awk '{ total += $2 } END { print total }')
+printf '{\n  "sha256": "%s",\n  "size": %s,\n  "unpacked": %s\n}\n' \
+  "$(sha256sum "$out" | cut -d' ' -f1)" "$(stat -c %s "$out")" "$unpacked" > "${out%.tar.zst}.json"
+ls -la "$out" "${out%.tar.zst}.json"

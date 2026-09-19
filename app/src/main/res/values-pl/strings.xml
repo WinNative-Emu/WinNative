@@ -253,7 +253,21 @@
     <string name="library_games_select_executable_or_rom">Wybierz plik wykonywalny lub ROM konsoli</string>
     <string name="library_games_added">Dodano %1$s</string>
     <string name="library_games_add_failed">Nie udało się dodać %1$s</string>
-    <string name="linux_runtime_not_installed">Środowisko Linux nie jest jeszcze zainstalowane, więc nie można uruchomić %1$s.</string>
+    <string name="linux_runtime_not_installed">Środowisko Linux nie jest jeszcze zainstalowane, więc nie można uruchomić %1$s. Zainstaluj je przyciskiem Klient Linux w Ustawienia > Sklepy.</string>
+    <string name="linux_client_button">Klient Linux</string>
+    <string name="linux_client_title">Klient Steam dla Linuksa</string>
+    <string name="linux_client_install_message">Pobiera środowisko Linux z WinNative i klienta Steam od Valve, a następnie instaluje oba. Pobieranie przekracza 1 GB, więc użyj Wi-Fi.</string>
+    <string name="linux_client_installed_message">Środowisko Linux i klient Steam są zainstalowane.</string>
+    <string name="linux_client_failed_message">Instalacja nie została ukończona. Sprawdź połączenie i spróbuj ponownie.</string>
+    <string name="linux_client_no_space_message">Za mało wolnego miejsca: potrzeba %1$s, dostępne jest %2$s.</string>
+    <string name="linux_client_stage_connect">Łączenie</string>
+    <string name="linux_client_stage_download_runtime">Pobieranie środowiska Linux</string>
+    <string name="linux_client_stage_install_runtime">Instalowanie środowiska Linux</string>
+    <string name="linux_client_stage_download_steam">Pobieranie klienta Steam</string>
+    <string name="linux_client_stage_install_steam">Instalowanie klienta Steam</string>
+    <string name="linux_client_progress_amount">%1$s z %2$s</string>
+    <string name="linux_client_retry">Ponów</string>
+    <string name="linux_client_busy">Klient Steam dla Linuksa wciąż się instaluje. Spróbuj ponownie po zakończeniu.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Sklepy</string>
@@ -2915,7 +2929,7 @@ Zainstalowana ścieżka:
     <string name="containers_gamescope_new">Utwórz kontener GameScope</string>
     <string name="containers_gamescope_create_failed">Nie udało się utworzyć kontenera GameScope</string>
     <string name="linux_apps_need_gamescope_container">Najpierw utwórz kontener GameScope w Ustawienia › Kontenery.</string>
-    <string name="linux_runtime_missing">Środowisko Linux nie jest zainstalowane, więc ten kontener nie może jeszcze wystartować.</string>
+    <string name="linux_runtime_missing">Środowisko Linux nie jest zainstalowane, więc ten kontener nie może jeszcze wystartować. Zainstaluj je przyciskiem Klient Linux w Ustawienia > Sklepy.</string>
     <string name="container_display_server_gamescope">Gamescope zawsze rysuje przez kompozytor Wayland.</string>
     <string name="linux_runtime_windows_program">To program dla Windows. Aby go uruchomić, przenieś go do kontenera Wine w ustawieniach skrótu.</string>
     <string name="settings_content_badge_online">Online</string>

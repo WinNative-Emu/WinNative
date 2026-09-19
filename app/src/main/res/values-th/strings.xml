@@ -250,7 +250,21 @@
     <string name="library_games_select_executable_or_rom">เลือกไฟล์ปฏิบัติการหรือ ROM คอนโซล</string>
     <string name="library_games_added">เพิ่ม %1$s แล้ว</string>
     <string name="library_games_add_failed">ไม่สามารถเพิ่ม %1$s ได้</string>
-    <string name="linux_runtime_not_installed">ยังไม่ได้ติดตั้งรันไทม์ Linux จึงไม่สามารถเริ่ม %1$s ได้</string>
+    <string name="linux_runtime_not_installed">ยังไม่ได้ติดตั้งรันไทม์ Linux จึงไม่สามารถเริ่ม %1$s ได้ ติดตั้งได้ด้วย ไคลเอ็นต์ Linux ใน การตั้งค่า > ร้านค้า</string>
+    <string name="linux_client_button">ไคลเอ็นต์ Linux</string>
+    <string name="linux_client_title">ไคลเอ็นต์ Steam สำหรับ Linux</string>
+    <string name="linux_client_install_message">ดาวน์โหลดรันไทม์ Linux จาก WinNative และไคลเอ็นต์ Steam จาก Valve แล้วติดตั้งทั้งสองอย่าง การดาวน์โหลดมีขนาดเกิน 1 GB จึงควรใช้ Wi-Fi</string>
+    <string name="linux_client_installed_message">ติดตั้งรันไทม์ Linux และไคลเอ็นต์ Steam แล้ว</string>
+    <string name="linux_client_failed_message">การติดตั้งไม่เสร็จสมบูรณ์ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง</string>
+    <string name="linux_client_no_space_message">พื้นที่ว่างไม่พอ: ต้องใช้ %1$s และมีว่าง %2$s</string>
+    <string name="linux_client_stage_connect">กำลังเชื่อมต่อ</string>
+    <string name="linux_client_stage_download_runtime">กำลังดาวน์โหลดรันไทม์ Linux</string>
+    <string name="linux_client_stage_install_runtime">กำลังติดตั้งรันไทม์ Linux</string>
+    <string name="linux_client_stage_download_steam">กำลังดาวน์โหลดไคลเอ็นต์ Steam</string>
+    <string name="linux_client_stage_install_steam">กำลังติดตั้งไคลเอ็นต์ Steam</string>
+    <string name="linux_client_progress_amount">%1$s จาก %2$s</string>
+    <string name="linux_client_retry">ลองอีกครั้ง</string>
+    <string name="linux_client_busy">ไคลเอ็นต์ Steam สำหรับ Linux ยังติดตั้งไม่เสร็จ ลองอีกครั้งเมื่อติดตั้งเสร็จ</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">ร้านค้า</string>
@@ -2907,7 +2921,7 @@
     <string name="containers_gamescope_new">สร้างคอนเทนเนอร์ GameScope</string>
     <string name="containers_gamescope_create_failed">สร้างคอนเทนเนอร์ GameScope ไม่สำเร็จ</string>
     <string name="linux_apps_need_gamescope_container">โปรดสร้างคอนเทนเนอร์ GameScope ในการตั้งค่า › คอนเทนเนอร์ก่อน</string>
-    <string name="linux_runtime_missing">ยังไม่ได้ติดตั้งรันไทม์ Linux จึงยังไม่สามารถเริ่มคอนเทนเนอร์นี้ได้</string>
+    <string name="linux_runtime_missing">ยังไม่ได้ติดตั้งรันไทม์ Linux จึงยังไม่สามารถเริ่มคอนเทนเนอร์นี้ได้ ติดตั้งได้ด้วย ไคลเอ็นต์ Linux ใน การตั้งค่า > ร้านค้า</string>
     <string name="container_display_server_gamescope">Gamescope วาดผ่านคอมโพสิเตอร์ Wayland เสมอ</string>
     <string name="linux_runtime_windows_program">นี่คือโปรแกรม Windows ย้ายไปยังคอนเทนเนอร์ Wine ในการตั้งค่าทางลัดเพื่อเริ่มใช้งาน</string>
     <string name="settings_content_badge_online">ออนไลน์</string>

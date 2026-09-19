@@ -249,7 +249,21 @@
     <string name="library_games_select_executable_or_rom">Selectează un executabil sau un ROM de consolă</string>
     <string name="library_games_added">%1$s a fost adăugat</string>
     <string name="library_games_add_failed">Nu s-a putut adăuga %1$s</string>
-    <string name="linux_runtime_not_installed">Mediul de execuție Linux nu este încă instalat, așa că %1$s nu poate fi pornit.</string>
+    <string name="linux_runtime_not_installed">Mediul de execuție Linux nu este încă instalat, așa că %1$s nu poate fi pornit. Instalează-l cu Client Linux din Setari > Magazine.</string>
+    <string name="linux_client_button">Client Linux</string>
+    <string name="linux_client_title">Client Steam pentru Linux</string>
+    <string name="linux_client_install_message">Descarcă mediul de execuție Linux de la WinNative și clientul Steam de la Valve, apoi le instalează pe amândouă. Descărcarea depășește 1 GB, așa că folosește Wi-Fi.</string>
+    <string name="linux_client_installed_message">Mediul de execuție Linux și clientul Steam sunt instalate.</string>
+    <string name="linux_client_failed_message">Instalarea nu s-a finalizat. Verifică conexiunea și încearcă din nou.</string>
+    <string name="linux_client_no_space_message">Spațiu liber insuficient: sunt necesari %1$s și sunt disponibili %2$s.</string>
+    <string name="linux_client_stage_connect">Se conectează</string>
+    <string name="linux_client_stage_download_runtime">Se descarcă mediul de execuție Linux</string>
+    <string name="linux_client_stage_install_runtime">Se instalează mediul de execuție Linux</string>
+    <string name="linux_client_stage_download_steam">Se descarcă clientul Steam</string>
+    <string name="linux_client_stage_install_steam">Se instalează clientul Steam</string>
+    <string name="linux_client_progress_amount">%1$s din %2$s</string>
+    <string name="linux_client_retry">Reîncearcă</string>
+    <string name="linux_client_busy">Clientul Steam pentru Linux încă se instalează. Încearcă din nou după ce se termină.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Magazine</string>
@@ -2908,7 +2922,7 @@ Cale instalata:
     <string name="containers_gamescope_new">Creează containerul GameScope</string>
     <string name="containers_gamescope_create_failed">Containerul GameScope nu a putut fi creat</string>
     <string name="linux_apps_need_gamescope_container">Creează mai întâi containerul GameScope în Setări › Containere.</string>
-    <string name="linux_runtime_missing">Mediul de execuție Linux nu este instalat, așa că acest container nu poate porni încă.</string>
+    <string name="linux_runtime_missing">Mediul de execuție Linux nu este instalat, așa că acest container nu poate porni încă. Instalează-l cu Client Linux din Setari > Magazine.</string>
     <string name="container_display_server_gamescope">Gamescope desenează întotdeauna prin compozitorul Wayland.</string>
     <string name="linux_runtime_windows_program">Acesta este un program Windows. Mută-l într-un container Wine din setările scurtăturii pentru a-l porni.</string>
     <string name="settings_content_badge_online">Online</string>

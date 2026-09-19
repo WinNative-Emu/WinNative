@@ -8861,6 +8861,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
      * is involved; the audio socket is the only imagefs service the guest reaches.
      */
     private void setupLinuxSession(String rootPath) {
+        if (com.winlator.cmod.runtime.linux.LinuxClientInstaller.INSTANCE.isWorking()) {
+            throw new IllegalStateException(getString(R.string.linux_client_busy));
+        }
         if (!LinuxRuntime.isInstalled(this)) {
             throw new IllegalStateException(getString(R.string.linux_runtime_missing));
         }

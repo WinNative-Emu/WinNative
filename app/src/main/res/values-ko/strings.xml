@@ -249,7 +249,21 @@
     <string name="library_games_select_executable_or_rom">실행 파일 또는 콘솔 ROM 선택</string>
     <string name="library_games_added">%1$s 추가됨</string>
     <string name="library_games_add_failed">%1$s을(를) 추가할 수 없습니다</string>
-    <string name="linux_runtime_not_installed">Linux 런타임이 아직 설치되지 않아 %1$s을(를) 시작할 수 없습니다.</string>
+    <string name="linux_runtime_not_installed">Linux 런타임이 아직 설치되지 않아 %1$s을(를) 시작할 수 없습니다. 설정 > 스토어의 Linux 클라이언트에서 설치하세요.</string>
+    <string name="linux_client_button">Linux 클라이언트</string>
+    <string name="linux_client_title">Linux Steam 클라이언트</string>
+    <string name="linux_client_install_message">WinNative에서 Linux 런타임을, Valve에서 Steam 클라이언트를 다운로드한 뒤 둘 다 설치합니다. 다운로드 용량이 1GB를 넘으므로 Wi-Fi를 사용하세요.</string>
+    <string name="linux_client_installed_message">Linux 런타임과 Steam 클라이언트가 설치되어 있습니다.</string>
+    <string name="linux_client_failed_message">설치가 완료되지 않았습니다. 연결을 확인하고 다시 시도하세요.</string>
+    <string name="linux_client_no_space_message">여유 공간이 부족합니다: %1$s이(가) 필요하며 %2$s을(를) 사용할 수 있습니다.</string>
+    <string name="linux_client_stage_connect">연결 중</string>
+    <string name="linux_client_stage_download_runtime">Linux 런타임 다운로드 중</string>
+    <string name="linux_client_stage_install_runtime">Linux 런타임 설치 중</string>
+    <string name="linux_client_stage_download_steam">Steam 클라이언트 다운로드 중</string>
+    <string name="linux_client_stage_install_steam">Steam 클라이언트 설치 중</string>
+    <string name="linux_client_progress_amount">%1$s / %2$s</string>
+    <string name="linux_client_retry">다시 시도</string>
+    <string name="linux_client_busy">Linux Steam 클라이언트를 아직 설치하고 있습니다. 완료된 후 다시 시도하세요.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">스토어</string>
@@ -2910,7 +2924,7 @@
     <string name="containers_gamescope_new">GameScope 컨테이너 만들기</string>
     <string name="containers_gamescope_create_failed">GameScope 컨테이너를 만들지 못했습니다</string>
     <string name="linux_apps_need_gamescope_container">먼저 설정 › 컨테이너에서 GameScope 컨테이너를 만드세요.</string>
-    <string name="linux_runtime_missing">Linux 런타임이 설치되지 않아 이 컨테이너를 아직 시작할 수 없습니다.</string>
+    <string name="linux_runtime_missing">Linux 런타임이 설치되지 않아 이 컨테이너를 아직 시작할 수 없습니다. 설정 > 스토어의 Linux 클라이언트에서 설치하세요.</string>
     <string name="container_display_server_gamescope">Gamescope는 항상 Wayland 컴포지터를 통해 그립니다.</string>
     <string name="linux_runtime_windows_program">Windows 프로그램입니다. 실행하려면 바로가기 설정에서 Wine 컨테이너로 옮기세요.</string>
     <string name="settings_content_badge_online">온라인</string>

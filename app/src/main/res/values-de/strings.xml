@@ -249,7 +249,21 @@
     <string name="library_games_select_executable_or_rom">Ausführbare Datei oder Konsolen-ROM auswählen</string>
     <string name="library_games_added">%1$s hinzugefügt</string>
     <string name="library_games_add_failed">%1$s konnte nicht hinzugefügt werden</string>
-    <string name="linux_runtime_not_installed">Die Linux-Laufzeitumgebung ist noch nicht installiert, daher kann %1$s nicht gestartet werden.</string>
+    <string name="linux_runtime_not_installed">Die Linux-Laufzeitumgebung ist noch nicht installiert, daher kann %1$s nicht gestartet werden. Installiere sie mit Linux-Client unter Einstellungen > Stores.</string>
+    <string name="linux_client_button">Linux-Client</string>
+    <string name="linux_client_title">Linux-Steam-Client</string>
+    <string name="linux_client_install_message">Lädt die Linux-Laufzeitumgebung von WinNative und den Steam-Client von Valve herunter und installiert beides. Der Download ist über 1 GB groß, nutze also WLAN.</string>
+    <string name="linux_client_installed_message">Die Linux-Laufzeitumgebung und der Steam-Client sind installiert.</string>
+    <string name="linux_client_failed_message">Die Installation wurde nicht abgeschlossen. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="linux_client_no_space_message">Nicht genug freier Speicher: %1$s werden benötigt, %2$s sind verfügbar.</string>
+    <string name="linux_client_stage_connect">Verbinden</string>
+    <string name="linux_client_stage_download_runtime">Linux-Laufzeitumgebung wird heruntergeladen</string>
+    <string name="linux_client_stage_install_runtime">Linux-Laufzeitumgebung wird installiert</string>
+    <string name="linux_client_stage_download_steam">Steam-Client wird heruntergeladen</string>
+    <string name="linux_client_stage_install_steam">Steam-Client wird installiert</string>
+    <string name="linux_client_progress_amount">%1$s von %2$s</string>
+    <string name="linux_client_retry">Erneut versuchen</string>
+    <string name="linux_client_busy">Der Linux-Steam-Client wird noch installiert. Versuche es nach Abschluss erneut.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Stores</string>
@@ -2910,7 +2924,7 @@ Installierter Pfad:
     <string name="containers_gamescope_new">GameScope-Container erstellen</string>
     <string name="containers_gamescope_create_failed">Der GameScope-Container konnte nicht erstellt werden</string>
     <string name="linux_apps_need_gamescope_container">Erstelle zuerst den GameScope-Container unter Einstellungen › Container.</string>
-    <string name="linux_runtime_missing">Die Linux-Laufzeitumgebung ist nicht installiert, daher kann dieser Container noch nicht starten.</string>
+    <string name="linux_runtime_missing">Die Linux-Laufzeitumgebung ist nicht installiert, daher kann dieser Container noch nicht starten. Installiere sie mit Linux-Client unter Einstellungen > Stores.</string>
     <string name="container_display_server_gamescope">Gamescope zeichnet immer über den Wayland-Compositor.</string>
     <string name="linux_runtime_windows_program">Dies ist ein Windows-Programm. Verschiebe es in den Verknüpfungseinstellungen in einen Wine-Container, um es zu starten.</string>
     <string name="settings_content_badge_online">Online</string>
