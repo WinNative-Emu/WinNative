@@ -11,6 +11,10 @@ mode=${1:-desktop}
 shift || true
 if [ -n "${WN_LOG:-}" ] && [ -z "${WN_INSIDE:-}" ]; then
   mkdir -p "$(dirname "$WN_LOG")" 2>/dev/null
+  # The client alone writes megabytes an hour; one earlier log is kept, not every session's.
+  if [ "$(stat -c %s "$WN_LOG" 2>/dev/null || echo 0)" -gt 8388608 ]; then
+    mv -f "$WN_LOG" "$WN_LOG.1"
+  fi
   exec >>"$WN_LOG" 2>&1
   echo "== winnative-session $(date) mode=$mode $*"
   echo "== uid=$(id -u) size=${WN_WIDTH:-?}x${WN_HEIGHT:-?} fps=${WN_FPS:-0} icd=${VK_ICD_FILENAMES:-none}"
