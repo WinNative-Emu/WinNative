@@ -244,6 +244,7 @@
     <string name="library_games_select_exe_provide_name">Valitse exe ja anna nimi</string>
     <string name="library_games_sign_in_prompt">Kirjaudu kauppaan tai lisää mukautettu peli rakentaaksesi kirjastosi.</string>
     <string name="library_games_add_title">Lisää peli tai sovellus</string>
+    <string name="library_games_add_linux_steam">Lisää Linux Steam -asiakas</string>
     <string name="library_games_type">Tyyppi</string>
     <string name="library_games_type_game">Peli</string>
     <string name="library_games_type_app">Sovellus</string>

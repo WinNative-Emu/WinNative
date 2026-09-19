@@ -244,6 +244,7 @@
     <string name="library_games_select_exe_provide_name">exeを選択して名前を入力してください</string>
     <string name="library_games_sign_in_prompt">ストアにサインインするか、カスタムゲームを追加してライブラリを構築してください。</string>
     <string name="library_games_add_title">ゲームまたはアプリを追加</string>
+    <string name="library_games_add_linux_steam">Linux Steam クライアントを追加</string>
     <string name="library_games_type">種類</string>
     <string name="library_games_type_game">ゲーム</string>
     <string name="library_games_type_app">アプリ</string>

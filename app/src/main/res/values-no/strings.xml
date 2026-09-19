@@ -244,6 +244,7 @@
     <string name="library_games_select_exe_provide_name">Velg en exe og oppgi et navn</string>
     <string name="library_games_sign_in_prompt">Logg inn på en butikk eller legg til et egendefinert spill for å bygge biblioteket ditt.</string>
     <string name="library_games_add_title">Legg til spill eller app</string>
+    <string name="library_games_add_linux_steam">Legg til Linux Steam-klient</string>
     <string name="library_games_type">Type</string>
     <string name="library_games_type_game">Spill</string>
     <string name="library_games_type_app">App</string>

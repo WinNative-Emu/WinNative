@@ -247,6 +247,7 @@
     <string name="library_games_select_exe_provide_name">Wybierz plik exe i podaj nazwę</string>
     <string name="library_games_sign_in_prompt">Zaloguj się do sklepu lub dodaj własną grę, aby zbudować swoją bibliotekę.</string>
     <string name="library_games_add_title">Dodaj grę lub aplikację</string>
+    <string name="library_games_add_linux_steam">Dodaj Klienta Steam dla Linuksa</string>
     <string name="library_games_type">Typ</string>
     <string name="library_games_type_game">Gra</string>
     <string name="library_games_type_app">Aplikacja</string>

@@ -244,6 +244,7 @@
     <string name="library_games_select_exe_provide_name">Bir exe seçin ve bir ad girin</string>
     <string name="library_games_sign_in_prompt">Kütüphanenizi oluşturmak için bir mağazaya giriş yapın veya özel bir oyun ekleyin.</string>
     <string name="library_games_add_title">Oyun veya uygulama ekle</string>
+    <string name="library_games_add_linux_steam">Linux Steam İstemcisi ekle</string>
     <string name="library_games_type">Tür</string>
     <string name="library_games_type_game">Oyun</string>
     <string name="library_games_type_app">Uygulama</string>

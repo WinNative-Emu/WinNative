@@ -241,6 +241,7 @@
     <string name="library_games_select_exe_provide_name">एक exe चुनें और नाम दें</string>
     <string name="library_games_sign_in_prompt">किसी स्टोर में साइन इन करें या अपनी लाइब्रेरी बनाने के लिए एक कस्टम गेम जोड़ें।</string>
     <string name="library_games_add_title">गेम या ऐप जोड़ें</string>
+    <string name="library_games_add_linux_steam">Linux Steam क्लाइंट जोड़ें</string>
     <string name="library_games_type">प्रकार</string>
     <string name="library_games_type_game">गेम</string>
     <string name="library_games_type_app">ऐप</string>

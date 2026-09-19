@@ -244,6 +244,7 @@
     <string name="library_games_select_exe_provide_name">เลือกไฟล์ exe และระบุชื่อ</string>
     <string name="library_games_sign_in_prompt">เข้าสู่ระบบร้านค้าหรือเพิ่มเกมกำหนดเองเพื่อสร้างคลังของคุณ</string>
     <string name="library_games_add_title">เพิ่มเกมหรือแอป</string>
+    <string name="library_games_add_linux_steam">เพิ่มไคลเอ็นต์ Steam สำหรับ Linux</string>
     <string name="library_games_type">ประเภท</string>
     <string name="library_games_type_game">เกม</string>
     <string name="library_games_type_app">แอป</string>

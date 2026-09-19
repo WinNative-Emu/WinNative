@@ -804,6 +804,27 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
         }
     }
     val registry = remember { PaneNavRegistry() }
+    var steamRestorable by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        steamRestorable = withContext(Dispatchers.IO) { LinuxApps.containerMissingSteamShortcut(context) != null }
+    }
+    val restoreSteam: () -> Unit = {
+        isAdding = true
+        scope.launch(Dispatchers.IO) {
+            val container = LinuxApps.containerMissingSteamShortcut(context)
+            val added = container == null || runCatching { LinuxApps.ensureSteamShortcut(context, container) }.isSuccess
+            withContext(Dispatchers.Main) {
+                isAdding = false
+                val name = LinuxApps.STEAM_SHORTCUT_NAME
+                com.winlator.cmod.shared.ui.toast.WinToast.show(
+                    context,
+                    context.getString(if (added) R.string.library_games_added else R.string.library_games_add_failed, name),
+                    android.widget.Toast.LENGTH_SHORT,
+                )
+                if (added) onDismiss()
+            }
+        }
+    }
     val addEnabled =
         selectedExePath != null && gameName.isNotBlank() && !isAdding &&
             (retroSystem != null || linuxApp || gameFolder != null)
@@ -961,6 +982,32 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
                                 fontSize = if (selectedExePath == null) 12.sp else 10.sp,
                                 modifier = Modifier.weight(1f),
                             )
+                        }
+
+                        if (selectedExePath == null && steamRestorable) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White.copy(alpha = 0.05f))
+                                        .paneNavItem(
+                                            cornerRadius = 12.dp,
+                                            tapToSelect = true,
+                                            onActivate = { if (!isAdding) restoreSteam() },
+                                        ).padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Outlined.SportsEsports, contentDescription = null, tint = Accent, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    stringResource(R.string.library_games_add_linux_steam),
+                                    color = TextPrimary,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
 
                         if (selectedExePath != null) {
