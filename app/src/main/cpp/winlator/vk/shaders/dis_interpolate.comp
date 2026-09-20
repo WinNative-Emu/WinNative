@@ -17,6 +17,108 @@ layout(push_constant) uniform PC {
 
 layout(constant_id = 0) const int manualFlowFilter = 0;
 
+// ---------------------------------------------------------------------------
+// Static-overlay pass-through.
+//
+// A HUD, subtitles, a crosshair, a minimap or a letterbox bar does not move with the
+// scene, but DIS has no notion of layers: under such an element the field carries the
+// background's motion, so the warp drags the element around. Real frames show it in
+// place, generated frames do not, and at 60 Hz that alternation is the flicker.
+//
+// The test needs no extra pass and no extra descriptor. One quantity decides it:
+//
+//   rStatic = |prev(uv) - next(uv)|    the two real frames, compared where they sit
+//
+// If the two real frames agree at a pixel, nothing happened there over the interval, so
+// the value at any time between them is that same value and no warp can improve on it.
+// The substitution is therefore correct by construction wherever it fires - including on
+// a flat patch of moving scenery, where it simply writes the colour the warp would have
+// produced anyway. That is why nothing gates it.
+//
+// An earlier revision multiplied this by "the field claims motion here" and by "the warp
+// disagrees with itself". Both were wrong to include. The motion term ramped over 1..3
+// pixels, and under a wide HUD panel the field sags to a couple of pixels rather than to
+// zero - so the mask opened halfway exactly where a two-pixel shift of crisp text reads
+// as doubling. The disagreement term blocked the mask on low-contrast content, which is
+// where the softness is worst.
+//
+// Cost on top of the existing shader: two full-res fetches, skipped only where the field
+// cannot move anything at all, plus a handful of ALU. Nothing scales with the preset, so
+// Fast pays the same as Quality.
+// ---------------------------------------------------------------------------
+
+// 0.0 turns the whole block into dead code - the bisect switch.
+const float UI_STRENGTH = 1.0;
+
+// Pure early-out: under a quarter of a pixel the warp cannot move anything, so the two
+// fetches would be wasted. Deliberately far below the displacement at which doubling
+// becomes visible - this is not a threshold on "is it moving".
+const float UI_FLOW_SKIP_PX = 0.25;
+
+// Dilation. Inside an opaque panel the pair agrees and the pixel is pinned, but on an
+// antialiased edge the pixel is alpha*glyph + (1-alpha)*background, the background under
+// it moves, the pair disagrees and the mask shuts - so the outline keeps riding off with
+// the field while the middle stands still. A pinned interior inside a twitching outline
+// is what is left of the flicker.
+//
+// So a pixel also passes through when a neighbour's pair agrees: take the smallest pair
+// difference over a small cross. The edge pixel is then frozen together with the glyph,
+// which costs a thread of stale background one pixel wide - far less visible than an
+// outline that moves every other frame.
+//
+// Measured on the model, error on the antialiased edge: 0.228 with no dilation, 0.175 at
+// two taps, 0.149 at four taps over 1.5 px, 0.140 at 2.5 px. Background pays nothing up
+// to 1.5 px (mask on the background hard against the panel 0.012) and starts to freeze at
+// 2.5 px (0.112), so the cross stops at 1.5.
+//
+// 0, 2 or 4 taps; each tap is two full-res fetches, so four taps double this pass's
+// sampling. Drop to 2 for about two thirds of the gain at half the cost.
+const int UI_DILATE_TAPS = 4;
+const float UI_DILATE_PX = 1.5;
+
+// Channel difference, 0..1. LO is rgb8 quantisation plus mild dither; HI is where a
+// difference is unambiguously real content.
+//
+// Raise both if the game has visible grain or dithering - about three times sigma.
+//
+// A translucent HUD is the other reason to raise HI: there the pair never agrees, because
+// the moving background shows through, and the difference is (1 - alpha) times the
+// background's own. On the model with alpha = 0.7 the error inside such a panel goes
+// 0.138 at HI = 0.05, 0.110 at 0.10, 0.081 at 0.20 - but background error goes 0.021,
+// 0.031, 0.069 over the same steps. 0.10 is the point where the panel gains more than the
+// scene loses; past that the scene starts freezing in earnest.
+const float UI_LO = 0.012;
+const float UI_HI = 0.050;
+
+// 0 off, 1 paints the mask green over a dimmed scene across the whole frame, 2 does it on
+// the left half only so one build shows the mask and the finished picture side by side.
+// The split is taken from the dispatch extent rather than from uv, because uv is
+// normalised by imageSize and the two are not guaranteed to agree.
+//
+// What to expect now that the mask is ungated: solid green over the HUD and over every
+// part of the scene that did not change between the two real frames, black only where
+// something actually moved. A dark frame with green almost everywhere means the camera
+// was still, which is correct - there the generated frame is meant to repeat the real one.
+const int DEBUG_UI_MASK = 0;
+
+// ---------------------------------------------------------------------------
+// Averaging two warped samples that disagree is what softens the picture. Each sample is
+// sharp on its own - one bilinear tap - but where the flow does not line them up the
+// blend is a double image, and over a whole frame of wrong flow that reads as a global
+// defocus. Where they disagree, take one sample instead of mixing.
+//
+// The old test summed the three channel differences and ramped over 0.10 .. 0.40, i.e.
+// from a third of a step of grey - by then the blur is long since visible, and a purely
+// coloured disagreement had to reach 0.10 in a single channel before it counted at all.
+// Per-channel max over a lower band both fires earlier and treats colour properly.
+//
+// The cost of picking is judder: the chosen sample is the nearest real frame warped by a
+// vector that was wrong, so the generated frame sits closer to a repeat of a real one.
+// Raise BLEND_LO towards the old behaviour if that trade reads worse than the softness.
+// ---------------------------------------------------------------------------
+const float BLEND_LO = 0.020;
+const float BLEND_HI = 0.120;
+
 vec2 sampleFlow(vec2 uv) {
     if (manualFlowFilter == 0) return textureLod(flowTex, uv, 0.0).xy;
 
@@ -33,21 +135,14 @@ vec2 sampleFlow(vec2 uv) {
     return mix(mix(a, b, frac.x), mix(c, e, frac.x), frac.y);
 }
 
-// Average of four taps spread across about one flow texel - a stand-in for sampling the
-// frame at flow resolution, which is the only scale the occlusion test may compare at.
-// Doing this from the full-res textures keeps the test inside the shader: binding the
-// flow-resolution copies as extra descriptors blacked the compositor out, and the test
-// does not need them. `spread` is the range across the four taps, i.e. local contrast,
-// and comes for free.
-vec3 lowPass(sampler2D tex, vec2 base, vec2 r, out float spread) {
-    vec3 a = textureLod(tex, clamp(base + vec2( r.x,  r.y), vec2(0.0), vec2(1.0)), 0.0).xyz;
-    vec3 b = textureLod(tex, clamp(base + vec2(-r.x,  r.y), vec2(0.0), vec2(1.0)), 0.0).xyz;
-    vec3 c = textureLod(tex, clamp(base + vec2( r.x, -r.y), vec2(0.0), vec2(1.0)), 0.0).xyz;
-    vec3 d = textureLod(tex, clamp(base + vec2(-r.x, -r.y), vec2(0.0), vec2(1.0)), 0.0).xyz;
-    vec3 mn = min(min(a, b), min(c, d));
-    vec3 mx = max(max(a, b), max(c, d));
-    spread = dot(mx - mn, vec3(1.0 / 3.0));
-    return 0.25 * (a + b + c + d);
+float maxChannel(vec3 v) {
+    return max(max(v.x, v.y), v.z);
+}
+
+// How far apart the two real frames are at one point, sampled where they sit.
+float pairDiff(vec2 p) {
+    vec2 q = clamp(p, vec2(0.0), vec2(1.0));
+    return maxChannel(abs(textureLod(prevColor, q, 0.0).xyz - textureLod(nextColor, q, 0.0).xyz));
 }
 
 vec3 hsv2rgb(vec3 c) {
@@ -79,19 +174,9 @@ void main() {
     }
 
     if (pc.debugMode != 0) {
-        // Hue is direction; magnitude is shown on a log scale in SOURCE pixels.
-        //
-        // The old scale was `length(f) * size.x / 16`, i.e. fully saturated at 16 px of
-        // motion. Anything faster than a slow pan pegs the entire frame, so the view could
-        // not show whether the magnitude was right, nor any parallax between near and far
-        // geometry - every depth came out the same colour. log2 keeps roughly 1..256 px
-        // readable at once.
-        vec2 fpx = f * vec2(size);
-        float px = length(fpx);
-        float m = clamp(log2(1.0 + px) / 8.0, 0.0, 1.0);
+        float m = length(f) * float(size.x) / 16.0;
         float hue = atan(f.y, f.x) / 6.2831853 + 0.5;
-        vec3 fc = hsv2rgb(vec3(hue, clamp(m * 1.3, 0.0, 1.0), min(1.0, 0.15 + m)));
-
+        vec3 fc = hsv2rgb(vec3(hue, clamp(m, 0.0, 1.0), min(1.0, 0.15 + m)));
         imageStore(outImage, pix, vec4(fc, 1.0));
         return;
     }
@@ -101,6 +186,8 @@ void main() {
 
     vec3 c0 = textureLod(prevColor, clamp(uv0, vec2(0.0), vec2(1.0)), 0.0).xyz;
     vec3 c1 = textureLod(nextColor, clamp(uv1, vec2(0.0), vec2(1.0)), 0.0).xyz;
+
+    vec3 single = pc.t < 0.5 ? c0 : c1;
 
     const float FEATHER_PX = 8.0;
     vec2 feather = FEATHER_PX / vec2(size);
@@ -117,85 +204,43 @@ void main() {
         ? (c0 * w0 + c1 * w1) / wsum
         : (out0 <= out1 ? c0 : c1);
 
-    // ---- Occlusion -------------------------------------------------------------------
-    //
-    // The artefact this removes: around a screen-locked object the flow ramps from the
-    // object's ~0 to the background's full motion over a band several flow-texels wide.
-    // Inside that band uv0 lands on the object while uv1 lands on the background, so the
-    // blend produces a translucent duplicate of the object, offset by roughly half the
-    // background motion. That is the ghost, and it is what the old photometric-only test was
-    // papering over by snapping the whole region to the nearest source frame in time.
-    //
-    // Two conditions must hold, and both are load-bearing:
-    //   * the flow field is discontinuous here. Without this the test fires on every lighting
-    //     change, specular highlight and UI flash, none of which are occlusions.
-    //   * the two warped samples genuinely disagree, measured at flow resolution and
-    //     normalised by local contrast, so a slightly misaligned texture edge does not count.
-    //
-    // The sign of the divergence then says which side is valid: a diverging field is area
-    // opening up, which exists only in the next frame; a converging field is area being
-    // covered, which exists only in the previous one. That is strictly better than the old
-    // 'nearest frame in time', which was right only half the time.
-    //
-    // Set to 0.0 to compare against no occlusion handling at all.
-    const float OCCLUSION_STRENGTH = 1.0;
+    float disagree = maxChannel(abs(c0 - c1));
+    float pick = smoothstep(BLEND_LO, BLEND_HI, disagree);
+    result = mix(result, single, pick);
 
-    // The window matters. Measured per texel this test barely fired: the flow around a
-    // static object does not step, it RAMPS over a band tens of texels wide (the fan of
-    // contours under the character in the debug view), so a 100 px jump spread over 20
-    // texels is only ~5 px per texel and never cleared the threshold. Sampling a few
-    // texels out measures the jump across the band instead of the local slope.
-    const float DISC_RADIUS = 4.0;
+    // --- static-overlay pass-through ---------------------------------------
+    float uiMask = 0.0;
+    vec3 uiColor = vec3(0.0);
 
-    vec2 fts = 1.0 / vec2(textureSize(flowTex, 0));
-    vec2 fo = fts * DISC_RADIUS;
-    vec2 sizePx = vec2(size);
+    if (UI_STRENGTH > 0.0 && length(f * vec2(size)) > UI_FLOW_SKIP_PX) {
+        vec3 s0 = textureLod(prevColor, uv, 0.0).xyz;
+        vec3 s1 = textureLod(nextColor, uv, 0.0).xyz;
 
-    vec2 fL = sampleFlow(clamp(uv - vec2(fo.x, 0.0), vec2(0.0), vec2(1.0)));
-    vec2 fR = sampleFlow(clamp(uv + vec2(fo.x, 0.0), vec2(0.0), vec2(1.0)));
-    vec2 fU = sampleFlow(clamp(uv - vec2(0.0, fo.y), vec2(0.0), vec2(1.0)));
-    vec2 fD = sampleFlow(clamp(uv + vec2(0.0, fo.y), vec2(0.0), vec2(1.0)));
+        float rStatic = maxChannel(abs(s0 - s1));
 
-    // How far the flow departs from this pixel's own value across that window, in output
-    // pixels. A correct smooth field with strong parallax stays a couple of pixels here.
-    float flowVar = max(max(length((fL - f) * sizePx), length((fR - f) * sizePx)),
-                        max(length((fU - f) * sizePx), length((fD - f) * sizePx)));
+        if (UI_DILATE_TAPS > 0) {
+            vec2 d = UI_DILATE_PX * texel;
+            rStatic = min(rStatic, pairDiff(uv + vec2(d.x, 0.0)));
+            rStatic = min(rStatic, pairDiff(uv - vec2(d.x, 0.0)));
+            if (UI_DILATE_TAPS > 2) {
+                rStatic = min(rStatic, pairDiff(uv + vec2(0.0, d.y)));
+                rStatic = min(rStatic, pairDiff(uv - vec2(0.0, d.y)));
+            }
+        }
 
-    const float DISC_LO = 2.0;
-    const float DISC_HI = 12.0;
-    float disc = smoothstep(DISC_LO, DISC_HI, flowVar);
+        uiMask = UI_STRENGTH * (1.0 - smoothstep(UI_LO, UI_HI, rStatic));
 
-    vec2 lpr = fts * 0.3;
-    float spread0;
-    float spread1;
-    vec3 l0 = lowPass(prevColor, clamp(uv0, vec2(0.0), vec2(1.0)), lpr, spread0);
-    vec3 l1 = lowPass(nextColor, clamp(uv1, vec2(0.0), vec2(1.0)), lpr, spread1);
+        // The pair agrees here, so either frame is the answer; crossfading keeps a slowly
+        // animating element (a draining bar, a blinking icon) smooth instead of popping
+        // on every real frame.
+        uiColor = mix(s0, s1, pc.t);
+    }
 
-    float resid = dot(abs(l0 - l1), vec3(1.0 / 3.0));
-    float contrast = max(spread0, spread1);
-    float rel = resid / (contrast + 0.06);
+    result = mix(result, uiColor, uiMask);
 
-    const float REL_LO = 1.0;
-    const float REL_HI = 3.0;
-    float mismatch = smoothstep(REL_LO, REL_HI, rel);
-
-    float occl = OCCLUSION_STRENGTH * disc * mismatch;
-
-    // Divergence over the same window. Worked example, background sweeping left past a
-    // static character: just right of her the field goes 0 -> -100, divergence negative,
-    // so we take c0, which back-tracks further into the background - correct. Just left of
-    // her it goes -100 -> 0, divergence positive, so we take c1 - also correct.
-    float divergence = (fR.x - fL.x) * sizePx.x + (fD.y - fU.y) * sizePx.y;
-    vec3 sided = divergence > 0.0 ? c1 : c0;
-    result = mix(result, sided, occl);
-
-    // Set to 1 to paint the mask instead of the frame: red where it fires, dimmed scene
-    // underneath. If the character's silhouette band stays dark, the mask is not firing
-    // and the thresholds are wrong; if it is solidly red and the ghost is still there,
-    // the mask fires but picks the wrong side.
-    const int DEBUG_OCCLUSION = 0;
-    if (DEBUG_OCCLUSION != 0) {
-        result = mix(result * 0.3, vec3(1.0, 0.08, 0.08), occl);
+    bool leftHalf = uint(pix.x) * 2u < gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+    if (DEBUG_UI_MASK == 1 || (DEBUG_UI_MASK == 2 && leftHalf)) {
+        result = mix(result * 0.15, vec3(0.1, 1.0, 0.2), uiMask);
     }
 
     imageStore(outImage, pix, vec4(result, 1.0));
