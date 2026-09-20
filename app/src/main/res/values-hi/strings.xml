@@ -251,7 +251,7 @@
     <string name="linux_runtime_not_installed">Linux रनटाइम अभी इंस्टॉल नहीं है, इसलिए %1$s शुरू नहीं किया जा सकता। इसे सेटिंग्स > स्टोर में Linux क्लाइंट से इंस्टॉल करें।</string>
     <string name="linux_client_button">Linux क्लाइंट</string>
     <string name="linux_client_title">Linux Steam क्लाइंट</string>
-    <string name="linux_client_install_message">WinNative से Linux रनटाइम और Valve से Steam क्लाइंट डाउनलोड करता है, फिर दोनों इंस्टॉल करता है। डाउनलोड 1 GB से अधिक है, इसलिए Wi-Fi का उपयोग करें।</string>
+    <string name="linux_client_install_message">WinNative से Linux रनटाइम और Valve से Steam क्लाइंट डाउनलोड करता है, फिर दोनों इंस्टॉल करता है। डाउनलोड 2 GB से अधिक है, इसलिए Wi-Fi का उपयोग करें।</string>
     <string name="linux_client_installed_message">Linux रनटाइम और Steam क्लाइंट इंस्टॉल हैं, और Steam लाइब्रेरी में है।</string>
     <string name="linux_client_failed_message">इंस्टॉल पूरा नहीं हुआ। अपना कनेक्शन जाँचें और फिर से प्रयास करें।</string>
     <string name="linux_client_no_space_message">पर्याप्त खाली जगह नहीं है: %1$s चाहिए और %2$s उपलब्ध है।</string>

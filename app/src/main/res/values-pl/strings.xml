@@ -257,7 +257,7 @@
     <string name="linux_runtime_not_installed">Środowisko Linux nie jest jeszcze zainstalowane, więc nie można uruchomić %1$s. Zainstaluj je przyciskiem Klient Linux w Ustawienia > Sklepy.</string>
     <string name="linux_client_button">Klient Linux</string>
     <string name="linux_client_title">Klient Steam dla Linuksa</string>
-    <string name="linux_client_install_message">Pobiera środowisko Linux z WinNative i klienta Steam od Valve, a następnie instaluje oba. Pobieranie przekracza 1 GB, więc użyj Wi-Fi.</string>
+    <string name="linux_client_install_message">Pobiera środowisko Linux z WinNative i klienta Steam od Valve, a następnie instaluje oba. Pobieranie przekracza 2 GB, więc użyj Wi-Fi.</string>
     <string name="linux_client_installed_message">Środowisko Linux i klient Steam są zainstalowane, a Steam jest w Bibliotece.</string>
     <string name="linux_client_failed_message">Instalacja nie została ukończona. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="linux_client_no_space_message">Za mało wolnego miejsca: potrzeba %1$s, dostępne jest %2$s.</string>

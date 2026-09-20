@@ -254,7 +254,7 @@
     <string name="linux_runtime_not_installed">El entorno de ejecución de Linux aún no está instalado, por lo que %1$s no se puede iniciar. Instálalo con Cliente Linux en Configuración > Tiendas.</string>
     <string name="linux_client_button">Cliente Linux</string>
     <string name="linux_client_title">Cliente de Steam para Linux</string>
-    <string name="linux_client_install_message">Descarga el entorno de ejecución de Linux desde WinNative y el cliente de Steam desde Valve, y luego instala ambos. La descarga supera 1 GB, así que usa Wi-Fi.</string>
+    <string name="linux_client_install_message">Descarga el entorno de ejecución de Linux desde WinNative y el cliente de Steam desde Valve, y luego instala ambos. La descarga supera 2 GB, así que usa Wi-Fi.</string>
     <string name="linux_client_installed_message">El entorno de ejecución de Linux y el cliente de Steam están instalados, y Steam está en la Biblioteca.</string>
     <string name="linux_client_failed_message">La instalación no terminó. Comprueba tu conexión e inténtalo de nuevo.</string>
     <string name="linux_client_no_space_message">No hay suficiente espacio libre: se necesitan %1$s y hay %2$s disponibles.</string>

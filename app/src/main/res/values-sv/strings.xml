@@ -254,7 +254,7 @@
     <string name="linux_runtime_not_installed">Linux-körmiljön är inte installerad ännu, så %1$s kan inte startas. Installera den med Linux-klient under Inställningar > Butiker.</string>
     <string name="linux_client_button">Linux-klient</string>
     <string name="linux_client_title">Linux Steam-klient</string>
-    <string name="linux_client_install_message">Laddar ned Linux-körmiljön från WinNative och Steam-klienten från Valve och installerar båda. Nedladdningen är över 1 GB, så använd Wi-Fi.</string>
+    <string name="linux_client_install_message">Laddar ned Linux-körmiljön från WinNative och Steam-klienten från Valve och installerar båda. Nedladdningen är över 2 GB, så använd Wi-Fi.</string>
     <string name="linux_client_installed_message">Linux-körmiljön och Steam-klienten är installerade, och Steam finns i Bibliotek.</string>
     <string name="linux_client_failed_message">Installationen slutfördes inte. Kontrollera anslutningen och försök igen.</string>
     <string name="linux_client_no_space_message">Inte tillräckligt med ledigt utrymme: %1$s behövs och %2$s är ledigt.</string>

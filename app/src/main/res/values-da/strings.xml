@@ -253,7 +253,7 @@
     <string name="linux_runtime_not_installed">Linux-runtimen er ikke installeret endnu, så %1$s kan ikke startes. Installer det med Linux-klient under Indstillinger > Butikker.</string>
     <string name="linux_client_button">Linux-klient</string>
     <string name="linux_client_title">Linux Steam-klient</string>
-    <string name="linux_client_install_message">Downloader Linux-runtimen fra WinNative og Steam-klienten fra Valve og installerer begge. Downloaden er over 1 GB, så brug Wi-Fi.</string>
+    <string name="linux_client_install_message">Downloader Linux-runtimen fra WinNative og Steam-klienten fra Valve og installerer begge. Downloaden er over 2 GB, så brug Wi-Fi.</string>
     <string name="linux_client_installed_message">Linux-runtimen og Steam-klienten er installeret, og Steam er i Bibliotek.</string>
     <string name="linux_client_failed_message">Installationen blev ikke fuldført. Tjek din forbindelse, og prøv igen.</string>
     <string name="linux_client_no_space_message">Ikke nok ledig plads: %1$s kræves, og %2$s er ledig.</string>

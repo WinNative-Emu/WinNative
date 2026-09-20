@@ -253,7 +253,7 @@
     <string name="linux_runtime_not_installed">O runtime Linux ainda não está instalado, então %1$s não pode ser iniciado. Instale com Cliente Linux em Configuracoes > Lojas.</string>
     <string name="linux_client_button">Cliente Linux</string>
     <string name="linux_client_title">Cliente Steam para Linux</string>
-    <string name="linux_client_install_message">Baixa o runtime Linux do WinNative e o cliente Steam da Valve e instala os dois. O download passa de 1 GB, então use Wi-Fi.</string>
+    <string name="linux_client_install_message">Baixa o runtime Linux do WinNative e o cliente Steam da Valve e instala os dois. O download passa de 2 GB, então use Wi-Fi.</string>
     <string name="linux_client_installed_message">O runtime Linux e o cliente Steam estão instalados, e o Steam está na Biblioteca.</string>
     <string name="linux_client_failed_message">A instalação não terminou. Verifique sua conexão e tente novamente.</string>
     <string name="linux_client_no_space_message">Espaço livre insuficiente: são necessários %1$s e há %2$s disponíveis.</string>

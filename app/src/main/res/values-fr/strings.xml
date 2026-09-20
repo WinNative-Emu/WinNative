@@ -253,7 +253,7 @@
     <string name="linux_runtime_not_installed">L\'environnement Linux n\'est pas encore installé, %1$s ne peut donc pas démarrer. Installez-le avec Client Linux dans Paramètres > Boutiques.</string>
     <string name="linux_client_button">Client Linux</string>
     <string name="linux_client_title">Client Steam Linux</string>
-    <string name="linux_client_install_message">Télécharge l\'environnement Linux depuis WinNative et le client Steam depuis Valve, puis installe les deux. Le téléchargement dépasse 1 Go, utilisez donc le Wi-Fi.</string>
+    <string name="linux_client_install_message">Télécharge l\'environnement Linux depuis WinNative et le client Steam depuis Valve, puis installe les deux. Le téléchargement dépasse 2 Go, utilisez donc le Wi-Fi.</string>
     <string name="linux_client_installed_message">L\'environnement Linux et le client Steam sont installés, et Steam est dans la Bibliothèque.</string>
     <string name="linux_client_failed_message">L\'installation n\'a pas abouti. Vérifiez votre connexion et réessayez.</string>
     <string name="linux_client_no_space_message">Espace libre insuffisant : %1$s nécessaires, %2$s disponibles.</string>

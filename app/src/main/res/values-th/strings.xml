@@ -254,7 +254,7 @@
     <string name="linux_runtime_not_installed">ยังไม่ได้ติดตั้งรันไทม์ Linux จึงไม่สามารถเริ่ม %1$s ได้ ติดตั้งได้ด้วย ไคลเอ็นต์ Linux ใน การตั้งค่า > ร้านค้า</string>
     <string name="linux_client_button">ไคลเอ็นต์ Linux</string>
     <string name="linux_client_title">ไคลเอ็นต์ Steam สำหรับ Linux</string>
-    <string name="linux_client_install_message">ดาวน์โหลดรันไทม์ Linux จาก WinNative และไคลเอ็นต์ Steam จาก Valve แล้วติดตั้งทั้งสองอย่าง การดาวน์โหลดมีขนาดเกิน 1 GB จึงควรใช้ Wi-Fi</string>
+    <string name="linux_client_install_message">ดาวน์โหลดรันไทม์ Linux จาก WinNative และไคลเอ็นต์ Steam จาก Valve แล้วติดตั้งทั้งสองอย่าง การดาวน์โหลดมีขนาดเกิน 2 GB จึงควรใช้ Wi-Fi</string>
     <string name="linux_client_installed_message">ติดตั้งรันไทม์ Linux และไคลเอ็นต์ Steam แล้ว และ Steam อยู่ในคลังแล้ว</string>
     <string name="linux_client_failed_message">การติดตั้งไม่เสร็จสมบูรณ์ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง</string>
     <string name="linux_client_no_space_message">พื้นที่ว่างไม่พอ: ต้องใช้ %1$s และมีว่าง %2$s</string>

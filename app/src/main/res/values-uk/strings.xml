@@ -257,7 +257,7 @@
     <string name="linux_runtime_not_installed">Середовище виконання Linux ще не встановлено, тому %1$s не можна запустити. Встановіть його кнопкою Клієнт Linux у розділі Налаштування > Магазини.</string>
     <string name="linux_client_button">Клієнт Linux</string>
     <string name="linux_client_title">Клієнт Steam для Linux</string>
-    <string name="linux_client_install_message">Завантажує середовище виконання Linux із WinNative та клієнт Steam із серверів Valve, потім встановлює обидва. Обсяг завантаження понад 1 ГБ, тож використовуйте Wi-Fi.</string>
+    <string name="linux_client_install_message">Завантажує середовище виконання Linux із WinNative та клієнт Steam із серверів Valve, потім встановлює обидва. Обсяг завантаження понад 2 ГБ, тож використовуйте Wi-Fi.</string>
     <string name="linux_client_installed_message">Середовище виконання Linux і клієнт Steam встановлено, а Steam є в Бібліотеці.</string>
     <string name="linux_client_failed_message">Встановлення не завершилося. Перевірте з\'єднання і спробуйте ще раз.</string>
     <string name="linux_client_no_space_message">Недостатньо вільного місця: потрібно %1$s, доступно %2$s.</string>

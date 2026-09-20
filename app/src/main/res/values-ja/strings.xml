@@ -254,7 +254,7 @@
     <string name="linux_runtime_not_installed">Linux ランタイムがまだインストールされていないため、%1$s を起動できません。設定 > ストア の Linux クライアント からインストールしてください。</string>
     <string name="linux_client_button">Linux クライアント</string>
     <string name="linux_client_title">Linux Steam クライアント</string>
-    <string name="linux_client_install_message">WinNative から Linux ランタイムを、Valve から Steam クライアントをダウンロードし、両方をインストールします。ダウンロードは 1 GB を超えるため Wi-Fi を使用してください。</string>
+    <string name="linux_client_install_message">WinNative から Linux ランタイムを、Valve から Steam クライアントをダウンロードし、両方をインストールします。ダウンロードは 2 GB を超えるため Wi-Fi を使用してください。</string>
     <string name="linux_client_installed_message">Linux ランタイムと Steam クライアントはインストール済みで、Steam はライブラリにあります。</string>
     <string name="linux_client_failed_message">インストールが完了しませんでした。接続を確認してもう一度お試しください。</string>
     <string name="linux_client_no_space_message">空き容量が不足しています: %1$s 必要で、空きは %2$s です。</string>

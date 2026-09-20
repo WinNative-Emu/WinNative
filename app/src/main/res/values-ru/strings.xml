@@ -257,7 +257,7 @@
     <string name="linux_runtime_not_installed">Среда выполнения Linux ещё не установлена, поэтому %1$s нельзя запустить. Установите её кнопкой Клиент Linux в разделе Настройки > Магазины.</string>
     <string name="linux_client_button">Клиент Linux</string>
     <string name="linux_client_title">Клиент Steam для Linux</string>
-    <string name="linux_client_install_message">Загружает среду выполнения Linux с WinNative и клиент Steam с серверов Valve, затем устанавливает оба. Объём загрузки больше 1 ГБ, поэтому используйте Wi-Fi.</string>
+    <string name="linux_client_install_message">Загружает среду выполнения Linux с WinNative и клиент Steam с серверов Valve, затем устанавливает оба. Объём загрузки больше 2 ГБ, поэтому используйте Wi-Fi.</string>
     <string name="linux_client_installed_message">Среда выполнения Linux и клиент Steam установлены, а Steam есть в Библиотеке.</string>
     <string name="linux_client_failed_message">Установка не завершилась. Проверьте подключение и повторите попытку.</string>
     <string name="linux_client_no_space_message">Недостаточно свободного места: нужно %1$s, доступно %2$s.</string>

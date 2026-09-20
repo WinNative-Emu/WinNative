@@ -254,7 +254,7 @@
     <string name="linux_runtime_not_installed">Linux-ajoympäristöä ei ole vielä asennettu, joten kohdetta %1$s ei voi käynnistää. Asenna se kohdasta Linux-asiakas valikossa Asetukset > Kaupat.</string>
     <string name="linux_client_button">Linux-asiakas</string>
     <string name="linux_client_title">Linux Steam -asiakas</string>
-    <string name="linux_client_install_message">Lataa Linux-ajoympäristön WinNativelta ja Steam-asiakkaan Valvelta ja asentaa molemmat. Lataus on yli 1 Gt, joten käytä Wi-Fiä.</string>
+    <string name="linux_client_install_message">Lataa Linux-ajoympäristön WinNativelta ja Steam-asiakkaan Valvelta ja asentaa molemmat. Lataus on yli 2 Gt, joten käytä Wi-Fiä.</string>
     <string name="linux_client_installed_message">Linux-ajoympäristö ja Steam-asiakas on asennettu, ja Steam on Kirjastossa.</string>
     <string name="linux_client_failed_message">Asennus ei valmistunut. Tarkista yhteys ja yritä uudelleen.</string>
     <string name="linux_client_no_space_message">Vapaata tilaa ei ole tarpeeksi: tarvitaan %1$s, käytettävissä on %2$s.</string>

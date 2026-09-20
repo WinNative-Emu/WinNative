@@ -253,7 +253,7 @@
     <string name="linux_runtime_not_installed">Die Linux-Laufzeitumgebung ist noch nicht installiert, daher kann %1$s nicht gestartet werden. Installiere sie mit Linux-Client unter Einstellungen > Stores.</string>
     <string name="linux_client_button">Linux-Client</string>
     <string name="linux_client_title">Linux-Steam-Client</string>
-    <string name="linux_client_install_message">Lädt die Linux-Laufzeitumgebung von WinNative und den Steam-Client von Valve herunter und installiert beides. Der Download ist über 1 GB groß, nutze also WLAN.</string>
+    <string name="linux_client_install_message">Lädt die Linux-Laufzeitumgebung von WinNative und den Steam-Client von Valve herunter und installiert beides. Der Download ist über 2 GB groß, nutze also WLAN.</string>
     <string name="linux_client_installed_message">Die Linux-Laufzeitumgebung und der Steam-Client sind installiert, und Steam ist in der Bibliothek.</string>
     <string name="linux_client_failed_message">Die Installation wurde nicht abgeschlossen. Prüfe deine Verbindung und versuche es erneut.</string>
     <string name="linux_client_no_space_message">Nicht genug freier Speicher: %1$s werden benötigt, %2$s sind verfügbar.</string>

@@ -253,7 +253,7 @@
     <string name="linux_runtime_not_installed">Linux 執行環境尚未安裝，因此無法啟動 %1$s。請在 設定 > 商店 中透過 Linux 用戶端 安裝。</string>
     <string name="linux_client_button">Linux 用戶端</string>
     <string name="linux_client_title">Linux Steam 用戶端</string>
-    <string name="linux_client_install_message">從 WinNative 下載 Linux 執行環境，從 Valve 下載 Steam 用戶端，然後安裝兩者。下載超過 1 GB，請使用 Wi-Fi。</string>
+    <string name="linux_client_install_message">從 WinNative 下載 Linux 執行環境，從 Valve 下載 Steam 用戶端，然後安裝兩者。下載超過 2 GB，請使用 Wi-Fi。</string>
     <string name="linux_client_installed_message">Linux 執行環境和 Steam 用戶端已安裝，Steam 已在遊戲庫中。</string>
     <string name="linux_client_failed_message">安裝未完成。請檢查網路連線後再試一次。</string>
     <string name="linux_client_no_space_message">可用空間不足：需要 %1$s，可用 %2$s。</string>
