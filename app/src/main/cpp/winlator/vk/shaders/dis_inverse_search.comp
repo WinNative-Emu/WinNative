@@ -3,7 +3,10 @@
 precision highp float;
 precision highp int;
 
-#define DIS_INVERSE_ITERS 8
+// Gauss-Newton iterations per patch. The loop already breaks once the SSD stops
+// improving, so this only caps the hard cases; six reaches the same fixpoint
+// there while cutting a quarter off the heaviest loop in the search.
+#define DIS_INVERSE_ITERS 6
 
 #define DIS_MAX_MATCH_RMS 36.0
 

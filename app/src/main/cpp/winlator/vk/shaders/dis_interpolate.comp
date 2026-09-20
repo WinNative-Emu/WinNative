@@ -8,6 +8,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform sampler2D prevColor;
 layout(set = 0, binding = 1) uniform sampler2D nextColor;
 layout(set = 0, binding = 2) uniform sampler2D flowTex;
+layout(set = 0, binding = 3) uniform sampler2D sideTex;
 layout(set = 0, binding = 4) uniform sampler2D histTex;
 layout(set = 0, binding = 5, rgba8) uniform image2D outImage;
 
@@ -74,7 +75,7 @@ const float UI_FLOW_SKIP_PX = 0.25;
 //
 // 0, 2 or 4 taps; each tap is two full-res fetches, so four taps double this pass's
 // sampling. Drop to 2 for about two thirds of the gain at half the cost.
-const int UI_DILATE_TAPS = 4;
+const int UI_DILATE_TAPS = 2;
 const float UI_DILATE_PX = 1.5;
 
 // Channel difference, 0..1. LO is rgb8 quantisation plus mild dither; HI is where a
@@ -199,20 +200,9 @@ void main() {
 
     vec3 single = pc.t < 0.5 ? c0 : c1;
 #if DIS_OCCL_SIDED
-    {
-        // Divergence over a wide window: a diverging field is area opening up,
-        // which exists only in the next frame; a converging one only in the
-        // previous. Spatially coherent and independent of t, so the outline of
-        // a static element does not swap sides between generated frames.
-        vec2 fts = 1.0 / vec2(textureSize(flowTex, 0));
-        vec2 fo = fts * 4.0;
-        vec2 fL = sampleFlow(clamp(uv - vec2(fo.x, 0.0), vec2(0.0), vec2(1.0)));
-        vec2 fR = sampleFlow(clamp(uv + vec2(fo.x, 0.0), vec2(0.0), vec2(1.0)));
-        vec2 fU = sampleFlow(clamp(uv - vec2(0.0, fo.y), vec2(0.0), vec2(1.0)));
-        vec2 fD = sampleFlow(clamp(uv + vec2(0.0, fo.y), vec2(0.0), vec2(1.0)));
-        float divergence = (fR.x - fL.x) * float(size.x) + (fD.y - fU.y) * float(size.y);
-        single = divergence > 0.0 ? c1 : c0;
-    }
+    // The side choice is precomputed per flow texel by dis_side.comp, so this is
+    // one tap instead of four flow fetches and it does not change with t.
+    single = textureLod(sideTex, uv, 0.0).r > 0.5 ? c1 : c0;
 #endif
 
     const float FEATHER_PX = 8.0;
