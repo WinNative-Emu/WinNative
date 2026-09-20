@@ -237,14 +237,40 @@ On the NP06J (Adreno 840, Android 16, app uid 10516), 2026-09-17:
 - libdrm-based checks: `drmGetDevice2` on the presented node reports a platform device
   `kgsl-3d0`; Turnip reports `hasRender=1` for it.
 
+On the RedMagic (Adreno 840), 2026-09-20:
+
+- **The desktop.** gamescope shows one program at a time and cannot hold a panel and its windows,
+  so `winnative-session desktop` runs XFCE 4.20 on labwc (`WLR_BACKENDS=wayland`, pixman renderer)
+  as a client of the app's compositor. A nested wlroots compositor takes modifiers from
+  `wl_keyboard.modifiers` alone, which the compositor now sends; without it Shift never reached a
+  program on the desktop.
+- **Taps.** Touchscreen mode hands a touch to the compositor (`nativeSendPointer`), which maps it
+  through the scale mode's letterbox; the view's own stretch landed taps some 35 px off. The Steam
+  client sets `STEAM_TOUCH_CLICK_MODE` to 4 (passthrough), in which gamescope's Wayland backend
+  turns a nested pointer's motion into touch motion without a touch down, so the cursor never
+  moves and a click lands where it was left. gamescope's Wayland backend takes no `wl_touch`
+  either, so the session holds the mode at 0 (hover): the position warps the cursor and the
+  button clicks.
+- **Terminals.** glibc 2.42+ uses the termios2 ioctls (`TCGETS2`, `TCSETS*2`); Android's SELinux
+  policy allows an app only the older ones on a pty, so `isatty` failed everywhere (bash without
+  a prompt, `stty: Permission denied`). proot's seccomp filter traces those four requests by
+  argument and rewrites them; every other ioctl is allowed before the syscall list.
+- **Updates.** `linuxfs.json` carries `version` (the build's UTC time, also in
+  `/etc/winnative/version`). The installer offers a newer runtime, Proton (`proton-arm64.json`,
+  once it carries a version) or Turnip (`linux-turnip.json` + `linux-turnip.tar.zst` holding
+  `libvulkan_freedreno.so` and `name`; not published until a driver newer than
+  `LinuxRuntime.TURNIP_BUILD` exists). An update keeps `/root`, `/mnt/winnative`,
+  `/opt/winnative-proton` and `/etc/machine-id`: the client stayed signed in and nine prefixes
+  came through byte for byte.
+
 ## Not yet done
+
+- Processes a desktop program double-forks are reparented to the app (the subreaper) and stay
+  zombies until the session's cleanup sweep; they are only reaped then.
 
 - Xwayland's swapchain through the gamescope WSI layer still fails once at startup
   (`CreateSwapchainKHR failed with VK_ERROR_INITIALIZATION_FAILED`) and recovers; harmless so far.
 - `steam-runtime-launcher-service` is not shipped for arm64; Steam disables it and goes on.
-- `build-linuxfs.sh` now cross-builds Turnip (`build-turnip.sh`; meson, ninja and the aarch64
-  toolchain on the build host); `linuxfs.tar.zst` has not been regenerated with it yet - the
-  device rootfs was updated file by file.
 - Shortcut Settings still shows the Wine pages for a Linux entry; a Linux settings page is owed.
 - Extensionless ELFs in the picker; AppImage icons.
 - gamescope logs `Changed refresh` on every presentation-feedback event because the compositor's
