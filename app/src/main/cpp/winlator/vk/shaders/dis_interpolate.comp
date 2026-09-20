@@ -127,8 +127,8 @@ const int DEBUG_UI_MASK = 0;
 // vector that was wrong, so the generated frame sits closer to a repeat of a real one.
 // Raise BLEND_LO towards the old behaviour if that trade reads worse than the softness.
 // ---------------------------------------------------------------------------
-const float BLEND_LO = 0.020;
-const float BLEND_HI = 0.120;
+const float BLEND_LO = 0.030;
+const float BLEND_HI = 0.180;
 
 vec2 sampleFlow(vec2 uv) {
     if (manualFlowFilter == 0) return textureLod(flowTex, uv, 0.0).xy;

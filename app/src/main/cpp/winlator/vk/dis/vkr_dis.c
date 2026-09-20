@@ -709,7 +709,9 @@ typedef struct {
 
 static DisRefine dis_refine_for(uint32_t generations) {
     if (generations >= 3u) {
-        const DisRefine r = {2u, 5u, 2u, DIS_VR_LEVELS};
+        // Three fixed-point passes on the finest level for the 4x path: the warped
+        // samples line up better, so fewer pixels fall to the single-frame pick.
+        const DisRefine r = {3u, 5u, 2u, DIS_VR_LEVELS};
         return r;
     }
     if (generations == 2u) {
