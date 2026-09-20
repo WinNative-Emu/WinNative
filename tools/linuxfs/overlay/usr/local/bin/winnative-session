@@ -1,7 +1,7 @@
 #!/bin/bash
 # The Linux runtime's session. WinNative execs this under proot with the output size and mode;
 # the first pass starts gamescope, which execs this script again inside it for the program:
-#   winnative-session desktop            the file manager
+#   winnative-session desktop            the XFCE desktop
 #   winnative-session run <path>         a Linux program (AppImage, script or ELF)
 #   winnative-session steam [steam-url]  the native Steam client
 # WN_WIDTH / WN_HEIGHT size the output, WN_FPS limits it, WN_LOG collects everything said here.
@@ -32,6 +32,14 @@ if [ -z "${WN_INSIDE:-}" ]; then
     wayland-info >/dev/null 2>&1 && break
     sleep 0.1
   done
+  # The desktop is XFCE on labwc, a compositor of its own that draws into one window of the
+  # app's: gamescope shows a single program at a time and cannot hold a panel and its windows.
+  # A runtime installed before the desktop was part of it still gets the file manager.
+  if [ "$mode" = desktop ] && command -v labwc >/dev/null && command -v xfce4-session >/dev/null; then
+    export WN_INSIDE=1 XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=XFCE
+    export WLR_BACKENDS=wayland WLR_RENDERER=${WN_DESKTOP_RENDERER:-pixman}
+    exec dbus-run-session -- labwc -S xfce4-session
+  fi
   width=${WN_WIDTH:-1280}
   height=${WN_HEIGHT:-720}
   args=(--backend wayland --expose-wayland -f -W "$width" -H "$height" -w "$width" -h "$height")

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Assembles the Linux runtime (files/linuxfs on the device) from Arch Linux ARM packages:
-# the base rootfs, gamescope with Xwayland and Mesa, a file manager, and the WinNative session
-# scripts from overlay/. No Valve software is included; winnative-steam-install fetches the
+# the base rootfs, gamescope with Xwayland and Mesa, the XFCE desktop on labwc, and the WinNative
+# session scripts from overlay/. No Valve software is included; winnative-steam-install fetches the
 # native arm64 Steam client from Valve at first use.
 #
 #   tools/linuxfs/build-linuxfs.sh <work dir> <output.tar.zst>
@@ -14,9 +14,12 @@ out=${2:?output tarball}
 mirror=http://mirror.archlinuxarm.org/aarch64
 base_url=http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz
 seeds=(gamescope mesa vulkan-freedreno xorg-xwayland xorg-xhost xorg-xrandr vulkan-tools wayland-utils
-  mesa-utils foot pcmanfm unzip dbus libpulse nss libnm curl ca-certificates fontconfig freetype2
+  mesa-utils foot unzip dbus libpulse nss libnm curl ca-certificates fontconfig freetype2
   bash coreutils grep sed gawk which findutils glib2 libglvnd ibus libxcomposite libxdamage libxrandr
-  libxtst libxi ttf-dejavu openal libvdpau lsof)
+  libxtst libxi ttf-dejavu openal libvdpau lsof labwc xfce4-session xfce4-panel xfdesktop thunar
+  xfce4-terminal xfce4-settings xfce4-appfinder mousepad adwaita-icon-theme
+  # An app build from before the desktop starts this file manager in its place.
+  pcmanfm)
 
 mkdir -p "$work/db" "$work/pkgs" "$work/rootfs"
 cd "$work"
@@ -155,12 +158,18 @@ proot -q "$(command -v qemu-aarch64-static)" -r rootfs -w / -b /dev -b /proc /bi
   for d in /usr/share/icons/*/; do [ -f "$d/index.theme" ] && gtk-update-icon-cache -q -t -f "$d"; done
   rm -rf /root/.cache' >/dev/null
 
+# The build's version, newest highest: the installer offers a newer archive to a runtime carrying
+# an older one. The same number goes into the archive's description below.
+version=$(date -u +%Y%m%d%H%M)
+mkdir -p rootfs/etc/winnative
+echo "$version" > rootfs/etc/winnative/version
+
 # Level 19 with a 128 MiB window: the same libraries recur across the tree, and the app's decoder
 # accepts that window by default, so the archive shrinks while unpacking stays as fast as zstd is.
 tar -C rootfs -cf - . | zstd -T0 -19 --long=27 -o "$out" --force
 # What the app's installer checks before it unpacks: the archive's digest and size, and the bytes
 # it writes, counting a hard-linked file once as tar stores it.
 unpacked=$(find rootfs -type f -printf '%i %s\n' | sort -u | awk '{ total += $2 } END { print total }')
-printf '{\n  "sha256": "%s",\n  "size": %s,\n  "unpacked": %s\n}\n' \
-  "$(sha256sum "$out" | cut -d' ' -f1)" "$(stat -c %s "$out")" "$unpacked" > "${out%.tar.zst}.json"
+printf '{\n  "version": %s,\n  "sha256": "%s",\n  "size": %s,\n  "unpacked": %s\n}\n' \
+  "$version" "$(sha256sum "$out" | cut -d' ' -f1)" "$(stat -c %s "$out")" "$unpacked" > "${out%.tar.zst}.json"
 ls -la "$out" "${out%.tar.zst}.json"
