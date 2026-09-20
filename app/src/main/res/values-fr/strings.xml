@@ -2930,6 +2930,8 @@ Chemin installé :
     <string name="linux_apps_need_gamescope_container">Créez d\'abord le conteneur GameScope dans Paramètres › Conteneurs.</string>
     <string name="linux_runtime_missing">L\'environnement Linux n\'est pas installé, ce conteneur ne peut donc pas encore démarrer. Installez-le avec Client Linux dans Paramètres > Boutiques.</string>
     <string name="container_display_server_gamescope">Gamescope dessine toujours via le compositeur Wayland.</string>
+    <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
+    <string name="container_graphics_driver_gamescope_help">Intégré à l\'environnement Linux. Les pilotes Android téléchargés ne s\'appliquent qu\'aux conteneurs Wine et Proton.</string>
     <string name="linux_runtime_windows_program">Ceci est un programme Windows. Déplacez-le dans un conteneur Wine dans les paramètres du raccourci pour le lancer.</string>
     <string name="settings_content_badge_online">En ligne</string>
 </resources>

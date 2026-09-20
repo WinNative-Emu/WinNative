@@ -2928,6 +2928,8 @@ Asennuspolku:
     <string name="linux_apps_need_gamescope_container">Luo ensin GameScope-säiliö kohdassa Asetukset › Säiliöt.</string>
     <string name="linux_runtime_missing">Linux-ajoympäristöä ei ole asennettu, joten tätä konttia ei voi vielä käynnistää. Asenna se kohdasta Linux-asiakas valikossa Asetukset > Kaupat.</string>
     <string name="container_display_server_gamescope">Gamescope piirtää aina Wayland-koostajan kautta.</string>
+    <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
+    <string name="container_graphics_driver_gamescope_help">Sisältyy Linux-ajoympäristöön. Ladatut Android-ajurit koskevat vain Wine- ja Proton-säiliöitä.</string>
     <string name="linux_runtime_windows_program">Tämä on Windows-ohjelma. Siirrä se Wine-säiliöön pikakuvakkeen asetuksissa käynnistääksesi sen.</string>
     <string name="settings_content_badge_online">Verkossa</string>
 </resources>

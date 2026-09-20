@@ -2928,6 +2928,8 @@ Cale instalata:
     <string name="linux_apps_need_gamescope_container">Creează mai întâi containerul GameScope în Setări › Containere.</string>
     <string name="linux_runtime_missing">Mediul de execuție Linux nu este instalat, așa că acest container nu poate porni încă. Instalează-l cu Client Linux din Setari > Magazine.</string>
     <string name="container_display_server_gamescope">Gamescope desenează întotdeauna prin compozitorul Wayland.</string>
+    <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
+    <string name="container_graphics_driver_gamescope_help">Inclus în mediul Linux. Driverele Android descărcate se aplică doar containerelor Wine și Proton.</string>
     <string name="linux_runtime_windows_program">Acesta este un program Windows. Mută-l într-un container Wine din setările scurtăturii pentru a-l porni.</string>
     <string name="settings_content_badge_online">Online</string>
 </resources>

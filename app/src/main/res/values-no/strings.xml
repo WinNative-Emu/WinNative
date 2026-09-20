@@ -2928,6 +2928,8 @@ Installert bane:
     <string name="linux_apps_need_gamescope_container">Opprett først GameScope-containeren under Innstillinger › Containere.</string>
     <string name="linux_runtime_missing">Linux-kjøretidsmiljøet er ikke installert, så denne containeren kan ikke startes ennå. Installer det med Linux-klient under Innstillinger > Butikker.</string>
     <string name="container_display_server_gamescope">Gamescope tegner alltid gjennom Wayland-kompositoren.</string>
+    <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
+    <string name="container_graphics_driver_gamescope_help">Innebygd i Linux-miljøet. Nedlastede Android-drivere gjelder bare for Wine- og Proton-containere.</string>
     <string name="linux_runtime_windows_program">Dette er et Windows-program. Flytt det til en Wine-container i snarveisinnstillingene for å starte det.</string>
     <string name="settings_content_badge_online">Online</string>
 </resources>

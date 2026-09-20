@@ -1819,6 +1819,11 @@ private fun DisplaySection(
     callbacks: GameSettingsCallbacks
 ) {
 
+    if (state.gamescopeContainer.value) {
+        GamescopeDisplaySection(state)
+        return
+    }
+
     SettingGroup {
         SettingPairRow {
             Box(Modifier.weight(1f)) {
@@ -1894,6 +1899,45 @@ private fun DisplaySection(
         WineD3DConfigCard(state)
     }
 
+}
+
+/**
+ * A GameScope container draws with the Turnip the Linux runtime carries, and its games bring their
+ * own DXVK and VKD3D inside Proton, so the Android drivers and the DX wrappers are not offered.
+ */
+@Composable
+private fun GamescopeDisplaySection(state: GameSettingsStateHolder) {
+    SettingGroup {
+        SettingPairRow {
+            Box(Modifier.weight(1f)) {
+                SettingDropdown(
+                    label = stringResource(R.string.container_graphics_driver),
+                    entries = listOf(
+                        stringResource(R.string.container_graphics_driver_gamescope, LinuxRuntime.TURNIP_VERSION)
+                    ),
+                    selectedIndex = 0,
+                    onSelected = {},
+                    enabled = false
+                )
+            }
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                Text(
+                    text = stringResource(R.string.container_graphics_driver_gamescope_help),
+                    color = TextDim,
+                    fontSize = SettingLabelSize,
+                    modifier = Modifier.padding(top = SettingLabelRowHeight)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(SettingSectionGap))
+
+        DisplayServerRow(state)
+    }
+
+    Spacer(Modifier.height(SettingItemGap))
+
+    FrameGenerationCard(state)
 }
 
 /**

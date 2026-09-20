@@ -2930,6 +2930,8 @@
     <string name="linux_apps_need_gamescope_container">먼저 설정 › 컨테이너에서 GameScope 컨테이너를 만드세요.</string>
     <string name="linux_runtime_missing">Linux 런타임이 설치되지 않아 이 컨테이너를 아직 시작할 수 없습니다. 설정 > 스토어의 Linux 클라이언트에서 설치하세요.</string>
     <string name="container_display_server_gamescope">Gamescope는 항상 Wayland 컴포지터를 통해 그립니다.</string>
+    <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
+    <string name="container_graphics_driver_gamescope_help">Linux 런타임에 내장되어 있습니다. 다운로드한 Android 드라이버는 Wine 및 Proton 컨테이너에만 적용됩니다.</string>
     <string name="linux_runtime_windows_program">Windows 프로그램입니다. 실행하려면 바로가기 설정에서 Wine 컨테이너로 옮기세요.</string>
     <string name="settings_content_badge_online">온라인</string>
 </resources>

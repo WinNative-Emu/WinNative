@@ -2927,6 +2927,8 @@
     <string name="linux_apps_need_gamescope_container">โปรดสร้างคอนเทนเนอร์ GameScope ในการตั้งค่า › คอนเทนเนอร์ก่อน</string>
     <string name="linux_runtime_missing">ยังไม่ได้ติดตั้งรันไทม์ Linux จึงยังไม่สามารถเริ่มคอนเทนเนอร์นี้ได้ ติดตั้งได้ด้วย ไคลเอ็นต์ Linux ใน การตั้งค่า > ร้านค้า</string>
     <string name="container_display_server_gamescope">Gamescope วาดผ่านคอมโพสิเตอร์ Wayland เสมอ</string>
+    <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
+    <string name="container_graphics_driver_gamescope_help">รวมอยู่ในรันไทม์ Linux ไดรเวอร์ Android ที่ดาวน์โหลดใช้ได้กับคอนเทนเนอร์ Wine และ Proton เท่านั้น</string>
     <string name="linux_runtime_windows_program">นี่คือโปรแกรม Windows ย้ายไปยังคอนเทนเนอร์ Wine ในการตั้งค่าทางลัดเพื่อเริ่มใช้งาน</string>
     <string name="settings_content_badge_online">ออนไลน์</string>
 </resources>

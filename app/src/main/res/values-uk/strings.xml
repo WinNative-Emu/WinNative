@@ -2934,6 +2934,8 @@
     <string name="linux_apps_need_gamescope_container">Спочатку створіть контейнер GameScope у розділі Налаштування › Контейнери.</string>
     <string name="linux_runtime_missing">Середовище виконання Linux не встановлено, тому цей контейнер поки не можна запустити. Встановіть його кнопкою Клієнт Linux у розділі Налаштування > Магазини.</string>
     <string name="container_display_server_gamescope">Gamescope завжди малює через композитор Wayland.</string>
+    <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
+    <string name="container_graphics_driver_gamescope_help">Вбудований у середовище Linux. Завантажені драйвери Android застосовуються лише до контейнерів Wine і Proton.</string>
     <string name="linux_runtime_windows_program">Це програма для Windows. Щоб запустити її, перенесіть її до контейнера Wine у налаштуваннях ярлика.</string>
     <string name="settings_content_badge_online">Онлайн</string>
 </resources>

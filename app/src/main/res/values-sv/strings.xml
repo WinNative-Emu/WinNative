@@ -2928,6 +2928,8 @@ Installerad sökväg:
     <string name="linux_apps_need_gamescope_container">Skapa först GameScope-containern under Inställningar › Containrar.</string>
     <string name="linux_runtime_missing">Linux-körmiljön är inte installerad, så den här containern kan inte startas ännu. Installera den med Linux-klient under Inställningar > Butiker.</string>
     <string name="container_display_server_gamescope">Gamescope ritar alltid genom Wayland-kompositören.</string>
+    <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
+    <string name="container_graphics_driver_gamescope_help">Inbyggd i Linux-miljön. Nedladdade Android-drivrutiner gäller bara Wine- och Proton-containrar.</string>
     <string name="linux_runtime_windows_program">Detta är ett Windows-program. Flytta det till en Wine-container i genvägsinställningarna för att starta det.</string>
     <string name="settings_content_badge_online">Online</string>
 </resources>

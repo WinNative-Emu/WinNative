@@ -2930,6 +2930,8 @@ Percorso installato:
     <string name="linux_apps_need_gamescope_container">Crea prima il contenitore GameScope in Impostazioni › Contenitori.</string>
     <string name="linux_runtime_missing">Il runtime Linux non è installato, quindi questo container non può ancora avviarsi. Installalo con Client Linux in Impostazioni > Negozi.</string>
     <string name="container_display_server_gamescope">Gamescope disegna sempre tramite il compositor Wayland.</string>
+    <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
+    <string name="container_graphics_driver_gamescope_help">Integrato nel runtime Linux. I driver Android scaricati valgono solo per i contenitori Wine e Proton.</string>
     <string name="linux_runtime_windows_program">Questo è un programma Windows. Spostalo in un contenitore Wine nelle impostazioni del collegamento per avviarlo.</string>
     <string name="settings_content_badge_online">Online</string>
 </resources>
