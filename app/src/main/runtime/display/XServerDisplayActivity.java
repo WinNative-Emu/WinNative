@@ -9305,6 +9305,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
         touchpadView = new TouchpadView(this, xServer, timeoutHandler, hideControlsRunnable);
+        touchpadView.setTouchscreenSink((action, rawX, rawY) ->
+                waylandSession != null && waylandSession.sendTouch(action, rawX, rawY));
         touchpadView.setTapToClickEnabled(isTapToClickEnabled);
         touchpadView.setSensitivity(globalCursorSpeed);
         touchpadView.setMouseEnabled(!isMouseDisabled);
@@ -9369,7 +9371,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             }
 
             String simTouchScreen = shortcut.getExtra("simTouchScreen");
-            int touchModeFallback = simTouchScreen.equals("1") ? 1 : 0;
+            // A Linux session is a desktop or the Steam client: a tap is a click where it lands
+            // unless the entry says otherwise.
+            int touchModeFallback = simTouchScreen.equals("1") || gamescopeMode ? 1 : 0;
             screenTouchMode = parseSettingInt(
                     shortcut.getExtra("screenTouchMode", String.valueOf(touchModeFallback)),
                     touchModeFallback);
@@ -9378,6 +9382,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             if (winHandler != null) winHandler.setScreenTouchStickActive(screenTouchMode == 2);
             rtsGesturesEnabled = shortcut.getExtra("rtsGestures", "0").equals("1");
             touchpadView.setRtsGesturesEnabled(rtsGesturesEnabled);
+        } else if (gamescopeMode) {
+            screenTouchMode = 1;
+            touchpadView.setScreenTouchMode(screenTouchMode);
         }
 
         if (rtsGesturesEnabled) pushSelectedGestureConfig();

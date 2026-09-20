@@ -410,7 +410,7 @@ class ShortcutSettingsComposeDialog private constructor(
         state.simTouchScreen.value = shortcut.getExtra("simTouchScreen", "0") == "1"
         state.screenTouchMode.intValue = shortcut.getExtra(
             "screenTouchMode",
-            if (shortcut.getExtra("simTouchScreen", "0") == "1") "1" else "0"
+            if (shortcut.getExtra("simTouchScreen", "0") == "1" || container.isGamescopeRuntime) "1" else "0"
         ).toIntOrNull() ?: 0
         val gestureProfiles = gestureProfileManager.profiles
         state.gestureProfileEntries.value =

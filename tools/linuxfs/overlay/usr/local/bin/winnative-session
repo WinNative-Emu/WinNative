@@ -121,6 +121,12 @@ case $mode in
       echo "== autolaunch $_wn_url"
       set -- "$@" "$_wn_url"
     fi
+    # The client asks gamescope to pass touches through as touches, and gamescope then drops a
+    # nested pointer's position: a click lands wherever the cursor was last left. The app sends
+    # a tap as a pointer, so the mode is held at "hover", where the position moves the cursor.
+    xprop -root -spy STEAM_TOUCH_CLICK_MODE 2>/dev/null | while read -r _ _ touch_mode; do
+      [ "$touch_mode" = 0 ] || xprop -root -f STEAM_TOUCH_CLICK_MODE 32c -set STEAM_TOUCH_CLICK_MODE 0
+    done &
     # The client exits 42 when it has updated itself and wants a fresh start (steam.sh does this).
     while :; do
       "$steam_root/steamrtarm64/steam" -gamepadui -clientbeta publicbeta \
@@ -130,6 +136,7 @@ case $mode in
       echo "== steam exited rc=$rc"
       [ "$rc" -eq 42 ] || break
     done
+    pkill -x xprop
     reap_orphans
     exit "$rc"
     ;;

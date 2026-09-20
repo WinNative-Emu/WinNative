@@ -79,6 +79,9 @@ public final class WaylandSession {
     private final Handler main = new Handler(Looper.getMainLooper());
 
     private WaylandTextInput.SurfaceInputView surfaceView;
+    /** The space nativeSendPointer takes its coordinates in, over the whole output. */
+    private static final int INPUT_SPACE_WIDTH = 1920;
+    private static final int INPUT_SPACE_HEIGHT = 1080;
     private ImageView cursorView;
     private WaylandClipboardSync clipboard;
     private WaylandTextInput textInput;
@@ -188,6 +191,22 @@ public final class WaylandSession {
         textInput = new WaylandTextInput(activity, view);
         textInput.start();
         Log.i(TAG, (fresh ? "session started" : "session reattached") + " (scale mode " + scaleMode + ")");
+    }
+
+    /**
+     * UI thread. A touchscreen-mode touch at screen coordinates: 0 = down, 1 = move, 2 = up. The
+     * compositor places it on the scene pixel drawn under the finger and clicks the left button.
+     */
+    public boolean sendTouch(int action, float rawX, float rawY) {
+        View sv = surfaceView;
+        if (!attached || sv == null || sv.getWidth() <= 0 || sv.getHeight() <= 0) return false;
+        int[] origin = new int[2];
+        sv.getLocationOnScreen(origin);
+        int x = Math.round((rawX - origin[0]) * INPUT_SPACE_WIDTH / sv.getWidth());
+        int y = Math.round((rawY - origin[1]) * INPUT_SPACE_HEIGHT / sv.getHeight());
+        WaylandCompositor.nativeSendPointer(action,
+                Math.max(0, Math.min(INPUT_SPACE_WIDTH - 1, x)), Math.max(0, Math.min(INPUT_SPACE_HEIGHT - 1, y)));
+        return true;
     }
 
     /** Releases the activity's side of the session; the guest and the compositor keep running. */
