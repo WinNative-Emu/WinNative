@@ -22,6 +22,8 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -63,6 +65,11 @@ object LinuxClientInstaller {
     private const val RETIRED_DIR = "linuxfs.old"
     private const val SPACE_MARGIN = 512L shl 20
     private const val STEAM_UNPACK_FACTOR = 3L
+    private const val RECORD_DIRECTORY = -1L
+    private const val RECORD_LINK = -2L
+    private const val RECORD_OS_VERSION = -184
+    private const val RECORD_VERSION = 3
+    private const val CLIENT_ZONE_SECONDS = 8 * 3600L
     private const val PROGRESS_INTERVAL_MS = 100L
 
     enum class Stage { CONNECT, DOWNLOAD_RUNTIME, INSTALL_RUNTIME, DOWNLOAD_PROTON, INSTALL_PROTON, DOWNLOAD_STEAM, INSTALL_STEAM, LIBRARY }
@@ -89,6 +96,9 @@ object LinuxClientInstaller {
     private class BlockedException(@StringRes val messageRes: Int) : IOException()
 
     private class Part(val name: String, val file: String, val size: Long, val sha256: String)
+
+    /** One line of the client's install record: a file's size, or -1 for a directory and -2 for a link. */
+    private class Installed(val name: String, val size: Long, val modified: Long, val crc: Long)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
@@ -326,10 +336,12 @@ object LinuxClientInstaller {
 
         val steamRoot = hostPath(context, STEAM_ROOT)
         val unpacked = Meter(Stage.INSTALL_STEAM, zips.sumOf { it.length() })
+        val installed = LinkedHashMap<String, Installed>()
         for (zip in zips) {
-            unzip(zip, steamRoot, unpacked)
+            unzip(zip, steamRoot, unpacked, installed)
             FileUtils.delete(zip)
         }
+        writeInstallRecord(steamRoot, manifest, installed.values)
         finishSteam(context, steamRoot, version)
     }
 
@@ -337,10 +349,13 @@ object LinuxClientInstaller {
         Regex("^\\s*\"version\"\\s+\"([^\"]+)\"", RegexOption.MULTILINE).find(manifest)?.groupValues?.get(1)
             ?: throw IOException("Valve's manifest names no client version")
 
-    /** The native client's components: every `*_all` block and every `*_linuxarm64_linuxarm64` one. */
+    /**
+     * Every component in the manifest. The client installs them all, and one left out here is one
+     * its updater fetches behind a black screen at first launch.
+     */
     private fun manifestParts(manifest: String): List<Part> {
         val token = Regex("\"([^\"]*)\"")
-        val blocks = sortedMapOf<String, MutableMap<String, String>>()
+        val blocks = linkedMapOf<String, MutableMap<String, String>>()
         var depth = 0
         var block: String? = null
         for (line in manifest.lineSequence()) {
@@ -363,7 +378,6 @@ object LinuxClientInstaller {
         }
         val parts =
             blocks
-                .filterKeys { it.endsWith("_all") || it.endsWith("_linuxarm64_linuxarm64") }
                 .mapNotNull { (name, fields) ->
                     val file = fields["file"] ?: return@mapNotNull null
                     val sha256 = fields["sha2"] ?: return@mapNotNull null
@@ -376,12 +390,15 @@ object LinuxClientInstaller {
     /**
      * Valve's zips start with a short prefix before the first entry, which Android's own zip reader
      * refuses; this one reads them through the central directory. Some entries are packed with
-     * Windows separators and are written where the name means.
+     * Windows separators and are written where the name means. Each entry is dated as the client
+     * dates it and noted in [installed]; a directory two components share is noted as the later
+     * one has it, which is why the components keep the manifest's order.
      */
     private suspend fun unzip(
         zip: File,
         steamRoot: File,
         meter: Meter,
+        installed: MutableMap<String, Installed>,
     ) {
         val rootPath = steamRoot.canonicalPath + File.separator
         ZipFile.builder().setFile(zip).get().use { archive ->
@@ -394,20 +411,65 @@ object LinuxClientInstaller {
                 if (!target.canonicalPath.startsWith(rootPath)) {
                     throw IOException("${zip.name} has an entry outside the client directory: $name")
                 }
+                val modified = clientTime(entry.time)
                 if (name.endsWith("/")) {
                     if (!target.isDirectory && !target.mkdirs()) throw IOException("Could not create $target")
+                    installed[name] = Installed(name, RECORD_DIRECTORY, modified, 0L)
                 } else {
                     val parent = target.parentFile
                     if (parent != null && !parent.isDirectory && !parent.mkdirs()) {
                         throw IOException("Could not create $parent")
                     }
-                    archive.getInputStream(entry).use { input ->
-                        target.outputStream().use { output -> input.copyTo(output) }
+                    if (entry.isUnixSymlink) {
+                        link(archive.getUnixSymlink(entry), target)
+                        installed[name] = Installed(name, RECORD_LINK, modified, entry.crc)
+                    } else {
+                        archive.getInputStream(entry).use { input ->
+                            target.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        // The client's updater leaves every file it unpacks executable.
+                        target.setExecutable(true, true)
+                        target.setLastModified(modified * 1000L)
+                        installed[name] = Installed(name, entry.size, modified, entry.crc)
                     }
                 }
                 meter.add(entry.compressedSize.coerceAtLeast(0L))
             }
         }
+    }
+
+    /**
+     * The client reads a zip's clock fields as Pacific Standard Time all year round. [zipTime] is
+     * those fields already read in this device's zone, so the zone's offset is taken back out.
+     */
+    private fun clientTime(zipTime: Long): Long =
+        (zipTime + TimeZone.getDefault().getOffset(zipTime)) / 1000L + CLIENT_ZONE_SECONDS
+
+    /**
+     * What the client's updater leaves in `package/` once it has installed a manifest: the manifest,
+     * and every entry it unpacked, ordered without regard to case and closed by a SHA-1 of the lines
+     * before it. With both in place the client starts from the files here rather than fetching and
+     * unpacking them all again.
+     */
+    private fun writeInstallRecord(
+        steamRoot: File,
+        manifest: String,
+        installed: Collection<Installed>,
+    ) {
+        val body =
+            buildString {
+                for (entry in installed.sortedBy { it.name.uppercase(Locale.ROOT) }) {
+                    append(entry.name).append(',').append(entry.size).append(';')
+                    append(entry.modified).append(';').append(entry.crc).append('\n')
+                }
+                append("OSVER=").append(RECORD_OS_VERSION).append("\nVERSION=").append(RECORD_VERSION).append('\n')
+            }
+        val digest = MessageDigest.getInstance("SHA-1").digest(body.toByteArray(Charsets.UTF_8))
+        val sha1 = digest.joinToString("") { "%02X".format(it) }
+        val packageDir = File(steamRoot, "package")
+        if (!packageDir.isDirectory && !packageDir.mkdirs()) throw IOException("Could not create $packageDir")
+        File(packageDir, "$STEAM_MANIFEST.manifest").writeText(manifest)
+        File(packageDir, "$STEAM_MANIFEST.installed").writeText("${body}SHA1=$sha1\n")
     }
 
     /** What winnative-steam-install and Valve's steam.sh set up around the client. */
@@ -419,7 +481,6 @@ object LinuxClientInstaller {
         val packageDir = File(steamRoot, "package")
         if (!packageDir.isDirectory && !packageDir.mkdirs()) throw IOException("Could not create $packageDir")
         File(packageDir, "beta").writeText("publicbeta\n")
-        File(steamRoot, "steamrtarm64/steam").setExecutable(true, false)
         link("$STEAM_ROOT/steamrtarm64", File(steamRoot, "steamrtarm32"))
 
         val dotSteam = hostPath(context, "/root/.steam")
