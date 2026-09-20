@@ -192,6 +192,38 @@ void main() {
         return;
     }
 
+    float flowPx = length(f * vec2(size));
+
+    // Under a quarter of a pixel the shift cannot change an output pixel visibly -
+    // the same premise the overlay pass-through uses when it skips its own fetches
+    // at this threshold. The warped pair, the side map and the edge dilation are
+    // then all dropped and the real pair is blended directly. Static scenery and
+    // HUD-heavy screens are largely made of such pixels, and this pass costs the
+    // most per output pixel in the chain.
+    if (flowPx <= UI_FLOW_SKIP_PX) {
+        vec3 e0 = textureLod(prevColor, uv, 0.0).xyz;
+        vec3 e1 = textureLod(nextColor, uv, 0.0).xyz;
+        vec3 still = mix(e0, e1, pc.t);
+        float disagree = maxChannel(abs(e0 - e1));
+        float pick = smoothstep(BLEND_LO, BLEND_HI, disagree);
+        vec3 result = mix(still, pc.t < 0.5 ? e0 : e1, pick);
+
+        float uiMask = UI_STRENGTH * (1.0 - smoothstep(UI_LO, UI_HI, disagree));
+#if UI_HIST_ENABLE
+        float histStatic = textureLod(histTex, uv, 0.0).r;
+        histStatic *= 1.0 - smoothstep(0.30, 0.60, disagree);
+        uiMask = max(uiMask, histStatic);
+#endif
+        result = mix(result, still, uiMask);
+
+        bool leftHalfE = uint(pix.x) * 2u < gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+        if (DEBUG_UI_MASK == 1 || (DEBUG_UI_MASK == 2 && leftHalfE)) {
+            result = mix(result * 0.15, vec3(0.1, 1.0, 0.2), uiMask);
+        }
+        imageStore(outImage, pix, vec4(result, 1.0));
+        return;
+    }
+
     vec2 uv0 = uv - pc.t * f;
     vec2 uv1 = uv + (1.0 - pc.t) * f;
 
@@ -235,7 +267,7 @@ void main() {
     float uiMask = 0.0;
     vec3 uiColor = mix(s0, s1, pc.t);
 
-    if (UI_STRENGTH > 0.0 && length(f * vec2(size)) > UI_FLOW_SKIP_PX) {
+    if (UI_STRENGTH > 0.0 && flowPx > UI_FLOW_SKIP_PX) {
         float rStatic = pairDiffHere;
 
         if (UI_DILATE_TAPS > 0) {
