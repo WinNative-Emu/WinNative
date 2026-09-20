@@ -1217,6 +1217,7 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
     private fun audioDriverEntriesFor(wineVersion: String?, selected: String): List<String> {
         val all = context.resources.getStringArray(R.array.audio_driver_entries).toList()
         if (wineVersion == null || DirectAudioDriver.isSupportedFor(wineVersion)) return all
+        if (state.gamescopeContainer.value) return all
         if (DirectAudioDriver.isSelected(selected)) return all
         return all.filter { !it.equals("DirectAudio", true) }
     }

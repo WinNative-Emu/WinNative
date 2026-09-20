@@ -171,6 +171,7 @@ import com.winlator.cmod.runtime.display.environment.ImageFs;
 import com.winlator.cmod.runtime.display.environment.XEnvironment;
 import com.winlator.cmod.feature.stores.steam.SteamClientManager;
 import com.winlator.cmod.runtime.audio.directaudio.DirectAudioDriver;
+import com.winlator.cmod.runtime.audio.directaudio.DirectAudioHost;
 import com.winlator.cmod.runtime.display.environment.components.ALSAServerComponent;
 import com.winlator.cmod.runtime.display.environment.components.GuestProgramLauncherComponent;
 import com.winlator.cmod.runtime.display.environment.components.NetworkInfoUpdateComponent;
@@ -8914,17 +8915,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("LIBGL_KOPPER_DRI2=true");
         File icd = LinuxRuntime.vulkanIcd(this);
         if (icd != null) guest.add("VK_ICD_FILENAMES=" + icd.getPath());
-        if (audioDriver.equals("pulseaudio")) {
-            PulseAudioComponent.Options pulseOptions = PulseAudioComponent.Options.fromEnvVars(envVars);
-            guest.add("PULSE_SERVER=unix:" + rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
-            guest.add("PULSE_LATENCY_MSEC=" + pulseOptions.latencyMillis);
-            environment.addComponent(
-                    new PulseAudioComponent(
-                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH),
-                            pulseOptions
-                    )
-            );
-        }
+        // The client, its web helper and native games only know PulseAudio, so it runs whatever
+        // the entry chose; DirectAudio takes the Windows games off it.
+        PulseAudioComponent.Options pulseOptions = PulseAudioComponent.Options.fromEnvVars(envVars);
+        guest.add("PULSE_SERVER=unix:" + rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
+        guest.add("PULSE_LATENCY_MSEC=" + pulseOptions.latencyMillis);
+        environment.addComponent(
+                new PulseAudioComponent(
+                        UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH),
+                        pulseOptions));
+        if (DirectAudioDriver.INSTANCE.isSelected(audioDriver)) addLinuxDirectAudio(rootPath, guest);
         // The games the client starts run under FEX, which a Wine session configures from the
         // container's preset. Nothing did so here, so anything the client launched ran on FEX's
         // bare defaults - single-block translation, no store ordering - and a multithreaded x86
@@ -9324,6 +9324,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         inputControlsView.setReverseBindingOrder(preferences.getBoolean("reverse_binding_order", false));
         inputControlsView.setTouchpadView(touchpadView);
         inputControlsView.setXServer(xServer);
+        inputControlsView.setGuideButtonShown(gamescopeMode);
         inputControlsView.setAdaptiveJoysticks(isAdaptiveJoysticksEnabled());
         applyTouchscreenOverlayPreference();
         applyInputVisualStylePreferences();
@@ -13884,8 +13885,33 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         return directAudioAvailable;
     }
 
+    /**
+     * Worker thread. A session the driver cannot be staged for keeps PulseAudio for its games too:
+     * without WN_DIRECTAUDIO the session script takes the driver's name out of their prefixes.
+     */
+    private void addLinuxDirectAudio(String rootPath, List<String> guest) {
+        try {
+            DirectAudioHost.stage(this, LinuxRuntime.rootDir(this));
+        } catch (IOException e) {
+            Log.w("XServerDisplayActivity", "DirectAudio could not be staged for the Linux session", e);
+            runOnUiThread(() -> android.widget.Toast.makeText(
+                    this, R.string.directaudio_unavailable, android.widget.Toast.LENGTH_LONG).show());
+            return;
+        }
+        boolean micRequested = DirectAudioDriver.INSTANCE.isMicEnabled(
+                getShortcutSetting(DirectAudioDriver.EXTRA_MIC, container.getExtra(DirectAudioDriver.EXTRA_MIC)));
+        boolean micExposed = DirectAudioDriver.INSTANCE.shouldExposeMic(this, micRequested);
+        File socket = new File(rootPath, DirectAudioHost.SOCKET_PATH);
+        guest.add(DirectAudioHost.ENV_ENABLED + "=1");
+        guest.add(DirectAudioHost.ENV_SOCKET + "=" + socket.getPath());
+        if (micExposed) guest.add(DirectAudioDriver.ENV_MIC + "=1");
+        environment.addComponent(
+                new DirectAudioHost(socket, micExposed));
+    }
+
     private void resolveAudioDriver() {
-        if (!DirectAudioDriver.INSTANCE.isSelected(audioDriver)) return;
+        // A Linux session stages its own build of the driver, see setupLinuxSession().
+        if (gamescopeMode || !DirectAudioDriver.INSTANCE.isSelected(audioDriver)) return;
         if (ensureDirectAudioInstalled()) return;
         Log.w("XServerDisplayActivity", "DirectAudio is unavailable for this container; falling back to "
                 + Container.DEFAULT_AUDIO_DRIVER + " so mmdevapi keeps a loadable backend");

@@ -1966,6 +1966,7 @@ class ShortcutSettingsComposeDialog private constructor(
                 .filter {
                     !it.equals("DirectAudio", true) ||
                         DirectAudioDriver.isSupportedFor(wineVersion) ||
+                        container.isGamescopeRuntime ||
                         DirectAudioDriver.isSelected(resolved)
                 }
         state.audioDriverEntries.value = entries

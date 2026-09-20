@@ -108,6 +108,9 @@ case $mode in
     # Steam runs a game's shared redistributables inside its prefix on first launch; marking
     # them as already run keeps those x86 installers from starting under emulation at all.
     winnative-seed-redists "$steam_root" || true
+    # With DirectAudio chosen the games' prefixes name it as their audio driver; otherwise they
+    # are handed back to Wine's own choice, which finds the PulseAudio server.
+    winnative-directaudio "$steam_root" "$([ -n "${WN_DIRECTAUDIO:-}" ] && echo on || echo off)" || true
     export STEAM_RUNTIME=1
     export LD_LIBRARY_PATH=$steam_root/steamrtarm64:$steam_root/steamrtarm64/panorama${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
     export SDL_VIDEO_X11_DGAMOUSE=0

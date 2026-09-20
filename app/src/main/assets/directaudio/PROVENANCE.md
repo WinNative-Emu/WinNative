@@ -86,3 +86,17 @@ gh release download directaudio-v1.3.2 --repo The412Banner/directaudio \
    --pattern 'directaudio-wine1*-arm64ec-sdk*.zip' \
    --dir app/src/main/assets/directaudio
 ```
+
+## The GameScope build (`linux/winedirectaudio.so`)
+
+Built by WinNative from the same release (`directaudio-v1.3.2`, `directaudio.c` unmodified) for
+aarch64 glibc, against the headers of `ValveSoftware/wine` at
+`c1928082ac141b7f03982eacce980a4fe4840d0b`, and linked with WinNative's own
+`tools/linuxfs/directaudio/wn_aaudio_client.c` in place of Android's `libaaudio`. The complete
+corresponding source and the script that reproduces the binary are in this repository under
+`tools/linuxfs/directaudio/` (LGPL-2.1 §6); the driver's source is fetched by that script from the
+upstream tag.
+
+| File | SHA-256 |
+| --- | --- |
+| `linux/winedirectaudio.so` | `089b83f2d099c4e7d20c1e556676174ff2a5a883a58e60093f09b07516059fd5` |

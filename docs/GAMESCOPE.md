@@ -95,6 +95,11 @@ which is worth knowing before building it.
   injected as `wl_seat` events, with an XTEST fallback for X11 clients. No seatd, udev or evdev.
   Same as our compositor's seat.
 - **Audio is PulseAudio** over a unix socket (`PULSE_LATENCY_MSEC=20`). We ship libpulse already.
+  With DirectAudio chosen, Windows games bypass it for AAudio through the app
+  (`docs/direct-audio-integration.md`, GameScope sessions).
+- **The WN button** on the Virtual Gamepad is the pad's guide button (`BTN_MODE`): Steam opens
+  its menu on it. It is an ordinary control element (`GAMEPAD_BUTTON_GUIDE`, icon 40) and is only
+  drawn in Linux sessions and the editor.
 - **Steam is the native arm64 client** (`steamrtarm64/steam -gamepadui`, CEF forced to
   ANGLE-on-Vulkan), with x86-64 games through Proton11ARM + FEX (`FEX_APP_CONFIG`,
   `PROTON_USE_NTSYNC=1`). No box64. One game is named as working: Metro: Last Light Redux.

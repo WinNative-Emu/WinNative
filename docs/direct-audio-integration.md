@@ -221,6 +221,37 @@ AYANEO Pocket FIT (Adreno 750, Android 14). Reproduce that first.
 
 ---
 
+## GameScope sessions
+
+A GameScope container runs Valve's ARM64 Proton under glibc, where the bionic unixlib cannot load
+and there is no `libaaudio` to call. The driver's source is the same; what changes is who opens
+the stream.
+
+- `tools/linuxfs/directaudio/build-directaudio.sh` builds upstream's `directaudio.c`, unmodified,
+  for aarch64 glibc against the headers of Valve's Wine 11 (pinned commit), and links it with
+  `wn_aaudio_client.c`: the 27 `AAudio_*` entry points, implemented as a client of the app. The
+  result ships as `assets/directaudio/linux/winedirectaudio.so`; the two PE halves are upstream's
+  own, taken from the `wine11` archive.
+- `DirectAudioHost` (`libwnaudiohost.so`) listens on a unix socket inside the session. One
+  connection is one stream: open/start/stop/close go over the socket, the PCM goes through a ring
+  in `ASharedMemory` whose descriptor rides on the open reply, and the real AAudio data callback
+  wakes the client's pump thread through a futex after every burst. The protocol is
+  `app/src/main/cpp/wnaudiohook/wn_aaudio_protocol.h`.
+- PulseAudio always runs in these sessions, because the Steam client and native games know
+  nothing else. DirectAudio only takes the Windows games.
+- `winnative-directaudio <steam root> on|off` runs at session start. It copies the driver into
+  every Proton whose `winealsa.so` walks the same unixlib table (37 entries today; the x86 Proton
+  has no `aarch64-unix` and is left alone), and writes or removes `Audio=directaudio` in each
+  prefix that Proton runs, templates included. With the driver off the value is removed, so a
+  prefix never names a driver its session cannot serve.
+- Capture is refused by the host unless the mic opt-in and `RECORD_AUDIO` both hold, the same
+  gate as a Wine session.
+
+Measured on a RedMagic (Brawlhalla, 48 kHz float stereo): no underruns after the stream's first
+half second, 76 ms reported track latency against 116 ms for the PulseAudio track beside it. That
+device denies `AUDIO_OUTPUT_FLAG_FAST` to every app track, this one included, so the burst is
+960 frames; a device that grants it gets the fast mixer with no change here.
+
 ## Known gaps
 
 Upstream's own honest list, plus what applies on the WinNative side:
