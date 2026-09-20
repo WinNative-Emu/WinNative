@@ -75,7 +75,7 @@ const float UI_FLOW_SKIP_PX = 0.25;
 //
 // 0, 2 or 4 taps; each tap is two full-res fetches, so four taps double this pass's
 // sampling. Drop to 2 for about two thirds of the gain at half the cost.
-const int UI_DILATE_TAPS = 2;
+const int UI_DILATE_TAPS = 4;
 const float UI_DILATE_PX = 1.5;
 
 // Channel difference, 0..1. LO is rgb8 quantisation plus mild dither; HI is where a
