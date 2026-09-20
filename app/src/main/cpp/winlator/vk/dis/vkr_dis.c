@@ -43,7 +43,7 @@
 
 #define DIS_PROP_STEPS_MAX 4u
 
-#define DIS_SRC_SMOOTHING 0.15f
+#define DIS_SRC_SMOOTHING 0.08f
 #define DIS_SRC_STALE_NS 500000000ull
 #define DIS_MIN_RATE_SAMPLES 12u
 
@@ -53,7 +53,7 @@
 
 #define DIS_MIN_GEN_RATIO 1.45f
 
-#define DIS_RATIO_HYST 0.05f
+#define DIS_RATIO_HYST 0.10f
 
 #define DIS_VR_ALPHA 20.0f
 #define DIS_VR_DELTA 5.0f
@@ -70,7 +70,11 @@
 // coarse levels bought very little while their prep/add dispatches and solver
 // sweeps dominated the pass count. Levels without refinement skip the VR stage
 // entirely and the search reads the densified flow instead.
-#define DIS_VR_LEVELS 3u
+//
+// Restored to every level: fast motion showed the coarse levels were carrying
+// more of the flow than the dispatch saving was worth, and the refinement has
+// to be there for large displacements to come out of the pyramid cleanly.
+#define DIS_VR_LEVELS 8u
 
 
 #define DIS_SET_SAMPLERS 5u
@@ -1389,6 +1393,11 @@ static void dis_track_source(VkrDis* d, uint64_t now, uint64_t source_frames) {
 
     const uint64_t dt = now - d->src_sample_ns;
     if (dt == 0) return;
+    // A burst of presents can land inside one millisecond (startup, alt-tab) and
+    // a single such sample spikes the rate estimate to hundreds of fps, which
+    // then walks the planner up and down the generation ladder. Let the window
+    // span the burst instead.
+    if (dt < 2000000ull) return;
     d->src_sample_ns = now;
 
     const uint64_t drawn =
