@@ -261,6 +261,8 @@
     <string name="linux_client_stage_connect">Bağlanıyor</string>
     <string name="linux_client_stage_download_runtime">Linux çalışma zamanı indiriliyor</string>
     <string name="linux_client_stage_install_runtime">Linux çalışma zamanı kuruluyor</string>
+    <string name="linux_client_stage_download_proton">Proton indiriliyor</string>
+    <string name="linux_client_stage_install_proton">Proton kuruluyor</string>
     <string name="linux_client_stage_download_steam">Steam istemcisi indiriliyor</string>
     <string name="linux_client_stage_install_steam">Steam istemcisi kuruluyor</string>
     <string name="linux_client_stage_library">Steam Kütüphane\'ye ekleniyor</string>

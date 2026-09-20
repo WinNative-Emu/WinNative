@@ -260,6 +260,8 @@
     <string name="linux_client_stage_connect">Connessione</string>
     <string name="linux_client_stage_download_runtime">Download del runtime Linux</string>
     <string name="linux_client_stage_install_runtime">Installazione del runtime Linux</string>
+    <string name="linux_client_stage_download_proton">Download di Proton</string>
+    <string name="linux_client_stage_install_proton">Installazione di Proton</string>
     <string name="linux_client_stage_download_steam">Download del client Steam</string>
     <string name="linux_client_stage_install_steam">Installazione del client Steam</string>
     <string name="linux_client_stage_library">Aggiunta di Steam alla Libreria</string>

@@ -260,6 +260,8 @@
     <string name="linux_client_stage_connect">Forbinder</string>
     <string name="linux_client_stage_download_runtime">Downloader Linux-runtimen</string>
     <string name="linux_client_stage_install_runtime">Installerer Linux-runtimen</string>
+    <string name="linux_client_stage_download_proton">Downloader Proton</string>
+    <string name="linux_client_stage_install_proton">Installerer Proton</string>
     <string name="linux_client_stage_download_steam">Downloader Steam-klienten</string>
     <string name="linux_client_stage_install_steam">Installerer Steam-klienten</string>
     <string name="linux_client_stage_library">Tilføjer Steam til Bibliotek</string>

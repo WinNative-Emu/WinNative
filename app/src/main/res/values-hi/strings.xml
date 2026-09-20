@@ -258,6 +258,8 @@
     <string name="linux_client_stage_connect">कनेक्ट हो रहा है</string>
     <string name="linux_client_stage_download_runtime">Linux रनटाइम डाउनलोड हो रहा है</string>
     <string name="linux_client_stage_install_runtime">Linux रनटाइम इंस्टॉल हो रहा है</string>
+    <string name="linux_client_stage_download_proton">Proton डाउनलोड हो रहा है</string>
+    <string name="linux_client_stage_install_proton">Proton इंस्टॉल हो रहा है</string>
     <string name="linux_client_stage_download_steam">Steam क्लाइंट डाउनलोड हो रहा है</string>
     <string name="linux_client_stage_install_steam">Steam क्लाइंट इंस्टॉल हो रहा है</string>
     <string name="linux_client_stage_library">Steam को लाइब्रेरी में जोड़ा जा रहा है</string>

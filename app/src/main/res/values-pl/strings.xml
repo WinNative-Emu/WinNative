@@ -264,6 +264,8 @@
     <string name="linux_client_stage_connect">Łączenie</string>
     <string name="linux_client_stage_download_runtime">Pobieranie środowiska Linux</string>
     <string name="linux_client_stage_install_runtime">Instalowanie środowiska Linux</string>
+    <string name="linux_client_stage_download_proton">Pobieranie Protona</string>
+    <string name="linux_client_stage_install_proton">Instalowanie Protona</string>
     <string name="linux_client_stage_download_steam">Pobieranie klienta Steam</string>
     <string name="linux_client_stage_install_steam">Instalowanie klienta Steam</string>
     <string name="linux_client_stage_library">Dodawanie Steam do Biblioteki</string>

@@ -260,6 +260,8 @@
     <string name="linux_client_stage_connect">正在连接</string>
     <string name="linux_client_stage_download_runtime">正在下载 Linux 运行时</string>
     <string name="linux_client_stage_install_runtime">正在安装 Linux 运行时</string>
+    <string name="linux_client_stage_download_proton">正在下载 Proton</string>
+    <string name="linux_client_stage_install_proton">正在安装 Proton</string>
     <string name="linux_client_stage_download_steam">正在下载 Steam 客户端</string>
     <string name="linux_client_stage_install_steam">正在安装 Steam 客户端</string>
     <string name="linux_client_stage_library">正在将 Steam 添加到游戏库</string>

@@ -105,13 +105,16 @@ private fun WorkingBody(state: State.Working) {
                 Stage.CONNECT -> R.string.linux_client_stage_connect
                 Stage.DOWNLOAD_RUNTIME -> R.string.linux_client_stage_download_runtime
                 Stage.INSTALL_RUNTIME -> R.string.linux_client_stage_install_runtime
+                Stage.DOWNLOAD_PROTON -> R.string.linux_client_stage_download_proton
+                Stage.INSTALL_PROTON -> R.string.linux_client_stage_install_proton
                 Stage.DOWNLOAD_STEAM -> R.string.linux_client_stage_download_steam
                 Stage.INSTALL_STEAM -> R.string.linux_client_stage_install_steam
                 Stage.LIBRARY -> R.string.linux_client_stage_library
             },
         )
     val known = state.total > 0
-    val downloading = state.stage == Stage.DOWNLOAD_RUNTIME || state.stage == Stage.DOWNLOAD_STEAM
+    val downloading =
+        state.stage == Stage.DOWNLOAD_RUNTIME || state.stage == Stage.DOWNLOAD_PROTON || state.stage == Stage.DOWNLOAD_STEAM
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = stageLabel,

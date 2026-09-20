@@ -261,6 +261,8 @@
     <string name="linux_client_stage_connect">A ligar</string>
     <string name="linux_client_stage_download_runtime">A transferir o runtime Linux</string>
     <string name="linux_client_stage_install_runtime">A instalar o runtime Linux</string>
+    <string name="linux_client_stage_download_proton">A transferir o Proton</string>
+    <string name="linux_client_stage_install_proton">A instalar o Proton</string>
     <string name="linux_client_stage_download_steam">A transferir o cliente Steam</string>
     <string name="linux_client_stage_install_steam">A instalar o cliente Steam</string>
     <string name="linux_client_stage_library">A adicionar o Steam à Biblioteca</string>

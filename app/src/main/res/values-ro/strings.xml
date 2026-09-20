@@ -260,6 +260,8 @@
     <string name="linux_client_stage_connect">Se conectează</string>
     <string name="linux_client_stage_download_runtime">Se descarcă mediul de execuție Linux</string>
     <string name="linux_client_stage_install_runtime">Se instalează mediul de execuție Linux</string>
+    <string name="linux_client_stage_download_proton">Se descarcă Proton</string>
+    <string name="linux_client_stage_install_proton">Se instalează Proton</string>
     <string name="linux_client_stage_download_steam">Se descarcă clientul Steam</string>
     <string name="linux_client_stage_install_steam">Se instalează clientul Steam</string>
     <string name="linux_client_stage_library">Se adaugă Steam în Bibliotecă</string>

@@ -39,7 +39,8 @@ import org.json.JSONObject
 
 /**
  * Installs what the GameScope container needs for the native Steam client: the Linux runtime,
- * published as a release asset of WinNative's Components repository, then the arm64 Steam client
+ * published as a release asset of WinNative's Components repository, Valve's arm64 Proton from
+ * the same release so the first Windows title has its compatibility tool, then the arm64 Steam client
  * from Valve's update servers, and finally the GameScope container with its Steam library entry.
  * Valve's client is not redistributable, so it always comes from Valve. winnative-steam-install performs the same client steps inside a session and skips them
  * once the stamp written here exists.
@@ -49,6 +50,10 @@ object LinuxClientInstaller {
     private const val RELEASE = "https://github.com/WinNative-Emu/Components/releases/download/Assets"
     private const val RUNTIME_ARCHIVE = "$RELEASE/linuxfs.tar.zst"
     private const val RUNTIME_INFO = "$RELEASE/linuxfs.json"
+    private const val PROTON_ARCHIVE = "$RELEASE/proton-arm64.tar.zst"
+    private const val PROTON_INFO = "$RELEASE/proton-arm64.json"
+    private const val PROTON_DIR = "/opt/winnative-proton"
+    private const val PROTON_STAGING_DIR = "proton.staging"
     private const val STEAM_CDN = "https://client-update.fastly.steamstatic.com"
     private const val STEAM_MANIFEST = "steam_client_publicbeta_linuxarm64"
     private const val STEAM_ROOT = "/root/.local/share/Steam"
@@ -60,7 +65,7 @@ object LinuxClientInstaller {
     private const val STEAM_UNPACK_FACTOR = 3L
     private const val PROGRESS_INTERVAL_MS = 100L
 
-    enum class Stage { CONNECT, DOWNLOAD_RUNTIME, INSTALL_RUNTIME, DOWNLOAD_STEAM, INSTALL_STEAM, LIBRARY }
+    enum class Stage { CONNECT, DOWNLOAD_RUNTIME, INSTALL_RUNTIME, DOWNLOAD_PROTON, INSTALL_PROTON, DOWNLOAD_STEAM, INSTALL_STEAM, LIBRARY }
 
     sealed interface State {
         data object Checking : State
@@ -97,7 +102,8 @@ object LinuxClientInstaller {
 
     /** Worker thread. */
     fun isInstalled(context: Context): Boolean =
-        LinuxRuntime.isInstalled(context) && isSteamInstalled(context) && !LinuxApps.isSteamShortcutMissing(context)
+        LinuxRuntime.isInstalled(context) && isProtonInstalled(context) && isSteamInstalled(context) &&
+            !LinuxApps.isSteamShortcutMissing(context)
 
     /** Reads what is on disk, off the calling thread, unless an install is running. */
     fun refresh(context: Context) {
@@ -132,6 +138,7 @@ object LinuxClientInstaller {
                 // Checked first, so a device that cannot hold the container is told before the download.
                 if (gamescopeContainer(context) == null) requireSystemImage(context)
                 if (!LinuxRuntime.isInstalled(context)) installRuntime(context, work)
+                if (!isProtonInstalled(context)) installProton(context, work)
                 if (!isSteamInstalled(context)) installSteam(context, work)
                 addToLibrary(context)
                 State.Installed
@@ -161,28 +168,64 @@ object LinuxClientInstaller {
     ) {
         FileUtils.delete(work)
         FileUtils.delete(File(context.filesDir, STAGING_DIR))
+        FileUtils.delete(File(context.filesDir, PROTON_STAGING_DIR))
     }
 
     private suspend fun installRuntime(
         context: Context,
         work: File,
     ) {
-        val info = JSONObject(fetchText(RUNTIME_INFO))
+        val staging = File(context.filesDir, STAGING_DIR)
+        unpackRelease(context, work, RUNTIME_INFO, RUNTIME_ARCHIVE, staging, Stage.DOWNLOAD_RUNTIME, Stage.INSTALL_RUNTIME)
+        replaceRootfs(context, staging)
+    }
+
+    /** A Steam depot of the ARM64 Proton serves as well as the copy installed here. */
+    private fun isProtonInstalled(context: Context): Boolean =
+        File(hostPath(context, PROTON_DIR), "proton").isFile ||
+            listOf("Proton Experimental (ARM64)", "Proton 11.0 (ARM64)").any {
+                File(hostPath(context, STEAM_ROOT), "steamapps/common/$it/proton").isFile
+            }
+
+    private suspend fun installProton(
+        context: Context,
+        work: File,
+    ) {
+        val staging = File(context.filesDir, PROTON_STAGING_DIR)
+        unpackRelease(context, work, PROTON_INFO, PROTON_ARCHIVE, staging, Stage.DOWNLOAD_PROTON, Stage.INSTALL_PROTON)
+        val target = hostPath(context, PROTON_DIR)
+        FileUtils.delete(target)
+        val parent = target.parentFile
+        if (parent != null && !parent.isDirectory && !parent.mkdirs()) throw IOException("Could not create $parent")
+        if (!staging.renameTo(target)) throw IOException("Could not move Proton into place")
+    }
+
+    /** Downloads a release archive, checks it against its published digest and unpacks it into [staging]. */
+    private suspend fun unpackRelease(
+        context: Context,
+        work: File,
+        infoUrl: String,
+        archiveUrl: String,
+        staging: File,
+        downloadStage: Stage,
+        installStage: Stage,
+    ) {
+        mutableState.value = State.Working(Stage.CONNECT, 0, 0)
+        val info = JSONObject(fetchText(infoUrl))
         val sha256 = info.getString("sha256")
         val size = info.getLong("size")
         val unpacked = info.getLong("unpacked")
         requireSpace(context.filesDir, size + unpacked)
 
-        val archive = File(work, "linuxfs.tar.zst")
-        val downloaded = Meter(Stage.DOWNLOAD_RUNTIME, size)
-        if (!download(RUNTIME_ARCHIVE, archive, downloaded).equals(sha256, ignoreCase = true)) {
-            throw IOException("The runtime archive does not match its published checksum")
+        val archive = File(work, archiveUrl.substringAfterLast('/'))
+        val downloaded = Meter(downloadStage, size)
+        if (!download(archiveUrl, archive, downloaded).equals(sha256, ignoreCase = true)) {
+            throw IOException("${archive.name} does not match its published checksum")
         }
 
-        val staging = File(context.filesDir, STAGING_DIR)
         FileUtils.delete(staging)
         if (!staging.mkdirs()) throw IOException("Could not create $staging")
-        val written = Meter(Stage.INSTALL_RUNTIME, unpacked)
+        val written = Meter(installStage, unpacked)
         val installJob = coroutineContext.job
         val listener =
             object : OnExtractFileListener {
@@ -202,9 +245,8 @@ object LinuxClientInstaller {
             }
         val extracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, archive, staging, listener)
         coroutineContext.ensureActive()
-        if (!extracted) throw IOException("The runtime archive could not be unpacked")
+        if (!extracted) throw IOException("${archive.name} could not be unpacked")
         FileUtils.delete(archive)
-        replaceRootfs(context, staging)
     }
 
     /** Swaps the unpacked tree in, keeping the home directory of a runtime being replaced. */

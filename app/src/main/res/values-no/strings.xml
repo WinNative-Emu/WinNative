@@ -261,6 +261,8 @@
     <string name="linux_client_stage_connect">Kobler til</string>
     <string name="linux_client_stage_download_runtime">Laster ned Linux-kjøretidsmiljøet</string>
     <string name="linux_client_stage_install_runtime">Installerer Linux-kjøretidsmiljøet</string>
+    <string name="linux_client_stage_download_proton">Laster ned Proton</string>
+    <string name="linux_client_stage_install_proton">Installerer Proton</string>
     <string name="linux_client_stage_download_steam">Laster ned Steam-klienten</string>
     <string name="linux_client_stage_install_steam">Installerer Steam-klienten</string>
     <string name="linux_client_stage_library">Legger Steam til i Bibliotek</string>

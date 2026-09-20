@@ -260,6 +260,8 @@
     <string name="linux_client_stage_connect">연결 중</string>
     <string name="linux_client_stage_download_runtime">Linux 런타임 다운로드 중</string>
     <string name="linux_client_stage_install_runtime">Linux 런타임 설치 중</string>
+    <string name="linux_client_stage_download_proton">Proton 다운로드 중</string>
+    <string name="linux_client_stage_install_proton">Proton 설치 중</string>
     <string name="linux_client_stage_download_steam">Steam 클라이언트 다운로드 중</string>
     <string name="linux_client_stage_install_steam">Steam 클라이언트 설치 중</string>
     <string name="linux_client_stage_library">Steam을 라이브러리에 추가하는 중</string>

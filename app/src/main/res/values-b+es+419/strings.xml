@@ -261,6 +261,8 @@
     <string name="linux_client_stage_connect">Conectando</string>
     <string name="linux_client_stage_download_runtime">Descargando el entorno de ejecución de Linux</string>
     <string name="linux_client_stage_install_runtime">Instalando el entorno de ejecución de Linux</string>
+    <string name="linux_client_stage_download_proton">Descargando Proton</string>
+    <string name="linux_client_stage_install_proton">Instalando Proton</string>
     <string name="linux_client_stage_download_steam">Descargando el cliente de Steam</string>
     <string name="linux_client_stage_install_steam">Instalando el cliente de Steam</string>
     <string name="linux_client_stage_library">Agregando Steam a la Biblioteca</string>

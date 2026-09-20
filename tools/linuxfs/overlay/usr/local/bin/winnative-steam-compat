@@ -20,6 +20,9 @@ import sys
 TOOL = "winnative-proton"
 # Newest first; the client installs whichever the user has, and either one runs here.
 SOURCES = ("Proton Experimental (ARM64)", "Proton 11.0 (ARM64)")
+# The copy the app installs with the runtime, so the tool exists before the client first starts:
+# the client reads its tools at startup alone, and a depot of its own only arrives after that.
+BUNDLED = "/opt/winnative-proton"
 # Written by us; everything else in the depot is symlinked through.
 OWN_FILES = ("toolmanifest.vdf", "compatibilitytool.vdf", "winnative-launch")
 # Where the app binds the user's own game library inside the session.
@@ -236,6 +239,8 @@ def find_depot(steam_root):
         depot = os.path.join(steam_root, "steamapps", "common", name)
         if os.path.isfile(os.path.join(depot, "proton")):
             return depot
+    if os.path.isfile(os.path.join(BUNDLED, "proton")):
+        return BUNDLED
     return None
 
 

@@ -105,7 +105,7 @@ case $mode in
     export SDL_VIDEO_X11_DGAMOUSE=0
     # The compatibility tool runs Valve's arm64 Proton, which the client fetches like any depot.
     # Asked for on the command line the first time, so a Windows title has it before it is needed.
-    if [ ! -f "$steam_root/steamapps/appmanifest_4427310.acf" ]; then
+    if [ ! -f /opt/winnative-proton/proton ] && [ ! -f "$steam_root/steamapps/appmanifest_4427310.acf" ]; then
       set -- "$@" steam://install/4427310
     fi
     # An app id left in ~/.wn-autolaunch is handed to the client as a URL, so a launch can be

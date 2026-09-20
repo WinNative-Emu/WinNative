@@ -261,6 +261,8 @@
     <string name="linux_client_stage_connect">Yhdistetään</string>
     <string name="linux_client_stage_download_runtime">Ladataan Linux-ajoympäristöä</string>
     <string name="linux_client_stage_install_runtime">Asennetaan Linux-ajoympäristöä</string>
+    <string name="linux_client_stage_download_proton">Ladataan Protonia</string>
+    <string name="linux_client_stage_install_proton">Asennetaan Protonia</string>
     <string name="linux_client_stage_download_steam">Ladataan Steam-asiakasta</string>
     <string name="linux_client_stage_install_steam">Asennetaan Steam-asiakasta</string>
     <string name="linux_client_stage_library">Lisätään Steam Kirjastoon</string>

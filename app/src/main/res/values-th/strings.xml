@@ -261,6 +261,8 @@
     <string name="linux_client_stage_connect">กำลังเชื่อมต่อ</string>
     <string name="linux_client_stage_download_runtime">กำลังดาวน์โหลดรันไทม์ Linux</string>
     <string name="linux_client_stage_install_runtime">กำลังติดตั้งรันไทม์ Linux</string>
+    <string name="linux_client_stage_download_proton">กำลังดาวน์โหลด Proton</string>
+    <string name="linux_client_stage_install_proton">กำลังติดตั้ง Proton</string>
     <string name="linux_client_stage_download_steam">กำลังดาวน์โหลดไคลเอ็นต์ Steam</string>
     <string name="linux_client_stage_install_steam">กำลังติดตั้งไคลเอ็นต์ Steam</string>
     <string name="linux_client_stage_library">กำลังเพิ่ม Steam ลงในคลัง</string>

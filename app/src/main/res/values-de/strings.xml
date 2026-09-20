@@ -260,6 +260,8 @@
     <string name="linux_client_stage_connect">Verbinden</string>
     <string name="linux_client_stage_download_runtime">Linux-Laufzeitumgebung wird heruntergeladen</string>
     <string name="linux_client_stage_install_runtime">Linux-Laufzeitumgebung wird installiert</string>
+    <string name="linux_client_stage_download_proton">Proton wird heruntergeladen</string>
+    <string name="linux_client_stage_install_proton">Proton wird installiert</string>
     <string name="linux_client_stage_download_steam">Steam-Client wird heruntergeladen</string>
     <string name="linux_client_stage_install_steam">Steam-Client wird installiert</string>
     <string name="linux_client_stage_library">Steam wird zur Bibliothek hinzugefügt</string>

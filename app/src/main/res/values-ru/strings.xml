@@ -264,6 +264,8 @@
     <string name="linux_client_stage_connect">Подключение</string>
     <string name="linux_client_stage_download_runtime">Загрузка среды выполнения Linux</string>
     <string name="linux_client_stage_install_runtime">Установка среды выполнения Linux</string>
+    <string name="linux_client_stage_download_proton">Загрузка Proton</string>
+    <string name="linux_client_stage_install_proton">Установка Proton</string>
     <string name="linux_client_stage_download_steam">Загрузка клиента Steam</string>
     <string name="linux_client_stage_install_steam">Установка клиента Steam</string>
     <string name="linux_client_stage_library">Добавление Steam в Библиотеку</string>

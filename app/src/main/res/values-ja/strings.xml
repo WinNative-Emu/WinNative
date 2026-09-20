@@ -261,6 +261,8 @@
     <string name="linux_client_stage_connect">接続中</string>
     <string name="linux_client_stage_download_runtime">Linux ランタイムをダウンロード中</string>
     <string name="linux_client_stage_install_runtime">Linux ランタイムをインストール中</string>
+    <string name="linux_client_stage_download_proton">Proton をダウンロード中</string>
+    <string name="linux_client_stage_install_proton">Proton をインストール中</string>
     <string name="linux_client_stage_download_steam">Steam クライアントをダウンロード中</string>
     <string name="linux_client_stage_install_steam">Steam クライアントをインストール中</string>
     <string name="linux_client_stage_library">Steam をライブラリに追加中</string>
