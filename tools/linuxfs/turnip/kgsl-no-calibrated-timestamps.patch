@@ -42,7 +42,7 @@
  
 +   /* Calibrating a timestamp means reading the GPU's counter, which the kgsl
 +    * interface cannot do: the extension is only there where the kernel
-+    * interface implements it.
++    * interface implements it, and present timing, which requires it, with it.
 +    */
 +   bool has_calibrated_timestamps =
 +      device->info->props.has_persistent_counter &&
@@ -68,3 +68,25 @@
        .EXT_color_write_enable = true,
        .EXT_conditional_rendering = true,
        .EXT_conservative_rasterization = device->info->chip >= 7,
+@@ -357,7 +365,7 @@
+       .EXT_pipeline_creation_cache_control = true,
+       .EXT_pipeline_creation_feedback = true,
+ #ifdef TU_USE_WSI_PLATFORM
+-      .EXT_present_timing = device->info->props.has_persistent_counter,
++      .EXT_present_timing = has_calibrated_timestamps,
+ #endif
+       .EXT_primitive_restart_index = true,
+       .EXT_primitive_topology_list_restart = true,
+@@ -917,9 +925,9 @@
+ 
+ #ifdef TU_USE_WSI_PLATFORM
+    /* VK_EXT_present_timing */
+-   features->presentTiming = true;
+-   features->presentAtRelativeTime = true;
+-   features->presentAtAbsoluteTime = true;
++   features->presentTiming = pdevice->vk.supported_extensions.EXT_present_timing;
++   features->presentAtRelativeTime = pdevice->vk.supported_extensions.EXT_present_timing;
++   features->presentAtAbsoluteTime = pdevice->vk.supported_extensions.EXT_present_timing;
+ #endif
+ }
+ 
