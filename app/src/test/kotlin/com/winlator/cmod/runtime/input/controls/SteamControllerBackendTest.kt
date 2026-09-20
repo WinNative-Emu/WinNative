@@ -218,6 +218,19 @@ class SteamControllerBackendTest {
         assertEquals(listOf(true, false, true), events.clicks)
     }
 
+    @Test fun changingTrackpadModeReleasesClickWithoutReconnecting() {
+        val events = Events()
+        val transport = FakeTransport()
+        val backend = start(events, transport)
+        transport.reports.add(1 to (1 shl 20))
+        await { events.clicks == listOf(true) }
+        backend.setTrackpadMouseMode(SteamControllerBackend.TRACKPAD_MOUSE_OFF)
+        assertEquals(listOf(true, false), events.clicks)
+        assertEquals(1, transport.setupCount)
+        assertEquals(0, transport.releases)
+        assertEquals(0, events.disconnected)
+    }
+
     @Test fun rumbleRunsOnPollThreadAndPollFailureDisconnects() {
         val events = Events()
         val transport = FakeTransport()

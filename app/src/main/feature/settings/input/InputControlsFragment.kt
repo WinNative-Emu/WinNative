@@ -239,7 +239,7 @@ class InputControlsFragment : Fragment() {
                                     ControllerTestBus.onIdentify = Runnable { identifyController() }
                                     showControllerTest = true
                                     ControllerTestBus.setDialogOpen(true)
-                                    steamBackend?.publishCurrentState()
+                                    publishSteamState()
                                 },
                                 onSteamControllerEnabledChanged = ::setSteamControllerEnabled,
                                 onSteamTrackpadModeSelected = ::setSteamTrackpadMode,
@@ -569,7 +569,9 @@ class InputControlsFragment : Fragment() {
     private fun identifyController() {
         val deviceId = ControllerTestBus.currentDeviceId()
         if (deviceId <= SteamControllerBackend.DEVICE_ID_BASE && deviceId != Int.MIN_VALUE) {
-            steamBackend?.rumble(deviceId, 0xFFFF, 0xFFFF, 320)
+            val host = activity
+            if (host is UnifiedActivity) host.identifySteamInput(deviceId)
+            else steamBackend?.rumble(deviceId, 0xFFFF, 0xFFFF, 320)
             return
         }
         val vibrator = android.view.InputDevice.getDevice(deviceId)?.vibrator ?: return
@@ -591,57 +593,80 @@ class InputControlsFragment : Fragment() {
         }
     }
 
+    private var sharedSteamListener: SteamControllerBackend.Listener? = null
+
     private fun startSteamBackend() {
         val host = activity ?: return
-        if (steamBackend != null || !SteamControllerPrefs.isEnabled(host)) return
-        val backend = SteamControllerBackend(host, SteamControllerBackend.TRACKPAD_MOUSE_OFF, null,
-            object : SteamControllerBackend.Listener {
-                override fun onSteamPadConnected(pad: ExternalController) {
-                    steamPads[pad.id] = pad
-                    refreshVisibleControllers()
-                    publishUiState()
-                }
+        if (steamBackend != null || sharedSteamListener != null || !SteamControllerPrefs.isEnabled(host)) return
+        val listener = object : SteamControllerBackend.Listener {
+            override fun onSteamPadConnected(pad: ExternalController) {
+                steamPads[pad.id] = pad
+                refreshVisibleControllers()
+                publishUiState()
+            }
 
-                override fun onSteamPadDisconnected(pad: ExternalController) {
-                    steamPads.remove(pad.id)
-                    ControllerTestBus.disconnect(pad.deviceId)
-                    refreshVisibleControllers()
-                    publishUiState()
-                }
+            override fun onSteamPadDisconnected(pad: ExternalController) {
+                steamPads.remove(pad.id)
+                ControllerTestBus.disconnect(pad.deviceId)
+                refreshVisibleControllers()
+                publishUiState()
+            }
 
-                override fun onSteamPadState(pad: ExternalController, guideDown: Boolean, quickAccessDown: Boolean, pressedKeyCodes: IntArray) {
-                    ControllerTestBus.publishSteamPad(pad, guideDown, quickAccessDown)
-                    if (showControllerTest) return
-                    val controller = activeBindingController?.takeIf { it.id == pad.id } ?: return
-                    pressedKeyCodes.forEach { onControllerButtonPressed(controller, it) }
-                    if (pad.state.triggerL > 0.5f) onControllerButtonPressed(controller, KeyEvent.KEYCODE_BUTTON_L2)
-                    if (pad.state.triggerR > 0.5f) onControllerButtonPressed(controller, KeyEvent.KEYCODE_BUTTON_R2)
-                    val axes = intArrayOf(MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RZ, MotionEvent.AXIS_HAT_X, MotionEvent.AXIS_HAT_Y)
-                    val values = floatArrayOf(pad.state.thumbLX, pad.state.thumbLY, pad.state.thumbRX, pad.state.thumbRY, pad.state.getDPadX().toFloat(), pad.state.getDPadY().toFloat())
-                    axes.indices.filter { kotlin.math.abs(values[it]) > ControlElement.STICK_DEAD_ZONE }.forEach {
-                        onControllerButtonPressed(controller, ExternalControllerBinding.getKeyCodeForAxis(axes[it], Mathf.sign(values[it])))
-                    }
+            override fun onSteamPadState(pad: ExternalController, guideDown: Boolean, quickAccessDown: Boolean, pressedKeyCodes: IntArray) {
+                ControllerTestBus.publishSteamPad(pad, guideDown, quickAccessDown)
+                if (showControllerTest) return
+                val controller = activeBindingController?.takeIf { it.id == pad.id } ?: return
+                pressedKeyCodes.forEach { onControllerButtonPressed(controller, it) }
+                if (pad.state.triggerL > 0.5f) onControllerButtonPressed(controller, KeyEvent.KEYCODE_BUTTON_L2)
+                if (pad.state.triggerR > 0.5f) onControllerButtonPressed(controller, KeyEvent.KEYCODE_BUTTON_R2)
+                val axes = intArrayOf(MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RZ, MotionEvent.AXIS_HAT_X, MotionEvent.AXIS_HAT_Y)
+                val values = floatArrayOf(pad.state.thumbLX, pad.state.thumbLY, pad.state.thumbRX, pad.state.thumbRY, pad.state.getDPadX().toFloat(), pad.state.getDPadY().toFloat())
+                axes.indices.filter { kotlin.math.abs(values[it]) > ControlElement.STICK_DEAD_ZONE }.forEach {
+                    onControllerButtonPressed(controller, ExternalControllerBinding.getKeyCodeForAxis(axes[it], Mathf.sign(values[it])))
                 }
+            }
 
-                override fun onSteamPadGyro(pad: ExternalController, x: Float, y: Float, z: Float, timestampNanos: Long) {
-                    ControllerTestBus.publishSteamGyro(pad, x, y, z)
-                }
+            override fun onSteamPadGyro(pad: ExternalController, x: Float, y: Float, z: Float, timestampNanos: Long) {
+                ControllerTestBus.publishSteamGyro(pad, x, y, z)
+            }
 
-                override fun onSteamPadBinding(binding: Binding, down: Boolean) = Unit
-                override fun onSteamPadMouseMove(dx: Int, dy: Int) = Unit
-                override fun onSteamPadMouseButton(secondary: Boolean, down: Boolean) = Unit
-            })
+            override fun onSteamPadBinding(binding: Binding, down: Boolean) = Unit
+            override fun onSteamPadMouseMove(dx: Int, dy: Int) = Unit
+            override fun onSteamPadMouseButton(secondary: Boolean, down: Boolean) = Unit
+        }
+        if (host is UnifiedActivity) {
+            sharedSteamListener = listener
+            host.attachSteamInputSettings(listener) { showControllerTest || activeBindingController != null }
+            return
+        }
+        val backend = SteamControllerBackend(host, SteamControllerBackend.TRACKPAD_MOUSE_OFF, null, listener)
         if (backend.start()) steamBackend = backend
     }
 
+    private fun publishSteamState() {
+        val host = activity
+        if (host is UnifiedActivity) host.publishSteamInputState()
+        else steamBackend?.publishCurrentState()
+    }
+
     private fun stopSteamBackend() {
+        sharedSteamListener?.let { listener ->
+            (activity as? UnifiedActivity)?.detachSteamInputSettings(listener)
+        }
+        sharedSteamListener = null
         steamBackend?.stop()
         steamBackend = null
     }
 
     private fun restartSteamBackend() {
-        stopSteamBackend()
-        if (isResumed) startSteamBackend()
+        val host = activity
+        if (host is UnifiedActivity) {
+            host.restartSteamInput()
+            if (isResumed) startSteamBackend()
+        } else {
+            stopSteamBackend()
+            if (isResumed) startSteamBackend()
+        }
     }
 
     private fun setSteamControllerEnabled(enabled: Boolean) {
@@ -655,6 +680,7 @@ class InputControlsFragment : Fragment() {
 
     private fun setSteamTrackpadMode(mode: Int) {
         SteamControllerPrefs.setTrackpadMouseMode(requireContext(), mode)
+        (activity as? UnifiedActivity)?.updateSteamTrackpadMode(mode)
         publishUiState()
     }
 
