@@ -202,6 +202,8 @@ import com.winlator.cmod.feature.sync.google.CloudSyncManager
 import com.winlator.cmod.feature.sync.google.GameSaveBackupManager
 import com.winlator.cmod.feature.sync.ui.CloudSavesContent
 import com.winlator.cmod.feature.library.LinuxApps
+import com.winlator.cmod.feature.library.LinuxSteamLibrary
+import com.winlator.cmod.runtime.linux.LinuxRuntime
 import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.container.Shortcut
 import com.winlator.cmod.runtime.display.XServerDisplayActivity
@@ -413,7 +415,10 @@ internal fun UnifiedActivity.bootstrapStartupState() {
         runCatching {
             val manager = ContainerManager(appContext)
             LinuxApps.gamescopeContainer(manager)?.let { LinuxApps.ensureSteamShortcut(appContext, it) }
-        }.onFailure { Log.w("UnifiedActivity", "Could not refresh the Steam entry", it) }
+            if (LinuxRuntime.isInstalled(appContext)) {
+                LinuxSteamLibrary.adoptClientInstalls(appContext, LinuxRuntime.rootDir(appContext))
+            }
+        }.onFailure { Log.w("UnifiedActivity", "Could not refresh the Steam entries", it) }
         val resolvedLayoutMode =
             runCatching {
                 PrefManager.init(appContext)

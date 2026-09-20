@@ -5076,6 +5076,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             reshadeLiveThread = null;
         }
         com.winlator.cmod.feature.stores.steam.service.GameSessionState.setInGame(this, false);
+        if (gamescopeMode) adoptClientInstalls();
         // Finalize any in-progress recording before the renderer tears down.
         if (screenRecorder != null && screenRecorder.isRecording()) {
             stopScreenRecording();
@@ -8985,6 +8986,28 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             steamControllerSessionReady = true;
             startSteamControllerSupport();
         });
+    }
+
+    /**
+     * The client may have installed titles during the session; the library learns of them once it
+     * is over. Off the UI thread, since it reads manifests and writes the store's records.
+     */
+    private void adoptClientInstalls() {
+        Context appContext = getApplicationContext();
+        new Thread(() -> {
+            boolean changed;
+            try {
+                changed = com.winlator.cmod.feature.library.LinuxSteamLibrary.adoptClientInstalls(
+                        appContext, LinuxRuntime.rootDir(appContext));
+            } catch (RuntimeException e) {
+                Log.w("XServerDisplayActivity", "Could not adopt the client's installs", e);
+                return;
+            }
+            if (changed) {
+                new Handler(Looper.getMainLooper()).post(
+                        com.winlator.cmod.app.shell.UnifiedActivity.Companion::refreshLibrary);
+            }
+        }, "linux-library").start();
     }
 
     /** What the session script runs: the desktop, a Linux program, or the native Steam client. */
