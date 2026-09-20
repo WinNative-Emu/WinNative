@@ -2447,6 +2447,36 @@ static void pointer_focus(struct wl_resource *target, wl_fixed_t fx, wl_fixed_t 
     if (entered) constraints_focus_entered(target, client);
 }
 
+/* The seat's modifiers in the keymap's real-modifier bits. Wine and gamescope work them out from
+ * the keys they are sent; a nested wlroots compositor (the desktop's labwc) takes them from
+ * wl_keyboard.modifiers alone, and without it Shift never reaches its programs. */
+static uint32_t g_mod_keys_held, g_mods_locked;
+
+static uint32_t mods_depressed(void) {
+    static const uint32_t bits[] = { 1u << 0, 1u << 0, 1u << 2, 1u << 2, 1u << 3, 1u << 3, 1u << 6, 1u << 6 };
+    uint32_t mods = 0;
+    for (unsigned i = 0; i < sizeof(bits) / sizeof(bits[0]); i++)
+        if (g_mod_keys_held & (1u << i)) mods |= bits[i];
+    return mods;
+}
+
+/* Returns whether the key changed the seat's modifiers. */
+static int mods_key(uint32_t evdev, int pressed) {
+    static const uint32_t keys[] = { 42, 54, 29, 97, 56, 100, 125, 126 }; /* L/R Shift, Ctrl, Alt, Meta */
+    if (evdev == 58) { /* Caps Lock toggles on its press */
+        if (pressed) g_mods_locked ^= 1u << 1;
+        return pressed;
+    }
+    for (unsigned i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
+        if (keys[i] != evdev) continue;
+        uint32_t held = pressed ? g_mod_keys_held | (1u << i) : g_mod_keys_held & ~(1u << i);
+        if (held == g_mod_keys_held) return 0;
+        g_mod_keys_held = held;
+        return 1;
+    }
+    return 0;
+}
+
 static void keyboard_focus(struct wl_resource *target) {
     struct wl_client *client = wl_resource_get_client(target);
     int entered = 0;
@@ -2462,8 +2492,7 @@ static void keyboard_focus(struct wl_resource *target) {
         if (wl_resource_get_client(sk->kb) != client) continue;
         sk->focus = target;
         wl_keyboard_send_enter(sk->kb, wl_display_next_serial(g_display), target, &keys);
-        /* Baseline modifiers = none; Shift/Ctrl arrive as their own key events. */
-        wl_keyboard_send_modifiers(sk->kb, wl_display_next_serial(g_display), 0, 0, 0, 0);
+        wl_keyboard_send_modifiers(sk->kb, wl_display_next_serial(g_display), mods_depressed(), 0, g_mods_locked, 0);
         entered = 1;
     }
     wl_array_release(&keys);
@@ -2997,10 +3026,13 @@ static void key_event(uint32_t evdev, int pressed) {
     struct wl_client *client = wl_resource_get_client(target->resource);
     if (!client_has_keyboard(client)) return;
     keyboard_focus(target->resource);
+    int mods_changed = mods_key(evdev, pressed);
     for (int i = 0; i < g_nkbs; i++) {
         if (wl_resource_get_client(g_kbs[i].kb) != client) continue;
         wl_keyboard_send_key(g_kbs[i].kb, wl_display_next_serial(g_display), now_ms(), evdev,
                              pressed ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED);
+        if (mods_changed)
+            wl_keyboard_send_modifiers(g_kbs[i].kb, wl_display_next_serial(g_display), mods_depressed(), 0, g_mods_locked, 0);
     }
     wl_display_flush_clients(g_display);
 }
@@ -3017,6 +3049,7 @@ static void session_end(void) {
     g_grab = NULL; g_key_target = NULL; g_ime_click = NULL;
     g_desktop = NULL; g_hud_surface = NULL; g_hdr_unimported = NULL;
     g_active_constraint = NULL;
+    g_mod_keys_held = g_mods_locked = 0;
     sc_layer_hide();
     wnc_color_session_end();
     g_zero_copy_paused = 0;

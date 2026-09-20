@@ -8888,6 +8888,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("PATH=/usr/local/bin:/usr/bin:/bin");
         guest.add("TERM=xterm-256color");
         guest.add("LANG=C.UTF-8");
+        guest.add("TZ=" + java.util.TimeZone.getDefault().getID());
         guest.add("XDG_RUNTIME_DIR=" + runtimeDir.getPath());
         guest.add("XDG_SESSION_TYPE=wayland");
         guest.add("WAYLAND_DISPLAY=wayland-0");
