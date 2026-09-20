@@ -30,7 +30,11 @@ public final class LinuxRuntime {
   public static final String MODE_RUN = "run";
   private static final String KGSL_DEVICE = "/dev/kgsl-3d0";
   /** Refreshed into the rootfs at every session start; see {@link #syncSessionFiles}. */
+  /** The Mesa release tools/linuxfs/build-turnip.sh builds the shipped driver from. */
+  public static final String TURNIP_VERSION = "26.2.2";
+
   private static final String[] SESSION_FILES = {
+    "usr/lib/libvulkan_freedreno.so",
     "usr/local/lib/libwninput.so",
     "usr/local/lib/libwnsession.so",
     "usr/local/bin/winnative-seed-redists",
@@ -202,14 +206,14 @@ public final class LinuxRuntime {
   }
 
   /**
-   * The session's own files, refreshed from the app's copies: the preload libraries that
-   * {@code /etc/ld.so.preload} names, and the scripts the session runs.
+   * The session's own files, refreshed from the app's copies: the Vulkan driver, the preload
+   * libraries that {@code /etc/ld.so.preload} names, and the scripts the session runs.
    *
    * They have to match the build that starts the session - a rootfs installed by an earlier one
    * carries older copies, and the device has no way to replace them from outside the app. They are
-   * copied in whole rather than compared: together they are a few hundred kilobytes, and each copy
-   * lands through a rename, so a library another session still has mapped keeps the file it
-   * opened.
+   * copied in whole rather than compared: the driver's 15 MB takes well under a second, and each
+   * copy lands through a rename, so a library another session still has mapped keeps the file
+   * it opened.
    */
   public static void syncSessionFiles(Context context) throws IOException {
     File root = rootDir(context);
