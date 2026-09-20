@@ -268,6 +268,8 @@
     <string name="linux_client_progress_amount">%1$s / %2$s</string>
     <string name="linux_client_retry">다시 시도</string>
     <string name="linux_client_busy">Linux Steam 클라이언트를 아직 설치하고 있습니다. 완료된 후 다시 시도하세요.</string>
+    <string name="linux_client_update_message">새 Linux 런타임을 사용할 수 있습니다. 업데이트해도 Steam 로그인, 설치된 게임, 세이브 및 컨테이너는 유지됩니다.</string>
+    <string name="linux_client_update_session_running">Linux 세션이 실행 중입니다. 종료한 후 업데이트하세요.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">스토어</string>

@@ -272,6 +272,8 @@
     <string name="linux_client_progress_amount">%1$s z %2$s</string>
     <string name="linux_client_retry">Ponów</string>
     <string name="linux_client_busy">Klient Steam dla Linuksa wciąż się instaluje. Spróbuj ponownie po zakończeniu.</string>
+    <string name="linux_client_update_message">Dostępne jest nowsze środowisko Linux. Aktualizacja zachowuje logowanie do Steam, zainstalowane gry, zapisy i kontenery.</string>
+    <string name="linux_client_update_session_running">Trwa sesja Linux. Zakończ ją, a następnie zaktualizuj.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Sklepy</string>

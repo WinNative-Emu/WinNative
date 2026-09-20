@@ -29,9 +29,21 @@ public final class LinuxRuntime {
   public static final String MODE_STEAM = "steam";
   public static final String MODE_RUN = "run";
   private static final String KGSL_DEVICE = "/dev/kgsl-3d0";
-  /** Refreshed into the rootfs at every session start; see {@link #syncSessionFiles}. */
   /** The Mesa release tools/linuxfs/build-turnip.sh builds the shipped driver from. */
   public static final String TURNIP_VERSION = "26.2.2";
+  /**
+   * The shipped driver's place among the published ones, in the release's version numbering. A
+   * downloaded driver is used only while it is newer, so an app update that ships a later driver
+   * takes over from it.
+   */
+  public static final long TURNIP_BUILD = 202609190000L;
+  /** A driver the Linux Client install downloaded, beside the rootfs so a new runtime leaves it be. */
+  public static final String DRIVER_DIR = "linux-driver";
+  public static final String DRIVER_LIBRARY = "libvulkan_freedreno.so";
+  public static final String DRIVER_ICD = "freedreno_icd.json";
+  public static final String DRIVER_VERSION_FILE = "version";
+  public static final String DRIVER_NAME_FILE = "name";
+  /** Refreshed into the rootfs at every session start; see {@link #syncSessionFiles}. */
 
   private static final String[] SESSION_FILES = {
     "usr/lib/libvulkan_freedreno.so",
@@ -67,8 +79,38 @@ public final class LinuxRuntime {
         && prootLoader(context).isFile();
   }
 
-  /** The Vulkan ICD manifest the rootfs ships for the device GPU, or null when it has none. */
+  public static File driverDir(Context context) {
+    return new File(context.getFilesDir(), DRIVER_DIR);
+  }
+
+  /** Worker thread. The downloaded driver's version, or 0 when there is none that can be used. */
+  public static long downloadedDriverVersion(Context context) {
+    File dir = driverDir(context);
+    if (!new File(dir, DRIVER_LIBRARY).isFile() || !new File(dir, DRIVER_ICD).isFile()) return 0;
+    String version = FileUtils.readString(new File(dir, DRIVER_VERSION_FILE));
+    if (version == null) return 0;
+    try {
+      return Long.parseLong(version.trim());
+    } catch (NumberFormatException e) {
+      return 0;
+    }
+  }
+
+  /** Worker thread. The Mesa release of the driver sessions draw with. */
+  public static String driverName(Context context) {
+    if (downloadedDriverVersion(context) > TURNIP_BUILD) {
+      String name = FileUtils.readString(new File(driverDir(context), DRIVER_NAME_FILE));
+      if (name != null && !name.trim().isEmpty()) return name.trim();
+    }
+    return TURNIP_VERSION;
+  }
+
+  /**
+   * Worker thread. The Vulkan ICD manifest for the device GPU: the downloaded driver's while it is
+   * newer than the shipped one, else the one the rootfs carries, or null when it has none.
+   */
   public static File vulkanIcd(Context context) {
+    if (downloadedDriverVersion(context) > TURNIP_BUILD) return new File(driverDir(context), DRIVER_ICD);
     File icdDir = new File(rootDir(context), "usr/share/vulkan/icd.d");
     File[] manifests = icdDir.listFiles((dir, name) -> name.endsWith(".json"));
     if (manifests == null) return null;

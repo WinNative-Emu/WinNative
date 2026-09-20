@@ -269,6 +269,8 @@
     <string name="linux_client_progress_amount">%1$s av %2$s</string>
     <string name="linux_client_retry">Försök igen</string>
     <string name="linux_client_busy">Linux Steam-klienten installeras fortfarande. Försök igen när den är klar.</string>
+    <string name="linux_client_update_message">En nyare Linux-miljö finns tillgänglig. Uppdateringen behåller din Steam-inloggning, installerade spel, sparfiler och containrar.</string>
+    <string name="linux_client_update_session_running">En Linux-session körs. Avsluta den och uppdatera sedan.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Butiker</string>

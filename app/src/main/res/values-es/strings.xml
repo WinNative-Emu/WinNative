@@ -268,6 +268,8 @@
     <string name="linux_client_progress_amount">%1$s de %2$s</string>
     <string name="linux_client_retry">Reintentar</string>
     <string name="linux_client_busy">El cliente de Steam para Linux aún se está instalando. Inténtalo de nuevo cuando termine.</string>
+    <string name="linux_client_update_message">Hay un entorno de Linux más reciente. Al actualizar se conservan tu sesión de Steam, los juegos instalados, las partidas guardadas y los contenedores.</string>
+    <string name="linux_client_update_session_running">Hay una sesión de Linux en curso. Ciérrala y luego actualiza.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Tiendas</string>

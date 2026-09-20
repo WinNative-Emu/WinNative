@@ -84,6 +84,7 @@ private fun linuxClientMessage(state: State): String? {
     return when (state) {
         State.Checking, State.Missing -> stringResource(R.string.linux_client_install_message)
         State.Installed -> stringResource(R.string.linux_client_installed_message)
+        is State.UpdateAvailable -> stringResource(R.string.linux_client_update_message)
         State.Failed -> stringResource(R.string.linux_client_failed_message)
         is State.NoSpace ->
             stringResource(
@@ -174,6 +175,10 @@ private fun LinuxClientFooter(
             State.Checking, State.Missing -> {
                 PopupTextAction(stringResource(R.string.common_ui_cancel), DialogTextSecondary, onDismiss)
                 PopupTextAction(stringResource(R.string.common_ui_download), accent, onStart, isEntry = true)
+            }
+            is State.UpdateAvailable -> {
+                PopupTextAction(stringResource(R.string.common_ui_cancel), DialogTextSecondary, onDismiss)
+                PopupTextAction(stringResource(R.string.update_action_update), accent, onStart, isEntry = true)
             }
         }
     }

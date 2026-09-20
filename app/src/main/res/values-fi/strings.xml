@@ -269,6 +269,8 @@
     <string name="linux_client_progress_amount">%1$s / %2$s</string>
     <string name="linux_client_retry">Yritä uudelleen</string>
     <string name="linux_client_busy">Linux Steam -asiakasta asennetaan yhä. Yritä uudelleen, kun asennus on valmis.</string>
+    <string name="linux_client_update_message">Uudempi Linux-ympäristö on saatavilla. Päivitys säilyttää Steam-kirjautumisen, asennetut pelit, tallennukset ja säiliöt.</string>
+    <string name="linux_client_update_session_running">Linux-istunto on käynnissä. Sulje se ja päivitä sitten.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Kaupat</string>

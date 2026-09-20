@@ -268,6 +268,8 @@
     <string name="linux_client_progress_amount">%1$s / %2$s</string>
     <string name="linux_client_retry">重试</string>
     <string name="linux_client_busy">Linux Steam 客户端仍在安装。请在完成后重试。</string>
+    <string name="linux_client_update_message">有更新的 Linux 运行环境可用。更新会保留 Steam 登录、已安装的游戏、存档和容器。</string>
+    <string name="linux_client_update_session_running">Linux 会话正在运行。请先退出，然后再更新。</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">商店</string>

@@ -14,6 +14,7 @@ import com.winlator.cmod.runtime.container.ContainerCreation
 import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.content.ContentsManager
 import com.winlator.cmod.runtime.display.environment.ImageFs
+import com.winlator.cmod.runtime.system.SessionKeepAliveService
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.io.TarCompressorUtils
 import com.winlator.cmod.shared.util.OnExtractFileListener
@@ -56,6 +57,20 @@ object LinuxClientInstaller {
     private const val PROTON_INFO = "$RELEASE/proton-arm64.json"
     private const val PROTON_DIR = "/opt/winnative-proton"
     private const val PROTON_STAGING_DIR = "proton.staging"
+    private const val DRIVER_ARCHIVE = "$RELEASE/linux-turnip.tar.zst"
+    private const val DRIVER_INFO = "$RELEASE/linux-turnip.json"
+    private const val DRIVER_STAGING_DIR = "linux-driver.staging"
+    private const val RUNTIME_VERSION_FILE = "etc/winnative/version"
+    private const val PROTON_VERSION_FILE = "winnative-version"
+
+    /**
+     * What a runtime being replaced hands on to the new one: the home directory with the client
+     * and its sign-in, the library the app maps in with its prefixes and saves, Proton, and the
+     * machine id the client ties its sign-in to.
+     */
+    private val KEPT_PATHS = listOf("root", "mnt/winnative", PROTON_DIR.substring(1), "etc/machine-id")
+    private const val PREFERENCES = "linux_client"
+    private const val DISMISSED_UPDATE = "dismissed_update"
     private const val STEAM_CDN = "https://client-update.fastly.steamstatic.com"
     private const val STEAM_MANIFEST = "steam_client_publicbeta_linuxarm64"
     private const val STEAM_ROOT = "/root/.local/share/Steam"
@@ -81,6 +96,12 @@ object LinuxClientInstaller {
 
         data object Installed : State
 
+        /**
+         * Installed, and the release carries a newer runtime, Proton or driver, published as [version].
+         * [isNews] until the user has been shown that version once.
+         */
+        data class UpdateAvailable(val version: Long, val isNews: Boolean) : State
+
         data class Working(val stage: Stage, val done: Long, val total: Long) : State
 
         data object Failed : State
@@ -105,6 +126,8 @@ object LinuxClientInstaller {
     private val mutableState = MutableStateFlow<State>(State.Checking)
     private var generation = 0
     private var job: Job? = null
+    private var updating = false
+    private val swapLock = Any()
 
     val state: StateFlow<State> = mutableState.asStateFlow()
 
@@ -120,35 +143,81 @@ object LinuxClientInstaller {
         val appContext = context.applicationContext
         val seen = synchronized(lock) { if (isWorking) return else generation }
         scope.launch {
-            val found = if (isInstalled(appContext)) State.Installed else State.Missing
-            synchronized(lock) { if (generation == seen && !isWorking) mutableState.value = found }
+            if (isWorking) return@launch
+            recoverSwap(appContext)
+            if (!isInstalled(appContext)) {
+                publishFound(seen) { State.Missing }
+                return@launch
+            }
+            // What is on disk is known at once; whether the release has moved on takes the network.
+            publishFound(seen) { it as? State.UpdateAvailable ?: State.Installed }
+            val version = pendingUpdate(appContext)
+            val found =
+                if (version > 0) State.UpdateAvailable(version, preferences(appContext).getLong(DISMISSED_UPDATE, 0L) < version)
+                else State.Installed
+            publishFound(seen) { found }
         }
     }
 
+    private fun publishFound(
+        seen: Int,
+        found: (State) -> State,
+    ) {
+        synchronized(lock) { if (generation == seen && !isWorking) mutableState.value = found(mutableState.value) }
+    }
+
+    /** Installs what is missing. Started from an offered update, or retried after one, it updates too. */
     fun start(context: Context) {
         val appContext = context.applicationContext
         synchronized(lock) {
             if (isWorking) return
+            val current = mutableState.value
+            updating = current is State.UpdateAvailable ||
+                (updating && current != State.Installed && current != State.Missing)
+            val update = updating
             generation++
             mutableState.value = State.Working(Stage.CONNECT, 0, 0)
-            job = scope.launch { install(appContext) }
+            job = scope.launch { install(appContext, update) }
         }
     }
+
+    /** UI thread. The offer has been put in front of the user; it is not pressed on them again. */
+    fun dismissUpdate(
+        context: Context,
+        update: State.UpdateAvailable,
+    ) {
+        synchronized(lock) { if (mutableState.value == update) mutableState.value = update.copy(isNews = false) }
+        preferences(context).edit().putLong(DISMISSED_UPDATE, update.version).apply()
+    }
+
+    private fun preferences(context: Context) = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
     fun cancel() {
         synchronized(lock) { job?.cancel() }
     }
 
-    private suspend fun install(context: Context) {
+    private suspend fun install(
+        context: Context,
+        update: Boolean,
+    ) {
         val work = File(context.filesDir, WORK_DIR)
         val outcome: State =
             try {
+                recoverSwap(context)
                 FileUtils.delete(work)
                 if (!work.mkdirs()) throw IOException("Could not create $work")
                 // Checked first, so a device that cannot hold the container is told before the download.
                 if (gamescopeContainer(context) == null) requireSystemImage(context)
-                if (!LinuxRuntime.isInstalled(context)) installRuntime(context, work)
-                if (!isProtonInstalled(context)) installProton(context, work)
+                val updateRuntime = update && runtimeUpdate(context) > 0
+                val updateProton = update && protonUpdate(context) > 0
+                val updateDriver = update && driverUpdate(context) > 0
+                // A session has the runtime's files open and mapped; they cannot change under it.
+                if ((updateRuntime || updateProton || updateDriver) && SessionKeepAliveService.isLinuxSessionActive()) {
+                    throw BlockedException(R.string.linux_client_update_session_running)
+                }
+                if (updateRuntime || !LinuxRuntime.isInstalled(context)) installRuntime(context, work)
+                if (updateProton || !isProtonInstalled(context)) installProton(context, work)
+                if (updateDriver) installDriver(context, work)
                 if (!isSteamInstalled(context)) installSteam(context, work)
                 addToLibrary(context)
                 State.Installed
@@ -168,6 +237,43 @@ object LinuxClientInstaller {
         publishSettled(outcome)
     }
 
+    private fun installedVersion(file: File): Long = runCatching { file.readText().trim().toLong() }.getOrDefault(0L)
+
+    /** 0 when the release cannot be read or, as before versions were published, names none. */
+    private fun publishedVersion(infoUrl: String): Long =
+        runCatching { JSONObject(fetchText(infoUrl)).optLong("version", 0L) }
+            .getOrElse {
+                Log.d(TAG, "No published version at $infoUrl", it)
+                0L
+            }
+
+    /** Each of these: the published version when what is installed is older, else 0. */
+    private fun runtimeUpdate(context: Context): Long =
+        if (LinuxRuntime.isInstalled(context)) {
+            newer(RUNTIME_INFO, installedVersion(File(LinuxRuntime.rootDir(context), RUNTIME_VERSION_FILE)))
+        } else {
+            0L
+        }
+
+    /** Only the copy installed here is updated; a depot of Proton is the client's to keep current. */
+    private fun protonUpdate(context: Context): Long {
+        val proton = hostPath(context, PROTON_DIR)
+        return if (File(proton, "proton").isFile) newer(PROTON_INFO, installedVersion(File(proton, PROTON_VERSION_FILE))) else 0L
+    }
+
+    /** A Turnip newer than the one the app ships and any downloaded before. */
+    private fun driverUpdate(context: Context): Long =
+        newer(DRIVER_INFO, maxOf(LinuxRuntime.TURNIP_BUILD, LinuxRuntime.downloadedDriverVersion(context)))
+
+    private fun newer(
+        infoUrl: String,
+        installed: Long,
+    ): Long = publishedVersion(infoUrl).takeIf { it > installed } ?: 0L
+
+    /** Worker thread. The published version the install is behind, or 0 when it is current. */
+    private fun pendingUpdate(context: Context): Long =
+        runtimeUpdate(context).takeIf { it > 0 } ?: protonUpdate(context).takeIf { it > 0 } ?: driverUpdate(context)
+
     private fun publishSettled(outcome: State) {
         synchronized(lock) { mutableState.value = outcome }
     }
@@ -179,6 +285,8 @@ object LinuxClientInstaller {
         FileUtils.delete(work)
         FileUtils.delete(File(context.filesDir, STAGING_DIR))
         FileUtils.delete(File(context.filesDir, PROTON_STAGING_DIR))
+        FileUtils.delete(File(context.filesDir, DRIVER_STAGING_DIR))
+        FileUtils.delete(File(context.filesDir, RETIRED_DIR))
     }
 
     private suspend fun installRuntime(
@@ -202,7 +310,9 @@ object LinuxClientInstaller {
         work: File,
     ) {
         val staging = File(context.filesDir, PROTON_STAGING_DIR)
-        unpackRelease(context, work, PROTON_INFO, PROTON_ARCHIVE, staging, Stage.DOWNLOAD_PROTON, Stage.INSTALL_PROTON)
+        val version =
+            unpackRelease(context, work, PROTON_INFO, PROTON_ARCHIVE, staging, Stage.DOWNLOAD_PROTON, Stage.INSTALL_PROTON)
+        File(staging, PROTON_VERSION_FILE).writeText("$version\n")
         val target = hostPath(context, PROTON_DIR)
         FileUtils.delete(target)
         val parent = target.parentFile
@@ -210,7 +320,38 @@ object LinuxClientInstaller {
         if (!staging.renameTo(target)) throw IOException("Could not move Proton into place")
     }
 
-    /** Downloads a release archive, checks it against its published digest and unpacks it into [staging]. */
+    /**
+     * The driver archive holds the library and the name of its Mesa release; the manifest that
+     * points the Vulkan loader at it is written here, where the path it lands at is known.
+     */
+    private suspend fun installDriver(
+        context: Context,
+        work: File,
+    ) {
+        val staging = File(context.filesDir, DRIVER_STAGING_DIR)
+        val version =
+            unpackRelease(context, work, DRIVER_INFO, DRIVER_ARCHIVE, staging, Stage.DOWNLOAD_RUNTIME, Stage.INSTALL_RUNTIME)
+        val target = LinuxRuntime.driverDir(context)
+        if (!File(staging, LinuxRuntime.DRIVER_LIBRARY).isFile) throw IOException("The driver archive holds no driver")
+        val manifest =
+            JSONObject()
+                .put("file_format_version", "1.0.0")
+                .put(
+                    "ICD",
+                    JSONObject()
+                        .put("api_version", "1.4.0")
+                        .put("library_path", File(target, LinuxRuntime.DRIVER_LIBRARY).path),
+                )
+        File(staging, LinuxRuntime.DRIVER_ICD).writeText(manifest.toString())
+        File(staging, LinuxRuntime.DRIVER_VERSION_FILE).writeText("$version\n")
+        FileUtils.delete(target)
+        if (!staging.renameTo(target)) throw IOException("Could not move the driver into place")
+    }
+
+    /**
+     * Downloads a release archive, checks it against its published digest and unpacks it into
+     * [staging]. Returns the version the release gives it.
+     */
     private suspend fun unpackRelease(
         context: Context,
         work: File,
@@ -219,7 +360,7 @@ object LinuxClientInstaller {
         staging: File,
         downloadStage: Stage,
         installStage: Stage,
-    ) {
+    ): Long {
         mutableState.value = State.Working(Stage.CONNECT, 0, 0)
         val info = JSONObject(fetchText(infoUrl))
         val sha256 = info.getString("sha256")
@@ -257,9 +398,10 @@ object LinuxClientInstaller {
         coroutineContext.ensureActive()
         if (!extracted) throw IOException("${archive.name} could not be unpacked")
         FileUtils.delete(archive)
+        return info.optLong("version", 0L)
     }
 
-    /** Swaps the unpacked tree in, keeping the home directory of a runtime being replaced. */
+    /** Swaps the unpacked tree in, handing [KEPT_PATHS] on from a runtime being replaced. */
     private fun replaceRootfs(
         context: Context,
         staging: File,
@@ -271,18 +413,60 @@ object LinuxClientInstaller {
         }
         val retired = File(context.filesDir, RETIRED_DIR)
         FileUtils.delete(retired)
-        if (!root.renameTo(retired)) throw IOException("Could not move the old runtime aside")
-        val home = File(retired, "root")
-        if (home.isDirectory) {
-            val fresh = File(staging, "root")
-            FileUtils.delete(fresh)
-            if (!home.renameTo(fresh)) throw IOException("Could not keep the runtime's home directory")
-        }
-        if (!staging.renameTo(root)) {
-            retired.renameTo(root)
-            throw IOException("Could not move the runtime into place")
-        }
+        synchronized(swapLock) { swap(root, staging, retired) }
         FileUtils.delete(retired)
+    }
+
+    private fun swap(
+        root: File,
+        staging: File,
+        retired: File,
+    ) {
+        val handedOn = ArrayList<Pair<File, File>>()
+        try {
+            for (path in KEPT_PATHS) {
+                val old = File(root, path)
+                if (!old.exists()) continue
+                val fresh = File(staging, path)
+                FileUtils.delete(fresh)
+                val parent = fresh.parentFile
+                if (parent != null && !parent.isDirectory && !parent.mkdirs()) throw IOException("Could not create $parent")
+                if (!old.renameTo(fresh)) throw IOException("Could not keep the runtime's /$path")
+                handedOn += old to fresh
+            }
+            if (!root.renameTo(retired)) throw IOException("Could not move the old runtime aside")
+            if (!staging.renameTo(root)) {
+                retired.renameTo(root)
+                throw IOException("Could not move the runtime into place")
+            }
+        } catch (e: IOException) {
+            // The old runtime stays in use, so it takes back what it had handed on.
+            for ((old, fresh) in handedOn.asReversed()) fresh.renameTo(old)
+            throw e
+        }
+    }
+
+    /**
+     * Puts right a swap the process did not live to finish, before anything discards the staged
+     * tree: by then it may hold what the old runtime handed on. The old runtime is only moved
+     * aside once the new one is whole, so with it aside the new one goes in; otherwise the old one
+     * takes back whatever it no longer has.
+     */
+    private fun recoverSwap(context: Context) {
+        val root = LinuxRuntime.rootDir(context)
+        val staging = File(context.filesDir, STAGING_DIR)
+        val retired = File(context.filesDir, RETIRED_DIR)
+        synchronized(swapLock) {
+            if (!root.exists()) {
+                if (retired.isDirectory) (if (staging.isDirectory) staging else retired).renameTo(root)
+            } else if (staging.isDirectory) {
+                for (path in KEPT_PATHS) {
+                    val handedOn = File(staging, path)
+                    val home = File(root, path)
+                    if (handedOn.exists() && !home.exists()) handedOn.renameTo(home)
+                }
+            }
+        }
     }
 
     private fun gamescopeContainer(context: Context): Container? = LinuxApps.gamescopeContainer(ContainerManager(context))

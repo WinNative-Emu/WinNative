@@ -350,10 +350,16 @@ internal fun UnifiedActivity.UnifiedHub() {
     val linuxClient by LinuxClientInstaller.state.collectAsState()
     // An install finishing adds the Steam entry, which the Library has to read again to show.
     LaunchedEffect(linuxClient) {
-        if (linuxClient is LinuxClientInstaller.State.Installed) localLibraryRefreshKey++
+        val found = linuxClient
+        if (found is LinuxClientInstaller.State.Installed) localLibraryRefreshKey++
+        // A newer runtime is put in front of the user once; after that it waits in Stores.
+        if (found is LinuxClientInstaller.State.UpdateAvailable && found.isNews) {
+            LinuxClientInstaller.dismissUpdate(context, found)
+            showLinuxClient = true
+        }
     }
     LaunchedEffect(showLinuxClient) {
-        if (showLinuxClient && !LinuxClientInstaller.isWorking) LinuxClientInstaller.refresh(context)
+        if (!LinuxClientInstaller.isWorking) LinuxClientInstaller.refresh(context)
     }
     val persona by SteamService.instance?.localPersona?.collectAsState()
         ?: remember { mutableStateOf(null) }

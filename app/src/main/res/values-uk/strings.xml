@@ -272,6 +272,8 @@
     <string name="linux_client_progress_amount">%1$s з %2$s</string>
     <string name="linux_client_retry">Повторити</string>
     <string name="linux_client_busy">Клієнт Steam для Linux ще встановлюється. Спробуйте ще раз після завершення.</string>
+    <string name="linux_client_update_message">Доступне новіше середовище Linux. Під час оновлення зберігаються вхід у Steam, встановлені ігри, збереження та контейнери.</string>
+    <string name="linux_client_update_session_running">Запущено сеанс Linux. Завершіть його, а потім оновіть.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Магазини</string>

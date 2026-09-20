@@ -214,12 +214,14 @@ fun StoresScreen(
                 onSignOut = onSteamSignOut,
                 extraAction = {
                     val installed = linuxClient is LinuxClientInstaller.State.Installed
+                    // An update is offered in the window, not begun by opening it.
+                    val offered = linuxClient is LinuxClientInstaller.State.UpdateAvailable
                     ActionButton(
                         label = stringResource(R.string.linux_client_button),
                         textColor = if (installed) StatusGreen else Accent,
                         icon = if (installed) Icons.Outlined.Check else Icons.Outlined.ArrowDownward,
                         onClick = {
-                            if (!installed) LinuxClientInstaller.start(context)
+                            if (!installed && !offered) LinuxClientInstaller.start(context)
                             linuxClientDialog = true
                         },
                     )

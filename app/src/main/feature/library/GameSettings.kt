@@ -1907,13 +1907,17 @@ private fun DisplaySection(
  */
 @Composable
 private fun GamescopeDisplaySection(state: GameSettingsStateHolder) {
+    val context = LocalContext.current.applicationContext
+    val driverName by produceState(LinuxRuntime.TURNIP_VERSION) {
+        value = withContext(Dispatchers.IO) { LinuxRuntime.driverName(context) }
+    }
     SettingGroup {
         SettingPairRow {
             Box(Modifier.weight(1f)) {
                 SettingDropdown(
                     label = stringResource(R.string.container_graphics_driver),
                     entries = listOf(
-                        stringResource(R.string.container_graphics_driver_gamescope, LinuxRuntime.TURNIP_VERSION)
+                        stringResource(R.string.container_graphics_driver_gamescope, driverName)
                     ),
                     selectedIndex = 0,
                     onSelected = {},
