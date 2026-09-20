@@ -1,7 +1,10 @@
 package com.winlator.cmod.feature.library
 
 import android.content.Context
+import com.winlator.cmod.feature.stores.epic.data.EpicGame
+import com.winlator.cmod.feature.stores.gog.data.GOGGame
 import com.winlator.cmod.feature.stores.steam.data.SteamApp
+import com.winlator.cmod.runtime.container.Shortcut
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -17,6 +20,45 @@ import org.json.JSONObject
 object LibraryCache {
     private const val PREFS = "library_cache"
     private const val KEY_ENTRIES = "installed"
+
+    /** The custom artwork a card draws, by library id. */
+    data class Artwork(
+        val cover: Map<Int, String> = emptyMap(),
+        val iconArtwork: Map<Int, String> = emptyMap(),
+        val icon: Map<Int, String> = emptyMap(),
+        val hero: Map<Int, String> = emptyMap(),
+        val carousel: Map<Int, String> = emptyMap(),
+        val list: Map<Int, String> = emptyMap(),
+    )
+
+    /** Everything the library screen had worked out when it was last on screen in this process. */
+    data class Session(
+        val apps: List<SteamApp>,
+        val merged: List<SteamApp>,
+        val gogByPseudoId: Map<Int, GOGGame>,
+        val epicByPseudoId: Map<Int, EpicGame>,
+        val shortcuts: List<Shortcut>,
+        val customApps: List<SteamApp>,
+        val customStoragePaths: Map<Int, String>,
+        val artwork: Artwork = Artwork(),
+    )
+
+    /**
+     * The library screen leaves the composition whenever another tab or a game's page covers it.
+     * Coming back starts from this rather than from nothing, so the grid never empties while the
+     * scan that follows confirms it. Main thread only.
+     */
+    var session: Session? = null
+
+    /** The saved picture, read ahead of the first composition by [preload]. */
+    @Volatile
+    var preloaded: List<SteamApp>? = null
+        private set
+
+    /** Worker thread. */
+    fun preload(context: Context) {
+        if (preloaded == null) preloaded = load(context)
+    }
 
     /** Worker thread. */
     fun load(context: Context): List<SteamApp> =

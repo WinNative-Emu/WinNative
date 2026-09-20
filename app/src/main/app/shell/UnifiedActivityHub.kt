@@ -344,7 +344,9 @@ internal fun UnifiedActivity.UnifiedHub() {
     val chatServiceEnabled by SteamService.chatServiceEnabledFlow.collectAsState()
     val isEpicLoggedIn by EpicAuthManager.isLoggedInFlow.collectAsState()
     val isGogLoggedIn by GOGAuthManager.isLoggedInFlow.collectAsState()
-    val steamApps by db.steamAppDao().getAllOwnedApps().collectAsState(initial = emptyList())
+    // Null until Room has answered, which is how the library tells "nothing owned" from "not read yet".
+    val steamAppsOrNull by db.steamAppDao().getAllOwnedApps().collectAsState(initial = null)
+    val steamApps = steamAppsOrNull ?: emptyList()
     val context = LocalContext.current
     var showLinuxClient by rememberSaveable { mutableStateOf(false) }
     val linuxClient by LinuxClientInstaller.state.collectAsState()
@@ -406,8 +408,11 @@ internal fun UnifiedActivity.UnifiedHub() {
         }
     }
 
-    val epicApps by db.epicGameDao().getAll().collectAsState(initial = emptyList())
-    val gogApps by db.gogGameDao().getAll().collectAsState(initial = emptyList())
+    val epicAppsOrNull by db.epicGameDao().getAll().collectAsState(initial = null)
+    val gogAppsOrNull by db.gogGameDao().getAll().collectAsState(initial = null)
+    val epicApps = epicAppsOrNull ?: emptyList()
+    val gogApps = gogAppsOrNull ?: emptyList()
+    val storeListsReady = steamAppsOrNull != null && epicAppsOrNull != null && gogAppsOrNull != null
 
     val controllerState = rememberControllerConnectionState()
     val isControllerConnected = controllerState.isConnected
@@ -1024,6 +1029,7 @@ internal fun UnifiedActivity.UnifiedHub() {
                             steamApps = filteredSteamApps,
                             epicApps = epicApps,
                             gogApps = gogApps,
+                            storeListsReady = storeListsReady,
                             contentFilters = contentFilters.toMap(),
                             layoutMode = libraryLayoutMode,
                             libraryRefreshKey = libraryRefreshKey,
@@ -2030,6 +2036,7 @@ internal fun UnifiedActivity.LibraryCarousel(
     steamApps: List<SteamApp>,
     epicApps: List<EpicGame>,
     gogApps: List<GOGGame>,
+    storeListsReady: Boolean,
     contentFilters: Map<String, Boolean>,
     layoutMode: LibraryLayoutMode,
     libraryRefreshKey: Int = 0,
@@ -2042,9 +2049,14 @@ internal fun UnifiedActivity.LibraryCarousel(
     val context = LocalContext.current
     val libraryScope = rememberCoroutineScope()
 
-    var cachedShortcuts by remember { mutableStateOf<List<Shortcut>>(emptyList()) }
-    var customApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
-    var customStoragePathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    // Where this screen left off; see LibraryCache.session.
+    val resumed = remember { LibraryCache.session }
+    var cachedShortcuts by remember { mutableStateOf(resumed?.shortcuts ?: emptyList()) }
+    var customApps by remember { mutableStateOf(resumed?.customApps ?: emptyList()) }
+    var customStoragePathByAppId by remember { mutableStateOf(resumed?.customStoragePaths ?: emptyMap()) }
+    // A scan that ran before the shortcuts or a store's rows were read would publish a library with
+    // those games missing, and the grid would drop them only to bring them back a moment later.
+    var shortcutsReady by remember { mutableStateOf(resumed != null) }
     val externalStorageState by com.winlator.cmod.feature.storage.ExternalStorage.state.collectAsState()
     var localLibraryRefreshKey by remember { mutableIntStateOf(0) }
     var shortcutsLoaded by remember { mutableStateOf(false) }
@@ -2143,38 +2155,42 @@ internal fun UnifiedActivity.LibraryCarousel(
         }
 
         shortcutsLoaded = true
+        shortcutsReady = true
     }
 
     // Move library filtering and file checks off the main thread.
-    var mergedInstalledApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
-    var installedApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
-    var stableInstalledApps by remember { mutableStateOf<List<SteamApp>>(emptyList()) }
+    var mergedInstalledApps by remember { mutableStateOf(resumed?.merged ?: emptyList()) }
+    var installedApps by remember { mutableStateOf(resumed?.apps ?: emptyList()) }
     // What the library drew last time, shown until this launch's own scan has an answer.
-    var libraryCacheLoaded by remember { mutableStateOf(false) }
+    val savedPicture = remember { resumed?.apps ?: LibraryCache.preloaded }
+    var stableInstalledApps by remember { mutableStateOf(savedPicture ?: emptyList()) }
+    var libraryCacheLoaded by remember { mutableStateOf(savedPicture != null) }
     LaunchedEffect(Unit) {
+        if (libraryCacheLoaded) return@LaunchedEffect
         val cached = withContext(Dispatchers.IO) { LibraryCache.load(context) }
         if (stableInstalledApps.isEmpty()) stableInstalledApps = cached
         libraryCacheLoaded = true
     }
-    var gogByPseudoId by remember { mutableStateOf<Map<Int, GOGGame>>(emptyMap()) }
+    var gogByPseudoId by remember { mutableStateOf(resumed?.gogByPseudoId ?: emptyMap()) }
     var libraryStoreLinks by remember { mutableStateOf(LibraryStoreLinkResult()) }
-    var epicByPseudoId by remember { mutableStateOf<Map<Int, EpicGame>>(emptyMap()) }
-    var stableGogByPseudoId by remember { mutableStateOf<Map<Int, GOGGame>>(emptyMap()) }
-    var stableEpicByPseudoId by remember { mutableStateOf<Map<Int, EpicGame>>(emptyMap()) }
-    var customListArtworkPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var customHeroArtworkPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var customCarouselArtworkPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var customArtworkPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var customIconArtworkPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var customIconPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var stableCustomArtworkPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var stableCustomIconArtworkPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var stableCustomIconPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var stableCustomHeroPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var stableCustomCarouselPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var stableCustomListPathByAppId by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    var epicByPseudoId by remember { mutableStateOf(resumed?.epicByPseudoId ?: emptyMap()) }
+    var stableGogByPseudoId by remember { mutableStateOf(resumed?.gogByPseudoId ?: emptyMap()) }
+    var stableEpicByPseudoId by remember { mutableStateOf(resumed?.epicByPseudoId ?: emptyMap()) }
+    val resumedArtwork = resumed?.artwork ?: LibraryCache.Artwork()
+    var customListArtworkPathByAppId by remember { mutableStateOf(resumedArtwork.list) }
+    var customHeroArtworkPathByAppId by remember { mutableStateOf(resumedArtwork.hero) }
+    var customCarouselArtworkPathByAppId by remember { mutableStateOf(resumedArtwork.carousel) }
+    var customArtworkPathByAppId by remember { mutableStateOf(resumedArtwork.cover) }
+    var customIconArtworkPathByAppId by remember { mutableStateOf(resumedArtwork.iconArtwork) }
+    var customIconPathByAppId by remember { mutableStateOf(resumedArtwork.icon) }
+    var stableCustomArtworkPathByAppId by remember { mutableStateOf(resumedArtwork.cover) }
+    var stableCustomIconArtworkPathByAppId by remember { mutableStateOf(resumedArtwork.iconArtwork) }
+    var stableCustomIconPathByAppId by remember { mutableStateOf(resumedArtwork.icon) }
+    var stableCustomHeroPathByAppId by remember { mutableStateOf(resumedArtwork.hero) }
+    var stableCustomCarouselPathByAppId by remember { mutableStateOf(resumedArtwork.carousel) }
+    var stableCustomListPathByAppId by remember { mutableStateOf(resumedArtwork.list) }
     var artworkCacheRefreshKey by remember { mutableIntStateOf(0) }
-    var libraryLoaded by remember { mutableStateOf(false) }
+    var libraryLoaded by remember { mutableStateOf(resumed != null) }
     // Suppress transient empty states before background recomputation starts.
     val scanInputToken =
         remember(
@@ -2187,10 +2203,13 @@ internal fun UnifiedActivity.LibraryCarousel(
             externalStorageState.connectivityKey,
             libraryRefreshKey,
             localLibraryRefreshKey,
+            storeListsReady,
+            shortcutsReady,
         ) { Any() }
     var processedScanToken by remember { mutableStateOf<Any?>(null) }
 
     LaunchedEffect(scanInputToken) {
+        if (!storeListsReady || !shortcutsReady) return@LaunchedEffect
         withContext(Dispatchers.IO) {
             val steamInstalled = steamApps.filter { SteamService.isAppInstalled(it.id) }
 
@@ -2361,18 +2380,9 @@ internal fun UnifiedActivity.LibraryCarousel(
                     (allPlaytime["${searchKey}_last_played"] as? Long) ?: 0L
                 }
 
-            // Only a scan that had something to work from replaces the cache, so the first pass of
-            // a cold start cannot blank it; a sign-out leaves no catalogue and no credentials, and
-            // does.
-            val anyStoreSignedIn =
-                SteamService.hasStoredCredentials(context) ||
-                    EpicService.hasStoredCredentials(context) ||
-                    GOGAuthManager.isLoggedIn(context)
-            if (steamApps.isNotEmpty() || epicApps.isNotEmpty() || gogApps.isNotEmpty() ||
-                customApps.isNotEmpty() || !anyStoreSignedIn
-            ) {
-                LibraryCache.save(context, sorted)
-            }
+            // Every store's rows and the shortcuts were read before this ran, so what it found is
+            // the library, empty or not. None of it needs the network.
+            LibraryCache.save(context, sorted)
 
             withContext(Dispatchers.Main) {
                 gogByPseudoId = gogMap
@@ -2520,6 +2530,44 @@ internal fun UnifiedActivity.LibraryCarousel(
         }
     }
 
+    LaunchedEffect(
+        libraryLoaded,
+        installedApps,
+        mergedInstalledApps,
+        gogByPseudoId,
+        epicByPseudoId,
+        cachedShortcuts,
+        customApps,
+        customStoragePathByAppId,
+        customArtworkPathByAppId,
+        customIconArtworkPathByAppId,
+        customIconPathByAppId,
+        customHeroArtworkPathByAppId,
+        customCarouselArtworkPathByAppId,
+        customListArtworkPathByAppId,
+    ) {
+        if (!libraryLoaded) return@LaunchedEffect
+        LibraryCache.session =
+            LibraryCache.Session(
+                apps = installedApps,
+                merged = mergedInstalledApps,
+                gogByPseudoId = gogByPseudoId,
+                epicByPseudoId = epicByPseudoId,
+                shortcuts = cachedShortcuts,
+                customApps = customApps,
+                customStoragePaths = customStoragePathByAppId,
+                artwork =
+                    LibraryCache.Artwork(
+                        cover = customArtworkPathByAppId,
+                        iconArtwork = customIconArtworkPathByAppId,
+                        icon = customIconPathByAppId,
+                        hero = customHeroArtworkPathByAppId,
+                        carousel = customCarouselArtworkPathByAppId,
+                        list = customListArtworkPathByAppId,
+                    ),
+            )
+    }
+
     LaunchedEffect(mergedInstalledApps, playtimeRefreshKey) {
         if (mergedInstalledApps.isEmpty()) {
             installedApps = emptyList()
@@ -2549,9 +2597,24 @@ internal fun UnifiedActivity.LibraryCarousel(
         installedApps.isEmpty() &&
             stableInstalledApps.isNotEmpty() &&
             (processedScanToken !== scanInputToken || awaitingShortcutScan)
-    val visibleInstalledApps = if (keepPreviousLibraryVisible) stableInstalledApps else installedApps
-    val visibleGogByPseudoId = if (keepPreviousLibraryVisible) stableGogByPseudoId else gogByPseudoId
-    val visibleEpicByPseudoId = if (keepPreviousLibraryVisible) stableEpicByPseudoId else epicByPseudoId
+    // The saved picture holds a card's id and name and nothing of its artwork. The stores' rows are
+    // read long before the scan has checked every install, so the cards are drawn from those.
+    val savedPictureApps =
+        remember(stableInstalledApps, steamApps) {
+            val owned = steamApps.associateBy { it.id }
+            stableInstalledApps.map { owned[it.id] ?: it }
+        }
+    val savedPictureGog =
+        remember(stableGogByPseudoId, gogApps) {
+            stableGogByPseudoId.ifEmpty { gogApps.filter { it.isInstalled }.associateBy { gogPseudoId(it.id) } }
+        }
+    val savedPictureEpic =
+        remember(stableEpicByPseudoId, epicApps) {
+            stableEpicByPseudoId.ifEmpty { epicApps.filter { it.isInstalled }.associateBy { 2000000000 + it.id } }
+        }
+    val visibleInstalledApps = if (keepPreviousLibraryVisible) savedPictureApps else installedApps
+    val visibleGogByPseudoId = if (keepPreviousLibraryVisible) savedPictureGog else gogByPseudoId
+    val visibleEpicByPseudoId = if (keepPreviousLibraryVisible) savedPictureEpic else epicByPseudoId
     val visibleCustomArtworkPathByAppId =
         if (keepPreviousLibraryVisible) stableCustomArtworkPathByAppId else customArtworkPathByAppId
     val visibleCustomIconArtworkPathByAppId =
