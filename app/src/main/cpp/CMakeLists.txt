@@ -109,6 +109,7 @@ set(SHADER_LIST
     "dis_propagate:comp:dis_propagate_comp"
     "dis_densify:comp:dis_densify_comp"
     "dis_interpolate:comp:dis_interpolate_comp"
+    "dis_hist:comp:dis_hist_comp"
     "dis_vr_prep:comp:dis_vr_prep_comp"
     "dis_vr_d1:comp:dis_vr_d1_comp"
     "dis_vr_d2:comp:dis_vr_d2_comp"
