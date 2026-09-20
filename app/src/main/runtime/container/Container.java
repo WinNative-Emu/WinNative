@@ -681,13 +681,6 @@ public class Container {
                 }
             }
 
-            if (data.has("cpuListWoW64")) {
-                String savedWoW64 = data.getString("cpuListWoW64");
-                if (savedWoW64.equals(legacyUpperHalfCPUList()) && !savedWoW64.equals(getFallbackCPUListWoW64())) {
-                    data.remove("cpuListWoW64");
-                }
-            }
-
             if (data.has("graphicsDriver")) {
                 String graphicsDriver = data.getString("graphicsDriver");
                 if (graphicsDriver.equals("turnip-zink") || graphicsDriver.equals("turnip")) {

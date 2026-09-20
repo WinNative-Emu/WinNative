@@ -15,7 +15,7 @@ exclusiveContent {
 
 Do **not** edit any file in this tree by hand — the checksums must match the bytes.
 
-## `org.libsdl.android:SDL3` — `3.4.16-winnative.1`
+## `org.libsdl.android:SDL3` — `3.4.16-winnative.2`
 
 The Steam Controller backend uses this arm64 Android build. It has a separate
 `org.winnative.steam` Java/JNI package and `libSDL3steam.so` so it cannot collide
@@ -25,7 +25,9 @@ with the older SDL integration shipped by ARMSX2.
 ignores callbacks from old connections, disconnects failed or timed-out GATT
 operations with bounded reconnection attempts, waits for the newer controller's
 MTU negotiation before enabling notifications, and preserves the final byte of
-output reports. Both the Java classes
+output reports. USB permission grants open only requested interfaces, Valve boot
+keyboard/mouse interfaces stay unclaimed, repeated opens are idempotent, and short
+feature writes report failure. Both the Java classes
 and native library are built from SDL's `release-3.4.16` source archive. SDL's zlib
 license is retained in the AAR.
 
@@ -44,7 +46,7 @@ The original `3.4.16/` artifact is retained as the reproducible packaging input.
 It is byte-identical to the AAR in SDL's
 [official Android release](https://github.com/libsdl-org/SDL/releases/tag/release-3.4.16):
 SHA-256 `03710fc7b49cc070551446841a843840fabf2aaaaa3043cd5739292a55e4e61c`.
-The app depends only on `3.4.16-winnative.1`.
+The app depends only on `3.4.16-winnative.2`.
 
 After changing the patch, rebuild the AAR, run the controller and Bluetooth tests,
 and build the APK to check DEX and native library packaging. Do not edit AAR bytes

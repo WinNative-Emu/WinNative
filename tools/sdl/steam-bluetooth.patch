@@ -403,10 +403,12 @@
  }
 --- a/android-project/app/src/main/java/org/libsdl/app/HIDDeviceManager.java
 +++ b/android-project/app/src/main/java/org/libsdl/app/HIDDeviceManager.java
-@@ -51,6 +51,28 @@
+@@ -51,6 +51,30 @@
      }
  
      private Context mContext;
++    private final java.util.Set<Integer> mPendingUsbOpens = new java.util.HashSet<>();
++    private final java.util.Set<UsbDevice> mUsbPermissionRequests = new java.util.HashSet<>();
 +    private volatile boolean mClosed;
 +    private final Handler mRetryHandler = new Handler(Looper.getMainLooper());
 +    private final HashMap<BluetoothDevice, Integer> mRetryCounts = new HashMap<>();
@@ -432,13 +434,218 @@
      private HashMap<Integer, HIDDevice> mDevicesById = new HashMap<Integer, HIDDevice>();
      private HashMap<BluetoothDevice, HIDDeviceBLESteamController> mBluetoothDevices = new HashMap<BluetoothDevice, HIDDeviceBLESteamController>();
      private int mNextDeviceId = 0;
-@@ -549,6 +571,9 @@
+@@ -218,6 +242,8 @@
+ 
+     private boolean isHIDDeviceInterface(UsbDevice usbDevice, UsbInterface usbInterface) {
+         if (usbInterface.getInterfaceClass() == UsbConstants.USB_CLASS_HID) {
++            if (usbDevice.getVendorId() == 0x28de && usbInterface.getInterfaceSubclass() == 1
++                    && (usbInterface.getInterfaceProtocol() == 1 || usbInterface.getInterfaceProtocol() == 2)) return false;
+             return true;
+         }
+         if (isXbox360Controller(usbDevice, usbInterface) || isXboxOneController(usbDevice, usbInterface)) {
+@@ -327,33 +353,50 @@
+     }
+ 
+     private void handleUsbDeviceDetached(UsbDevice usbDevice) {
+-        List<Integer> devices = new ArrayList<Integer>();
++        if (usbDevice == null) return;
++        List<HIDDevice> removed = new ArrayList<>();
++        synchronized (this) {
++            mUsbPermissionRequests.remove(usbDevice);
++            java.util.Iterator<HIDDevice> devices = mDevicesById.values().iterator();
++            while (devices.hasNext()) {
++                HIDDevice device = devices.next();
++                if (usbDevice.equals(device.getDevice())) {
++                    devices.remove();
++                    mPendingUsbOpens.remove(device.getId());
++                    removed.add(device);
++                }
++            }
++        }
++        for (HIDDevice device : removed) {
++            device.shutdown();
++            HIDDeviceDisconnected(device.getId());
++        }
++    }
++
++    private void handleUsbDevicePermission(UsbDevice usbDevice, boolean permission_granted) {
++        if (usbDevice == null || mClosed) return;
++        for (HIDDevice device : takePendingUsbDevices(usbDevice)) {
++            boolean opened = false;
++            try {
++                if (permission_granted && mUsbManager.hasPermission(usbDevice)) opened = device.open();
++            } catch (RuntimeException failure) {
++                Log.w(TAG, "Unable to open permitted USB interface", failure);
++            }
++            HIDDeviceOpenResult(device.getId(), opened);
++        }
++    }
++
++    private synchronized List<HIDDevice> takePendingUsbDevices(UsbDevice usbDevice) {
++        List<HIDDevice> pending = new ArrayList<>();
++        mUsbPermissionRequests.remove(usbDevice);
+         for (HIDDevice device : mDevicesById.values()) {
+-            if (usbDevice.equals(device.getDevice())) {
+-                devices.add(device.getId());
+-            }
+-        }
+-        for (int id : devices) {
+-            HIDDevice device = mDevicesById.get(id);
+-            mDevicesById.remove(id);
+-            device.shutdown();
+-            HIDDeviceDisconnected(id);
+-        }
+-    }
+-
+-    private void handleUsbDevicePermission(UsbDevice usbDevice, boolean permission_granted) {
+-        for (HIDDevice device : mDevicesById.values()) {
+-            if (usbDevice.equals(device.getDevice())) {
+-                boolean opened = false;
+-                if (permission_granted) {
+-                    opened = device.open();
+-                }
+-                HIDDeviceOpenResult(device.getId(), opened);
+-            }
+-        }
++            if (usbDevice.equals(device.getDevice()) && mPendingUsbOpens.remove(device.getId())) pending.add(device);
++        }
++        return pending;
+     }
+ 
+     private void connectHIDDeviceUSB(UsbDevice usbDevice) {
++        if (usbDevice == null || mClosed) return;
+         synchronized (this) {
+             int interface_mask = 0;
+             for (int interface_index = 0; interface_index < usbDevice.getInterfaceCount(); interface_index++) {
+@@ -369,6 +412,7 @@
+ 
+                     HIDDeviceUSB device = new HIDDeviceUSB(this, usbDevice, interface_index);
+                     int id = device.getId();
++                    if (mDevicesById.containsKey(id)) continue;
+                     mDevicesById.put(id, device);
+                     HIDDeviceConnected(id, device.getIdentifier(), device.getVendorId(), device.getProductId(), device.getSerialNumber(), device.getVersion(), device.getManufacturerName(), device.getProductName(), usbInterface.getId(), usbInterface.getInterfaceClass(), usbInterface.getInterfaceSubclass(), usbInterface.getInterfaceProtocol(), false, 0);
+                 }
+@@ -549,6 +593,13 @@
      }
  
      private void close() {
 +        mClosed = true;
++        synchronized (this) {
++            mPendingUsbOpens.clear();
++            mUsbPermissionRequests.clear();
++        }
 +        mRetryHandler.removeCallbacksAndMessages(null);
 +        mRetryCounts.clear();
          shutdownUSB();
          shutdownBluetooth();
          synchronized (this) {
+@@ -611,7 +662,14 @@
+         // Look to see if this is a USB device and we have permission to access it
+         UsbDevice usbDevice = device.getDevice();
+         if (usbDevice != null && !mUsbManager.hasPermission(usbDevice)) {
++            boolean request;
++            synchronized (this) {
++                if (mClosed) return false;
++                mPendingUsbOpens.add(deviceID);
++                request = mUsbPermissionRequests.add(usbDevice);
++            }
+             HIDDeviceOpenPending(deviceID);
++            if (!request) return false;
+             try {
+                 final int FLAG_MUTABLE = 0x02000000; // PendingIntent.FLAG_MUTABLE, but don't require SDK 31
+                 int flags;
+@@ -626,7 +684,7 @@
+                 mUsbManager.requestPermission(usbDevice, PendingIntent.getBroadcast(mContext, 0, intent, flags));
+             } catch (Exception e) {
+                 Log.v(TAG, "Couldn't request permission for USB device " + usbDevice);
+-                HIDDeviceOpenResult(deviceID, false);
++                handleUsbDevicePermission(usbDevice, false);
+             }
+             return false;
+         }
+--- a/android-project/app/src/main/java/org/libsdl/app/HIDDeviceUSB.java
++++ b/android-project/app/src/main/java/org/libsdl/app/HIDDeviceUSB.java
+@@ -19,8 +19,8 @@
+     protected UsbEndpoint mInputEndpoint;
+     protected UsbEndpoint mOutputEndpoint;
+     protected InputThread mInputThread;
+-    protected boolean mRunning;
+-    protected boolean mFrozen;
++    protected volatile boolean mRunning;
++    protected volatile boolean mFrozen;
+     protected boolean mClaimed;
+ 
+     public HIDDeviceUSB(HIDDeviceManager manager, UsbDevice usbDevice, int interface_index) {
+@@ -102,7 +102,11 @@
+     }
+ 
+     @Override
+-    public boolean open() {
++    public synchronized boolean open() {
++        if (mConnection != null && mClaimed && mRunning) return true;
++        if (mConnection != null) close();
++        mInputEndpoint = null;
++        mOutputEndpoint = null;
+         mConnection = mManager.getUSBManager().openDevice(mDevice);
+         if (mConnection == null) {
+             Log.w(TAG, "Unable to open USB device " + getDeviceName());
+@@ -154,7 +158,7 @@
+     }
+ 
+     @Override
+-    public int writeReport(byte[] report, boolean feature) {
++    public synchronized int writeReport(byte[] report, boolean feature) {
+         if (mConnection == null) {
+             Log.w(TAG, "writeReport() called with no device connection");
+             return -1;
+@@ -170,7 +174,7 @@
+             int offset = 0;
+             int length = report.length;
+             boolean skipped_report_id = false;
+-            byte report_number = report[0];
++            int report_number = report[0] & 0xff;
+ 
+             if (report_number == 0x0) {
+                 ++offset;
+@@ -186,7 +190,7 @@
+                 report, offset, length,
+                 1000/*timeout millis*/);
+ 
+-            if (res < 0) {
++            if (res != length) {
+                 Log.w(TAG, "writeFeatureReport() returned " + res + " on device " + getDeviceName());
+                 return -1;
+             }
+@@ -210,12 +214,12 @@
+     }
+ 
+     @Override
+-    public boolean readReport(byte[] report, boolean feature) {
++    public synchronized boolean readReport(byte[] report, boolean feature) {
+         int res = -1;
+         int offset = 0;
+         int length = report.length;
+         boolean skipped_report_id = false;
+-        byte report_number = report[0];
++        int report_number = report[0] & 0xff;
+ 
+         if (mConnection == null) {
+             Log.w(TAG, "readReport() called with no device connection");
+@@ -266,7 +270,7 @@
+     }
+ 
+     @Override
+-    public void close() {
++    public synchronized void close() {
+         mRunning = false;
+         if (mInputThread != null) {
+             while (mInputThread.isAlive()) {
+@@ -297,7 +301,7 @@
+     }
+ 
+     @Override
+-    public void setFrozen(boolean frozen) {
++    public synchronized void setFrozen(boolean frozen) {
+         mFrozen = frozen;
+ 
+         /* If we have a valid device connection and the claim state doesn't match what we want, try to correct that. */
