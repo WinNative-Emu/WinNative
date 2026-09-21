@@ -117,6 +117,10 @@ which is worth knowing before building it.
   A Linux session that cannot start - no runtime, no driver, a GPU that is not Adreno, an install
   in progress - says so in a dialog that closes it, and the compositor is not started without its
   driver: it keeps the driver it started with for the life of the process.
+- **Setup wizard.** Its second page (after access, before components) offers the Linux Steam
+  Client and the Windows one. The Linux card runs `LinuxClientInstaller` - the same install and
+  the same state Settings > Stores shows - and carries on while the user goes through the other
+  pages; the Windows card moves on to the components and the container that make it up.
 - **Logs.** The compositor's `wayland-*.log`, `linux-session.log` and the Steam client's own logs
   (`~/.local/share/Steam/logs`) are part of the Logs Manager (Settings > Debug): listed, shared,
   downloaded and deleted with the rest, under `gamescope/` and `steam-client/` in an archive. As a

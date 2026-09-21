@@ -79,6 +79,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -116,7 +117,10 @@ import androidx.lifecycle.lifecycleScope
 import com.winlator.cmod.R
 import com.winlator.cmod.app.shell.UnifiedActivity
 import com.winlator.cmod.feature.settings.DriversFragment
+import com.winlator.cmod.feature.settings.linuxClientMessage
+import com.winlator.cmod.feature.settings.linuxClientStageLabel
 import com.winlator.cmod.feature.settings.ContainerSettingsComposeDialog
+import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.runtime.container.Container
 import com.winlator.cmod.runtime.container.ContainerCreation
 import com.winlator.cmod.runtime.container.ContainerManager
@@ -218,6 +222,7 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
         private const val EXTRA_RETURN_TO_CALLER = "return_to_caller"
         private const val KEY_SETUP_COMPLETE = "setup_complete"
         private const val KEY_RECOMMENDED_COMPONENTS_DONE = "recommended_components_done"
+        private const val LAST_PAGE = 3
         private const val KEY_DRIVERS_VISITED = "drivers_visited"
         private const val KEY_DEFAULT_X86_CONTAINER_ID = "default_x86_container_id"
         private const val KEY_DEFAULT_ARM64_CONTAINER_ID = "default_arm64_container_id"
@@ -618,7 +623,7 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
 
     private fun advanceWizardPage() {
         val page = pageIndex.intValue
-        if (page < 2) {
+        if (page < LAST_PAGE) {
             val canGoNext = if (page == 0) storageGranted.value && imageFsDone.value else true
             if (canGoNext) pageIndex.intValue += 1
         } else if (!creatingContainer.value && transferState.value == null) {
@@ -1562,12 +1567,13 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
     @Composable
     private fun SetupWizardScreen() {
         val page by pageIndex
-        val totalPages = 3
+        val totalPages = LAST_PAGE + 1
         val pageTitle =
             when (page) {
                 0 -> stringResource(R.string.setup_wizard_required_access)
-                1 -> stringResource(R.string.setup_wizard_select_components)
-                2 -> stringResource(R.string.setup_wizard_containers)
+                1 -> stringResource(R.string.setup_wizard_steam_client)
+                2 -> stringResource(R.string.setup_wizard_select_components)
+                3 -> stringResource(R.string.setup_wizard_containers)
                 else -> ""
             }
         val canGoNext =
@@ -1883,8 +1889,9 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
                         ) {
                             when (targetPage) {
                                 0 -> PagePermissions(isCompact)
-                                1 -> PageAdvancedComponents(isCompact)
-                                2 -> PageDefaultSettings()
+                                1 -> PageSteamClient(isCompact)
+                                2 -> PageAdvancedComponents(isCompact)
+                                3 -> PageDefaultSettings()
                             }
                         }
                     }
@@ -2306,6 +2313,115 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
                 notifCard(Modifier.weight(1f))
                 systemCard(Modifier.weight(1f))
             }
+        }
+    }
+
+    /**
+     * Which Steam client the user is after. The Linux one is the install Settings > Stores offers,
+     * run from here and shared with it, so it goes on while the rest of the wizard is filled in;
+     * the Windows one is made of the components and the container of the pages that follow.
+     */
+    @Composable
+    private fun PageSteamClient(isCompact: Boolean) {
+        val region by navRegion
+        val navIdx by navIndex
+        val activate by activateSignal
+        val controller by controllerConnected
+        val client by LinuxClientInstaller.state.collectAsState()
+        val working = client as? LinuxClientInstaller.State.Working
+        val installed =
+            client is LinuxClientInstaller.State.Installed || client is LinuxClientInstaller.State.UpdateAvailable
+        val startLinuxClient = {
+            if (working == null && !installed && client !is LinuxClientInstaller.State.Blocked) {
+                LinuxClientInstaller.start(this)
+            }
+        }
+
+        LaunchedEffect(Unit) { LinuxClientInstaller.refresh(this@SetupWizardActivity) }
+        LaunchedEffect(isCompact) {
+            setTabCount(0)
+            setContentLayout(2, if (isCompact) 1 else 2)
+        }
+        val lastActivate = remember { mutableStateOf(activate) }
+        LaunchedEffect(activate) {
+            if (activate == lastActivate.value) return@LaunchedEffect
+            lastActivate.value = activate
+            if (region != REGION_CONTENT) return@LaunchedEffect
+            when (navIdx) {
+                0 -> startLinuxClient()
+                1 -> advanceWizardPage()
+            }
+        }
+
+        val linuxCard: @Composable (Modifier) -> Unit = { mod ->
+            WizardActionCard(
+                modifier = mod,
+                title = stringResource(R.string.linux_client_title),
+                subtitle =
+                    stringResource(
+                        if (working != null) linuxClientStageLabel(working.stage) else R.string.common_ui_optional,
+                    ),
+                completed = installed,
+                buttonLabel =
+                    when {
+                        installed -> stringResource(R.string.common_ui_installed)
+                        working != null && working.total > 0 -> "${working.done * 100 / working.total}%"
+                        working != null -> stringResource(linuxClientStageLabel(working.stage))
+                        client is LinuxClientInstaller.State.Failed || client is LinuxClientInstaller.State.NoSpace ->
+                            stringResource(R.string.linux_client_retry)
+                        else -> stringResource(R.string.common_ui_download)
+                    },
+                highlighted = controller && region == REGION_CONTENT && navIdx == 0,
+                onClick = { setNav(REGION_CONTENT, 0); startLinuxClient() },
+                enabled = working == null && client !is LinuxClientInstaller.State.Blocked,
+                progress = working?.let { if (it.total > 0) it.done.toFloat() / it.total else 0f },
+            )
+        }
+        val windowsCard: @Composable (Modifier) -> Unit = { mod ->
+            WizardActionCard(
+                modifier = mod,
+                title = stringResource(R.string.setup_wizard_windows_steam_client),
+                subtitle = stringResource(R.string.common_ui_optional),
+                completed = false,
+                buttonLabel = stringResource(R.string.common_ui_continue),
+                highlighted = controller && region == REGION_CONTENT && navIdx == 1,
+                onClick = { setNav(REGION_CONTENT, 1); advanceWizardPage() },
+            )
+        }
+        val message =
+            if (working != null) {
+                stringResource(R.string.setup_wizard_linux_client_continues)
+            } else {
+                linuxClientMessage(client).orEmpty()
+            }
+
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
+        ) {
+            if (isCompact) {
+                linuxCard(Modifier.fillMaxWidth())
+                windowsCard(Modifier.fillMaxWidth())
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    linuxCard(Modifier.weight(1f))
+                    windowsCard(Modifier.weight(1f))
+                }
+            }
+            Text(
+                text = message + "\n" + stringResource(R.string.setup_wizard_windows_steam_summary),
+                color = Color(0xFF8B949E),
+                fontFamily = InterFont,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+            )
         }
     }
 

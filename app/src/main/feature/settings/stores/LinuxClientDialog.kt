@@ -1,6 +1,7 @@
 package com.winlator.cmod.feature.settings
 
 import android.text.format.Formatter
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -79,7 +80,7 @@ internal fun LinuxClientDialog(
 }
 
 @Composable
-private fun linuxClientMessage(state: State): String? {
+internal fun linuxClientMessage(state: State): String? {
     val context = LocalContext.current
     return when (state) {
         State.Checking, State.Missing -> stringResource(R.string.linux_client_install_message)
@@ -97,22 +98,23 @@ private fun linuxClientMessage(state: State): String? {
     }
 }
 
+@StringRes
+internal fun linuxClientStageLabel(stage: Stage): Int =
+    when (stage) {
+        Stage.CONNECT -> R.string.linux_client_stage_connect
+        Stage.DOWNLOAD_RUNTIME -> R.string.linux_client_stage_download_runtime
+        Stage.INSTALL_RUNTIME -> R.string.linux_client_stage_install_runtime
+        Stage.DOWNLOAD_PROTON -> R.string.linux_client_stage_download_proton
+        Stage.INSTALL_PROTON -> R.string.linux_client_stage_install_proton
+        Stage.DOWNLOAD_STEAM -> R.string.linux_client_stage_download_steam
+        Stage.INSTALL_STEAM -> R.string.linux_client_stage_install_steam
+        Stage.LIBRARY -> R.string.linux_client_stage_library
+    }
+
 @Composable
 private fun WorkingBody(state: State.Working) {
     val context = LocalContext.current
-    val stageLabel =
-        stringResource(
-            when (state.stage) {
-                Stage.CONNECT -> R.string.linux_client_stage_connect
-                Stage.DOWNLOAD_RUNTIME -> R.string.linux_client_stage_download_runtime
-                Stage.INSTALL_RUNTIME -> R.string.linux_client_stage_install_runtime
-                Stage.DOWNLOAD_PROTON -> R.string.linux_client_stage_download_proton
-                Stage.INSTALL_PROTON -> R.string.linux_client_stage_install_proton
-                Stage.DOWNLOAD_STEAM -> R.string.linux_client_stage_download_steam
-                Stage.INSTALL_STEAM -> R.string.linux_client_stage_install_steam
-                Stage.LIBRARY -> R.string.linux_client_stage_library
-            },
-        )
+    val stageLabel = stringResource(linuxClientStageLabel(state.stage))
     val known = state.total > 0
     val downloading =
         state.stage == Stage.DOWNLOAD_RUNTIME || state.stage == Stage.DOWNLOAD_PROTON || state.stage == Stage.DOWNLOAD_STEAM

@@ -1398,6 +1398,10 @@
     <string name="setup_wizard_title">ตัวช่วยตั้งค่า</string>
     <string name="setup_wizard_advanced_user">ผู้ใช้ขั้นสูง</string>
     <string name="setup_wizard_next">ถัดไป</string>
+    <string name="setup_wizard_steam_client">Steam Client</string>
+    <string name="setup_wizard_windows_steam_client">Windows Steam Client</string>
+    <string name="setup_wizard_windows_steam_summary">The Windows Steam Client runs through Wine or Proton; its components and container are set up on the next pages.</string>
+    <string name="setup_wizard_linux_client_continues">The install carries on while you finish the setup, and shows under Linux Client in Settings > Stores.</string>
     <string name="setup_wizard_finish">เสร็จสิ้น</string>
     <string name="setup_wizard_download_and_install">ดาวน์โหลด + ติดตั้ง</string>
     <string name="setup_wizard_open_drivers">เปิดไดรเวอร์</string>

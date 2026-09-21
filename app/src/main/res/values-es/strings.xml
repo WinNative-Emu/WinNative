@@ -1106,6 +1106,10 @@ Ruta instalada:
     <string name="setup_wizard_title">Asistente de configuración</string>
     <string name="setup_wizard_advanced_user">Usuario avanzado</string>
     <string name="setup_wizard_next">Siguiente</string>
+    <string name="setup_wizard_steam_client">Steam Client</string>
+    <string name="setup_wizard_windows_steam_client">Windows Steam Client</string>
+    <string name="setup_wizard_windows_steam_summary">The Windows Steam Client runs through Wine or Proton; its components and container are set up on the next pages.</string>
+    <string name="setup_wizard_linux_client_continues">The install carries on while you finish the setup, and shows under Linux Client in Settings > Stores.</string>
     <string name="setup_wizard_finish">Finalizar</string>
     <string name="setup_wizard_download_and_install">Descargar + Instalar</string>
     <string name="setup_wizard_open_drivers">Abrir controladores</string>
