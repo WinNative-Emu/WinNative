@@ -20,6 +20,7 @@
  * 02110-1301 USA.
  */
 
+#define _GNU_SOURCE    /* process_vm_*, */
 #include <assert.h>     /* assert(3), */
 #include <errno.h>      /* errno, */
 #include <stddef.h>     /* offsetof(), */
@@ -89,6 +90,30 @@ static inline void store_word(void *address, word_t value) {
 #endif
 }
 
+/* Divides every page size, so no piece of a string crosses a page. */
+#define STRING_PIECE 1024
+
+/**
+ * Copy @size bytes between this process and the @tracee's @address in one system
+ * call, @to the tracee or from it.  A word at a time through ptrace(2) costs a
+ * system call for every eight bytes, and every path PRoot translates is read
+ * and written back this way.  False when the kernel did not move all of it -
+ * a page that is not mapped, or not writable as ptrace(2) can force it to be -
+ * and the caller then goes the slow way, which also reports the error.
+ */
+static bool copy_at_once(const Tracee *tracee, void *local_address, word_t address,
+                         word_t size, bool to) {
+  struct iovec local = {.iov_base = local_address, .iov_len = size};
+  struct iovec remote = {.iov_base = (void *)address, .iov_len = size};
+  ssize_t moved;
+
+  if (size == 0)
+    return true;
+  moved = to ? process_vm_writev(tracee->pid, &local, 1, &remote, 1, 0)
+             : process_vm_readv(tracee->pid, &local, 1, &remote, 1, 0);
+  return moved >= 0 && (word_t)moved == size;
+}
+
 /**
  * Copy @size bytes from the buffer @src_tracer to the address
  * @dest_tracee within the memory space of the @tracee process. It
@@ -106,6 +131,9 @@ int write_data(Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 
   uint8_t *last_dest_word;
   uint8_t *last_src_word;
+
+  if (copy_at_once(tracee, src, (word_t)dest, size, true))
+    return 0;
 
   nb_trailing_bytes = size % sizeof(word_t);
   nb_full_words = (size - nb_trailing_bytes) / sizeof(word_t);
@@ -194,6 +222,9 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee,
   uint8_t *last_src_word;
   uint8_t *last_dest_word;
 
+  if (copy_at_once(tracee, dest, (word_t)src, size, false))
+    return 0;
+
   nb_trailing_bytes = size % sizeof(word_t);
   nb_full_words = (size - nb_trailing_bytes) / sizeof(word_t);
 
@@ -249,6 +280,25 @@ int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee,
 
   uint8_t *src_word;
   uint8_t *dest_word;
+
+  /* A transfer stops at the first page that is not mapped and moves nothing of
+   * the piece that reaches it, and a string's length is not known, so it is
+   * read in pieces that each end where a page might. */
+  word_t offset = 0;
+  while (offset < max_size) {
+    word_t at = (word_t)src + offset;
+    word_t piece = STRING_PIECE - at % STRING_PIECE;
+    char *end;
+
+    if (piece > max_size - offset)
+      piece = max_size - offset;
+    if (!copy_at_once(tracee, dest_tracer + offset, at, piece, false))
+      break;
+    end = memchr(dest_tracer + offset, '\0', piece);
+    if (end != NULL)
+      return end - dest_tracer + 1;
+    offset += piece;
+  }
 
   nb_trailing_bytes = max_size % sizeof(word_t);
   nb_full_words = (max_size - nb_trailing_bytes) / sizeof(word_t);
