@@ -8969,8 +8969,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         EnvVars hostEnv = new EnvVars();
         hostEnv.put("PROOT_LOADER", LinuxRuntime.prootLoader(this).getPath());
         hostEnv.put("PROOT_TMP_DIR", getCacheDir().getPath());
-        List<String> binds = com.winlator.cmod.feature.library.LinuxSteamLibrary.prepare(
-                this, LinuxRuntime.rootDir(this));
+        List<String> binds = new ArrayList<>(com.winlator.cmod.feature.library.LinuxSteamLibrary.prepare(
+                this, LinuxRuntime.rootDir(this)));
+        if (!reusingSession) binds.addAll(com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.sync(this));
         List<String> command = LinuxRuntime.command(this, imageFs, runtimeDir,
                 android.os.Environment.getExternalStorageDirectory(), devInputDir, binds, guest);
         LinuxProgramLauncherComponent launcher = new LinuxProgramLauncherComponent(
@@ -9043,6 +9044,12 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             args.add(LinuxRuntime.MODE_STEAM);
             String appId = shortcut.getExtra("app_id");
             if (!appId.isEmpty()) args.add("steam://rungameid/" + appId);
+            return args;
+        }
+        String nonSteamGame = com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.launchUrl(shortcut);
+        if (nonSteamGame != null) {
+            args.add(LinuxRuntime.MODE_STEAM);
+            args.add(nonSteamGame);
             return args;
         }
         throw new IllegalStateException(getString(R.string.linux_runtime_windows_program));

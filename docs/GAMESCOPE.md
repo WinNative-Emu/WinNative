@@ -109,6 +109,16 @@ which is worth knowing before building it.
   client's `local.vdf` the way the client stores it (AES-256, key SHA-256 of the account name, IV
   ahead as an ECB block, under CRC-32 of the name + "1") with `loginusers.vdf` and `AutoLoginUser`,
   unless the client already remembers that account. Signing the store out removes the same entries.
+- **Non-Steam games.** `LinuxSteamShortcuts` keeps the library's custom, itch.io and GOG entries in
+  the client's `userdata/<account>/config/shortcuts.vdf` (binary VDF), each mapped to
+  `winnative-proton` in `CompatToolMapping`. The entries it wrote are listed in
+  `winnative-shortcuts` beside the file, so ones the user added in the client are left alone and
+  one whose game left the library is removed - at once when no client is running, else at the next
+  session start. Such an entry in the GameScope container launches as
+  `steam://rungameid/<appid << 32 | 0x02000000>`, which the session script sends down `steam.pipe`
+  once the interface has loaded: given as an argument it is launched within a second of sign-in,
+  before the interface answers the launch's prompts, and hangs at `ShowInterstitials`. The Proton
+  prefix (`compatdata/<appid>`, about 370 MB) holds the saves and is not removed with the entry.
 - **The HUD** counts a game frame per commit of gamescope's window, not per plane: gamescope
   presents through a toplevel and a synchronized subsurface for each layer, and the game moves
   between them. The renderer name is read from the Proton processes' mapped modules

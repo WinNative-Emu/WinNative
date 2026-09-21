@@ -4,8 +4,11 @@ import android.content.Context
 import android.util.Log
 import com.winlator.cmod.feature.stores.steam.utils.KeyValue
 import com.winlator.cmod.feature.stores.steam.utils.PrefManager
+import com.winlator.cmod.runtime.linux.LinuxSteamVdf.STEAM_KEY
+import com.winlator.cmod.runtime.linux.LinuxSteamVdf.load
+import com.winlator.cmod.runtime.linux.LinuxSteamVdf.save
+import com.winlator.cmod.runtime.linux.LinuxSteamVdf.section
 import java.io.File
-import java.io.IOException
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.zip.CRC32
@@ -27,9 +30,7 @@ import javax.crypto.spec.SecretKeySpec
  */
 object LinuxSteamLogin {
     private const val TAG = "LinuxSteamLogin"
-    private val STEAM_KEY = listOf("Software", "Valve", "Steam")
-
-    private fun steamRoot(context: Context) = File(LinuxRuntime.rootDir(context), "root/.local/share/Steam")
+    private fun steamRoot(context: Context) = LinuxSteamVdf.steamRoot(LinuxRuntime.rootDir(context))
 
     private fun registry(context: Context) = File(LinuxRuntime.rootDir(context), "root/.steam/registry.vdf")
 
@@ -120,36 +121,6 @@ object LinuxSteamLogin {
             children += KeyValue("AutoLogin", "1")
             children += KeyValue("timestamp", (System.currentTimeMillis() / 1000).toString())
         }
-
-    private fun load(file: File, rootName: String): KeyValue {
-        val parsed = if (file.isFile) KeyValue.loadFromString(file.readText()) else null
-        // A file that is there but does not parse is the client's to repair, not ours to replace.
-        if (parsed == null && file.isFile && file.length() > 0) throw IOException("unreadable ${file.name}")
-        return parsed ?: KeyValue(rootName).apply { isSection = true }
-    }
-
-    private fun section(root: KeyValue, path: List<String>): KeyValue {
-        var node = root
-        for (name in path) {
-            var next = node[name]
-            if (next === KeyValue.INVALID) {
-                next = KeyValue(name).apply { isSection = true }
-                node.children += next
-            }
-            node = next
-        }
-        return node
-    }
-
-    private fun save(file: File, tree: KeyValue) {
-        file.parentFile?.mkdirs()
-        val staged = File(file.path + ".staged")
-        staged.writeText(tree.serialize())
-        if (!staged.renameTo(file)) {
-            staged.delete()
-            throw IOException("could not replace ${file.name}")
-        }
-    }
 
     private fun cacheKey(account: String): String {
         val crc = CRC32().apply { update(account.toByteArray()) }.value
