@@ -268,6 +268,8 @@
     <string name="linux_client_busy">Linux Steam क्लाइंट अभी इंस्टॉल हो रहा है। पूरा होने पर फिर से प्रयास करें।</string>
     <string name="linux_client_update_message">नया Linux रनटाइम उपलब्ध है। अपडेट करने पर आपका Steam साइन-इन, इंस्टॉल किए गए गेम, सेव और कंटेनर बने रहते हैं।</string>
     <string name="linux_client_update_session_running">एक Linux सत्र चल रहा है। उसे बंद करें, फिर अपडेट करें।</string>
+    <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
+    <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
     <string name="stores_accounts_title">स्टोर</string>
     <string name="stores_accounts_steam_integration_title">Steam</string>
     <string name="stores_accounts_shared_downloads_folder">साझा डाउनलोड फ़ोल्डर</string>

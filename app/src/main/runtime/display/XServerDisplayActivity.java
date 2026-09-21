@@ -4633,8 +4633,19 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         final String message = reason;
         runOnUiThread(() -> {
             if (activityDestroyed.get() || isFinishing() || isDestroyed()) return;
-            WinToast.show(this, getString(R.string.preloader_launch_failed, message));
+            if (t instanceof LinuxSessionUnavailable) {
+                com.winlator.cmod.shared.ui.dialog.ContentDialog.alert(this, message, this::exit);
+            } else {
+                WinToast.show(this, getString(R.string.preloader_launch_failed, message));
+            }
         });
+    }
+
+    /** A Linux session that cannot start: nothing would ever draw, so it is said and the screen left. */
+    private static final class LinuxSessionUnavailable extends IllegalStateException {
+        LinuxSessionUnavailable(String message) {
+            super(message);
+        }
     }
 
     private void stopWnLauncherStatusTailer() {
@@ -8091,6 +8102,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             setupLinuxSession(rootPath);
             return;
         }
+        if (container != null && container.isGamescopeRuntime() && !isDependencyInstall) {
+            throw new LinuxSessionUnavailable(getString(R.string.linux_client_gpu_unsupported));
+        }
 
         guestProgramLauncherComponent = new GuestProgramLauncherComponent(
                 contentsManager,
@@ -8874,10 +8888,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
      */
     private void setupLinuxSession(String rootPath) {
         if (com.winlator.cmod.runtime.linux.LinuxClientInstaller.INSTANCE.isWorking()) {
-            throw new IllegalStateException(getString(R.string.linux_client_busy));
+            throw new LinuxSessionUnavailable(getString(R.string.linux_client_busy));
         }
         if (!LinuxRuntime.isInstalled(this)) {
-            throw new IllegalStateException(getString(R.string.linux_runtime_missing));
+            throw new LinuxSessionUnavailable(getString(R.string.linux_runtime_missing));
+        }
+        if (!com.winlator.cmod.runtime.linux.LinuxClientInstaller.hasCompositorDriver(this)) {
+            throw new LinuxSessionUnavailable(getString(R.string.linux_client_driver_missing));
         }
         try {
             LinuxRuntime.writeAccounts(this);
@@ -9052,7 +9069,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             args.add(nonSteamGame);
             return args;
         }
-        throw new IllegalStateException(getString(R.string.linux_runtime_windows_program));
+        throw new LinuxSessionUnavailable(getString(R.string.linux_runtime_windows_program));
     }
 
     private void resolveDisplayBackend() {
@@ -9068,9 +9085,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (gamescopeMode) {
             // gamescope is a client of the compositor; the Wine checks below do not apply to it.
             if (!WineWaylandSupport.isAdrenoDevice(this)) {
+                // Nothing of a GameScope container can run as a Wine session; the launch says so.
                 Log.w(TAG, "gamescope: this GPU cannot drive the compositor");
-                android.widget.Toast.makeText(this, R.string.container_display_server_wayland_requirements,
-                        android.widget.Toast.LENGTH_LONG).show();
                 gamescopeMode = false;
             } else {
                 waylandMode = true;
@@ -9119,11 +9135,16 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     private void startWaylandSession(FrameLayout rootView, int index) {
         WaylandSession.Config cfg = new WaylandSession.Config();
+        boolean hasDriver = false;
         try {
-            resolveCompositorDriver(cfg);
+            hasDriver = resolveCompositorDriver(cfg);
         } catch (Exception e) {
             Log.e(TAG, "wayland: compositor driver resolve failed", e);
         }
+        // The compositor keeps the driver it started with for the life of the process, so one
+        // started without a Turnip would stay black after the driver is installed. The launch of
+        // a Linux session reports the missing driver itself.
+        if (!hasDriver && gamescopeMode) return;
         cfg.hideShell = shortcut != null || (bootExePath != null && !bootExePath.isEmpty());
         try {
             android.view.Display display = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
@@ -9188,7 +9209,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
      * a shortcut or container left on "System" therefore falls back to the container's own driver
      * and then to any installed one, the way the X11 path never needs to.
      */
-    private void resolveCompositorDriver(WaylandSession.Config cfg) {
+    private boolean resolveCompositorDriver(WaylandSession.Config cfg) {
         AdrenotoolsManager atm = new AdrenotoolsManager(this);
         ArrayList<String> candidates = new ArrayList<>();
         if (graphicsDriverConfig != null) candidates.add(graphicsDriverConfig.get("version"));
@@ -9202,11 +9223,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             cfg.driverPath = atm.getDriverPath(driverId);
             cfg.libraryName = libraryName;
             Log.i(TAG, "wayland: compositor driver '" + driverId + "'");
-            return;
+            return true;
         }
         Log.w(TAG, "wayland: no Turnip installed; the compositor cannot import the guest's frames");
-        android.widget.Toast.makeText(this, R.string.wayland_needs_turnip_driver,
-                android.widget.Toast.LENGTH_LONG).show();
+        if (!gamescopeMode) {
+            android.widget.Toast.makeText(this, R.string.wayland_needs_turnip_driver,
+                    android.widget.Toast.LENGTH_LONG).show();
+        }
+        return false;
     }
 
     private void syncWaylandScaleMode() {

@@ -270,6 +270,8 @@
     <string name="linux_client_busy">Der Linux-Steam-Client wird noch installiert. Versuche es nach Abschluss erneut.</string>
     <string name="linux_client_update_message">Eine neuere Linux-Laufzeitumgebung ist verfügbar. Beim Aktualisieren bleiben Steam-Anmeldung, installierte Spiele, Spielstände und Container erhalten.</string>
     <string name="linux_client_update_session_running">Eine Linux-Sitzung läuft. Beende sie und aktualisiere dann.</string>
+    <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
+    <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Stores</string>

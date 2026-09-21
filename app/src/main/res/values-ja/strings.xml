@@ -271,6 +271,8 @@
     <string name="linux_client_busy">Linux Steam クライアントはまだインストール中です。完了してからもう一度お試しください。</string>
     <string name="linux_client_update_message">新しい Linux ランタイムがあります。更新しても Steam のサインイン、インストール済みのゲーム、セーブデータ、コンテナは保持されます。</string>
     <string name="linux_client_update_session_running">Linux セッションが実行中です。終了してから更新してください。</string>
+    <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
+    <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">ストア</string>

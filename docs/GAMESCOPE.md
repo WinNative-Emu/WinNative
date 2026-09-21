@@ -109,6 +109,14 @@ which is worth knowing before building it.
   client's `local.vdf` the way the client stores it (AES-256, key SHA-256 of the account name, IV
   ahead as an ECB block, under CRC-32 of the name + "1") with `loginusers.vdf` and `AutoLoginUser`,
   unless the client already remembers that account. Signing the store out removes the same entries.
+- **First launch.** The app's compositor imports gamescope's frames with a bionic Turnip loaded
+  through adrenotools; on the system Vulkan driver the import fails (`could not import GPU frames`
+  in `wayland-*.log`) and the session is black. A user who went straight to Linux Client had no
+  such driver, so the installer now fetches one (`WN-Turnip`, pinned and checked by SHA-256) when
+  Drivers holds none, and counts it in `isInstalled`, so the button repairs an existing install.
+  A Linux session that cannot start - no runtime, no driver, a GPU that is not Adreno, an install
+  in progress - says so in a dialog that closes it, and the compositor is not started without its
+  driver: it keeps the driver it started with for the life of the process.
 - **Non-Steam games.** `LinuxSteamShortcuts` keeps the library's custom, itch.io and GOG entries in
   the client's `userdata/<account>/config/shortcuts.vdf` (binary VDF), each mapped to
   `winnative-proton` in `CompatToolMapping`. The entries it wrote are listed in

@@ -271,6 +271,8 @@
     <string name="linux_client_busy">ไคลเอ็นต์ Steam สำหรับ Linux ยังติดตั้งไม่เสร็จ ลองอีกครั้งเมื่อติดตั้งเสร็จ</string>
     <string name="linux_client_update_message">มีรันไทม์ Linux เวอร์ชันใหม่ การอัปเดตจะเก็บการลงชื่อเข้าใช้ Steam เกมที่ติดตั้ง เซฟ และคอนเทนเนอร์ไว้</string>
     <string name="linux_client_update_session_running">เซสชัน Linux กำลังทำงานอยู่ ออกจากเซสชันก่อนแล้วจึงอัปเดต</string>
+    <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
+    <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">ร้านค้า</string>

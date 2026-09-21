@@ -1,6 +1,7 @@
 package com.winlator.cmod.runtime.linux
 
 import android.content.Context
+import android.net.Uri
 import android.os.StatFs
 import android.os.SystemClock
 import android.system.ErrnoException
@@ -12,8 +13,10 @@ import com.winlator.cmod.feature.library.LinuxApps
 import com.winlator.cmod.runtime.container.Container
 import com.winlator.cmod.runtime.container.ContainerCreation
 import com.winlator.cmod.runtime.container.ContainerManager
+import com.winlator.cmod.runtime.content.AdrenotoolsManager
 import com.winlator.cmod.runtime.content.ContentsManager
 import com.winlator.cmod.runtime.display.environment.ImageFs
+import com.winlator.cmod.runtime.display.wayland.WineWaylandSupport
 import com.winlator.cmod.runtime.system.SessionKeepAliveService
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.io.TarCompressorUtils
@@ -60,6 +63,11 @@ object LinuxClientInstaller {
     private const val DRIVER_ARCHIVE = "$RELEASE/linux-turnip.tar.zst"
     private const val DRIVER_INFO = "$RELEASE/linux-turnip.json"
     private const val DRIVER_STAGING_DIR = "linux-driver.staging"
+    private const val COMPOSITOR_DRIVER_ASSET = "WN-Turnip-1.16-p_Axxx.zip"
+    private const val COMPOSITOR_DRIVER =
+        "https://github.com/nicholasx417/WinNative-Components/releases/download/WinNative-Turnip/$COMPOSITOR_DRIVER_ASSET"
+    private const val COMPOSITOR_DRIVER_SHA256 = "146023e8cb402390d2792087f3af6569d24a95d490105cbf41be1a7dacee8957"
+    private const val COMPOSITOR_DRIVER_SIZE = 2673455L
     private const val RUNTIME_VERSION_FILE = "etc/winnative/version"
     private const val PROTON_VERSION_FILE = "winnative-version"
 
@@ -136,7 +144,15 @@ object LinuxClientInstaller {
     /** Worker thread. */
     fun isInstalled(context: Context): Boolean =
         LinuxRuntime.isInstalled(context) && isProtonInstalled(context) && isSteamInstalled(context) &&
-            !LinuxApps.isSteamShortcutMissing(context)
+            hasCompositorDriver(context) && !LinuxApps.isSteamShortcutMissing(context)
+
+    /**
+     * Worker thread. The app's compositor takes gamescope's frames in with a Turnip of its own,
+     * loaded through adrenotools; the system's Vulkan driver cannot import them and the session
+     * stays black. Any Turnip from Drivers serves, so one is only fetched when there is none.
+     */
+    @JvmStatic
+    fun hasCompositorDriver(context: Context): Boolean = AdrenotoolsManager(context).enumarateInstalledDrivers().isNotEmpty()
 
     /** Reads what is on disk, off the calling thread, unless an install is running. */
     fun refresh(context: Context) {
@@ -203,6 +219,8 @@ object LinuxClientInstaller {
         val work = File(context.filesDir, WORK_DIR)
         val outcome: State =
             try {
+                // Told before a gigabyte is downloaded for a GPU the runtime's driver cannot use.
+                if (!WineWaylandSupport.isAdrenoDevice(context)) throw BlockedException(R.string.linux_client_gpu_unsupported)
                 recoverSwap(context)
                 FileUtils.delete(work)
                 if (!work.mkdirs()) throw IOException("Could not create $work")
@@ -218,6 +236,7 @@ object LinuxClientInstaller {
                 if (updateRuntime || !LinuxRuntime.isInstalled(context)) installRuntime(context, work)
                 if (updateProton || !isProtonInstalled(context)) installProton(context, work)
                 if (updateDriver) installDriver(context, work)
+                if (!hasCompositorDriver(context)) installCompositorDriver(context, work)
                 if (!isSteamInstalled(context)) installSteam(context, work)
                 addToLibrary(context)
                 State.Installed
@@ -299,6 +318,18 @@ object LinuxClientInstaller {
     }
 
     /** A Steam depot of the ARM64 Proton serves as well as the copy installed here. */
+    private suspend fun installCompositorDriver(
+        context: Context,
+        work: File,
+    ) {
+        val archive = File(work, COMPOSITOR_DRIVER_ASSET)
+        val digest = download(COMPOSITOR_DRIVER, archive, Meter(Stage.DOWNLOAD_RUNTIME, COMPOSITOR_DRIVER_SIZE))
+        if (digest != COMPOSITOR_DRIVER_SHA256) throw IOException("The display driver did not arrive intact")
+        if (AdrenotoolsManager(context).installDriver(Uri.fromFile(archive), COMPOSITOR_DRIVER_ASSET).isEmpty()) {
+            throw IOException("The display driver could not be installed")
+        }
+    }
+
     private fun isProtonInstalled(context: Context): Boolean =
         File(hostPath(context, PROTON_DIR), "proton").isFile ||
             listOf("Proton Experimental (ARM64)", "Proton 11.0 (ARM64)").any {

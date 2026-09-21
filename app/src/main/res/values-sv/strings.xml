@@ -271,6 +271,8 @@
     <string name="linux_client_busy">Linux Steam-klienten installeras fortfarande. Försök igen när den är klar.</string>
     <string name="linux_client_update_message">En nyare Linux-miljö finns tillgänglig. Uppdateringen behåller din Steam-inloggning, installerade spel, sparfiler och containrar.</string>
     <string name="linux_client_update_session_running">En Linux-session körs. Avsluta den och uppdatera sedan.</string>
+    <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
+    <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Butiker</string>

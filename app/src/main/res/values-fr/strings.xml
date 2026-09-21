@@ -270,6 +270,8 @@
     <string name="linux_client_busy">Le client Steam Linux est encore en cours d\'installation. Réessayez une fois terminé.</string>
     <string name="linux_client_update_message">Un environnement Linux plus récent est disponible. La mise à jour conserve votre connexion Steam, vos jeux installés, vos sauvegardes et vos conteneurs.</string>
     <string name="linux_client_update_session_running">Une session Linux est en cours. Quittez-la, puis mettez à jour.</string>
+    <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
+    <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Boutiques</string>
