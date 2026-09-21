@@ -26,9 +26,25 @@ void main() {
 
     vec2 W = texelFetch(flowDense, p, 0).xy * uSize;
     vec2 f = W + texelFetch(dW, p, 0).xy;
-    float lim = 4.0 * uSize.x;
-    bvec2 ok = lessThan(abs(f), vec2(lim));
-    vec2 fr = vec2(ok.x ? f.x : W.x, ok.y ? f.y : W.y);
+
+    // Nothing upstream bounds the ABSOLUTE magnitude of the flow. The block search only
+    // limits how far it may move from the coarse estimate - one patch per level - and the
+    // refinement only limits its own update. On a scene cut there is no correspondence at
+    // all, the search keeps whatever the residual happens to favour, and the value handed
+    // down the pyramid reaches hundreds of pixels, which back-tracks off the frame and
+    // smears the edge across the picture.
+    //
+    // The old guard was `abs(f) < 4 * width` per component: four frame widths is no limit
+    // at all, and worse, when it did trip it fell back to W, which by then is itself the
+    // huge value. Measured: input +-400 px came out at 1624 px and the guard never fired
+    // once. Clamp the magnitude instead. The fastest real motion measured on this content
+    // is about 0.1 of the frame per source frame, so a quarter of the frame leaves four
+    // times the headroom anything legitimate needs.
+    const float FLOW_LIMIT_FRACTION = 0.25;
+    float lim = FLOW_LIMIT_FRACTION * max(uSize.x, uSize.y);
+    float mag = length(f);
+    vec2 fr = mag > lim ? f * (lim / mag) : f;
+    if (any(isnan(fr)) || any(isinf(fr))) fr = vec2(0.0);
 
     imageStore(flowRefined, p, vec4(fr * invSize, 0.0, 1.0));
 }

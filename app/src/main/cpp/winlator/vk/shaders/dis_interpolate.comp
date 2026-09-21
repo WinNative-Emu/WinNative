@@ -81,9 +81,17 @@ const float UI_FLOW_SKIP_PX = 0.25;
 // to 1.5 px (mask on the background hard against the panel 0.012) and starts to freeze at
 // 2.5 px (0.112), so the cross stops at 1.5.
 //
-// 0, 2 or 4 taps; each tap is two full-res fetches, so four taps double this pass's
-// sampling. Drop to 2 for about two thirds of the gain at half the cost.
-const int UI_DILATE_TAPS = 4;
+// 0, 2 or 4 taps; each tap is two full-res fetches.
+//
+// OFF, because dis_hist already does exactly this: it takes the minimum of the pair
+// difference over a four-point cross and keeps it over time, and it runs ONCE PER SOURCE
+// PAIR before the interpolate pass, at half resolution. The cross here recomputed the
+// same thing at full resolution on every generated frame - three times per pair - and
+// then handed the result to `max(uiMask, histStatic)`, where the history had it already.
+// Eight of this pass's fetches for work that was done. The full-res cross could only add
+// detail finer than half resolution, and hist's evidence is a max, so it reaches a newly
+// appeared overlay in the same pair rather than a frame later.
+const int UI_DILATE_TAPS = 0;
 const float UI_DILATE_PX = 1.5;
 
 // Channel difference, 0..1. LO is rgb8 quantisation plus mild dither; HI is where a
@@ -120,6 +128,14 @@ const int DEBUG_UI_MASK = 0;
 // while t crosses 0.5 between them.
 #define DIS_OCCL_SIDED 1
 
+// Follow a parabola through three consecutive real frames instead of the straight
+// chord of the current pair. 0 falls back to the chord.
+#define DIS_QUADRATIC_PATH 1
+
+// Fetch the warped samples through Catmull-Rom instead of one bilinear tap. 0 falls back
+// to bilinear. This is the expensive switch in this file - see warpSample below.
+#define DIS_WARP_CATMULL 1
+
 // ---------------------------------------------------------------------------
 // Averaging two warped samples that disagree is what softens the picture. Each sample is
 // sharp on its own - one bilinear tap - but where the flow does not line them up the
@@ -133,13 +149,76 @@ const int DEBUG_UI_MASK = 0;
 //
 // The cost of picking is judder: the chosen sample is the nearest real frame warped by a
 // vector that was wrong, so the generated frame sits closer to a repeat of a real one.
-// Raise BLEND_LO towards the old behaviour if that trade reads worse than the softness.
+// The band below is already back at the old behaviour; lower BLEND_LO if the picture
+// reads too soft, raise it if the judder shows.
 // ---------------------------------------------------------------------------
-const float BLEND_LO = 0.030;
-const float BLEND_HI = 0.180;
+// Measured against the 68f678c1 blend (`smoothstep(0.10, 0.40, sum of channel diffs)`)
+// at equal flow error, as the fraction of pixels that leave the average for a single
+// frame. Soft content - sky, grass, fog, most of a frame - is the column that matters:
+//
+//   band              soft content: pick / sharpness vs reference
+//   68f678c1 sum 0.10/0.40    0.207    -
+//   max 0.030/0.180           0.388   1.06
+//   max 0.050/0.250           0.174   0.94
+//   max 0.065/0.300           0.093   0.86   <- here
+//   max 0.080/0.350           0.048   0.81
+//   max 0.100/0.450           0.016   0.77
+//
+// Past 0.065/0.300 the picture starts paying real resolution for the smoothness, and by
+// 0.100/0.450 mid-contrast content softens too (1.09 -> 0.89), not just the flat parts.
+//
+// Averaging two samples the flow failed to line up gives a soft frame, and softness
+// reads as smoothness: there is nothing sharp for the eye to track, so the per-frame
+// position error stops showing. On 68f678c1 that blur did two jobs at once - it hid the
+// position error AND it hid the artifacts. The artifacts now have their own machinery
+// (the overlay mask, dis_hist, dis_side, the flow clamp, dis_temporal, the parabola), so
+// the blend no longer has to hide anything and can go back to the softer setting without
+// bringing them back. The per-channel maximum is kept over the old sum: a purely coloured
+// disagreement had to reach three times as far before the sum counted it at all.
+const float BLEND_LO = 0.065;
+const float BLEND_HI = 0.300;
 
-vec2 sampleFlow(vec2 uv) {
-    if (manualFlowFilter == 0) return textureLod(flowTex, uv, 0.0).xy;
+// ---------------------------------------------------------------------------
+// Scene cut, and the same thing by another name: tracking that gave up.
+//
+// When the frame is replaced wholesale - a pause menu over gameplay - there is no
+// correspondence to find. The search keeps whatever the residual happened to favour, the
+// magnitude clamp in dis_vr_add bounds it to a quarter of the frame, and what is left is
+// bounded garbage with the block structure of the search grid. Dragging a menu's own
+// black panels and white text around with that field is what puts black and white squares
+// on the screen.
+//
+// Two residuals decide it, and it works because it is TWO of them:
+//
+//   |s0 - s1|  the real pair, compared where it sits
+//   |c0 - c1|  the same pair after the warp tried to reconcile it
+//
+// A fast pan pulls the first one far apart - median 0.290 in the runs below - but the warp
+// closes it, so the second is 0.000. On a cut nothing closes it: 0.588 and 0.584. The
+// minimum of the two separates the cases by an order of magnitude. Fraction of pixels
+// above the threshold:
+//
+//   case                        0.25    0.35    0.45
+//   static scene               0.000   0.000   0.000
+//   pan, flow correct          0.035   0.009   0.001
+//   pan, tracking lost         0.368   0.107   0.020
+//   cut to a menu              0.992   0.936   0.745
+//
+// This also retires the conclusion in dis-interpolation-glitches.md that a cut needs a
+// global reduction to be told apart from lost tracking. It does - but the correct response
+// to both is the same, show a real frame, so they never needed telling apart.
+//
+// The response is the nearest real frame UNWARPED. Warping it is what broke it. Over the
+// three generated frames of a pair that reads as s0, s1, s1, i.e. a clean hold across the
+// cut. Both residuals and both frames are already in registers here, so this costs no
+// fetches at all.
+const float CUT_LO = 0.30;
+const float CUT_HI = 0.55;
+
+// xy: this pair's chord. zw: the previous pair's chord for the same content, advected
+// here by dis_temporal - one fetch carries both, which is why the field is RGBA.
+vec4 sampleFlow(vec2 uv) {
+    if (manualFlowFilter == 0) return textureLod(flowTex, uv, 0.0);
 
     vec2 sz = vec2(textureSize(flowTex, 0));
     vec2 p = uv * sz - 0.5;
@@ -147,15 +226,89 @@ vec2 sampleFlow(vec2 uv) {
     ivec2 i0 = ivec2(floor(p));
     ivec2 mx = ivec2(sz) - 1;
 
-    vec2 a = texelFetch(flowTex, clamp(i0,                ivec2(0), mx), 0).xy;
-    vec2 b = texelFetch(flowTex, clamp(i0 + ivec2(1, 0), ivec2(0), mx), 0).xy;
-    vec2 c = texelFetch(flowTex, clamp(i0 + ivec2(0, 1), ivec2(0), mx), 0).xy;
-    vec2 e = texelFetch(flowTex, clamp(i0 + ivec2(1, 1), ivec2(0), mx), 0).xy;
+    vec4 a = texelFetch(flowTex, clamp(i0,                ivec2(0), mx), 0);
+    vec4 b = texelFetch(flowTex, clamp(i0 + ivec2(1, 0), ivec2(0), mx), 0);
+    vec4 c = texelFetch(flowTex, clamp(i0 + ivec2(0, 1), ivec2(0), mx), 0);
+    vec4 e = texelFetch(flowTex, clamp(i0 + ivec2(1, 1), ivec2(0), mx), 0);
     return mix(mix(a, b, frac.x), mix(c, e, frac.x), frac.y);
 }
 
 float maxChannel(vec3 v) {
     return max(max(v.x, v.y), v.z);
+}
+
+// A real frame reaches the screen unresampled, one to one. A generated one is fetched at
+// a fractional offset, and bilinear at half a texel throws away almost half the high
+// frequencies. Measured against the unwarped frame, with a deliberately CORRECT flow so
+// this is the filter's own cost and nothing else:
+//
+//   fractional offset   bilinear   Catmull-Rom
+//   0.000                  1.000         1.000
+//   0.125                  0.839         0.955
+//   0.250                  0.699         0.844
+//   0.375                  0.602         0.727
+//   0.500                  0.564         0.675
+//
+// So three of every four frames arrive softer than their neighbours by an amount that
+// moves with the motion. That is a 30 Hz pulse of sharpness, and no amount of work on the
+// flow touches it: the field can be exact and the filter still eats the detail.
+//
+// Catmull-Rom does not close the gap - no cheap filter invents what the sampling grid did
+// not keep - but it moves the worst case from 0.564 to 0.675 and the common quarter-texel
+// case from 0.699 to 0.844.
+//
+// Five bilinear taps, not nine: the four corners are products of two small negative lobes
+// and carry nothing. Measured on a diagonal offset, sharpness against the unwarped frame
+// and the mean difference between the two versions:
+//
+//   fx     fy     bilinear   5 taps   9 taps   |5-9|
+//   0.500  0.500     0.453    0.584    0.577   0.0013
+//   0.250  0.250     0.584    0.780    0.774   0.0009
+//   0.125  0.125     0.756    0.933    0.930   0.0004
+//
+// Five taps come out marginally AHEAD of nine once renormalised, and the difference
+// between them is a third of an rgb8 step. DIS_WARP_CATMULL = 0 goes back to bilinear.
+//
+// The sampler is CLAMP_TO_EDGE, so the taps reaching one and a half texels past the
+// border pick up the edge colour rather than black.
+vec3 warpSample(sampler2D tex, vec2 uv, vec2 texSize) {
+#if DIS_WARP_CATMULL == 0
+    return textureLod(tex, clamp(uv, vec2(0.0), vec2(1.0)), 0.0).xyz;
+#else
+    vec2 samplePos = uv * texSize;
+    vec2 texPos1 = floor(samplePos - 0.5) + 0.5;
+    vec2 fr = samplePos - texPos1;
+
+    vec2 w0 = fr * (-0.5 + fr * (1.0 - 0.5 * fr));
+    vec2 w1 = 1.0 + fr * fr * (-2.5 + 1.5 * fr);
+    vec2 w2 = fr * (0.5 + fr * (2.0 - 1.5 * fr));
+    vec2 w3 = fr * fr * (-0.5 + 0.5 * fr);
+
+    // The middle pair is taken as one bilinear tap placed between them - that is what
+    // turns sixteen taps into nine. w12 stays near 1 over the whole range, so the
+    // division is safe.
+    vec2 w12 = w1 + w2;
+    vec2 off12 = w2 / w12;
+
+    vec2 inv = 1.0 / texSize;
+    vec2 p0  = clamp((texPos1 - 1.0) * inv,   vec2(0.0), vec2(1.0));
+    vec2 p3  = clamp((texPos1 + 2.0) * inv,   vec2(0.0), vec2(1.0));
+    vec2 p12 = clamp((texPos1 + off12) * inv, vec2(0.0), vec2(1.0));
+
+    vec3 r = vec3(0.0);
+    r += textureLod(tex, vec2(p12.x, p0.y),  0.0).xyz * (w12.x * w0.y);
+    r += textureLod(tex, vec2(p0.x,  p12.y), 0.0).xyz * (w0.x  * w12.y);
+    r += textureLod(tex, vec2(p12.x, p12.y), 0.0).xyz * (w12.x * w12.y);
+    r += textureLod(tex, vec2(p3.x,  p12.y), 0.0).xyz * (w3.x  * w12.y);
+    r += textureLod(tex, vec2(p12.x, p3.y),  0.0).xyz * (w12.x * w3.y);
+
+    // Renormalise for the four dropped corners. Per axis w0 + w12 + w3 = 1 exactly, so
+    // the five remaining weights sum to this closed form - no extra adds needed.
+    r /= w12.x + w12.y * (1.0 - w12.x);
+
+    // The negative lobes can ring past the source range.
+    return clamp(r, vec3(0.0), vec3(1.0));
+#endif
 }
 
 // How far apart the two real frames are at one point, sampled where they sit.
@@ -186,11 +339,23 @@ void main() {
     vec2 eased = ramp * ramp * (3.0 - 2.0 * ramp);
     float edgeMix = min(eased.x, eased.y);
 
-    vec2 f = sampleFlow(uv);
+    vec4 fs = sampleFlow(uv);
     if (edgeMix < 1.0) {
-        vec2 fInner = sampleFlow(clamp(uv, guard, 1.0 - guard));
-        f = mix(fInner, f, edgeMix);
+        vec4 fInner = sampleFlow(clamp(uv, guard, 1.0 - guard));
+        fs = mix(fInner, fs, edgeMix);
     }
+    // Last line of defence on the field. A non-finite value turns uv0/uv1 into NaN, and a
+    // NaN texture coordinate is an undefined fetch that reaches rgba8 as whatever the
+    // hardware felt like. The parabola can manufacture one from finite parts too: with
+    // fPrev infinite, (f + fPrev) and (f - fPrev) are +Inf and -Inf and their weighted sum
+    // is NaN. Upstream guards its own outputs; this is two instructions for the case where
+    // one of them is ever wrong again.
+    if (any(isnan(fs)) || any(isinf(fs))) fs = vec4(0.0);
+
+    vec2 f = fs.xy;
+    // dis_temporal stores f itself in zw whenever it found no usable history, so the
+    // parabola below degenerates to the chord on its own in that case.
+    vec2 fPrev = DIS_QUADRATIC_PATH != 0 ? fs.zw : fs.xy;
 
     if (pc.debugMode != 0) {
         float m = length(f) * float(size.x) / 16.0;
@@ -232,11 +397,22 @@ void main() {
         return;
     }
 
-    vec2 uv0 = uv - pc.t * f;
-    vec2 uv1 = uv + (1.0 - pc.t) * f;
+    // Displacement from the previous real frame to time t. A chord is straight, so its
+    // direction changes abruptly at every real frame and that break repeats at the source
+    // rate; 30 Hz of it is a large part of why 120 made from 30 does not read as 120. The
+    // parabola through three consecutive real frames removes it. Measured against a true
+    // path: position error 0.469 -> 0.000 under constant acceleration, 3.027 -> 0.450 on a
+    // smooth arc, 12.34 -> 6.07 on a mouse flick, with the velocity break falling the same
+    // way. On a uniform pan a chord is already exact and the parabola matches it.
+    //
+    // A reversal would make a parabola overshoot, but by then dis_temporal's gate has set
+    // fPrev = f, so those frames fall back to the chord by construction.
+    vec2 d = 0.5 * pc.t * (f + fPrev) + 0.5 * pc.t * pc.t * (f - fPrev);
+    vec2 uv0 = uv - d;
+    vec2 uv1 = uv + (f - d);
 
-    vec3 c0 = textureLod(prevColor, clamp(uv0, vec2(0.0), vec2(1.0)), 0.0).xyz;
-    vec3 c1 = textureLod(nextColor, clamp(uv1, vec2(0.0), vec2(1.0)), 0.0).xyz;
+    vec3 c0 = warpSample(prevColor, uv0, vec2(size));
+    vec3 c1 = warpSample(nextColor, uv1, vec2(size));
 
     vec3 single = pc.t < 0.5 ? c0 : c1;
 #if DIS_OCCL_SIDED
@@ -302,6 +478,13 @@ void main() {
 #endif
 
     result = mix(result, uiColor, uiMask);
+
+    // --- scene cut / lost tracking -----------------------------------------
+    // Last, so it overrides the warp, the pick and the overlay mask alike. On a cut the
+    // overlay mask is shut anyway - rStatic is huge - and dis_hist has its own cut gate,
+    // so there is nothing here to fight with.
+    float cut = smoothstep(CUT_LO, CUT_HI, min(pairDiffHere, disagree));
+    result = mix(result, pc.t < 0.5 ? s0 : s1, cut);
 
     bool leftHalf = uint(pix.x) * 2u < gl_NumWorkGroups.x * gl_WorkGroupSize.x;
     if (DEBUG_UI_MASK == 1 || (DEBUG_UI_MASK == 2 && leftHalf)) {

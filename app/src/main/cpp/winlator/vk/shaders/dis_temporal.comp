@@ -1,0 +1,128 @@
+// SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// DIS frame generation: a Vulkan compute realisation of Dense Inverse Search
+// optical flow. The algorithm and its reference implementation come from
+// OpenCV's DISOpticalFlow, which adopted Till Kroeger's original OF_DIS.
+// See CREDITS.md for the full attribution.
+
+#version 450
+
+precision highp float;
+precision highp int;
+
+// Temporal consistency of the final field, at the flow resolution, once per
+// source pair.
+//
+// Every pair is estimated from scratch - the coarsest level starts from zero -
+// so the estimation error is redrawn independently each time. A still picture
+// never shows it: the field is about as accurate as before. What it costs is
+// smoothness, because the generated frames sit at pos + t*f, and a field that
+// jitters by a few pixels between pairs moves them back and forth around the
+// true path. The eye reads that as a parasitic acceleration at the source rate.
+//
+// Modelled over long runs (displayed position vs the true path, jitter measured
+// as the spread of the second difference):
+//
+//   scenario                        sigma   raw    EMA 0.3 + gate
+//   uniform pan                      6 px   3.88   1.82
+//   uniform pan                     15 px   9.36   4.48
+//   hard ramp 40->160 over 20 pairs 15 px   9.34   5.29
+//   camera reversal +-120            6 px   3.85   1.93
+//   scene cut                        6 px   3.95   1.89
+//
+// Jitter roughly halves and the position error drops by a third. It wins on the
+// ramp and the reversal too: the field's genuine change per pair is smaller than
+// the estimation noise, so the lag costs less than the jitter.
+//
+// THE GATE IS NOT OPTIONAL. Without it the same runs get worse, not better:
+// 3.85 -> 6.88 on the reversal and 3.95 -> 11.49 on the cut, because the history
+// is then averaged into a field that has nothing to do with it any more.
+//
+// Advection: the history at this texel describes content that has since moved
+// on, so it is read where that content came from, one dependent fetch. At a
+// disocclusion there is no valid history at all, and that is the same gate.
+//
+// Cost: one dispatch at the flow resolution per source pair - 320x180 on Fast -
+// and two flow-resolution images, RGBA32F because zw carries the previous chord for
+// the interpolate pass's parabola. Nothing per output pixel beyond widening one fetch
+// that pass already made, so the preset does not notice.
+
+// Weight of the new measurement. Higher keeps more of the new field.
+//
+// 0.3 measured best when this pass stood alone. It does not any more, and the reason is
+// worth writing down: the interpolate pass now follows a parabola through three real
+// frames, and that parabola lives on the SECOND DIFFERENCE of the field - how the chord
+// changed between pairs. An EMA is exactly what erases a second difference. The two
+// features want opposite things from the same signal.
+//
+// Jitter over long runs, re-measured with the parabola in place:
+//
+//   scenario     a=0.30  0.35   0.45   0.55   0.70   1.00
+//   pan            2.28   2.45   2.78   3.10   3.60   4.69
+//   arc           12.15  11.61   9.88   8.43   6.60   5.22
+//   ramp           4.32   4.05   3.85   3.96   4.27   5.17
+//   reversal       2.36   2.52   2.84   3.16   3.63   4.61
+//
+// The arc is ordinary camera movement and its numbers dwarf the rest, so it decides the
+// feel; heavy smoothing costs it more than it gains anywhere else. Summed, the minimum
+// sits around 0.6-0.7. 0.55 is a step short of it on purpose: real straight-line motion
+// still benefits from noise suppression, and the sigma those runs assume is an estimate,
+// so the headroom is worth more on that side.
+#define DIS_TEMPORAL_ALPHA 0.55
+
+// Drop the history when the new field departs from it by more than this. The
+// floor covers a still field; the relative term keeps the gate meaningful when
+// the whole frame moves by a hundred pixels.
+#define DIS_TEMPORAL_GATE_PX 8.0
+#define DIS_TEMPORAL_GATE_REL 0.35
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D flowNew;
+layout(set = 0, binding = 1) uniform sampler2D flowHist;
+layout(set = 0, binding = 5, rgba32f) uniform image2D flowOut;
+
+layout(push_constant) uniform PC {
+    int reset;
+} pc;
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz = imageSize(flowOut);
+    if (p.x >= sz.x || p.y >= sz.y) return;
+
+    vec2 uSize = vec2(sz);
+    vec2 uv = (vec2(p) + 0.5) / uSize;
+
+    // Stored in normalised uv units, as the rest of the chain expects.
+    vec2 fNew = texelFetch(flowNew, p, 0).xy;
+
+    if (pc.reset != 0) {
+        imageStore(flowOut, p, vec4(fNew, fNew));
+        return;
+    }
+
+    vec2 back = clamp(uv - fNew, vec2(0.0), vec2(1.0));
+    vec2 fOld = textureLod(flowHist, back, 0.0).xy;
+
+    float gate = DIS_TEMPORAL_GATE_PX + DIS_TEMPORAL_GATE_REL * length(fNew * uSize);
+    bool usable = length((fNew - fOld) * uSize) <= gate;
+
+    vec2 fOut = usable ? mix(fOld, fNew, DIS_TEMPORAL_ALPHA) : fNew;
+
+    // zw is the previous pair's chord for this same content, which the interpolate pass
+    // needs for its parabola. Writing fNew where there is no usable history is what makes
+    // that parabola degenerate to the chord instead of inventing curvature - and it is the
+    // same condition, so a reversal or a cut is covered once, here.
+    vec2 fPrev = usable ? fOld : fNew;
+
+    // Zero, not fNew: fNew is the value that may BE the non-finite one, and falling back
+    // to it makes the guard a no-op. That is exactly the mistake the old vr_add guard made
+    // when it fell back to W. A zero field degrades to repeating the real frame, which is
+    // the right answer whenever the flow has nothing to say.
+    if (any(isnan(fOut)) || any(isinf(fOut))) fOut = vec2(0.0);
+    if (any(isnan(fPrev)) || any(isinf(fPrev))) fPrev = vec2(0.0);
+
+    imageStore(flowOut, p, vec4(fOut, fPrev));
+}

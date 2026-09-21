@@ -111,6 +111,7 @@ set(SHADER_LIST
     "dis_interpolate:comp:dis_interpolate_comp"
     "dis_hist:comp:dis_hist_comp"
     "dis_side:comp:dis_side_comp"
+    "dis_temporal:comp:dis_temporal_comp"
     "dis_vr_prep:comp:dis_vr_prep_comp"
     "dis_vr_d1:comp:dis_vr_d1_comp"
     "dis_vr_d2:comp:dis_vr_d2_comp"

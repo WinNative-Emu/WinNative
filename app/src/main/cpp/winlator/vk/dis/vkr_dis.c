@@ -18,6 +18,7 @@
 #include "shaders/dis_interpolate_comp.spv.h"
 #include "shaders/dis_hist_comp.spv.h"
 #include "shaders/dis_side_comp.spv.h"
+#include "shaders/dis_temporal_comp.spv.h"
 #include "shaders/dis_vr_prep_comp.spv.h"
 #include "shaders/dis_vr_d1_comp.spv.h"
 #include "shaders/dis_vr_d2_comp.spv.h"
@@ -153,6 +154,7 @@ struct VkrDis {
     DisImage flow_refined;
     DisImage hist[2];
     DisImage side;
+    DisImage flow_smooth[2];
 
     VkImageView view_color[DIS_SLOTS];
     VkImageView view_flow_color[DIS_SLOTS][DIS_MAX_LEVELS];
@@ -172,6 +174,7 @@ struct VkrDis {
     VkImageView view_flow_refined[DIS_MAX_LEVELS];
     VkImageView view_hist[2];
     VkImageView view_side;
+    VkImageView view_flow_smooth[2];
 
     VkSampler sampler;
 
@@ -187,6 +190,7 @@ struct VkrDis {
     VkDescriptorSet interp_sets[DIS_SLOTS][2];
     VkDescriptorSet hist_sets[DIS_SLOTS][2];
     VkDescriptorSet side_sets[DIS_SLOTS];
+    VkDescriptorSet temporal_sets[2];
 
     VkDescriptorSetLayout vr_set_layout;
     VkPipelineLayout vr_pipeline_layout;
@@ -207,6 +211,7 @@ struct VkrDis {
     DisPass pass_interp;
     DisPass pass_hist;
     DisPass pass_side;
+    DisPass pass_temporal;
     DisPass pass_vr_prep;
     DisPass pass_vr_d1;
     DisPass pass_vr_d2;
@@ -350,6 +355,8 @@ static uint32_t dis_collect_images(VkrDis* d, DisImage** out, uint32_t cap) {
     DIS_PUSH(&d->hist[0]);
     DIS_PUSH(&d->hist[1]);
     DIS_PUSH(&d->side);
+    DIS_PUSH(&d->flow_smooth[0]);
+    DIS_PUSH(&d->flow_smooth[1]);
     #undef DIS_PUSH
     return n;
 }
@@ -548,7 +555,8 @@ static bool dis_create_pipelines(VkrDis* d) {
 
     const uint32_t shared_sets = DIS_SLOTS * DIS_MAX_LEVELS * DIS_SHARED_SETS_PER_LEVEL
                                + DIS_SLOTS * 2u   // interpolation sets, one per history direction
-                               + DIS_SLOTS;       // side-map sets
+                               + DIS_SLOTS        // side-map sets
+                               + 2u;              // temporal flow sets, one per direction
     // VR sets exist only for the levels the refinement actually runs on.
     const uint32_t vr_sets = (DIS_SLOTS
                            + DIS_VR_SHARED_SETS) * DIS_VR_LEVELS;
@@ -650,12 +658,14 @@ static bool dis_create_pipelines(VkrDis* d) {
     d->pass_vr_add.pipeline = dis_create_compute_pipeline_with_layout(d, dis_vr_add_comp, dis_vr_add_comp_size, d->vr_pipeline_layout, NULL);
     d->pass_hist.pipeline = dis_create_compute_pipeline_with_layout(d, dis_hist_comp, dis_hist_comp_size, d->vr_pipeline_layout, NULL);
     d->pass_side.pipeline = dis_create_compute_pipeline(d, dis_side_comp, dis_side_comp_size);
+    d->pass_temporal.pipeline = dis_create_compute_pipeline(d, dis_temporal_comp, dis_temporal_comp_size);
 
     if (!d->pass_gradient.pipeline || !d->pass_inverse.pipeline || !d->pass_propagate.pipeline ||
         !d->pass_densify.pipeline || !d->pass_interp.pipeline ||
         !d->pass_vr_prep.pipeline || !d->pass_vr_d1.pipeline || !d->pass_vr_d2.pipeline ||
         !d->pass_vr_w.pipeline || !d->pass_vr_coef.pipeline || !d->pass_vr_sor.pipeline ||
-        !d->pass_vr_add.pipeline || !d->pass_hist.pipeline || !d->pass_side.pipeline) {
+        !d->pass_vr_add.pipeline || !d->pass_hist.pipeline || !d->pass_side.pipeline ||
+        !d->pass_temporal.pipeline) {
         return false;
     }
     return true;
@@ -717,9 +727,13 @@ typedef struct {
 
 static DisRefine dis_refine_for(uint32_t generations) {
     if (generations >= 3u) {
-        // Three fixed-point passes on the finest level for the 4x path: the warped
-        // samples line up better, so fewer pixels fall to the single-frame pick.
-        const DisRefine r = {3u, 5u, 2u, DIS_VR_LEVELS};
+        // The 4x path gets the largest refinement budget in the ladder, because its
+        // whole cost lands ONCE PER SOURCE PAIR while the interpolate pass runs three
+        // times. At a 30 fps source that is a 33 ms budget for a 320x180 pyramid, so four
+        // fixed-point passes and seven SOR sweeps on the finest level are a handful of
+        // small dispatches - paid for by a field that is closer to right, which is the one
+        // improvement that costs no softness anywhere.
+        const DisRefine r = {4u, 7u, 2u, DIS_VR_LEVELS};
         return r;
     }
     if (generations == 2u) {
@@ -822,7 +836,7 @@ static void dis_write_all_descriptors(VkrDis* d) {
         for (uint32_t dir = 0; dir < 2u; dir++) {
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 0, d->view_color[prev], d->sampler);
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 1, d->view_color[next], d->sampler);
-            dis_batch_sampled(d, &b, d->interp_sets[s][dir], 2, d->view_flow_refined[0], d->sampler);
+            dis_batch_sampled(d, &b, d->interp_sets[s][dir], 2, d->view_flow_smooth[dir], d->sampler);
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 3, d->view_side, d->sampler);
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 4, d->view_hist[dir], d->sampler);
             dis_batch_storage(d, &b, d->interp_sets[s][dir], 5, d->view_interp_out);
@@ -882,6 +896,14 @@ static void dis_write_all_descriptors(VkrDis* d) {
         dis_batch_storage(d, &b, d->vr_add_set[l], DIS_VR_FIRST_STORAGE, d->view_flow_refined[l]);
     }
 
+    // Not per slot: both inputs and the output are single images, and these sets are
+    // written once here and never updated, so sharing them across frames is safe.
+    for (uint32_t dir = 0; dir < 2u; dir++) {
+        dis_batch_sampled(d, &b, d->temporal_sets[dir], 0, d->view_flow_refined[0], d->sampler);
+        dis_batch_sampled(d, &b, d->temporal_sets[dir], 1, d->view_flow_smooth[1u - dir], d->sampler);
+        dis_batch_storage(d, &b, d->temporal_sets[dir], 5, d->view_flow_smooth[dir]);
+    }
+
     dis_batch_flush(d, &b);
 }
 
@@ -891,6 +913,8 @@ static void dis_destroy_views(VkrDis* d) {
     dis_destroy_view(d, &d->view_hist[0]);
     dis_destroy_view(d, &d->view_hist[1]);
     dis_destroy_view(d, &d->view_side);
+    dis_destroy_view(d, &d->view_flow_smooth[0]);
+    dis_destroy_view(d, &d->view_flow_smooth[1]);
     for (uint32_t l = 0; l < DIS_MAX_LEVELS; l++) {
         dis_destroy_view(d, &d->view_vr_prep[l]);
         dis_destroy_view(d, &d->view_vr_d1[l]);
@@ -938,6 +962,8 @@ static void dis_destroy_images(VkrDis* d) {
     dis_destroy_image(d, &d->hist[0]);
     dis_destroy_image(d, &d->hist[1]);
     dis_destroy_image(d, &d->side);
+    dis_destroy_image(d, &d->flow_smooth[0]);
+    dis_destroy_image(d, &d->flow_smooth[1]);
 }
 
 static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t full_w,
@@ -1001,6 +1027,14 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
     if (!dis_create_image(d, &d->side, w, h, VK_FORMAT_R32_SFLOAT, 1,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
+    // Ping-pong for the temporally smoothed field, level 0 only, at the flow extent.
+    // Four channels, not two: xy is this pair's chord and zw the previous pair's chord
+    // for the same content, so the interpolate pass gets both from the one fetch it was
+    // already making. The storage format is the same one the sparse flow maps use.
+    if (!dis_create_image(d, &d->flow_smooth[0], w, h, VK_FORMAT_R32G32B32A32_SFLOAT, 1,
+                          VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
+    if (!dis_create_image(d, &d->flow_smooth[1], w, h, VK_FORMAT_R32G32B32A32_SFLOAT, 1,
+                          VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
 
     for (uint32_t s = 0; s < DIS_SLOTS; s++) {
         if (!dis_create_view(d, d->color[s].image, format, 0, 1, &d->view_color[s])) return false;
@@ -1030,6 +1064,8 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
     if (!dis_create_view(d, d->hist[0].image, VK_FORMAT_R32_SFLOAT, 0, 1, &d->view_hist[0])) return false;
     if (!dis_create_view(d, d->hist[1].image, VK_FORMAT_R32_SFLOAT, 0, 1, &d->view_hist[1])) return false;
     if (!dis_create_view(d, d->side.image, VK_FORMAT_R32_SFLOAT, 0, 1, &d->view_side)) return false;
+    if (!dis_create_view(d, d->flow_smooth[0].image, VK_FORMAT_R32G32B32A32_SFLOAT, 0, 1, &d->view_flow_smooth[0])) return false;
+    if (!dis_create_view(d, d->flow_smooth[1].image, VK_FORMAT_R32G32B32A32_SFLOAT, 0, 1, &d->view_flow_smooth[1])) return false;
 
     vkr_dis_reset(d);
     dis_write_all_descriptors(d);
@@ -1076,6 +1112,9 @@ static bool dis_allocate_sets(VkrDis* d) {
             if (!dis_alloc(d, d->vr_set_layout, 1, &d->vr_prep_sets[s][l])) return false;
         }
     }
+
+    if (!dis_alloc(d, d->set_layout, 1, &d->temporal_sets[0])) return false;
+    if (!dis_alloc(d, d->set_layout, 1, &d->temporal_sets[1])) return false;
 
     for (uint32_t l = 0; l < DIS_VR_LEVELS; l++) {
         VkDescriptorSet vr_sets[DIS_VR_SHARED_SETS];
@@ -1282,6 +1321,7 @@ void vkr_dis_destroy(VkrDis* d) {
     if (d->pass_vr_sor.pipeline) vkd.DestroyPipeline(d->device, d->pass_vr_sor.pipeline, NULL);
     if (d->pass_vr_add.pipeline) vkd.DestroyPipeline(d->device, d->pass_vr_add.pipeline, NULL);
     if (d->pass_hist.pipeline) vkd.DestroyPipeline(d->device, d->pass_hist.pipeline, NULL);
+    if (d->pass_temporal.pipeline) vkd.DestroyPipeline(d->device, d->pass_temporal.pipeline, NULL);
     if (d->pool) vkd.DestroyDescriptorPool(d->device, d->pool, NULL);
     if (d->pipeline_layout) vkd.DestroyPipelineLayout(d->device, d->pipeline_layout, NULL);
     if (d->vr_pipeline_layout) vkd.DestroyPipelineLayout(d->device, d->vr_pipeline_layout, NULL);
@@ -1535,7 +1575,13 @@ uint32_t vkr_dis_plan(VkrDis* d, uint32_t capacity, uint64_t source_frames) {
 static void dis_vr_budget(const DisRefine* refine, uint32_t l, uint32_t* fixed_point,
                           uint32_t* sor) {
     *fixed_point = l == 0 ? refine->vr_fixed_point : 1u;
-    const uint32_t s = refine->vr_sor > l ? refine->vr_sor - l : DIS_VR_SOR_FLOOR;
+    // vr_sor is the level-0 budget and coarser levels fall off twice as fast as the grid
+    // shrinks. A flat slope spent the finest level's raised count on every level: with the
+    // 4x budget at 7 that would be 7, 6, 5, 4 - eight extra dispatches and barriers per
+    // pair for sweeps that buy nothing, since a half-size level crosses the same relative
+    // distance in fewer of them. This gives 7, 5, 3, 2 instead.
+    const uint32_t drop = l * 2u;
+    const uint32_t s = refine->vr_sor > drop ? refine->vr_sor - drop : DIS_VR_SOR_FLOOR;
     *sor = s < DIS_VR_SOR_FLOOR ? DIS_VR_SOR_FLOOR : s;
 }
 
@@ -1761,6 +1807,19 @@ void vkr_dis_process(VkrDis* d, VkCommandBuffer cmd, VkImage source, uint32_t wi
         const uint32_t hist_h = full_h > 1u ? full_h / 2u : 1u;
         const uint32_t hist_dir = 1u - d->hist_parity;
         const int hist_reset = d->hist_valid ? 0 : 1;
+
+        // Temporal consistency of the field, before anything reads it. Shares the
+        // history parity with the overlay confidence below: both flip once per source
+        // pair, and hist_valid covers both.
+        vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_temporal.pipeline);
+        vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pipeline_layout, 0, 1,
+                                  &d->temporal_sets[hist_dir], 0, NULL);
+        vkd.CmdPushConstants(cmd, d->pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                             sizeof(hist_reset), &hist_reset);
+        vkd.CmdDispatch(cmd, (w + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE,
+                        (h + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE, 1);
+        dis_compute_barrier(cmd);
+
         vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_hist.pipeline);
         vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
                                   &d->hist_sets[slot][hist_dir], 0, NULL);
