@@ -512,6 +512,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
      * another game, as a store front end does. */
     private static final long WAYLAND_RENDERER_POLL_MS = 2000L;
     private static final long WAYLAND_RENDERER_SETTLED_POLL_MS = 15000L;
+    private static final long WAYLAND_RENDERER_SESSION_POLL_MS = 5000L;
     private Thread waylandRendererThread;
     /* The process behind the window the compositor is showing, from the compositor itself. */
     private volatile int waylandGamePid;
@@ -1086,15 +1087,24 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         waylandRendererThread = new Thread(() -> {
             String reported = null;
             while (!activityDestroyed.get()) {
-                String name = com.winlator.cmod.runtime.display.wayland.WaylandRendererProbe.probe(root, waylandGamePid);
+                String name;
+                if (gamescopeMode) {
+                    name = com.winlator.cmod.runtime.display.wayland.WaylandRendererProbe.probeLinuxSession();
+                    // Between games the client's own window is back, and that is drawn with Vulkan.
+                    if (name == null) name = com.winlator.cmod.runtime.display.wayland.WaylandRendererProbe.VULKAN;
+                } else {
+                    name = com.winlator.cmod.runtime.display.wayland.WaylandRendererProbe.probe(root, waylandGamePid);
+                }
                 if (name != null && !name.equals(reported)) {
                     reported = name;
                     final String resolved = name;
                     runOnUiThread(() -> applyWaylandRendererName(resolved));
                 }
                 try {
-                    Thread.sleep(reported == null
-                            ? WAYLAND_RENDERER_POLL_MS : WAYLAND_RENDERER_SETTLED_POLL_MS);
+                    // A Linux session goes from one game to the next without this window changing.
+                    Thread.sleep(reported == null ? WAYLAND_RENDERER_POLL_MS
+                            : gamescopeMode ? WAYLAND_RENDERER_SESSION_POLL_MS
+                            : WAYLAND_RENDERER_SETTLED_POLL_MS);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return;

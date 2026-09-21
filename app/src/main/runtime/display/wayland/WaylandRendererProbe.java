@@ -55,6 +55,26 @@ public final class WaylandRendererProbe {
         return name(best);
     }
 
+    /* Every Proton maps its PE modules from here, whichever prefix the game runs in. */
+    private static final String PROTON_MARKER = "/lib/wine/";
+
+    /**
+     * The renderer of the game a Linux session is running, or null while none is. The window the
+     * compositor shows there is gamescope's, which says nothing about the game behind it, so the
+     * Proton processes are read instead.
+     */
+    public static String probeLinuxSession() {
+        File[] entries = new File("/proc").listFiles();
+        if (entries == null) return null;
+        int best = 0;
+        for (File entry : entries) {
+            if (!isPid(entry.getName())) continue;
+            best = Math.max(best, scan(new File(entry, "maps"), PROTON_MARKER));
+            if (best == VKD3D) break;
+        }
+        return name(best);
+    }
+
     /* Ranked so the highest-level translation layer in the container wins, as the X11 window
      * scoring does. d3d12 outranks the rest because a VKD3D title maps dxgi as well. */
     private static final int VULKAN_RANK = 1, OPENGL = 2, DXVK = 3, WINED3D = 4, VKD3D = 5;

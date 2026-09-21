@@ -97,6 +97,11 @@ which is worth knowing before building it.
 - **Audio is PulseAudio** over a unix socket (`PULSE_LATENCY_MSEC=20`). We ship libpulse already.
   With DirectAudio chosen, Windows games bypass it for AAudio through the app
   (`docs/direct-audio-integration.md`, GameScope sessions).
+- **The HUD** counts a game frame per commit of gamescope's window, not per plane: gamescope
+  presents through a toplevel and a synchronized subsurface for each layer, and the game moves
+  between them. The renderer name is read from the Proton processes' mapped modules
+  (`WaylandRendererProbe.probeLinuxSession`), since the window itself is always gamescope's.
+  Frame generation runs in the app's compositor, so its output rate needs nothing from gamescope.
 - **The WN button** on the Virtual Gamepad is the pad's guide button (`BTN_MODE`): Steam opens
   its menu on it. It is an ordinary control element (`GAMEPAD_BUTTON_GUIDE`, icon 40) and is only
   drawn in Linux sessions and the editor.

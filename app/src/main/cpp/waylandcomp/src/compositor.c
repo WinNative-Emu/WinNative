@@ -288,6 +288,8 @@ struct surface {
     struct wl_list children;                /* bottom to top */
     struct wl_list child_link;
     int sub_x, sub_y, sub_pending_x, sub_pending_y, sub_pending;
+    int sub_sync;                           /* wl_subsurface mode: its frames reach the screen with the parent's commit */
+    int hud_frame;                          /* a GPU frame arrived in this window since the HUD last counted one */
     int below_parent;
     int fullscreen;                         /* xdg_toplevel.set_fullscreen: no client decorations */
 
@@ -699,8 +701,17 @@ static void take_shm(struct surface *s, struct wl_shm_buffer *shm, struct wl_res
 }
 
 /* The window the app's performance HUD follows: the latest one to start presenting GPU frames
- * (X11 binds the HUD to the _MESA_DRV window and counts X presents instead). JNI upcalls. */
+ * (X11 binds the HUD to the _MESA_DRV window and counts X presents instead). JNI upcalls.
+ *
+ * A synchronized subsurface belongs to its parent's frame: gamescope presents through a toplevel
+ * and a plane per layer, attaches to all of them and commits the toplevel last. Following one
+ * plane counts nothing once the game moves to another, so such a surface is counted as the window
+ * it is part of, once per commit of that window. */
 static struct surface *g_hud_surface;
+static struct surface *hud_window(struct surface *s) {
+    while (s->parent && s->sub_sync) s = s->parent;
+    return s;
+}
 extern void wnc_on_game_surface(const char *window, const char *gpu); /* window NULL = gone */
 extern void wnc_on_game_frame(void);
 /* The program behind that window: its Linux pid (the Wayland client's credentials) and executable name
@@ -754,8 +765,9 @@ static void take_dmabuf(struct surface *s, struct dmabuf_buffer *b, struct wl_re
                        name, b->width, b->height, (unsigned long long)b->modifier);
         /* The HUD follows the window whether its frames are copied or go straight to the layer:
          * a zero-copy frame the compositor never imported is still a presented game frame. */
-        if (b->img || ahb_swapchain_has_ahb(b)) {
-            g_hud_surface = s;
+        if ((b->img || ahb_swapchain_has_ahb(b)) && g_hud_surface != hud_window(s)) {
+            g_hud_surface = hud_window(s);
+            g_hud_surface->hud_frame = 0;
             wnc_on_game_surface(name, vkp_gpu_name());
             struct client_info *ci = client_info_of(wl_resource_get_client(s->resource));
             if (ci) wnc_on_game_program((int)ci->pid, strncmp(ci->name, "pid ", 4) ? ci->name : "");
@@ -777,7 +789,7 @@ static void take_dmabuf(struct surface *s, struct dmabuf_buffer *b, struct wl_re
                                : "the compositor's driver could NOT import it (nothing can show it)");
         s->hdr_fmt_logged = b->format;
     }
-    if (s == g_hud_surface && (b->img || ahb_swapchain_has_ahb(b))) wnc_on_game_frame();
+    if (hud_window(s) == g_hud_surface && (b->img || ahb_swapchain_has_ahb(b))) g_hud_surface->hud_frame = 1;
 }
 
 /* ---- hooks for ahb_swapchain.c (zero-copy layers) */
@@ -966,6 +978,10 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
     wl_list_init(&s->pending_frames);
     wl_list_insert_list(s->feedback.prev, &s->pending_feedback);
     wl_list_init(&s->pending_feedback);
+    if (s == g_hud_surface && s->hud_frame) {
+        s->hud_frame = 0;
+        wnc_on_game_frame();
+    }
     constraints_surface_commit(s);
     wnc_color_commit(s->resource); /* wp_color_management_surface_v1 state (returns at once when HDR is off) */
 
@@ -1146,8 +1162,14 @@ static void subsurface_place_below(struct wl_client *c, struct wl_resource *r,
                                    struct wl_resource *sibling) {
     restack_child(wl_resource_get_user_data(r), wl_resource_get_user_data(sibling), 0);
 }
-static void subsurface_set_sync(struct wl_client *c, struct wl_resource *r) {}
-static void subsurface_set_desync(struct wl_client *c, struct wl_resource *r) {}
+static void subsurface_set_sync(struct wl_client *c, struct wl_resource *r) {
+    struct surface *s = wl_resource_get_user_data(r);
+    if (s) s->sub_sync = 1;
+}
+static void subsurface_set_desync(struct wl_client *c, struct wl_resource *r) {
+    struct surface *s = wl_resource_get_user_data(r);
+    if (s) s->sub_sync = 0;
+}
 static const struct wl_subsurface_interface subsurface_impl = {
     .destroy = subsurface_destroy,
     .set_position = subsurface_set_position,
@@ -1181,6 +1203,7 @@ static void subcompositor_get_subsurface(struct wl_client *c, struct wl_resource
     s->subsurface = sub;
     s->parent = p;
     s->below_parent = 0;
+    s->sub_sync = 1;
     s->sub_x = s->sub_y = 0;
     wl_list_insert(p->children.prev, &s->child_link); /* new subsurfaces go on top */
 }
