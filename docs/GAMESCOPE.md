@@ -131,6 +131,19 @@ which is worth knowing before building it.
   downloaded and deleted with the rest, under `gamescope/` and `steam-client/` in an archive. As a
   session starts, `LogManager` keeps the nine newest logs of each type - a type is the name without
   its start time - so that with the session's own there are never more than ten.
+- **Network page.** The client builds Settings > Internet and its connection indicator on
+  NetworkManager, which it looks for on the D-Bus system bus as it starts; without one it leaves
+  out the calls its own interface then makes ("StartScanningForNetworks is not a function") and
+  shows no connection. The network is Android's, so the session runs a system bus of its own
+  (`system-bus.conf`) with `winnative-netmanager` on it: one connection named Android, up while
+  Android has a route out, under the address the app was given. It scans and joins nothing.
+- **Which Protons run.** Only an ARM64 Proton can: arm64ec Wine with FEX inside it for the game's
+  x86 code. Valve's own entry for it stacks the arm64 Steam Linux Runtime underneath, which is
+  pressure-vessel and needs user namespaces an Android app never gets - hence `winnative-proton`,
+  the same depot without that line. The x86-64 Protons (Experimental, 10, 9, hotfix, GE) run whole
+  under Valve's FEX-Emu tool inside the x86 runtime, which needs namespaces and mounts twice over;
+  a game pinned to any of them is moved to `winnative-proton` as a session starts. Native Linux
+  x86 titles go the same FEX-Emu way and do not run.
 - **Epic games.** They are non-Steam games of the client like the others, but Epic signs a game in
   with an exchange code that lasts five minutes and is spent on first use, so a shortcut cannot
   carry one. The entry names the game in its launch options (`WN_EPIC`), `winnative-launch` hands

@@ -51,11 +51,13 @@ public final class LinuxRuntime {
     "usr/local/lib/libwnsession.so",
     "usr/local/bin/winnative-directaudio",
     "usr/local/bin/winnative-epic-launch",
+    "usr/local/bin/winnative-netmanager",
     "usr/local/bin/winnative-seed-redists",
     "usr/local/bin/winnative-session",
     "usr/local/bin/winnative-steam-compat",
     "usr/local/bin/winnative-steam-install",
     "usr/local/bin/winnative-steam-library",
+    "usr/local/share/winnative/system-bus.conf",
   };
 
   private LinuxRuntime() {}

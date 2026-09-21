@@ -145,6 +145,19 @@ case $mode in
     xprop -root -spy STEAM_TOUCH_CLICK_MODE 2>/dev/null | while read -r _ _ touch_mode; do
       [ "$touch_mode" = 0 ] || xprop -root -f STEAM_TOUCH_CLICK_MODE 32c -set STEAM_TOUCH_CLICK_MODE 0
     done &
+    # The client builds its network page and its connection indicator on NetworkManager, which
+    # it looks for on the system bus as it starts. The network is Android's, so the runtime has
+    # neither; without them Settings > Internet fails and the header shows no connection.
+    mkdir -p /run/dbus
+    rm -f /run/dbus/system_bus_socket
+    dbus-daemon --config-file=/usr/local/share/winnative/system-bus.conf --nofork --nopidfile &
+    system_bus=$!
+    for _ in $(seq 1 50); do
+      [ -S /run/dbus/system_bus_socket ] && break
+      sleep 0.1
+    done
+    winnative-netmanager &
+    netmanager=$!
     waiter=
     if [ -n "$deferred" ]; then
       (
@@ -172,6 +185,7 @@ case $mode in
       [ "$rc" -eq 42 ] || break
     done
     pkill -x xprop
+    kill "$netmanager" "$system_bus" 2>/dev/null
     [ -z "$waiter" ] || kill "$waiter" 2>/dev/null
     reap_orphans
     exit "$rc"
