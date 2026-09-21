@@ -99,6 +99,14 @@ jobs:
         # PRs restore the Gradle cache read-only; only main pushes write it.
         cache-read-only: ${{ github.event_name == 'pull_request' }}
 
+    - name: Compute version code
+      id: version
+      run: |
+        # versionCode должен монотонно расти с каждым коммитом
+        VERSION_CODE=$(git rev-list --count HEAD)
+        echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+        echo "name=1.0.$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
     - name: Decode keystore and build
       timeout-minutes: 15
       env:
@@ -106,6 +114,8 @@ jobs:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        VERSION_CODE: ${{ steps.version.outputs.code }}
+        VERSION_NAME: ${{ steps.version.outputs.name }}
         GRADLE_OPTS: -Xmx4g -XX:+UseG1GC
       run: |
         export KEYSTORE_FILE="${{ github.workspace }}/release.jks"

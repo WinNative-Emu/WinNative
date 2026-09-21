@@ -1978,10 +1978,37 @@ private fun FrameGenerationCard(state: GameSettingsStateHolder) {
 
         if (shaders != FRAMEGEN_SHADERS_NOT_OWNED) {
             Spacer(Modifier.height(SettingItemGap))
+            
+            // Существующая кнопка выбора через диалог
             SettingActionButton(
                 label = stringResource(R.string.settings_frame_generation_locate),
                 enabled = !busy,
                 onClick = { pickDll() },
+            )
+            
+            Spacer(Modifier.height(SettingTightGap))
+            
+            // НОВАЯ КНОПКА: Импорт из приватной папки приложения
+            SettingActionButton(
+                // Рекомендую позже добавить это в strings.xml как R.string.settings_frame_generation_import_from_app_folder
+                label = "Импортировать из папки приложения", 
+                enabled = !busy,
+                onClick = {
+                    state.frameGenShaderState.intValue = FRAMEGEN_SHADERS_IMPORTING
+                    scope.launch {
+                        val outcome = withContext(Dispatchers.IO) {
+                            val userDll = LosslessAutoImport.findUserProvidedDll(context)
+                            if (userDll != null) {
+                                LosslessAutoImport.importFrom(context, userDll)
+                            } else {
+                                // Если файла нет, возвращаем статус "Не найдено"
+                                LosslessAutoImport.Outcome(LosslessAutoImport.RESULT_NOT_FOUND, "")
+                            }
+                        }
+                        state.frameGenSourceName.value = outcome.sourceName
+                        state.frameGenShaderState.intValue = frameGenStateFor(outcome.result)
+                    }
+                }
             )
         }
 

@@ -16,6 +16,7 @@ data class RetroCustomColors(
     var button: Int? = null,
     var text: Int? = null,
     var shadow: Int? = null,
+    var opacity: Float = 0.55f,
 )
 
 object RetroControlLayouts {
@@ -130,6 +131,7 @@ object RetroControlLayouts {
             if (obj.has("button")) colors.button = obj.getInt("button")
             if (obj.has("text")) colors.text = obj.getInt("text")
             if (obj.has("shadow")) colors.shadow = obj.getInt("shadow")
+            if (obj.has("opacity")) colors.opacity = obj.getDouble("opacity").toFloat().coerceIn(0.2f, 1.0f)
         }
         return colors
     }
@@ -141,7 +143,7 @@ object RetroControlLayouts {
     ) {
         if (systemId == null) return
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        if (colors.body == null && colors.button == null && colors.text == null && colors.shadow == null) {
+        if (colors.body == null && colors.button == null && colors.text == null && colors.shadow == null && colors.opacity == 0.55f) {
             prefs.edit().remove(colorsKey(systemId)).apply()
             return
         }
@@ -150,6 +152,7 @@ object RetroControlLayouts {
         colors.button?.let { obj.put("button", it) }
         colors.text?.let { obj.put("text", it) }
         colors.shadow?.let { obj.put("shadow", it) }
+        obj.put("opacity", colors.opacity.toDouble())
         prefs.edit().putString(colorsKey(systemId), obj.toString()).apply()
     }
 }

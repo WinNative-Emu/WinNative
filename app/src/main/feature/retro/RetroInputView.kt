@@ -1323,6 +1323,10 @@ class RetroInputView(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (gameArea == null && !editMode) return
+
+        val alpha = (customColors.opacity * 255).toInt().coerceIn(0, 255)
+        canvas.saveLayerAlpha(0f, 0f, width.toFloat(), height.toFloat(), alpha)
+
         paint.strokeJoin = Paint.Join.ROUND
         paint.strokeCap = Paint.Cap.ROUND
         drawShellBackground(canvas)
@@ -1341,6 +1345,8 @@ class RetroInputView(
         cButtons.forEach { drawCButton(canvas, it) }
         drawThemedButton(canvas, menuButton, menuLatched)
         if (editMode) drawEditChrome(canvas)
+
+        canvas.restore()
     }
 
     private fun shadowTint(alpha: Int): Int {

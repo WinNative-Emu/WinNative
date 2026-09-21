@@ -2,6 +2,7 @@
 
 <resources>
     <!-- Common > UI Labels -->
+<string name="retro_lr_button_opacity">Прозрачность кнопок</string> 
     <string name="common_ui_app_name">WinNative</string>
     <string name="common_ui_run">Run</string>
     <string name="common_ui_edit">Edit</string>

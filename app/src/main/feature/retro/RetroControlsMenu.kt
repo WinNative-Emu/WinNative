@@ -154,6 +154,18 @@ object RetroControlsMenu {
                 },
             )
             add(
+                RetroMenuEntry.Slider(
+                    label = context.getString(R.string.retro_lr_button_opacity),
+                    valueText = "${(colors.opacity * 100).toInt()}%",
+                    value = colors.opacity,
+                    min = 0.2f,
+                    max = 1.0f,
+                    step = 0.05f,
+                ) { value ->
+                    persistColors { it.opacity = value }
+                },
+            )
+            add(
                 RetroMenuEntry.Action(context.getString(R.string.retro_lr_reset_colors), RetroDrawerIcons.Reset) {
                     val fresh = RetroCustomColors()
                     RetroControlLayouts.saveColors(context, host.systemId, fresh)

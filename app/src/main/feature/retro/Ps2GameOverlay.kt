@@ -690,6 +690,19 @@ object Ps2GameOverlay {
                     },
                 )
                 add(
+                    RetroMenuEntry.Slider(
+                        label = activity.getString(R.string.retro_lr_button_opacity),
+                        valueText = "${(customColors.opacity * 100).toInt()}%",
+                        value = customColors.opacity,
+                        min = 0.2f,
+                        max = 1.0f,
+                        step = 0.05f,
+                    ) { value ->
+                        customColors = customColors.copy(opacity = value)
+                        persistColors()
+                    },
+                )
+                add(
                     RetroMenuEntry.Action(activity.getString(R.string.retro_ps2_reset_colors), RetroDrawerIcons.Reset) {
                         customColors = RetroCustomColors()
                         persistColors()
