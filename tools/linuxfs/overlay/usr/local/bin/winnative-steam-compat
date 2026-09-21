@@ -35,8 +35,10 @@ BUILTIN_TOOL = re.compile(r'^"proton', re.IGNORECASE)
 NOT_GAMES = frozenset((
     "228980",    # Steamworks Common Redistributables
     "1070560",   # Steam Linux Runtime 1.0 (scout)
+    "1161040",   # Proton BattlEye Runtime
     "1391110",   # Steam Linux Runtime 2.0 (soldier)
     "1493710",   # Proton Experimental
+    "1826330",   # Proton EasyAntiCheat Runtime
     "3127680",   # FEX
     "4183110",   # Steam Linux Runtime 4.0
     "4185400",   # Steam Linux Runtime 4.0 - Arm64

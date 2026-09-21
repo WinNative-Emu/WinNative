@@ -143,7 +143,10 @@ which is worth knowing before building it.
   the same depot without that line. The x86-64 Protons (Experimental, 10, 9, hotfix, GE) run whole
   under Valve's FEX-Emu tool inside the x86 runtime, which needs namespaces and mounts twice over;
   a game pinned to any of them is moved to `winnative-proton` as a session starts. Native Linux
-  x86 titles go the same FEX-Emu way and do not run.
+  x86 titles go the same FEX-Emu way and do not run. Valve names a Proton of its own for thousands
+  of titles at a priority above the client's default, and installing one has the client fetch
+  that x86 Proton, its runtime and FEX; so `LinuxSteamShortcuts` sets every game the store's
+  account owns to `winnative-proton` before the client can install it.
 - **Epic games.** They are non-Steam games of the client like the others, but Epic signs a game in
   with an exchange code that lasts five minutes and is spent on first use, so a shortcut cannot
   carry one. The entry names the game in its launch options (`WN_EPIC`), `winnative-launch` hands

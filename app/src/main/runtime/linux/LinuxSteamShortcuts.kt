@@ -3,16 +3,21 @@ package com.winlator.cmod.runtime.linux
 import android.content.Context
 import android.os.Environment
 import android.util.Log
+import com.winlator.cmod.app.db.PluviaDatabase
 import com.winlator.cmod.feature.library.LinuxApps
 import com.winlator.cmod.feature.retro.RetroShortcuts
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutUtils
 import com.winlator.cmod.feature.stores.epic.data.EpicGame
+import com.winlator.cmod.feature.stores.steam.enums.AppType
+import com.winlator.cmod.feature.stores.steam.service.SteamService
 import com.winlator.cmod.feature.stores.steam.utils.KeyValue
 import com.winlator.cmod.feature.stores.steam.utils.PrefManager
 import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.container.Shortcut
 import com.winlator.cmod.runtime.linux.LinuxSteamVdf.STEAM_KEY
 import com.winlator.cmod.runtime.system.SessionKeepAliveService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
@@ -93,7 +98,8 @@ object LinuxSteamShortcuts {
             }
         }
         try {
-            mapTool(File(steamRoot, "config/config.vdf"), games, retired - games.map { it.appId }.toSet())
+            val mapped = games.map { unsigned(it.appId).toString() } + ownedSteamGames(context)
+            mapTool(File(steamRoot, "config/config.vdf"), mapped, retired - games.map { it.appId }.toSet())
         } catch (e: Exception) {
             Log.w(TAG, "could not set the compatibility tool: ${e.javaClass.simpleName}")
         }
@@ -251,14 +257,29 @@ object LinuxSteamShortcuts {
         return if (named.any { it.contains("%command%") }) named.joinToString(" ") else (named + "%command%").joinToString(" ")
     }
 
-    private fun mapTool(config: File, games: List<Game>, retired: Set<Int>) {
+    /**
+     * The Steam games the store's account owns, which are set to the ARM64 tool before the client
+     * installs any of them. Valve names a Proton of its own for thousands of titles, and that
+     * beats the client's default: installing one has the client fetch an x86-64 Proton, its
+     * runtime and FEX - gigabytes that cannot run here - and the game then fails to start.
+     */
+    private fun ownedSteamGames(context: Context): List<String> =
+        try {
+            runBlocking(Dispatchers.IO) { PluviaDatabase.getInstance(context).steamAppDao().getAllAsList() }
+                .filter { it.packageId != SteamService.INVALID_PKG_ID && (it.type == AppType.game || it.type == AppType.demo) }
+                .map { it.id.toString() }
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "the Steam library is unavailable: ${e.javaClass.simpleName}")
+            emptyList()
+        }
+
+    private fun mapTool(config: File, apps: List<String>, retired: Set<Int>) {
         // The client writes this file on its first start; until then there is nothing to add to.
         if (!config.isFile) return
         val tree = LinuxSteamVdf.load(config, "InstallConfigStore")
         val mapping = LinuxSteamVdf.section(tree, STEAM_KEY + "CompatToolMapping")
         var changed = mapping.children.removeAll { entry -> retired.any { unsigned(it).toString() == entry.name } }
-        for (game in games) {
-            val key = unsigned(game.appId).toString()
+        for (key in apps) {
             if (mapping[key] !== KeyValue.INVALID) continue
             mapping.children +=
                 KeyValue(key).apply {
