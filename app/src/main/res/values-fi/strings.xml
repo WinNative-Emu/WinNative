@@ -2944,4 +2944,13 @@ Asennuspolku:
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>
     <string name="gamescope_fex_summary">Games here run on the FEX that Steam\'s Proton (ARM64) carries, for 64-bit and 32-bit titles alike. The FEXCore, Box64 and WoWBox64 builds installed in WinNative are not used; the preset is.</string>
+    <string name="settings_drivers_android">Android</string>
+    <string name="settings_drivers_linux">Linux</string>
+    <string name="settings_drivers_platform_hint">Valitse ajurin asennuskohde. Tunnistetut paketit käyttävät automaattisesti oikeaa alustaa.</string>
+    <string name="settings_drivers_restore_defaults">Palauta oletukset</string>
+    <string name="settings_drivers_defaults_present">Oletuslähteet ovat jo käytössä</string>
+    <string name="settings_drivers_active">Aktiivinen</string>
+    <string name="settings_drivers_bundled">Mukana tuleva Mesa</string>
+    <string name="settings_drivers_legacy">Linux-asiakasohjelman ajuri</string>
+    <string name="settings_drivers_routed">Ajuri tunnistettiin ja asennettiin alustalle %1$s.</string>
 </resources>

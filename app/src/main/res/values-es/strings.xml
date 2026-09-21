@@ -2946,5 +2946,14 @@ Ruta instalada:
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>
     <string name="gamescope_fex_summary">Games here run on the FEX that Steam\'s Proton (ARM64) carries, for 64-bit and 32-bit titles alike. The FEXCore, Box64 and WoWBox64 builds installed in WinNative are not used; the preset is.</string>
+    <string name="settings_drivers_android">Android</string>
+    <string name="settings_drivers_linux">Linux</string>
+    <string name="settings_drivers_platform_hint">Elige dónde instalar el controlador. Los paquetes reconocidos usan automáticamente la plataforma correcta.</string>
+    <string name="settings_drivers_restore_defaults">Restaurar valores predeterminados</string>
+    <string name="settings_drivers_defaults_present">Los repositorios predeterminados ya están presentes</string>
+    <string name="settings_drivers_active">Activo</string>
+    <string name="settings_drivers_bundled">Mesa incluido</string>
+    <string name="settings_drivers_legacy">Controlador del cliente Linux</string>
+    <string name="settings_drivers_routed">Controlador identificado e instalado para %1$s.</string>
 </resources>
 

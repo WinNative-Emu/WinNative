@@ -102,19 +102,12 @@ public final class LinuxRuntime {
 
   /** Worker thread. The Mesa release of the driver sessions draw with. */
   public static String driverName(Context context) {
-    if (downloadedDriverVersion(context) > TURNIP_BUILD) {
-      String name = FileUtils.readString(new File(driverDir(context), DRIVER_NAME_FILE));
-      if (name != null && !name.trim().isEmpty()) return name.trim();
-    }
-    return TURNIP_VERSION;
+    return com.winlator.cmod.runtime.content.DriverPackages.selectedLinuxName(context);
   }
 
-  /**
-   * Worker thread. The Vulkan ICD manifest for the device GPU: the downloaded driver's while it is
-   * newer than the shipped one, else the one the rootfs carries, or null when it has none.
-   */
   public static File vulkanIcd(Context context) {
-    if (downloadedDriverVersion(context) > TURNIP_BUILD) return new File(driverDir(context), DRIVER_ICD);
+    File selected = com.winlator.cmod.runtime.content.DriverPackages.selectedLinuxIcd(context);
+    if (selected != null) return selected;
     File icdDir = new File(rootDir(context), "usr/share/vulkan/icd.d");
     File[] manifests = icdDir.listFiles((dir, name) -> name.endsWith(".json"));
     if (manifests == null) return null;

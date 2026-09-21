@@ -85,6 +85,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.winlator.cmod.runtime.content.DriverPackages.Platform
 import com.winlator.cmod.R
 import com.winlator.cmod.shared.ui.dialog.PopupDialog
 import androidx.compose.ui.focus.FocusRequester
@@ -125,6 +126,7 @@ private fun Modifier.noRippleClickable(
 
 // State
 data class DriversState(
+    val platform: Platform = Platform.ANDROID,
     val installedDrivers: List<InstalledDriverItem> = emptyList(),
     val sources: List<DriverRepo> = emptyList(),
     val releasesBySource: Map<String, List<DriverReleaseItem>> = emptyMap(),
@@ -152,7 +154,8 @@ data class DownloadProgress(
 )
 
 data class InstalledDriverItem(
-    val id: String,
+    val selected: Boolean = false,
+    val removable: Boolean = true,    val id: String,
     val name: String,
     val version: String,
 )
@@ -182,7 +185,9 @@ data class DriverAssetItem(
 @Composable
 fun DriversScreen(
     state: DriversState,
-    onInstallFromFile: () -> Unit,
+    onInstallFromFile: (Platform) -> Unit,
+    onPlatformSelected: (Platform) -> Unit,
+    onSelectDriver: (InstalledDriverItem) -> Unit,
     onSourceTapped: (DriverRepo) -> Unit,
     onReleaseTapped: (DriverReleaseItem) -> Unit,
     onDownloadAsset: (DriverAssetItem) -> Unit,
@@ -193,6 +198,7 @@ fun DriversScreen(
     onRestoreDefaultRepos: () -> Unit,
     bridge: SettingsNavBridge? = null,
 ) {
+    var showInstallDialog by remember { mutableStateOf(false) }
     var showAddRepoDialog by remember { mutableStateOf(false) }
     var editingRepo by remember { mutableStateOf<Pair<Int, DriverRepo>?>(null) }
     var driverPendingRemoval by remember { mutableStateOf<InstalledDriverItem?>(null) }
@@ -203,6 +209,26 @@ fun DriversScreen(
     val navBarEndPadding = navBarPadding.calculateEndPadding(layoutDirection)
     val navBarBottomPadding = navBarPadding.calculateBottomPadding()
     val contentNav = rememberSettingsContentNav(bridge)
+
+    if (showInstallDialog) {
+        val nav = remember { PaneNavRegistry() }
+        Dialog(onDismissRequest = { showInstallDialog = false }) {
+            DialogPaneNav(nav, onDismiss = { showInstallDialog = false })
+            CompositionLocalProvider(LocalPaneNav provides nav) {
+                Column(
+                    modifier = Modifier.widthIn(max = 360.dp).clip(RoundedCornerShape(14.dp)).background(CardDark).padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text(stringResource(R.string.settings_drivers_install), color = TextPrimary)
+                    Text(stringResource(R.string.settings_drivers_platform_hint), color = TextSecondary)
+                    PlatformOptions(state.platform) { platform ->
+                        showInstallDialog = false
+                        onInstallFromFile(platform)
+                    }
+                }
+            }
+        }
+    }
 
     if (showAddRepoDialog || editingRepo != null) {
         val editing = editingRepo
@@ -287,10 +313,11 @@ fun DriversScreen(
                     ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            PlatformOptions(state.platform, onPlatformSelected)
             HeroHeader(
                 installedCount = state.installedDrivers.size,
                 repoCount = state.sources.size,
-                onInstall = onInstallFromFile,
+                onInstall = { showInstallDialog = true },
                 onAddRepo = { showAddRepoDialog = true },
             )
 
@@ -308,6 +335,7 @@ fun DriversScreen(
                         InstalledDriverCard(
                             driver = driver,
                             onRemove = { driverPendingRemoval = driver },
+                            onSelect = if (state.platform == Platform.LINUX) ({ onSelectDriver(driver) }) else null,
                         )
                     }
                 }
@@ -326,7 +354,7 @@ fun DriversScreen(
                 )
                 if (state.hasMissingDefaults) {
                     SmallPillButton(
-                        label = "Restore defaults",
+                        label = stringResource(R.string.settings_drivers_restore_defaults),
                         icon = Icons.Outlined.Restore,
                         tint = Accent,
                         onClick = onRestoreDefaultRepos,
@@ -360,6 +388,25 @@ fun DriversScreen(
             }
 
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun PlatformOptions(selected: Platform, onSelect: (Platform) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Platform.entries.forEach { platform ->
+            val label = stringResource(if (platform == Platform.ANDROID) R.string.settings_drivers_android else R.string.settings_drivers_linux)
+            Box(
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
+                    .background(if (selected == platform) Accent.copy(alpha = 0.22f) else CardDark)
+                    .border(1.dp, if (selected == platform) Accent else CardBorder, RoundedCornerShape(10.dp))
+                    .paneNavItem(cornerRadius = 10.dp, onActivate = { onSelect(platform) }, highlightColor = NavHighlight, tapToSelect = true)
+                    .padding(14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(label, color = if (selected == platform) Accent else TextPrimary, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -590,6 +637,7 @@ private fun SectionLabel(
 private fun InstalledDriverCard(
     driver: InstalledDriverItem,
     onRemove: () -> Unit,
+    onSelect: (() -> Unit)?,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Box(
@@ -643,7 +691,14 @@ private fun InstalledDriverCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Box {
+            if (onSelect != null) {
+                HeroButton(
+                    label = stringResource(if (driver.selected) R.string.settings_drivers_active else R.string.common_ui_select),
+                    icon = Icons.Outlined.Check,
+                    onClick = onSelect,
+                )
+            }
+            if (driver.removable) Box {
                 IconTapButton(
                     icon = Icons.Outlined.MoreVert,
                     tint = TextSecondary,
@@ -665,7 +720,7 @@ private fun InstalledDriverCard(
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    text = "Remove",
+                                    text = stringResource(R.string.common_ui_remove),
                                     color = DangerRed,
                                     fontSize = 13.sp,
                                 )

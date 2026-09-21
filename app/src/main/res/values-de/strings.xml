@@ -2946,4 +2946,13 @@ Installierter Pfad:
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>
     <string name="gamescope_fex_summary">Games here run on the FEX that Steam\'s Proton (ARM64) carries, for 64-bit and 32-bit titles alike. The FEXCore, Box64 and WoWBox64 builds installed in WinNative are not used; the preset is.</string>
+    <string name="settings_drivers_android">Android</string>
+    <string name="settings_drivers_linux">Linux</string>
+    <string name="settings_drivers_platform_hint">Wähle, wo der Treiber installiert werden soll. Erkannte Pakete verwenden automatisch die richtige Plattform.</string>
+    <string name="settings_drivers_restore_defaults">Standard wiederherstellen</string>
+    <string name="settings_drivers_defaults_present">Standardquellen sind bereits vorhanden</string>
+    <string name="settings_drivers_active">Aktiv</string>
+    <string name="settings_drivers_bundled">Mitgeliefertes Mesa</string>
+    <string name="settings_drivers_legacy">Linux-Client-Treiber</string>
+    <string name="settings_drivers_routed">Treiber erkannt und für %1$s installiert.</string>
 </resources>

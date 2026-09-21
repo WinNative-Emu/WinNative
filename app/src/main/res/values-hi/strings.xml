@@ -2879,4 +2879,13 @@
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>
     <string name="gamescope_fex_summary">Games here run on the FEX that Steam\'s Proton (ARM64) carries, for 64-bit and 32-bit titles alike. The FEXCore, Box64 and WoWBox64 builds installed in WinNative are not used; the preset is.</string>
+    <string name="settings_drivers_android">Android</string>
+    <string name="settings_drivers_linux">Linux</string>
+    <string name="settings_drivers_platform_hint">ड्राइवर कहाँ इंस्टॉल करना है, चुनें। पहचाने गए पैकेज अपने आप सही प्लेटफ़ॉर्म का उपयोग करते हैं।</string>
+    <string name="settings_drivers_restore_defaults">डिफ़ॉल्ट बहाल करें</string>
+    <string name="settings_drivers_defaults_present">डिफ़ॉल्ट रिपॉज़िटरी पहले से मौजूद हैं</string>
+    <string name="settings_drivers_active">सक्रिय</string>
+    <string name="settings_drivers_bundled">बंडल किया गया Mesa</string>
+    <string name="settings_drivers_legacy">Linux क्लाइंट ड्राइवर</string>
+    <string name="settings_drivers_routed">ड्राइवर की पहचान करके %1$s के लिए इंस्टॉल किया गया।</string>
 </resources>
