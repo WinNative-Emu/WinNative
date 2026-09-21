@@ -168,6 +168,8 @@ fun StoresScreen(
     val contentNav = rememberSettingsContentNav(bridge)
     val context = LocalContext.current
     val linuxClient by LinuxClientInstaller.state.collectAsState()
+    var linuxProtonsDialog by rememberSaveable { mutableStateOf(false) }
+    if (linuxProtonsDialog) LinuxProtonsDialog { linuxProtonsDialog = false }
     var linuxClientDialog by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) { LinuxClientInstaller.refresh(context) }
     if (linuxClientDialog) {
@@ -178,6 +180,7 @@ fun StoresScreen(
                 LinuxClientInstaller.cancel()
                 linuxClientDialog = false
             },
+            onProtons = { linuxClientDialog = false; linuxProtonsDialog = true },
             onDismiss = { linuxClientDialog = false },
         )
     }

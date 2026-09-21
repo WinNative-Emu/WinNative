@@ -2960,5 +2960,9 @@ Zainstalowana ścieżka:
     <string name="settings_drivers_bundled">Dołączona Mesa</string>
     <string name="settings_drivers_legacy">Sterownik klienta Linux</string>
     <string name="settings_drivers_routed">Rozpoznano sterownik i zainstalowano dla %1$s.</string>
+    <string name="linux_protons_title">Wersje Proton dla Linuksa</string>
+    <string name="linux_protons_hint">Po instalacji uruchom ponownie klienta Linuksa. Wybierz wersję dla każdej gry w Steam → Właściwości → Zgodność.</string>
+    <string name="linux_protons_failed">Nie udało się wczytać lub zainstalować Proton. Sprawdź połączenie i wolne miejsce, a następnie spróbuj ponownie.</string>
+    <string name="linux_protons_requires_runtime">Najpierw zainstaluj klienta Linuksa, a następnie wróć tutaj, aby pobrać wersje Proton.</string>
 </resources>
 

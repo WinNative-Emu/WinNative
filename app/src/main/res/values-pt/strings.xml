@@ -2952,4 +2952,8 @@ Caminho instalado:
     <string name="settings_drivers_bundled">Mesa incluído</string>
     <string name="settings_drivers_legacy">Controlador do cliente Linux</string>
     <string name="settings_drivers_routed">Controlador identificado e instalado para %1$s.</string>
+    <string name="linux_protons_title">Versões do Proton para Linux</string>
+    <string name="linux_protons_hint">Reinicia o cliente Linux após a instalação. Escolhe uma versão para cada jogo em Steam → Propriedades → Compatibilidade.</string>
+    <string name="linux_protons_failed">Não foi possível carregar ou instalar o Proton. Verifica a ligação e o espaço livre e tenta novamente.</string>
+    <string name="linux_protons_requires_runtime">Instala primeiro o cliente Linux e volta aqui para transferir versões do Proton.</string>
 </resources>

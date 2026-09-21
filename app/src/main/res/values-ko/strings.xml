@@ -2955,5 +2955,9 @@
     <string name="settings_drivers_bundled">기본 제공 Mesa</string>
     <string name="settings_drivers_legacy">Linux 클라이언트 드라이버</string>
     <string name="settings_drivers_routed">드라이버를 식별하여 %1$s용으로 설치했습니다.</string>
+    <string name="linux_protons_title">Linux용 Proton 빌드</string>
+    <string name="linux_protons_hint">설치 후 Linux 클라이언트를 다시 시작하세요. 각 게임의 Steam → 속성 → 호환성에서 빌드를 선택하세요.</string>
+    <string name="linux_protons_failed">Proton을 불러오거나 설치하지 못했습니다. 연결과 여유 공간을 확인한 후 다시 시도하세요.</string>
+    <string name="linux_protons_requires_runtime">먼저 Linux 클라이언트를 설치한 후 여기로 돌아와 Proton 빌드를 다운로드하세요.</string>
 </resources>
 

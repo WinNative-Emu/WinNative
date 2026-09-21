@@ -2953,4 +2953,8 @@
     <string name="settings_drivers_bundled">同梱のMesa</string>
     <string name="settings_drivers_legacy">Linuxクライアントのドライバー</string>
     <string name="settings_drivers_routed">ドライバーを識別し、%1$s用としてインストールしました。</string>
+    <string name="linux_protons_title">Linux 用 Proton ビルド</string>
+    <string name="linux_protons_hint">インストール後に Linux クライアントを再起動してください。各ゲームの Steam → プロパティ → 互換性でビルドを選択できます。</string>
+    <string name="linux_protons_failed">Proton を読み込むかインストールできませんでした。接続と空き容量を確認して再試行してください。</string>
+    <string name="linux_protons_requires_runtime">先に Linux クライアントをインストールしてから、ここに戻って Proton ビルドをダウンロードしてください。</string>
 </resources>

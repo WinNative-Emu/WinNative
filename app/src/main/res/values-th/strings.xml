@@ -2952,4 +2952,8 @@
     <string name="settings_drivers_bundled">Mesa ที่มาพร้อมแอป</string>
     <string name="settings_drivers_legacy">ไดรเวอร์ไคลเอนต์ Linux</string>
     <string name="settings_drivers_routed">ระบุไดรเวอร์และติดตั้งสำหรับ %1$s แล้ว</string>
+    <string name="linux_protons_title">รุ่น Proton สำหรับ Linux</string>
+    <string name="linux_protons_hint">เริ่มไคลเอนต์ Linux ใหม่หลังติดตั้ง เลือกรุ่นสำหรับแต่ละเกมใน Steam → คุณสมบัติ → ความเข้ากันได้</string>
+    <string name="linux_protons_failed">ไม่สามารถโหลดหรือติดตั้ง Proton ได้ โปรดตรวจสอบการเชื่อมต่อและพื้นที่ว่างแล้วลองอีกครั้ง</string>
+    <string name="linux_protons_requires_runtime">ติดตั้งไคลเอนต์ Linux ก่อน แล้วกลับมาที่นี่เพื่อดาวน์โหลดรุ่น Proton</string>
 </resources>

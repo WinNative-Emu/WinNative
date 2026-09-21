@@ -2955,4 +2955,8 @@ Installeret sti:
     <string name="settings_drivers_bundled">Medfølgende Mesa</string>
     <string name="settings_drivers_legacy">Linux-klientdriver</string>
     <string name="settings_drivers_routed">Driveren blev identificeret og installeret til %1$s.</string>
+    <string name="linux_protons_title">Proton-versioner til Linux</string>
+    <string name="linux_protons_hint">Genstart Linux-klienten efter installationen. Vælg en version for hvert spil i Steam → Egenskaber → Kompatibilitet.</string>
+    <string name="linux_protons_failed">Proton kunne ikke indlæses eller installeres. Kontrollér forbindelsen og ledig plads, og prøv igen.</string>
+    <string name="linux_protons_requires_runtime">Installer først Linux-klienten, og vend derefter tilbage hertil for at hente Proton-versioner.</string>
 </resources>

@@ -2888,4 +2888,8 @@
     <string name="settings_drivers_bundled">बंडल किया गया Mesa</string>
     <string name="settings_drivers_legacy">Linux क्लाइंट ड्राइवर</string>
     <string name="settings_drivers_routed">ड्राइवर की पहचान करके %1$s के लिए इंस्टॉल किया गया।</string>
+    <string name="linux_protons_title">Linux के लिए Proton बिल्ड</string>
+    <string name="linux_protons_hint">इंस्टॉल करने के बाद Linux क्लाइंट फिर से शुरू करें। हर गेम के लिए Steam → गुण → संगतता में बिल्ड चुनें।</string>
+    <string name="linux_protons_failed">Proton लोड या इंस्टॉल नहीं हो सका। कनेक्शन और खाली जगह की जाँच करके फिर से प्रयास करें।</string>
+    <string name="linux_protons_requires_runtime">पहले Linux क्लाइंट इंस्टॉल करें, फिर Proton बिल्ड डाउनलोड करने के लिए यहाँ लौटें।</string>
 </resources>

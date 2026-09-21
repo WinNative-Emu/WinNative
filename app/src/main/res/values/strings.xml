@@ -2968,4 +2968,8 @@ Installed path:
     <string name="settings_drivers_bundled">Bundled Mesa</string>
     <string name="settings_drivers_legacy">Linux Client driver</string>
     <string name="settings_drivers_routed">Driver identified and installed for %1$s.</string>
+    <string name="linux_protons_title">Linux Proton builds</string>
+    <string name="linux_protons_hint">Restart the Linux client after installing. Choose a build in Steam → Properties → Compatibility for each game.</string>
+    <string name="linux_protons_failed">Could not load or install Proton. Check your connection and free space, then retry.</string>
+    <string name="linux_protons_requires_runtime">Install the Linux client first, then return here to download Proton builds.</string>
 </resources>

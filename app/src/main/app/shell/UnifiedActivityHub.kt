@@ -168,6 +168,7 @@ import com.winlator.cmod.feature.library.LinuxApps
 import com.winlator.cmod.feature.settings.InputControlsFragment
 import com.winlator.cmod.feature.stores.steam.enums.AppType
 import com.winlator.cmod.feature.settings.LinuxClientDialog
+import com.winlator.cmod.feature.settings.LinuxProtonsDialog
 import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.feature.settings.SettingsFocusZone
 import com.winlator.cmod.feature.settings.SettingsHost
@@ -349,6 +350,7 @@ internal fun UnifiedActivity.UnifiedHub() {
     val steamAppsOrNull by db.steamAppDao().getAllOwnedApps().collectAsState(initial = null)
     val steamApps = steamAppsOrNull ?: emptyList()
     val context = LocalContext.current
+    var showLinuxProtons by rememberSaveable { mutableStateOf(false) }
     var showLinuxClient by rememberSaveable { mutableStateOf(false) }
     val linuxClient by LinuxClientInstaller.state.collectAsState()
     // An install finishing adds the Steam entry, which the Library has to read again to show.
@@ -1239,11 +1241,13 @@ internal fun UnifiedActivity.UnifiedHub() {
         )
     }
 
+    if (showLinuxProtons) LinuxProtonsDialog { showLinuxProtons = false }
     if (showLinuxClient) {
         LinuxClientDialog(
             state = linuxClient,
             onStart = { LinuxClientInstaller.start(context) },
             onCancelInstall = { LinuxClientInstaller.cancel() },
+            onProtons = { showLinuxClient = false; showLinuxProtons = true },
             onDismiss = { showLinuxClient = false },
         )
     }

@@ -2959,5 +2959,9 @@
     <string name="settings_drivers_bundled">Вбудований Mesa</string>
     <string name="settings_drivers_legacy">Драйвер клієнта Linux</string>
     <string name="settings_drivers_routed">Драйвер розпізнано й установлено для %1$s.</string>
+    <string name="linux_protons_title">Збірки Proton для Linux</string>
+    <string name="linux_protons_hint">Після встановлення перезапустіть клієнт Linux. Виберіть збірку для кожної гри в Steam → Властивості → Сумісність.</string>
+    <string name="linux_protons_failed">Не вдалося завантажити або встановити Proton. Перевірте з’єднання та вільне місце й повторіть спробу.</string>
+    <string name="linux_protons_requires_runtime">Спочатку встановіть клієнт Linux, а потім поверніться сюди, щоб завантажити збірки Proton.</string>
 </resources>
 

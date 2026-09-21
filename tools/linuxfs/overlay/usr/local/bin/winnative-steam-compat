@@ -14,6 +14,8 @@
 #
 #   winnative-steam-compat <steam root>
 import os
+import json
+import shutil
 import re
 import sys
 
@@ -168,7 +170,7 @@ def serialize(tokens):
     return "\n".join(out) + "\n"
 
 
-def redirect_builtin_tools(tokens, mapping):
+def redirect_builtin_tools(tokens, mapping, protected=()):
     """Points a game pinned to one of Steam's own Proton entries at this tool instead.
 
     Those entries are launched through the Steam Linux Runtime's entry point, which builds a
@@ -183,7 +185,7 @@ def redirect_builtin_tools(tokens, mapping):
             child = i + 1
             child_end = block_end(tokens, child)
             for j in range(child + 1, child_end):
-                if tokens[j] == '"name"' and j + 1 < child_end and BUILTIN_TOOL.match(tokens[j + 1]):
+                if tokens[j] == '"name"' and j + 1 < child_end and BUILTIN_TOOL.match(tokens[j + 1]) and tokens[j + 1].strip('"') not in protected:
                     tokens[j + 1] = '"%s"' % TOOL
                     changed = True
             i = child_end + 1
@@ -208,7 +210,7 @@ def mapped_apps(steam_root):
     return sorted(apps.union(ANTICHEAT_RUNTIMES), key=int)
 
 
-def register_default(config_path, apps=()):
+def register_default(config_path, apps=(), protected=()):
     with open(config_path, encoding="utf-8", errors="replace") as f:
         tokens = tokenize(f.read())
     steam = find_block(tokens, ["InstallConfigStore", "Software", "Valve", "Steam"])
@@ -226,7 +228,7 @@ def register_default(config_path, apps=()):
         if find_block(tokens[mapping + 1:], ["0"]) is None:
             tokens[mapping + 1:mapping + 1] = entry
             changed = True
-        if redirect_builtin_tools(tokens, mapping):
+        if redirect_builtin_tools(tokens, mapping, protected):
             changed = True
         # "0" is the client's "Steam Play for all other titles", and it only decides how a title is
         # installed: anything already installed as a Linux build keeps running as one. An entry per
@@ -296,8 +298,49 @@ def register_tool(steam_root, depot):
     os.chmod(os.path.join(tool_dir, "winnative-launch"), 0o755)
 
 
+def register_extras(steam_root):
+    tools = os.path.join(steam_root, "compatibilitytools.d")
+    names = set()
+    for directory in sorted(os.listdir(tools)) if os.path.isdir(tools) else ():
+        path = os.path.join(tools, directory)
+        marker = os.path.join(path, "winnative-proton.json")
+        if not os.path.isfile(marker):
+            continue
+        try:
+            with open(marker, encoding="utf-8") as source:
+                build = json.load(source)
+            if build["id"] != directory or not re.fullmatch(r"[A-Za-z0-9_-][A-Za-z0-9._-]*", directory):
+                continue
+            manifest = os.path.join(path, "toolmanifest.vdf")
+            original = manifest + ".winnative-original"
+            if not os.path.isfile(original):
+                shutil.copy2(manifest, original)
+            with open(original, encoding="utf-8") as source:
+                tokens = tokenize(source.read())
+            command = next(tokens[i + 1].strip('"') for i, token in enumerate(tokens[:-1]) if token.lower() == '"commandline"')
+            if command.split()[0] != "/proton" or not os.path.isfile(os.path.join(path, "proton")):
+                continue
+            compat = os.path.join(path, "compatibilitytool.vdf")
+            with open(compat, encoding="utf-8") as source:
+                tokens = tokenize(source.read())
+            block = find_block(tokens, ["compatibilitytools", "compat_tools"])
+            if block is None:
+                continue
+            name = next(tokens[i].strip('"') for i in range(block + 1, block_end(tokens, block)) if tokens[i + 1] == "{")
+            with open(os.path.join(path, "winnative-launch"), "w", encoding="utf-8") as output:
+                output.write(LAUNCHER)
+            os.chmod(os.path.join(path, "winnative-launch"), 0o755)
+            with open(manifest, "w", encoding="utf-8") as output:
+                output.write(TOOLMANIFEST)
+            names.add(name)
+        except (OSError, ValueError, KeyError, StopIteration, IndexError) as error:
+            print("winnative-steam-compat: could not register %s: %s" % (directory, error), file=sys.stderr)
+    return names
+
+
 def main():
     steam_root = sys.argv[1]
+    extras = register_extras(steam_root)
     depot = find_depot(steam_root)
     if depot is None:
         print("winnative-steam-compat: no ARM64 Proton depot yet; the client fetches it on first use",
@@ -308,7 +351,7 @@ def main():
     config = os.path.join(steam_root, "config", "config.vdf")
     if os.path.isfile(config):
         apps = mapped_apps(steam_root)
-        register_default(config, apps)
+        register_default(config, apps, extras)
         print("winnative-steam-compat: %d app(s) set to %s" % (len(apps), TOOL))
 
 

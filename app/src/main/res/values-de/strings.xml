@@ -2955,4 +2955,8 @@ Installierter Pfad:
     <string name="settings_drivers_bundled">Mitgeliefertes Mesa</string>
     <string name="settings_drivers_legacy">Linux-Client-Treiber</string>
     <string name="settings_drivers_routed">Treiber erkannt und für %1$s installiert.</string>
+    <string name="linux_protons_title">Linux-Proton-Versionen</string>
+    <string name="linux_protons_hint">Starte den Linux-Client nach der Installation neu. Wähle für jedes Spiel eine Version unter Steam → Eigenschaften → Kompatibilität.</string>
+    <string name="linux_protons_failed">Proton konnte nicht geladen oder installiert werden. Prüfe Verbindung und freien Speicher und versuche es erneut.</string>
+    <string name="linux_protons_requires_runtime">Installiere zuerst den Linux-Client und kehre dann hierher zurück, um Proton-Versionen herunterzuladen.</string>
 </resources>
