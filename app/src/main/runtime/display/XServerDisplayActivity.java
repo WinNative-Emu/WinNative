@@ -513,6 +513,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private static final long WAYLAND_RENDERER_POLL_MS = 2000L;
     private static final long WAYLAND_RENDERER_SETTLED_POLL_MS = 15000L;
     private static final long WAYLAND_RENDERER_SESSION_POLL_MS = 5000L;
+    private static final long LINUX_SESSION_START_MS = 20000L;
     private Thread waylandRendererThread;
     /* The process behind the window the compositor is showing, from the compositor itself. */
     private volatile int waylandGamePid;
@@ -8986,16 +8987,29 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         EnvVars hostEnv = new EnvVars();
         hostEnv.put("PROOT_LOADER", LinuxRuntime.prootLoader(this).getPath());
         hostEnv.put("PROOT_TMP_DIR", getCacheDir().getPath());
+        if (!reusingSession && !LinuxRuntime.seccompWorks(this)) {
+            LogManager.log(TAG, "proot: seccomp acceleration does not work on this kernel; tracing every system call", this);
+            hostEnv.put(LinuxRuntime.ENV_NO_SECCOMP, "1");
+        }
         List<String> binds = new ArrayList<>(com.winlator.cmod.feature.library.LinuxSteamLibrary.prepare(
                 this, LinuxRuntime.rootDir(this)));
         if (!reusingSession) binds.addAll(com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.sync(this));
         List<String> command = LinuxRuntime.command(this, imageFs, runtimeDir,
                 android.os.Environment.getExternalStorageDirectory(), devInputDir, binds, guest);
+        final long startedAt = android.os.SystemClock.elapsedRealtime();
         LinuxProgramLauncherComponent launcher = new LinuxProgramLauncherComponent(
                 command, hostEnv, LinuxRuntime.rootDir(this), (status) -> {
                     LogManager.log(TAG, "Linux session [" + String.join(" ", session)
                             + "] ended with status: " + status, this);
-                    exit();
+                    // A session that is gone before anything could be drawn did not start; leaving
+                    // without a word looks like a button that does nothing.
+                    boolean neverStarted = status != 0 && !exitRequested.get()
+                            && android.os.SystemClock.elapsedRealtime() - startedAt < LINUX_SESSION_START_MS;
+                    if (neverStarted) {
+                        reportLaunchFailure(new LinuxSessionUnavailable(getString(R.string.linux_session_failed)));
+                    } else {
+                        exit();
+                    }
                 });
         environment.addComponent(launcher);
         winHandler.preAssignConnectedControllers();
