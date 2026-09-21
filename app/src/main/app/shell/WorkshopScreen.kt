@@ -144,7 +144,7 @@ internal fun StoreWorkshopScreen(
         Surface(
             modifier =
                 Modifier
-                    .widthIn(min = 320.dp, max = dialogWidth)
+                    .widthIn(min = minOf(320.dp, dialogWidth), max = dialogWidth)
                     .fillMaxWidth()
                     .height(dialogHeight),
             shape = RoundedCornerShape(14.dp),

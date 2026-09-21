@@ -243,6 +243,7 @@ import com.winlator.cmod.shared.theme.WinNativeTheme
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.Lazy
 import com.winlator.cmod.feature.stores.steam.enums.EPersonaState
+import com.winlator.cmod.shared.ui.layout.isCompactWidth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -611,7 +612,10 @@ internal fun UnifiedActivity.DownloadsQueueButton(
         modifier =
             modifier
                 .height(40.dp)
-                .widthIn(min = 96.dp)
+                // Three of these at a 96 dp minimum plus their gaps come to 308 dp against
+                // 328 dp of usable width on a 360 dp phone — one longer label and the outer
+                // buttons leave the screen. Let them size to their text there.
+                .widthIn(min = if (isCompactWidth()) 0.dp else 96.dp)
                 .paneNavItem(cornerRadius = 8.dp, onActivate = { if (enabled) onClick() }),
         colors =
             ButtonDefaults.buttonColors(
@@ -1119,6 +1123,8 @@ internal fun UnifiedActivity.DownloadItemDeck(
             null
         }
 
+    val compactDownloadRow = isCompactWidth()
+
     Surface(
         color = if (isSelected) DownloadCardSelectedBlack else DownloadCardBlack,
         shape = RoundedCornerShape(12.dp),
@@ -1156,7 +1162,12 @@ internal fun UnifiedActivity.DownloadItemDeck(
                         .crossfade(300)
                         .build(),
                 contentDescription = null,
-                modifier = Modifier.size(120.dp, 68.dp).clip(RoundedCornerShape(4.dp)),
+                // 120 dp is about a third of the usable row width on a phone, which is what
+                // starves the name/size/speed columns beside it.
+                modifier =
+                    Modifier
+                        .size(if (compactDownloadRow) 88.dp else 120.dp, if (compactDownloadRow) 50.dp else 68.dp)
+                        .clip(RoundedCornerShape(4.dp)),
                 contentScale = ContentScale.Crop,
             )
 
@@ -1172,6 +1183,12 @@ internal fun UnifiedActivity.DownloadItemDeck(
                         progress < 1f &&
                         speed > 0
 
+                val sizeLabel =
+                    "${StorageUtils.formatDecimalSize(downloadedBytes)} / ${StorageUtils.formatDecimalSize(totalBytes)}"
+                // Three equal weights next to the thumbnail leave about 69 dp each on a phone,
+                // so the size string clips and the game name ellipsizes to a few characters.
+                // Below the compact threshold the name keeps the first line to itself and the
+                // size and speed share a second one.
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Text(
                         displayName ?: unknownGameLabel,
@@ -1182,22 +1199,46 @@ internal fun UnifiedActivity.DownloadItemDeck(
                         overflow = TextOverflow.Ellipsis,
                     )
 
-                    // Centered Size Info
-                    Text(
-                        text = "${StorageUtils.formatDecimalSize(downloadedBytes)} / ${StorageUtils.formatDecimalSize(totalBytes)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                    )
+                    if (!compactDownloadRow) {
+                        // Centered Size Info
+                        Text(
+                            text = sizeLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center,
+                        )
 
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                            if (showDownloadSpeed) {
+                                Text(
+                                    text = StorageUtils.formatBitsPerSecond(speed),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Accent,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                    }
+                }
+                if (compactDownloadRow) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = sizeLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        Spacer(Modifier.weight(1f))
                         if (showDownloadSpeed) {
                             Text(
                                 text = StorageUtils.formatBitsPerSecond(speed),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = Accent,
                                 fontWeight = FontWeight.Bold,
+                                maxLines = 1,
                             )
                         }
                     }

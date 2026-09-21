@@ -1,9 +1,20 @@
+// SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// DIS frame generation: a Vulkan compute realisation of Dense Inverse Search
+// optical flow. The algorithm and its reference implementation come from
+// OpenCV's DISOpticalFlow, which adopted Till Kroeger's original OF_DIS.
+// See CREDITS.md for the full attribution.
+
 #version 450
 
 precision highp float;
 precision highp int;
 
-#define DIS_INVERSE_ITERS 8
+// Gauss-Newton iterations per patch. The loop already breaks once the SSD stops
+// improving, so this only caps the hard cases; six reaches the same fixpoint
+// there while cutting a quarter off the heaviest loop in the search.
+#define DIS_INVERSE_ITERS 6
 
 #define DIS_MAX_MATCH_RMS 36.0
 
@@ -89,19 +100,41 @@ void main() {
     vec2 gradSum = vec2(0.0);
     mat2 H = mat2(0.0);
 
+    // The patch is loaded as 4x4 quads with textureGather: one instruction per
+    // component per quad instead of one fetch per texel, three times fewer
+    // sample instructions for the same texels. The gathered order is
+    //   .w = (x, y), .z = (x+1, y), .x = (x, y+1), .y = (x+1, y+1)
+    // and the patch is indexed [x * 8 + y] to match the gradient descent loop.
+    vec2 invDense = 1.0 / vec2(denseSize);
+    for (int qy = 0; qy < 4; qy++) {
+        for (int qx = 0; qx < 4; qx++) {
+            ivec2 q = clamp(pix + ivec2(qx * 2, qy * 2), ivec2(0), denseMax);
+            vec2 corner = (vec2(q) + 1.0) * invDense;
+            vec4 lq = textureGather(lastLumaMap, corner, 0);
+            vec4 gx = textureGather(lastGradientMap, corner, 0);
+            vec4 gy = textureGather(lastGradientMap, corner, 1);
+
+            int x0 = qx * 2;
+            int y0 = qy * 2;
+            lastImageData[x0 * 8 + y0] = lq.w;
+            lastImageData[(x0 + 1) * 8 + y0] = lq.z;
+            lastImageData[x0 * 8 + y0 + 1] = lq.x;
+            lastImageData[(x0 + 1) * 8 + y0 + 1] = lq.y;
+
+            gradData[x0 * 8 + y0] = -vec2(gx.w, gy.w);
+            gradData[(x0 + 1) * 8 + y0] = -vec2(gx.z, gy.z);
+            gradData[x0 * 8 + y0 + 1] = -vec2(gx.x, gy.x);
+            gradData[(x0 + 1) * 8 + y0 + 1] = -vec2(gx.y, gy.y);
+        }
+    }
+
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            ivec2 q = clamp(pix + ivec2(i, j), ivec2(0), denseMax);
-            gradData[i * 8 + j] = -texelFetch(lastGradientMap, q, 0).xy;
-
-            H[0][0] += gradData[i * 8 + j].x * gradData[i * 8 + j].x;
-            H[1][1] += gradData[i * 8 + j].y * gradData[i * 8 + j].y;
-            H[0][1] += gradData[i * 8 + j].x * gradData[i * 8 + j].y;
-
-            lastImageData[i * 8 + j] =
-                texelFetch(lastLumaMap, q, 0).x;
-
-            gradSum += gradData[i * 8 + j];
+            vec2 g = gradData[i * 8 + j];
+            H[0][0] += g.x * g.x;
+            H[1][1] += g.y * g.y;
+            H[0][1] += g.x * g.y;
+            gradSum += g;
         }
     }
 

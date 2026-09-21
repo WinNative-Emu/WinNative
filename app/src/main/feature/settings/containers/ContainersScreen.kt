@@ -70,6 +70,8 @@ import com.winlator.cmod.shared.ui.nav.DialogPaneNav
 import com.winlator.cmod.shared.ui.nav.LocalPaneNav
 import com.winlator.cmod.shared.ui.nav.PaneNavRegistry
 import com.winlator.cmod.shared.ui.nav.paneNavItem
+import com.winlator.cmod.shared.ui.layout.screenWidthDp
+import com.winlator.cmod.shared.ui.layout.isCompactWidth
 import androidx.compose.runtime.CompositionLocalProvider
 import java.util.Locale
 
@@ -841,15 +843,16 @@ private fun ContainerStorageInfoDialog(
                 title = stringResource(R.string.container_config_storage_info),
                 icon = Icons.Outlined.Info,
                 accentColor = ContainersAccent,
-                modifier = Modifier.widthIn(min = 320.dp, max = 500.dp),
+                // A 320 dp minimum overflows the 16 dp gutters on a small phone.
+                modifier =
+                    Modifier.widthIn(
+                        min = minOf(320.dp, (screenWidthDp() - 32.dp).coerceAtLeast(0.dp)),
+                        max = 500.dp,
+                    ),
                 content = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    val storageMetrics: @Composable (Modifier) -> Unit = { metricsModifier ->
                         Column(
-                            modifier = Modifier.weight(1f),
+                            modifier = metricsModifier,
                             verticalArrangement = Arrangement.spacedBy(14.dp),
                         ) {
                             StorageMetric(
@@ -865,8 +868,10 @@ private fun ContainerStorageInfoDialog(
                                 value = formatBytes(state.totalBytes),
                             )
                         }
+                    }
+                    val storageGauge: @Composable (Modifier) -> Unit = { gaugeModifier ->
                         Column(
-                            modifier = Modifier.widthIn(min = 180.dp),
+                            modifier = gaugeModifier,
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
@@ -892,6 +897,29 @@ private fun ContainerStorageInfoDialog(
                                 fontSize = 12.sp,
                                 textAlign = TextAlign.Center,
                             )
+                        }
+                    }
+                    // The gauge column used to be unweighted, so the Row measured it first
+                    // against the full width and its caption line took nearly all of it; the
+                    // weighted metrics column was then left a few dp and wrapped one character
+                    // per line. Both halves are weighted now, and stacked at phone width.
+                    if (isCompactWidth()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            storageGauge(Modifier.fillMaxWidth())
+                            storageMetrics(Modifier.fillMaxWidth())
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            storageMetrics(Modifier.weight(1f))
+                            storageGauge(Modifier.weight(1f))
                         }
                     }
                 },

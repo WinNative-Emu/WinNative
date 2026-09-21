@@ -93,6 +93,7 @@ import com.winlator.cmod.shared.ui.FourByTwoGridView
 import com.winlator.cmod.shared.ui.JoystickGridScroll
 import com.winlator.cmod.shared.ui.widget.chasingBorder
 import com.winlator.cmod.shared.ui.toast.WinToast
+import com.winlator.cmod.shared.ui.layout.byOrientation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -379,7 +380,12 @@ private fun UnifiedActivity.ItchHeader(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(end = DrawerHotZoneClearance),
+                // The 44 dp reserved for the drawer's edge-swipe zone is a fifth of the row
+                // on a phone; a narrower gutter still clears the hot zone there.
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(end = byOrientation(portrait = 16.dp, landscape = DrawerHotZoneClearance)),
             ) {
                 Text(
                     text =
@@ -426,6 +432,11 @@ private fun UnifiedActivity.ItchHeader(
                     stringResource(R.string.itch_store_windows_only),
                     color = TextSecondary,
                     fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    // Unweighted it took its full intrinsic width before the weighted title
+                    // beside it, which then had nothing left on a narrow screen.
+                    modifier = Modifier.weight(1f, fill = false),
                 )
                 Spacer(Modifier.width(4.dp))
                 Switch(
@@ -450,7 +461,10 @@ private fun UnifiedActivity.ItchHeader(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = DrawerHotZoneStart, end = DrawerHotZoneClearance)
+                        .padding(
+                            start = byOrientation(portrait = 12.dp, landscape = DrawerHotZoneStart),
+                            end = byOrientation(portrait = 16.dp, landscape = DrawerHotZoneClearance),
+                        )
                         .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {

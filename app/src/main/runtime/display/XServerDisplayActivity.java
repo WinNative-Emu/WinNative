@@ -3414,7 +3414,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         steamInputForeground = false;
         refreshSteamControllerInput();
-        stopSteamControllerSupport();
         super.onPause();
         stopSystemFrameGenPolling();
         stopWaylandRendererPolling();
@@ -5229,6 +5228,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
     @Override
     protected void onStop() {
+        stopSteamControllerSupport();
         super.onStop();
         savePlaytimeData();
         handler.removeCallbacks(savePlaytimeRunnable);

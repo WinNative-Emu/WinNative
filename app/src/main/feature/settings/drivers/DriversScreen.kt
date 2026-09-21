@@ -95,6 +95,7 @@ import com.winlator.cmod.shared.ui.nav.DialogPaneNav
 import com.winlator.cmod.shared.ui.nav.LocalPaneNav
 import com.winlator.cmod.shared.ui.nav.PaneNavRegistry
 import com.winlator.cmod.shared.ui.nav.paneNavItem
+import com.winlator.cmod.shared.ui.layout.isCompactWidth
 
 private val BgDark = Color(0xFF11111C)
 private val CardDark = Color(0xFF1C1C2A)
@@ -428,7 +429,13 @@ private fun HeroHeader(
                             DriverManagerActions(
                                 onAddRepo = onAddRepo,
                                 onInstall = onInstall,
-                                modifier = Modifier.widthIn(min = 112.dp, max = 132.dp),
+                                // The 112 dp minimum opposite the weighted counts column
+                                // ellipsizes driver names on a phone.
+                                modifier =
+                                    Modifier.widthIn(
+                                        min = if (isCompactWidth()) 0.dp else 112.dp,
+                                        max = 132.dp,
+                                    ),
                             )
                         }
                     }

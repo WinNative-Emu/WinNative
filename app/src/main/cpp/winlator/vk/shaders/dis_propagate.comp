@@ -1,3 +1,11 @@
+// SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// DIS frame generation: a Vulkan compute realisation of Dense Inverse Search
+// optical flow. The algorithm and its reference implementation come from
+// OpenCV's DISOpticalFlow, which adopted Till Kroeger's original OF_DIS.
+// See CREDITS.md for the full attribution.
+
 #version 450
 
 precision highp float;
@@ -43,11 +51,16 @@ void main() {
     ivec2 denseMax = denseSize - 1;
     vec2 invImageSize = 1.0 / vec2(denseSize);
 
-    float refLum[64];
-    for (int dy = 0; dy < 8; dy++) {
-        for (int dx = 0; dx < 8; dx++) {
-            ivec2 p = clamp(org + ivec2(dx, dy), ivec2(0), denseMax);
-            refLum[dy * 8 + dx] = texelFetch(lastLumaMap, p, 0).x;
+    // The candidates are ranked on a 4x4 subsample of the patch rather than all
+    // 64 texels. The comparison only picks between four nearby vectors, so the
+    // extra precision of the full patch does not change the winner often, and
+    // this pass was the most texture-fetch-heavy in the chain.
+    const float N = 16.0;
+    float refLum[16];
+    for (int dy = 0; dy < 4; dy++) {
+        for (int dx = 0; dx < 4; dx++) {
+            ivec2 p = clamp(org + ivec2(dx * 2, dy * 2), ivec2(0), denseMax);
+            refLum[dy * 4 + dx] = texelFetch(lastLumaMap, p, 0).x;
         }
     }
 
@@ -58,10 +71,10 @@ void main() {
         sd2[i] = 0.0;
     }
 
-    for (int dy = 0; dy < 8; dy++) {
-        for (int dx = 0; dx < 8; dx++) {
-            int i = dy * 8 + dx;
-            vec2 base = (vec2(org) + vec2(dx, dy) + 0.5) * invImageSize;
+    for (int dy = 0; dy < 4; dy++) {
+        for (int dx = 0; dx < 4; dx++) {
+            int i = dy * 4 + dx;
+            vec2 base = (vec2(org) + vec2(dx * 2, dy * 2) + 0.5) * invImageSize;
             float r = refLum[i];
 
             if (needOwn) {
@@ -78,10 +91,13 @@ void main() {
         }
     }
 
+    // The score is carried in the same units as the 64-sample scores the inverse
+    // search and the densification use, so the stored .z remains comparable.
+    const float SCORE_SCALE = 64.0 / 16.0;
     vec2 best = own;
-    float bestSsd = needOwn ? (sd2[0] - sd[0] * sd[0] / 64.0) : ownSsd;
+    float bestSsd = needOwn ? (sd2[0] - sd[0] * sd[0] / N) * SCORE_SCALE : ownSsd;
     for (int c = 0; c < candCount; c++) {
-        float ssd = sd2[c + 1] - sd[c + 1] * sd[c + 1] / 64.0;
+        float ssd = (sd2[c + 1] - sd[c + 1] * sd[c + 1] / N) * SCORE_SCALE;
         if (ssd < bestSsd) {
             bestSsd = ssd;
             best = cand[c];

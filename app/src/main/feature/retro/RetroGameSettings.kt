@@ -1774,7 +1774,10 @@ private fun RetroHudElementButtons(
     elements: BooleanArray,
     onToggle: (index: Int, on: Boolean) -> Unit,
 ) {
-    RetroHudSupport.ELEMENT_ORDER.toList().chunked(3).forEach { rowIndices ->
+    // Three per row gives each toggle ~125 dp in a portrait pane and every 11 sp label
+    // ellipsizes; two fit legibly there.
+    val perRow = if (isPortraitLayout()) 2 else 3
+    RetroHudSupport.ELEMENT_ORDER.toList().chunked(perRow).forEach { rowIndices ->
         Row(
             Modifier.fillMaxWidth().padding(top = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1787,7 +1790,7 @@ private fun RetroHudElementButtons(
                     modifier = Modifier.weight(1f),
                 ) { onToggle(index, !on) }
             }
-            repeat(3 - rowIndices.size) { Spacer(Modifier.weight(1f)) }
+            repeat(perRow - rowIndices.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }

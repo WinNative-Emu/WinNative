@@ -113,6 +113,7 @@ import com.winlator.cmod.shared.ui.nav.LocalPaneNav
 import com.winlator.cmod.shared.ui.nav.PaneNavRegistry
 import com.winlator.cmod.shared.ui.nav.paneNavHandlers
 import com.winlator.cmod.shared.ui.nav.paneNavItem
+import com.winlator.cmod.shared.ui.layout.isPortraitLayout
 
 internal data class StoreDlcItem(
     val id: Int,
@@ -290,19 +291,32 @@ internal fun StoreGameDetailScreen(
             }
         }
 
+        // Tuned for the landscape left-hand content column. In portrait the content spans
+        // the full width and its right-hand text would sit over the transparent band.
         Box(
             Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.horizontalGradient(
-                        colorStops =
-                            arrayOf(
-                                0.0f to StoreBlack.copy(alpha = 0.9f),
-                                0.36f to StoreBlack.copy(alpha = 0.58f),
-                                0.72f to StoreBlack.copy(alpha = 0.18f),
-                                1.0f to StoreBlack.copy(alpha = 0.62f),
-                            ),
-                    ),
+                    if (isPortraitLayout()) {
+                        Brush.verticalGradient(
+                            colorStops =
+                                arrayOf(
+                                    0.0f to StoreBlack.copy(alpha = 0.18f),
+                                    0.45f to StoreBlack.copy(alpha = 0.58f),
+                                    1.0f to StoreBlack.copy(alpha = 0.9f),
+                                ),
+                        )
+                    } else {
+                        Brush.horizontalGradient(
+                            colorStops =
+                                arrayOf(
+                                    0.0f to StoreBlack.copy(alpha = 0.9f),
+                                    0.36f to StoreBlack.copy(alpha = 0.58f),
+                                    0.72f to StoreBlack.copy(alpha = 0.18f),
+                                    1.0f to StoreBlack.copy(alpha = 0.62f),
+                                ),
+                        )
+                    },
                 ),
         )
         Box(

@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -1483,7 +1484,10 @@ internal fun RetroRenameDialog(
         Column(
             modifier =
                 Modifier
-                    .width(320.dp)
+                    // Never capped against the window: at 320 dp this was flush to both
+                    // edges on a 360 dp phone and clipped on anything narrower.
+                    .widthIn(max = 320.dp)
+                    .fillMaxWidth(0.92f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(WinNativeSurface)
                     .border(1.dp, WinNativeOutline, RoundedCornerShape(16.dp))
@@ -1556,7 +1560,10 @@ internal fun RetroConfirmDialog(prompt: RetroConfirmPrompt) {
         Column(
             modifier =
                 Modifier
-                    .width(340.dp)
+                    // Never capped against the window: at 340 dp this was flush to both
+                    // edges on a 360 dp phone and clipped on anything narrower.
+                    .widthIn(max = 340.dp)
+                    .fillMaxWidth(0.92f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(WinNativeSurface)
                     .border(1.dp, WinNativeOutline, RoundedCornerShape(16.dp))
@@ -1640,7 +1647,10 @@ internal fun RetroConflictDialog(prompt: RetroConflictPrompt) {
         Column(
             modifier =
                 Modifier
-                    .width(340.dp)
+                    // Never capped against the window: at 340 dp this was flush to both
+                    // edges on a 360 dp phone and clipped on anything narrower.
+                    .widthIn(max = 340.dp)
+                    .fillMaxWidth(0.92f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(WinNativeSurface)
                     .border(1.dp, WinNativeOutline, RoundedCornerShape(16.dp))
