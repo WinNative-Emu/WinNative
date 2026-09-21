@@ -3848,7 +3848,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                                  new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(zipFile))) {
                         for (File file : logFiles) {
                             if (file == null || !file.isFile()) continue;
-                            zos.putNextEntry(new java.util.zip.ZipEntry(file.getName()));
+                            zos.putNextEntry(new java.util.zip.ZipEntry(
+                                    com.winlator.cmod.runtime.system.LogManager.archiveName(this, file)));
                             try (java.io.InputStream in = new java.io.FileInputStream(file)) {
                                 byte[] buf = new byte[8192];
                                 int n;
@@ -8967,8 +8968,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("WN_WIDTH=" + xServer.screenInfo.width);
         guest.add("WN_HEIGHT=" + xServer.screenInfo.height);
         guest.add("WN_FPS=" + Math.max(0, runtimeFpsLimit));
-        File logDir = new File(getExternalFilesDir(null), "wayland-logs");
-        logDir.mkdirs();
+        File logDir = com.winlator.cmod.runtime.system.LogManager.getSessionLogsDir(this);
         guest.add("WN_LOG=" + new File(logDir, "linux-session.log").getPath());
         guest.add(LinuxRuntime.SESSION_SCRIPT);
         guest.addAll(session);
@@ -9163,8 +9163,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
         cfg.scaleMode = renderer != null && renderer.isFullscreen()
                 ? WaylandCompositor.SCALE_STRETCH : WaylandCompositor.SCALE_FIT;
-        File logRoot = getExternalFilesDir(null);
-        cfg.logDir = new File(logRoot != null ? logRoot : getFilesDir(), "wayland-logs");
+        cfg.logDir = com.winlator.cmod.runtime.system.LogManager.getSessionLogsDir(this);
         boolean reattach = WaylandSession.hasActiveSession()
                 && SessionKeepAliveService.isSessionActive()
                 && SessionKeepAliveService.getActiveEnvironment() != null;

@@ -117,6 +117,11 @@ which is worth knowing before building it.
   A Linux session that cannot start - no runtime, no driver, a GPU that is not Adreno, an install
   in progress - says so in a dialog that closes it, and the compositor is not started without its
   driver: it keeps the driver it started with for the life of the process.
+- **Logs.** The compositor's `wayland-*.log`, `linux-session.log` and the Steam client's own logs
+  (`~/.local/share/Steam/logs`) are part of the Logs Manager (Settings > Debug): listed, shared,
+  downloaded and deleted with the rest, under `gamescope/` and `steam-client/` in an archive. As a
+  session starts, `LogManager` keeps the nine newest logs of each type - a type is the name without
+  its start time - so that with the session's own there are never more than ten.
 - **Non-Steam games.** `LinuxSteamShortcuts` keeps the library's custom, itch.io and GOG entries in
   the client's `userdata/<account>/config/shortcuts.vdf` (binary VDF), each mapped to
   `winnative-proton` in `CompatToolMapping`. The entries it wrote are listed in

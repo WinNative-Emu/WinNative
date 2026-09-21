@@ -389,10 +389,11 @@ class DebugFragment : Fragment() {
         dest: File,
         files: Array<File>,
     ) {
+        val ctx = requireContext()
         ZipOutputStream(FileOutputStream(dest)).use { zos ->
             files.forEach { file ->
                 if (file.isFile) {
-                    zos.putNextEntry(ZipEntry(file.name))
+                    zos.putNextEntry(ZipEntry(com.winlator.cmod.runtime.system.LogManager.archiveName(ctx, file)))
                     file.inputStream().use { it.copyTo(zos) }
                     zos.closeEntry()
                 }
