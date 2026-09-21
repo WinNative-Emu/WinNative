@@ -35,16 +35,23 @@ BUILTIN_TOOL = re.compile(r'^"proton', re.IGNORECASE)
 NOT_GAMES = frozenset((
     "228980",    # Steamworks Common Redistributables
     "1070560",   # Steam Linux Runtime 1.0 (scout)
-    "1161040",   # Proton BattlEye Runtime
     "1391110",   # Steam Linux Runtime 2.0 (soldier)
     "1493710",   # Proton Experimental
-    "1826330",   # Proton EasyAntiCheat Runtime
     "3127680",   # FEX
     "4183110",   # Steam Linux Runtime 4.0
     "4185400",   # Steam Linux Runtime 4.0 - Arm64
     "4427310",   # Proton Experimental (ARM64)
     "4628740",   # Proton 11.0 (ARM64)
 ))
+
+# The anti-cheat runtimes a game brings with it are Linux apps to the client, and a Linux app is
+# run in the Steam Linux Runtime: installing one has the client fetch scout and soldier, hundreds
+# of megabytes of x86 container that cannot start here. Set to this tool they depend on nothing.
+# Nothing ever runs them - Proton reads their files - so the tool named is never started for them.
+ANTICHEAT_RUNTIMES = (
+    "1161040",   # Proton BattlEye Runtime
+    "1826330",   # Proton EasyAntiCheat Runtime
+)
 
 TOOLMANIFEST = '''"manifest"
 {
@@ -185,8 +192,8 @@ def redirect_builtin_tools(tokens, mapping):
     return changed
 
 
-def installed_apps(steam_root):
-    """App ids of the titles the client has installed, its own tools and runtimes excluded."""
+def mapped_apps(steam_root):
+    """App ids to run with this tool: the installed titles and the anti-cheat runtimes."""
     apps = set()
     for library in (steam_root, LIBRARY):
         steamapps = os.path.join(library, "steamapps")
@@ -198,7 +205,7 @@ def installed_apps(steam_root):
             m = re.fullmatch(r"appmanifest_(\d+)\.acf", name)
             if m and m.group(1) not in NOT_GAMES:
                 apps.add(m.group(1))
-    return sorted(apps, key=int)
+    return sorted(apps.union(ANTICHEAT_RUNTIMES), key=int)
 
 
 def register_default(config_path, apps=()):
@@ -300,9 +307,9 @@ def main():
     print("winnative-steam-compat: registered %s from %s" % (TOOL, os.path.basename(depot)))
     config = os.path.join(steam_root, "config", "config.vdf")
     if os.path.isfile(config):
-        apps = installed_apps(steam_root)
+        apps = mapped_apps(steam_root)
         register_default(config, apps)
-        print("winnative-steam-compat: %d installed title(s) set to %s" % (len(apps), TOOL))
+        print("winnative-steam-compat: %d app(s) set to %s" % (len(apps), TOOL))
 
 
 if __name__ == "__main__":

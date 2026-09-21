@@ -146,7 +146,11 @@ which is worth knowing before building it.
   x86 titles go the same FEX-Emu way and do not run. Valve names a Proton of its own for thousands
   of titles at a priority above the client's default, and installing one has the client fetch
   that x86 Proton, its runtime and FEX; so `LinuxSteamShortcuts` sets every game the store's
-  account owns to `winnative-proton` before the client can install it.
+  account owns to `winnative-proton` before the client can install it. The anti-cheat runtimes
+  a game brings (BattlEye, EasyAntiCheat) are Linux apps to the client, which would fetch the
+  scout and soldier runtimes to run them in; `winnative-steam-compat` sets those to the tool as
+  well, so they depend on nothing. None of FEX-Emu, either x86 runtime or an x86 Proton is
+  needed: games run with all of them uninstalled.
 - **Epic games.** They are non-Steam games of the client like the others, but Epic signs a game in
   with an exchange code that lasts five minutes and is spent on first use, so a shortcut cannot
   carry one. The entry names the game in its launch options (`WN_EPIC`), `winnative-launch` hands
