@@ -41,6 +41,23 @@
 #include "tracee/mem.h"
 
 /**
+ * The @address without the tag an arm64 pointer may carry in its top byte.
+ *
+ * Android's allocator tags heap pointers, and the first program is started by
+ * PRoot's own child, from its heap: execve(2) arrives with 0xb4... addresses
+ * for the path and the environment.  The kernel takes those from the tracee,
+ * but on some kernels not from its tracer - PEEKDATA answers EIO - and nothing
+ * then starts.  Guest addresses are never tagged, so this costs them nothing.
+ */
+static inline word_t untagged(word_t address) {
+#if defined(__aarch64__)
+  return address & 0x00FFFFFFFFFFFFFFULL;
+#else
+  return address;
+#endif
+}
+
+/**
  * Load the word at the given @address, potentially *not* aligned.
  */
 static inline word_t load_word(const void *address) {
@@ -80,7 +97,7 @@ static inline void store_word(void *address, word_t value) {
 int write_data(Tracee *tracee, word_t dest_tracee, const void *src_tracer,
                word_t size) {
   word_t *src = (word_t *)src_tracer;
-  word_t *dest = (word_t *)dest_tracee;
+  word_t *dest = (word_t *)untagged(dest_tracee);
 
   long status;
   word_t word, i, j;
@@ -167,7 +184,7 @@ int writev_data(Tracee *tracee, word_t dest_tracee,
  */
 int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee,
               word_t size) {
-  word_t *src = (word_t *)src_tracee;
+  word_t *src = (word_t *)untagged(src_tracee);
   word_t *dest = (word_t *)dest_tracer;
 
   word_t nb_trailing_bytes;
@@ -223,7 +240,7 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee,
  */
 int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee,
                 word_t max_size) {
-  word_t *src = (word_t *)src_tracee;
+  word_t *src = (word_t *)untagged(src_tracee);
   word_t *dest = (word_t *)dest_tracer;
 
   word_t nb_trailing_bytes;
@@ -281,6 +298,8 @@ int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee,
 word_t peek_word(const Tracee *tracee, word_t address) {
   word_t result = 0;
 
+  address = untagged(address);
+
   errno = 0;
   result = (word_t)ptrace(PTRACE_PEEKDATA, tracee->pid, address, NULL);
 
@@ -305,6 +324,8 @@ word_t peek_word(const Tracee *tracee, word_t address) {
  */
 void poke_word(const Tracee *tracee, word_t address, word_t value) {
   word_t tmp;
+
+  address = untagged(address);
 
   /* Don't overwrite the 32 MSB when running a 32-bit process on
    * a 64-bit kernel. */

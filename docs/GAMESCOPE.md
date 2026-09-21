@@ -118,10 +118,12 @@ which is worth knowing before building it.
   in progress - says so in a dialog that closes it, and the compositor is not started without its
   driver: it keeps the driver it started with for the life of the process.
 - **A session that never starts.** One that dies within 20 s with an error status says so in a
-  dialog instead of a black screen. On some vendor kernels (a Poco F6 on HyperOS 3) proot cannot
-  start any program - `execve("/usr/bin/env"): Function not implemented`, then
-  `ptrace(PEEKDATA): I/O error` - and `PROOT_NO_SECCOMP=1` changes nothing there, so the app does
-  not try it.
+  dialog instead of a black screen. The case that led to it (a Poco F6 on HyperOS 3, kernel 6.1):
+  `execve("/usr/bin/env"): Function not implemented`, then `ptrace(PEEKDATA): I/O error`, the
+  same with `PROOT_NO_SECCOMP=1`. `proot -v 9` shows why - the first `execve` comes from proot's
+  own bionic child with heap pointers tagged in the top byte (`0xb400007b80852f10`), and that
+  kernel will not read a tagged address for a tracer, so the path is unreadable and the call is
+  answered EFAULT. `tracee/mem.c` strips the tag before every peek and poke.
 - **Setup wizard.** Its second page (after access, before components) offers the Linux Steam
   Client and the Windows one. The Linux card runs `LinuxClientInstaller` - the same install and
   the same state Settings > Stores shows - and carries on while the user goes through the other
