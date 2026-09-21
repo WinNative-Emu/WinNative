@@ -43,7 +43,13 @@ if [ -z "${WN_INSIDE:-}" ]; then
   width=${WN_WIDTH:-1280}
   height=${WN_HEIGHT:-720}
   args=(--backend wayland --expose-wayland -f -W "$width" -H "$height" -w "$width" -h "$height")
-  [ "${WN_FPS:-0}" -gt 0 ] && args+=(-r "$WN_FPS")
+  # -r is the refresh rate gamescope advertises, which a game reads as the display's; without it
+  # gamescope says 60. A frame limit is a deliberate cap, so it wins over the panel's rate.
+  if [ "${WN_FPS:-0}" -gt 0 ]; then
+    args+=(-r "$WN_FPS")
+  elif [ "${WN_REFRESH:-0}" -gt 0 ]; then
+    args+=(-r "$WN_REFRESH")
+  fi
   [ "$mode" = steam ] && args+=(-e)
   export WN_INSIDE=1
   exec gamescope "${args[@]}" -- "$0" "$mode" "$@"

@@ -8969,6 +8969,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("WN_WIDTH=" + xServer.screenInfo.width);
         guest.add("WN_HEIGHT=" + xServer.screenInfo.height);
         guest.add("WN_FPS=" + Math.max(0, runtimeFpsLimit));
+        // What gamescope advertises when no limit is set, and what a game reads as the display's:
+        // left out, gamescope says 60 and titles cap themselves there on a faster panel.
+        android.view.Display panel = getDisplayCompat();
+        int panelHz = panel != null ? Math.round(panel.getRefreshRate()) : 0;
+        if (panelHz > 1) guest.add("WN_REFRESH=" + panelHz);
         File logDir = com.winlator.cmod.runtime.system.LogManager.getSessionLogsDir(this);
         guest.add("WN_LOG=" + new File(logDir, "linux-session.log").getPath());
         guest.add(LinuxRuntime.SESSION_SCRIPT);

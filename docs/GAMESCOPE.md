@@ -124,6 +124,12 @@ which is worth knowing before building it.
   own bionic child with heap pointers tagged in the top byte (`0xb400007b80852f10`), and that
   kernel will not read a tagged address for a tracer, so the path is unreadable and the call is
   answered EFAULT. `tracee/mem.c` strips the tag before every peek and poke.
+- **proot's memory transfers.** Paths and buffers move between proot and a traced program with
+  `process_vm_readv`/`process_vm_writev`, one call each, instead of a `ptrace` call per eight
+  bytes; a transfer the kernel refuses (an unmapped or read-only page) falls back to `ptrace`.
+  Strings are read in 1 KiB pieces so none crosses into an unmapped page.
+- **gamescope's refresh rate.** `-r` is the frame limit when one is set and otherwise the panel's
+  rate (`WN_REFRESH`); without it gamescope advertises 60 Hz and games cap themselves there.
 - **Setup wizard.** Its second page (after access, before components) offers the Linux Steam
   Client and the Windows one. The Linux card runs `LinuxClientInstaller` - the same install and
   the same state Settings > Stores shows - and carries on while the user goes through the other
