@@ -82,17 +82,40 @@ public final class DriverPackages {
   }
 
   public static File selectedLinuxIcd(Context context) {
-    String selected = selectedLinux(context);
-    if (BUNDLED.equals(selected)) return null;
+    return linuxIcd(context, selectedLinux(context));
+  }
+
+  public static File selectedLinuxIcd(Context context, String selection) {
+    if (selection == null || selection.isEmpty() || selection.equalsIgnoreCase("System")) {
+      return linuxIcd(context, BUNDLED);
+    }
+    return linuxIcd(context, linuxIdForSelection(context, selection));
+  }
+
+  private static File linuxIcd(Context context, String id) {
+    if (BUNDLED.equals(id)) return null;
     File directory =
-        LEGACY.equals(selected)
+        LEGACY.equals(id)
             ? LinuxRuntime.driverDir(context)
-            : new File(linuxDirectory(context), selected);
+            : new File(linuxDirectory(context), id);
     return new File(directory, LinuxRuntime.DRIVER_ICD);
   }
 
+  public static List<String> linuxSelectionEntries(Context context) {
+    List<String> entries = new ArrayList<>();
+    entries.add(LinuxRuntime.TURNIP_VERSION);
+    if (LinuxRuntime.downloadedDriverVersion(context) > 0) {
+      entries.add(linuxName(context, LEGACY));
+    }
+    for (File driver : linuxDrivers(context)) entries.add(linuxName(context, driver.getName()));
+    return entries;
+  }
+
   public static String selectedLinuxName(Context context) {
-    String selected = selectedLinux(context);
+    return linuxName(context, selectedLinux(context));
+  }
+
+  private static String linuxName(Context context, String selected) {
     if (BUNDLED.equals(selected)) return LinuxRuntime.TURNIP_VERSION;
     if (LEGACY.equals(selected)) {
       String name =
@@ -110,6 +133,16 @@ public final class DriverPackages {
     } catch (Exception error) {
       return LinuxRuntime.TURNIP_VERSION;
     }
+  }
+
+  private static String linuxIdForSelection(Context context, String selection) {
+    if (selection.equals(LinuxRuntime.TURNIP_VERSION) || selection.equals(BUNDLED)) return BUNDLED;
+    if (selection.equals(LEGACY) || selection.equals(linuxName(context, LEGACY))) return LEGACY;
+    for (File driver : linuxDrivers(context)) {
+      String id = driver.getName();
+      if (selection.equals(id) || selection.equals(linuxName(context, id))) return id;
+    }
+    return selectedLinux(context);
   }
 
   public static synchronized void removeLinux(Context context, String id) {

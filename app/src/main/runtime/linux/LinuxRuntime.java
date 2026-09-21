@@ -106,7 +106,11 @@ public final class LinuxRuntime {
   }
 
   public static File vulkanIcd(Context context) {
-    File selected = com.winlator.cmod.runtime.content.DriverPackages.selectedLinuxIcd(context);
+    return vulkanIcd(context, null);
+  }
+
+  public static File vulkanIcd(Context context, String selection) {
+    File selected = com.winlator.cmod.runtime.content.DriverPackages.selectedLinuxIcd(context, selection);
     if (selected != null) return selected;
     File icdDir = new File(rootDir(context), "usr/share/vulkan/icd.d");
     File[] manifests = icdDir.listFiles((dir, name) -> name.endsWith(".json"));

@@ -135,7 +135,10 @@ def main():
         return ready[files]
 
     prefixes = []
-    for files in glob.glob(steam_root + "/steamapps/common/Proton*/files") + ["/opt/winnative-proton/files"]:
+    proton_files = glob.glob(steam_root + "/steamapps/common/Proton*/files")
+    proton_files += glob.glob(steam_root + "/compatibilitytools.d/*/files")
+    proton_files.append("/opt/winnative-proton/files")
+    for files in proton_files:
         files = os.path.realpath(files)
         for template in glob.glob(files + "/share/default_pfx*"):
             prefixes.append((template, files))

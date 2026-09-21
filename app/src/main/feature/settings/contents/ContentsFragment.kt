@@ -11,8 +11,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -26,6 +28,7 @@ import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.content.ContentProfile
 import com.winlator.cmod.runtime.content.ContentsManager
 import com.winlator.cmod.runtime.content.Downloader
+import com.winlator.cmod.runtime.linux.LinuxProtons
 import com.winlator.cmod.shared.ui.toast.WinToast
 import com.winlator.cmod.shared.android.DirectoryPickerDialog
 import com.winlator.cmod.shared.io.FileUtils
@@ -43,6 +46,7 @@ class ContentsFragment : Fragment() {
     private lateinit var manager: ContentsManager
 
     private var componentsState by mutableStateOf(ComponentsState())
+    private var currentPlatform = ComponentsPlatform.ANDROID
     private var currentContentType = ContentProfile.ContentType.CONTENT_TYPE_WINE
 
     private var profilesByKey = emptyMap<String, ContentProfile>()
@@ -62,6 +66,11 @@ class ContentsFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         manager = ContentsManager(requireContext())
+
+        savedInstanceState
+            ?.getString(STATE_COMPONENTS_PLATFORM)
+            ?.let { name -> runCatching { ComponentsPlatform.valueOf(name) }.getOrNull() }
+            ?.let { currentPlatform = it }
 
         savedInstanceState
             ?.getString(STATE_CONTENT_TYPE)
@@ -93,9 +102,31 @@ class ContentsFragment : Fragment() {
                             surface = Color(0xFF1E252E),
                         ),
                 ) {
+                    val linuxProtons by LinuxProtons.state.collectAsState()
+                    val linuxBuildsById = linuxProtons.builds.associateBy { it.id }
+                    val linuxInstalled =
+                        linuxProtons
+                            .builds
+                            .filter { it.id in linuxProtons.installed }
+                            .map { build -> build.toLinuxComponentItem(linuxProtons) }
+                    val linuxAvailable =
+                        linuxProtons
+                            .builds
+                            .filterNot { it.id in linuxProtons.installed }
+                            .map { build -> build.toLinuxComponentItem(linuxProtons) }
+                    LaunchedEffect(currentPlatform) {
+                        if (currentPlatform == ComponentsPlatform.LINUX) {
+                            LinuxProtons.refresh(ctx)
+                        }
+                    }
                     ComponentsScreen(
                         bridge = (requireActivity() as? UnifiedActivity)?.settingsNavBridge,
-                        state = componentsState,
+                        state =
+                            componentsState.copy(
+                                linuxInstalled = linuxInstalled,
+                                linuxAvailable = linuxAvailable,
+                            ),
+                        onPlatformSelected = { platform -> selectPlatform(platform) },
                         onTypeSelected = { type -> selectContentType(type) },
                         onInstallFromFile = { promptInstallFromFile() },
                         onDownloadItem = { item ->
@@ -103,6 +134,12 @@ class ContentsFragment : Fragment() {
                         },
                         onRemoveItem = { item ->
                             profilesByKey[item.key]?.let { onRemoveRequested(it) }
+                        },
+                        onDownloadLinuxItem = { item ->
+                            linuxBuildsById[item.key]?.let { LinuxProtons.install(ctx, it) }
+                        },
+                        onRemoveLinuxItem = { item ->
+                            linuxBuildsById[item.key]?.let { LinuxProtons.remove(ctx, it) }
                         },
                         onDismissConflict = {
                             conflictingContentPath = null
@@ -117,7 +154,13 @@ class ContentsFragment : Fragment() {
                                 .apply()
                             publishState()
                         },
-                        onRefresh = { refreshRemoteProfiles() },
+                        onRefresh = {
+                            if (currentPlatform == ComponentsPlatform.LINUX) {
+                                LinuxProtons.refresh(ctx)
+                            } else {
+                                refreshRemoteProfiles()
+                            }
+                        },
                     )
                 }
             }
@@ -147,6 +190,7 @@ class ContentsFragment : Fragment() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_COMPONENTS_PLATFORM, currentPlatform.name)
         outState.putString(STATE_CONTENT_TYPE, currentContentType.toString())
         super.onSaveInstanceState(outState)
     }
@@ -161,6 +205,15 @@ class ContentsFragment : Fragment() {
     private fun selectContentType(type: ContentProfile.ContentType) {
         if (type == currentContentType) return
         currentContentType = type
+        publishState()
+    }
+
+    private fun selectPlatform(platform: ComponentsPlatform) {
+        if (platform == currentPlatform) return
+        currentPlatform = platform
+        if (platform == ComponentsPlatform.LINUX) {
+            LinuxProtons.refresh(requireContext())
+        }
         publishState()
     }
 
@@ -187,6 +240,7 @@ class ContentsFragment : Fragment() {
         profilesByKey = keyedProfiles
         componentsState =
             ComponentsState(
+                platform = currentPlatform,
                 currentType = currentContentType,
                 installed = installedItems,
                 available = availableItems,
@@ -254,6 +308,19 @@ class ContentsFragment : Fragment() {
             isOfficial = isOfficial,
         )
     }
+
+    private fun LinuxProtons.Build.toLinuxComponentItem(state: LinuxProtons.State): LinuxComponentItem =
+        LinuxComponentItem(
+            key = id,
+            type = ContentProfile.ContentType.CONTENT_TYPE_PROTON,
+            verName = displayName,
+            isInstalled = id in state.installed,
+            hasRemote = true,
+            sizeBytes = size,
+            isOfficial = false,
+            isWorking = state.working == id,
+            progress = state.progress,
+        )
 
     private fun scheduleRemoteSizeFetches(items: List<ComponentItem>) {
         val urlsToFetch =
@@ -661,6 +728,7 @@ class ContentsFragment : Fragment() {
     }
 
     companion object {
+        private const val STATE_COMPONENTS_PLATFORM = "state_components_platform"
         private const val STATE_CONTENT_TYPE = "state_content_type"
         private const val TAG = "ContentsFragment"
         private const val PREF_AUTO_CREATE_CONTAINER = "components_auto_create_container"

@@ -75,6 +75,7 @@ block=$(printf '%s\n' "$pairs" | awk -F'\t' -v now="$(date +%s)" '
 # prefix moments later, so the template carries the markers too. Its date is kept: Proton reads a
 # changed one as a new template and upgrades every prefix made from the old.
 for reg in "$steam_root"/steamapps/common/Proton*/files/share/default_pfx*/system.reg \
+           "$steam_root"/compatibilitytools.d/*/files/share/default_pfx*/system.reg \
            /opt/winnative-proton/files/share/default_pfx*/system.reg \
            "$steam_root"/steamapps/compatdata/*/pfx/system.reg \
            /mnt/winnative/steamapps/compatdata/*/pfx/system.reg; do

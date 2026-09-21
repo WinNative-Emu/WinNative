@@ -50,6 +50,7 @@ import com.winlator.cmod.runtime.container.ContainerCreation
 import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.content.ContentProfile
 import com.winlator.cmod.runtime.content.ContentsManager
+import com.winlator.cmod.runtime.content.DriverPackages
 import com.winlator.cmod.feature.settings.DXVKConfigUtils
 import com.winlator.cmod.feature.settings.GraphicsDriverConfigUtils
 import com.winlator.cmod.feature.settings.OtherSettingsFragment
@@ -1350,7 +1351,11 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         state.gfxSelectedDriverVersion.intValue = 0
         scope.launch {
             val versions = withContext(Dispatchers.IO) {
-                com.winlator.cmod.runtime.system.GraphicsDriverCatalog.supportedVersions(context)
+                if (state.gamescopeContainer.value) {
+                    DriverPackages.linuxSelectionEntries(context)
+                } else {
+                    com.winlator.cmod.runtime.system.GraphicsDriverCatalog.supportedVersions(context)
+                }
             }
             state.gfxDriverVersionEntries.value = versions
             val idx = versions.indexOfFirst { it.equals(savedVersion, ignoreCase = true) }
@@ -1364,7 +1369,11 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         val request = ++extensionsRequest
         scope.launch {
             val extensions = withContext(Dispatchers.IO) {
-                com.winlator.cmod.runtime.system.GraphicsDriverCatalog.extensions(context, version)
+                if (state.gamescopeContainer.value) {
+                    emptyList()
+                } else {
+                    com.winlator.cmod.runtime.system.GraphicsDriverCatalog.extensions(context, version)
+                }
             }
             if (request != extensionsRequest) return@launch
             state.gfxAvailableExtensions.value = extensions

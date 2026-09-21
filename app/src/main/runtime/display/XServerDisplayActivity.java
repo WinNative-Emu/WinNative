@@ -8944,7 +8944,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("MESA_LOADER_DRIVER_OVERRIDE=zink");
         guest.add("GALLIUM_DRIVER=zink");
         guest.add("LIBGL_KOPPER_DRI2=true");
-        File icd = LinuxRuntime.vulkanIcd(this);
+        File icd = LinuxRuntime.vulkanIcd(this, graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null);
         if (icd != null) guest.add("VK_ICD_FILENAMES=" + icd.getPath());
         // The client, its web helper and native games only know PulseAudio, so it runs whatever
         // the entry chose; DirectAudio takes the Windows games off it.

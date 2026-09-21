@@ -69,6 +69,7 @@ import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.container.Shortcut
 import com.winlator.cmod.runtime.content.ContentProfile
 import com.winlator.cmod.runtime.content.ContentsManager
+import com.winlator.cmod.runtime.content.DriverPackages
 import com.winlator.cmod.shared.android.AppUtils
 import com.winlator.cmod.shared.ui.toast.WinToast
 import com.winlator.cmod.shared.android.DirectoryPickerDialog
@@ -2203,7 +2204,11 @@ class ShortcutSettingsComposeDialog private constructor(
         state.gfxDriverVersionEntries.value = listOf(if (savedVersion.isNotEmpty()) savedVersion else "System")
         state.gfxSelectedDriverVersion.intValue = 0
         Thread({
-            val versions = com.winlator.cmod.runtime.system.GraphicsDriverCatalog.supportedVersions(context)
+            val versions = if (container.isGamescopeRuntime) {
+                DriverPackages.linuxSelectionEntries(context)
+            } else {
+                com.winlator.cmod.runtime.system.GraphicsDriverCatalog.supportedVersions(context)
+            }
             activity.runOnUiThread {
                 state.gfxDriverVersionEntries.value = versions
                 val idx = versions.indexOfFirst { it.equals(savedVersion, ignoreCase = true) }
@@ -2217,7 +2222,11 @@ class ShortcutSettingsComposeDialog private constructor(
         val version = state.gfxDriverVersionEntries.value.getOrElse(versionIndex) { return }
         val request = ++extensionsRequest
         Thread({
-            val extensions = com.winlator.cmod.runtime.system.GraphicsDriverCatalog.extensions(context, version)
+            val extensions = if (shortcut.container.isGamescopeRuntime) {
+                emptyList()
+            } else {
+                com.winlator.cmod.runtime.system.GraphicsDriverCatalog.extensions(context, version)
+            }
             activity.runOnUiThread {
                 if (request != extensionsRequest) return@runOnUiThread
                 state.gfxAvailableExtensions.value = extensions

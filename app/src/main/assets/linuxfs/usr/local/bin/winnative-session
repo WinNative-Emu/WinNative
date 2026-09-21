@@ -124,9 +124,22 @@ case $mode in
     # With DirectAudio chosen the games' prefixes name it as their audio driver; otherwise they
     # are handed back to Wine's own choice, which finds the PulseAudio server.
     winnative-directaudio "$steam_root" "$([ -n "${WN_DIRECTAUDIO:-}" ] && echo on || echo off)" || true
+    (
+      beat=0
+      for _ in $(seq 1 720); do
+        sleep 5
+        winnative-seed-redists "$steam_root" >/dev/null 2>&1 || true
+        beat=$((beat + 1))
+        if [ "$((beat % 3))" -eq 0 ]; then
+          winnative-steam-compat "$steam_root" >/dev/null 2>&1 || true
+          winnative-directaudio "$steam_root" "$([ -n "${WN_DIRECTAUDIO:-}" ] && echo on || echo off)" >/dev/null 2>&1 || true
+        fi
+      done
+    ) &
     export STEAM_RUNTIME=1
     export LD_LIBRARY_PATH=$steam_root/steamrtarm64:$steam_root/steamrtarm64/panorama${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
     export SDL_VIDEO_X11_DGAMOUSE=0
+    [ -d /usr/share/guestos/fex-mesa ] && export FEX_ROOTFS=/usr/share/guestos/fex-mesa
     # The compatibility tool runs Valve's arm64 Proton. The app installs a copy with the runtime;
     # a runtime from before that has the client fetch the depot instead.
     if [ ! -f /opt/winnative-proton/proton ] && [ ! -f "$steam_root/steamapps/appmanifest_4427310.acf" ]; then

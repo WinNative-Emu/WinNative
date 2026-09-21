@@ -94,8 +94,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import com.winlator.cmod.runtime.container.Container
-import com.winlator.cmod.runtime.linux.LinuxRuntime
-import androidx.compose.runtime.produceState
+import com.winlator.cmod.runtime.content.DriverPackages
 import com.winlator.cmod.runtime.display.wayland.WineWaylandSupport
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -112,6 +111,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -1844,7 +1844,7 @@ private fun DisplaySection(
 ) {
 
     if (state.gamescopeContainer.value) {
-        GamescopeDisplaySection(state)
+        GamescopeDisplaySection(state, callbacks)
         return
     }
 
@@ -1930,22 +1930,22 @@ private fun DisplaySection(
  * own DXVK and VKD3D inside Proton, so the Android drivers and the DX wrappers are not offered.
  */
 @Composable
-private fun GamescopeDisplaySection(state: GameSettingsStateHolder) {
-    val context = LocalContext.current.applicationContext
-    val driverName by produceState(LinuxRuntime.TURNIP_VERSION) {
-        value = withContext(Dispatchers.IO) { LinuxRuntime.driverName(context) }
-    }
+private fun GamescopeDisplaySection(
+    state: GameSettingsStateHolder,
+    callbacks: GameSettingsCallbacks
+) {
     SettingGroup {
         SettingPairRow {
             Box(Modifier.weight(1f)) {
                 SettingDropdown(
                     label = stringResource(R.string.container_graphics_driver),
-                    entries = listOf(
-                        stringResource(R.string.container_graphics_driver_gamescope, driverName)
-                    ),
-                    selectedIndex = 0,
-                    onSelected = {},
-                    enabled = false
+                    entries = state.gfxDriverVersionEntries.value,
+                    selectedIndex = state.gfxSelectedDriverVersion.intValue,
+                    onSelected = {
+                        state.gfxSelectedDriverVersion.intValue = it
+                        state.graphicsDriverVersion.value = state.gfxDriverVersionEntries.value.getOrElse(it) { "" }
+                        callbacks.onGfxDriverVersionChanged(it)
+                    }
                 )
             }
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {

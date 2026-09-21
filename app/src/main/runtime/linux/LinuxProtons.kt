@@ -40,6 +40,47 @@ object LinuxProtons {
     private var job: Job? = null
     private val sources = listOf("GloriousEggroll/proton-ge-custom" to "aarch64", "CachyOS/proton-cachyos" to "arm64")
     private const val MARKER = "winnative-proton.json"
+    private const val ORIGINAL_MANIFEST = "toolmanifest.vdf.winnative-original"
+    private const val WRAPPER = "winnative-proton-wrap"
+    private const val TOOL_MANIFEST = """"manifest"
+{
+    "version"        "2"
+    "commandline"        "/winnative-proton-wrap %verb%"
+    "use_sessions"        "1"
+    "compatmanager_layer_name"        "proton"
+}
+"""
+    private val WRAPPER_SCRIPT = """#!/bin/sh
+verb=${'$'}1
+shift || true
+here=${'$'}(dirname "${'$'}0")
+fake=/usr/local/lib/libwninput.so
+if [ -f "${'$'}fake" ]; then
+  case ":${'$'}{LD_PRELOAD:-}:" in
+    *":${'$'}fake:"*) ;;
+    *) LD_PRELOAD="${'$'}fake${'$'}{LD_PRELOAD:+:${'$'}LD_PRELOAD}"; export LD_PRELOAD ;;
+  esac
+fi
+wn_directaudio() {
+  base=${'$'}1
+  stage=/usr/local/share/winnative/directaudio
+  [ -n "${'$'}{WN_DIRECTAUDIO:-}" ] || return 0
+  [ -d "${'$'}stage/lib/wine" ] || return 0
+  [ -d "${'$'}base/files/bin-arm64" ] || return 0
+  WINEDLLPATH="${'$'}stage/lib/wine${'$'}{WINEDLLPATH:+:${'$'}WINEDLLPATH}"
+  export WINEDLLPATH
+  reg="${'$'}{STEAM_COMPAT_DATA_PATH:-}/pfx/user.reg"
+  if [ -f "${'$'}reg" ] && ! grep -q '"Audio"="directaudio"' "${'$'}reg" 2>/dev/null; then
+    printf '\n[Software\\Wine\\Drivers] %s\n"Audio"="directaudio"\n' "${'$'}(date +%s)" >> "${'$'}reg"
+  fi
+}
+wn_directaudio "${'$'}here"
+if [ -n "${'$'}WN_EPIC" ] && [ -x /usr/local/bin/winnative-epic-launch ]; then
+  exec /usr/local/bin/winnative-epic-launch "${'$'}here/proton" "${'$'}verb" "${'$'}@"
+fi
+exec "${'$'}here/proton" "${'$'}verb" "${'$'}@"
+"""
+
 
     fun directory(context: Context) = File(LinuxRuntime.rootDir(context), "root/.local/share/Steam/compatibilitytools.d")
     private fun installed(context: Context) = directory(context).listFiles().orEmpty().mapNotNull { file ->
@@ -192,8 +233,14 @@ object LinuxProtons {
                 }
             }
             check(wine != null)
-            check(File(tree, "toolmanifest.vdf").isFile && File(tree, "compatibilitytool.vdf").isFile)
-            check(Regex("\"commandline\"\\s+\"/proton %verb%\"").containsMatchIn(File(tree, "toolmanifest.vdf").readText()))
+            val manifest = File(tree, "toolmanifest.vdf")
+            check(manifest.isFile && File(tree, "compatibilitytool.vdf").isFile)
+            val original = File(tree, ORIGINAL_MANIFEST)
+            if (!original.isFile) manifest.copyTo(original, overwrite = false)
+            check(Regex(""""commandline"\s+"/proton(?:\s+[^"]*)?"""").containsMatchIn(original.readText()))
+            File(tree, WRAPPER).writeText(WRAPPER_SCRIPT)
+            Os.chmod(File(tree, WRAPPER).path, 493)
+            manifest.writeText(TOOL_MANIFEST)
             File(tree, MARKER).writeText(build.json().toString())
             val target = File(tools, build.id)
             check(!target.exists() && tree.renameTo(target))
