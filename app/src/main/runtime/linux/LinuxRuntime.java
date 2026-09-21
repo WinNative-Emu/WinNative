@@ -50,6 +50,7 @@ public final class LinuxRuntime {
     "usr/local/lib/libwninput.so",
     "usr/local/lib/libwnsession.so",
     "usr/local/bin/winnative-directaudio",
+    "usr/local/bin/winnative-epic-launch",
     "usr/local/bin/winnative-seed-redists",
     "usr/local/bin/winnative-session",
     "usr/local/bin/winnative-steam-compat",

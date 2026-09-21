@@ -131,7 +131,19 @@ which is worth knowing before building it.
   downloaded and deleted with the rest, under `gamescope/` and `steam-client/` in an archive. As a
   session starts, `LogManager` keeps the nine newest logs of each type - a type is the name without
   its start time - so that with the session's own there are never more than ten.
-- **Non-Steam games.** `LinuxSteamShortcuts` keeps the library's custom, itch.io and GOG entries in
+- **Epic games.** They are non-Steam games of the client like the others, but Epic signs a game in
+  with an exchange code that lasts five minutes and is spent on first use, so a shortcut cannot
+  carry one. The entry names the game in its launch options (`WN_EPIC`), `winnative-launch` hands
+  such a game to `winnative-epic-launch`, and that asks `LinuxEpicTokens` in the app - loopback
+  only, behind a secret written into the runtime for that session alone - for the command line as
+  the game starts. A DRM title's ownership token is written into the runtime and read back through
+  Proton's `Z:`, which needs no prefix. A game whose sign-in cannot be had still starts.
+- **A store game with no shortcut.** The library writes a shortcut for one only once it has been
+  played, so an installed GOG or Epic game is also taken from the store's own records
+  (`LinuxGogGames`, `LinuxEpicTokens.installedGames`) under the same id a shortcut would give it.
+  GOG records where a game was installed but not what to run: that is the primary play task of the
+  `goggame-<id>.info` the installer leaves beside it.
+- **Non-Steam games.** `LinuxSteamShortcuts` keeps the library's custom, itch.io, GOG and Epic entries in
   the client's `userdata/<account>/config/shortcuts.vdf` (binary VDF), each mapped to
   `winnative-proton` in `CompatToolMapping`. The entries it wrote are listed in
   `winnative-shortcuts` beside the file, so ones the user added in the client are left alone and

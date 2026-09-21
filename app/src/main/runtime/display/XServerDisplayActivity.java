@@ -8994,11 +8994,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         List<String> binds = new ArrayList<>(com.winlator.cmod.feature.library.LinuxSteamLibrary.prepare(
                 this, LinuxRuntime.rootDir(this)));
         if (!reusingSession) binds.addAll(com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.sync(this));
+        com.winlator.cmod.runtime.linux.LinuxEpicTokens.start(this);
         List<String> command = LinuxRuntime.command(this, imageFs, runtimeDir,
                 android.os.Environment.getExternalStorageDirectory(), devInputDir, binds, guest);
         final long startedAt = android.os.SystemClock.elapsedRealtime();
         LinuxProgramLauncherComponent launcher = new LinuxProgramLauncherComponent(
                 command, hostEnv, LinuxRuntime.rootDir(this), (status) -> {
+                    com.winlator.cmod.runtime.linux.LinuxEpicTokens.stop();
                     LogManager.log(TAG, "Linux session [" + String.join(" ", session)
                             + "] ended with status: " + status, this);
                     // A session that is gone before anything could be drawn did not start; leaving
@@ -9077,7 +9079,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             if (!appId.isEmpty()) args.add("steam://rungameid/" + appId);
             return args;
         }
-        String nonSteamGame = com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.launchUrl(shortcut);
+        String nonSteamGame = com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.launchUrl(this, shortcut);
         if (nonSteamGame != null) {
             args.add(LinuxRuntime.MODE_STEAM);
             args.add(nonSteamGame);

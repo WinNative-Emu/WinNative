@@ -70,6 +70,10 @@ for lib in $LD_PRELOAD; do
 done
 unset IFS
 if [ -n "$kept" ]; then export LD_PRELOAD="$kept"; else unset LD_PRELOAD; fi
+# An Epic game is signed in as it starts; its launcher appends the command line Epic wants.
+if [ -n "$WN_EPIC" ] && [ -x /usr/local/bin/winnative-epic-launch ]; then
+  exec /usr/local/bin/winnative-epic-launch "$(dirname "$0")/proton" "$@"
+fi
 exec "$(dirname "$0")/proton" "$@"
 '''
 
