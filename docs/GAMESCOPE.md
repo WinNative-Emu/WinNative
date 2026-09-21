@@ -97,6 +97,18 @@ which is worth knowing before building it.
 - **Audio is PulseAudio** over a unix socket (`PULSE_LATENCY_MSEC=20`). We ship libpulse already.
   With DirectAudio chosen, Windows games bypass it for AAudio through the app
   (`docs/direct-audio-integration.md`, GameScope sessions).
+- **Settings** for a GameScope container or a shortcut in one show only what a Linux session
+  reads: name, container, screen size, refresh rate, FPS limit, audio (PulseAudio or DirectAudio),
+  the FEX preset, variables, controls and networking. The Steam launcher, ReShade, Windows
+  components, drives, Wine and the emulator pickers are hidden - Proton (ARM64) carries its own
+  FEX for 64-bit and 32-bit games, so the FEXCore/Box64/WoWBox64 builds installed in the app are
+  never loaded, while a FEX preset is environment and does reach it. Variables with no reader in a
+  Linux session (`EnvVarsView.GAMESCOPE_UNUSED`) are dropped from the list; `SteamDeck` is offered
+  but off, since it makes games pick Deck presets and a 1280x800 layout.
+- **Sign-in** follows the Steam store: `LinuxSteamLogin` writes the store's refresh token into the
+  client's `local.vdf` the way the client stores it (AES-256, key SHA-256 of the account name, IV
+  ahead as an ECB block, under CRC-32 of the name + "1") with `loginusers.vdf` and `AutoLoginUser`,
+  unless the client already remembers that account. Signing the store out removes the same entries.
 - **The HUD** counts a game frame per commit of gamescope's window, not per plane: gamescope
   presents through a toplevel and a synchronized subsurface for each layer, and the game moves
   between them. The renderer name is read from the Proton processes' mapped modules

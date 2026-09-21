@@ -2840,4 +2840,7 @@
     <string name="container_graphics_driver_gamescope_help">Встроен в среду Linux. Загруженные драйверы Android применяются только к контейнерам Wine и Proton.</string>
     <string name="linux_runtime_windows_program">Это программа для Windows. Чтобы запустить её, перенесите её в контейнер Wine в настройках ярлыка.</string>
     <string name="settings_content_badge_online">Онлайн</string>
+    <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
+    <string name="gamescope_fex_preset">FEX Preset</string>
+    <string name="gamescope_fex_summary">Games here run on the FEX that Steam\'s Proton (ARM64) carries, for 64-bit and 32-bit titles alike. The FEXCore, Box64 and WoWBox64 builds installed in WinNative are not used; the preset is.</string>
 </resources>

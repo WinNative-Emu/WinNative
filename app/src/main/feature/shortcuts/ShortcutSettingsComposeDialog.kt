@@ -24,6 +24,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.winlator.cmod.shared.ui.widget.EnvVarsView
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -1067,10 +1068,7 @@ class ShortcutSettingsComposeDialog private constructor(
 
     private fun loadEnvVars() {
         val container = shortcut.container
-        val envVarsStr = getShortcutSetting(
-            "envVars",
-            container?.getEnvVars() ?: Container.DEFAULT_ENV_VARS
-        )
+        val envVarsStr = getShortcutSetting("envVars", containerEnvVars(container))
         val items = parseEnvVarItems(envVarsStr)
         state.envVars.value = items
 
@@ -1233,7 +1231,7 @@ class ShortcutSettingsComposeDialog private constructor(
             // Env vars
             val envVarsStr = buildEnvVarsString()
             hasContainerOverride =
-                hasContainerOverride or saveOverride("envVars", envVarsStr, container.getEnvVars())
+                hasContainerOverride or saveOverride("envVars", envVarsStr, containerEnvVars(container))
 
             // FEXCore
             val fexcoreVersionEntries = state.fexcoreVersionEntries.value
@@ -1964,9 +1962,10 @@ class ShortcutSettingsComposeDialog private constructor(
         val entries =
             context.resources.getStringArray(R.array.audio_driver_entries).toList()
                 .filter {
+                    // A Linux session has a PulseAudio server and DirectAudio's host, and nothing that speaks ALSA.
+                    if (container.isGamescopeRuntime) return@filter !it.equals("ALSA", true)
                     !it.equals("DirectAudio", true) ||
                         DirectAudioDriver.isSupportedFor(wineVersion) ||
-                        container.isGamescopeRuntime ||
                         DirectAudioDriver.isSelected(resolved)
                 }
         state.audioDriverEntries.value = entries
@@ -2007,6 +2006,12 @@ class ShortcutSettingsComposeDialog private constructor(
     ) {
         val idx = entries.indexOfFirst { it == value }
         target.intValue = if (idx >= 0) idx else 0
+    }
+
+    /** What the container hands a shortcut: a GameScope one leaves out what its sessions never read. */
+    private fun containerEnvVars(container: Container?): String {
+        val envVars = container?.getEnvVars() ?: Container.DEFAULT_ENV_VARS
+        return if (container?.isGamescopeRuntime == true) EnvVarsView.forGamescope(envVars) else envVars
     }
 
     private fun saveOverride(
@@ -2366,6 +2371,8 @@ class ShortcutSettingsComposeDialog private constructor(
         // The Wayland row keys its capability check on this, so it has to move with the container
         // or the row keeps the previous container's verdict until the sheet is reopened.
         state.wineVersionIdentifier.value = wineVersionStr
+        // Which pages and rows exist depends on this, so it moves with the container too.
+        state.gamescopeContainer.value = newContainer.isGamescopeRuntime
         rebuildEmulatorLists()
 
         selectByIdentifier(
@@ -2455,7 +2462,7 @@ class ShortcutSettingsComposeDialog private constructor(
         state.directXComponents.value = directX
         state.generalComponents.value = general
 
-        val containerEnvVarsStr = container.getEnvVars() ?: Container.DEFAULT_ENV_VARS
+        val containerEnvVarsStr = containerEnvVars(container)
         val items = parseEnvVarItems(containerEnvVarsStr)
         state.sdl2Compatibility.value = EnvVars(containerEnvVarsStr).get("SDL_XINPUT_ENABLED") == "1"
         state.envVars.value = if (state.sdl2Compatibility.value) {

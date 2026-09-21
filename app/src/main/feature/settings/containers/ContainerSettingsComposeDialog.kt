@@ -63,6 +63,7 @@ import com.winlator.cmod.shared.io.AssetPaths
 import com.winlator.cmod.runtime.wine.EnvVars
 import com.winlator.cmod.runtime.wine.LocaleEnv
 import com.winlator.cmod.shared.io.FileUtils
+import com.winlator.cmod.shared.ui.widget.EnvVarsView
 import com.winlator.cmod.shared.util.KeyValueSet
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import com.winlator.cmod.shared.util.StringUtils
@@ -487,7 +488,9 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
         state.directXComponents.value = directX
         state.generalComponents.value = general
 
-        val envVarsStr = c?.getEnvVars() ?: Container.DEFAULT_ENV_VARS
+        val envVarsStr = (c?.getEnvVars() ?: Container.DEFAULT_ENV_VARS).let {
+            if (c?.isGamescopeRuntime == true) EnvVarsView.forGamescope(it) else it
+        }
         val items = parseEnvVarItems(envVarsStr)
         state.sdl2Compatibility.value = EnvVars(envVarsStr).get("SDL_XINPUT_ENABLED") == "1"
         state.envVars.value = if (state.sdl2Compatibility.value) {
@@ -1216,8 +1219,9 @@ class ContainerSettingsComposeDialog @JvmOverloads constructor(
 
     private fun audioDriverEntriesFor(wineVersion: String?, selected: String): List<String> {
         val all = context.resources.getStringArray(R.array.audio_driver_entries).toList()
+        // A Linux session has a PulseAudio server and DirectAudio's host, and nothing that speaks ALSA.
+        if (state.gamescopeContainer.value) return all.filter { !it.equals("ALSA", true) }
         if (wineVersion == null || DirectAudioDriver.isSupportedFor(wineVersion)) return all
-        if (state.gamescopeContainer.value) return all
         if (DirectAudioDriver.isSelected(selected)) return all
         return all.filter { !it.equals("DirectAudio", true) }
     }

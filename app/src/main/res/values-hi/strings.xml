@@ -2869,4 +2869,7 @@
     <string name="container_graphics_driver_gamescope_help">Linux रनटाइम में शामिल। डाउनलोड किए गए Android ड्राइवर केवल Wine और Proton कंटेनरों पर लागू होते हैं।</string>
     <string name="linux_runtime_windows_program">यह एक Windows प्रोग्राम है। इसे चलाने के लिए शॉर्टकट सेटिंग्स में इसे किसी Wine कंटेनर में ले जाएँ।</string>
     <string name="settings_content_badge_online">ऑनलाइन</string>
+    <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
+    <string name="gamescope_fex_preset">FEX Preset</string>
+    <string name="gamescope_fex_summary">Games here run on the FEX that Steam\'s Proton (ARM64) carries, for 64-bit and 32-bit titles alike. The FEXCore, Box64 and WoWBox64 builds installed in WinNative are not used; the preset is.</string>
 </resources>

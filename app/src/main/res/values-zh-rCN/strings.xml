@@ -2934,5 +2934,8 @@
     <string name="container_graphics_driver_gamescope_help">内置于 Linux 运行环境。下载的 Android 驱动仅适用于 Wine 和 Proton 容器。</string>
     <string name="linux_runtime_windows_program">这是一个 Windows 程序。请在快捷方式设置中将其移到 Wine 容器后再启动。</string>
     <string name="settings_content_badge_online">联机</string>
+    <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
+    <string name="gamescope_fex_preset">FEX Preset</string>
+    <string name="gamescope_fex_summary">Games here run on the FEX that Steam\'s Proton (ARM64) carries, for 64-bit and 32-bit titles alike. The FEXCore, Box64 and WoWBox64 builds installed in WinNative are not used; the preset is.</string>
 </resources>
 

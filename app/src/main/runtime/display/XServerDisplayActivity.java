@@ -8882,6 +8882,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         try {
             LinuxRuntime.writeAccounts(this);
             LinuxRuntime.syncSessionFiles(this);
+            // A session that is being rejoined has its client running, and the files are the client's then.
+            if (!reusingSession) com.winlator.cmod.runtime.linux.LinuxSteamLogin.seed(this);
             if (!reusingSession) LinuxRuntime.clearSharedMemory(this);
         } catch (IOException e) {
             throw new IllegalStateException(e);

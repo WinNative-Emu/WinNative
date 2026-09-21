@@ -2934,4 +2934,7 @@ Yüklü konum:
     <string name="container_graphics_driver_gamescope_help">Linux çalışma ortamına dahildir. İndirilen Android sürücüleri yalnızca Wine ve Proton kapsayıcıları için geçerlidir.</string>
     <string name="linux_runtime_windows_program">Bu bir Windows programı. Başlatmak için kısayol ayarlarından bir Wine kapsayıcısına taşıyın.</string>
     <string name="settings_content_badge_online">Çevrimiçi</string>
+    <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
+    <string name="gamescope_fex_preset">FEX Preset</string>
+    <string name="gamescope_fex_summary">Games here run on the FEX that Steam\'s Proton (ARM64) carries, for 64-bit and 32-bit titles alike. The FEXCore, Box64 and WoWBox64 builds installed in WinNative are not used; the preset is.</string>
 </resources>

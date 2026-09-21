@@ -13,6 +13,7 @@ import com.winlator.cmod.runtime.wine.WineInfo
 import com.winlator.cmod.runtime.wine.WineThemeManager
 import com.winlator.cmod.runtime.wine.WineUtils
 import com.winlator.cmod.feature.setup.SetupWizardActivity
+import com.winlator.cmod.shared.ui.widget.EnvVarsView
 import com.winlator.cmod.shared.util.Callback
 import org.json.JSONObject
 
@@ -306,6 +307,7 @@ object ContainerCreation {
         val container = created ?: return null
         applyLaunchReadyDefaults(context, contentsManager, container)
         container.setRuntime(Container.RUNTIME_GAMESCOPE)
+        container.setEnvVars(EnvVarsView.forGamescope(container.getEnvVars()))
         container.setDisplayBackend(Container.DISPLAY_BACKEND_WAYLAND)
         container.saveData()
         LinuxApps.ensureSteamShortcut(context, container)
