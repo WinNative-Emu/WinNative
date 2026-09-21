@@ -8987,10 +8987,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         EnvVars hostEnv = new EnvVars();
         hostEnv.put("PROOT_LOADER", LinuxRuntime.prootLoader(this).getPath());
         hostEnv.put("PROOT_TMP_DIR", getCacheDir().getPath());
-        if (!reusingSession && !LinuxRuntime.seccompWorks(this)) {
-            LogManager.log(TAG, "proot: seccomp acceleration does not work on this kernel; tracing every system call", this);
-            hostEnv.put(LinuxRuntime.ENV_NO_SECCOMP, "1");
-        }
         List<String> binds = new ArrayList<>(com.winlator.cmod.feature.library.LinuxSteamLibrary.prepare(
                 this, LinuxRuntime.rootDir(this)));
         if (!reusingSession) binds.addAll(com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.sync(this));

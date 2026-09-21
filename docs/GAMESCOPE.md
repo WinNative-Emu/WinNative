@@ -117,11 +117,11 @@ which is worth knowing before building it.
   A Linux session that cannot start - no runtime, no driver, a GPU that is not Adreno, an install
   in progress - says so in a dialog that closes it, and the compositor is not started without its
   driver: it keeps the driver it started with for the life of the process.
-- **proot without seccomp.** On some vendor kernels (seen on a Poco F6, HyperOS 3) proot's seccomp
-  acceleration breaks every `execve` ("Function not implemented"). Before a session starts,
-  `LinuxRuntime.seccompWorks` runs `echo` in the rootfs and looks for its output; when that fails
-  the session runs with `PROOT_NO_SECCOMP=1`, which traces every system call and is slower. A
-  session that dies within 20 s with an error status says so in a dialog instead of a black screen.
+- **A session that never starts.** One that dies within 20 s with an error status says so in a
+  dialog instead of a black screen. On some vendor kernels (a Poco F6 on HyperOS 3) proot cannot
+  start any program - `execve("/usr/bin/env"): Function not implemented`, then
+  `ptrace(PEEKDATA): I/O error` - and `PROOT_NO_SECCOMP=1` changes nothing there, so the app does
+  not try it.
 - **Setup wizard.** Its second page (after access, before components) offers the Linux Steam
   Client and the Windows one. The Linux card runs `LinuxClientInstaller` - the same install and
   the same state Settings > Stores shows - and carries on while the user goes through the other

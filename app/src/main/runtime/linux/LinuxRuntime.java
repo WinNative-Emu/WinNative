@@ -246,44 +246,6 @@ public final class LinuxRuntime {
    * processes that made it; here the files stay, and the client alone leaves some fifty megabytes
    * of streams behind every time it runs.
    */
-  public static final String ENV_NO_SECCOMP = "PROOT_NO_SECCOMP";
-  private static final String PROBE_WORD = "winnative-proot";
-  private static final long PROBE_TIMEOUT_SECONDS = 15;
-
-  /**
-   * Worker thread. Whether proot, with its seccomp acceleration, can start a program of the
-   * runtime on this kernel. On some vendor kernels the first execve under the filter comes back
-   * ENOSYS - "execve(/usr/bin/env): Function not implemented" - and no session ever starts; proot
-   * then has to be told to trace every system call itself ({@link #ENV_NO_SECCOMP}), which is
-   * slower, so it is only done where this says the fast way does not work. What the program wrote
-   * is the proof, not its exit status, which the app's child reaper may collect first.
-   */
-  public static boolean seccompWorks(Context context) {
-    File output = new File(context.getCacheDir(), "proot-probe");
-    java.lang.Process probe = null;
-    try {
-      ProcessBuilder builder =
-          new ProcessBuilder(
-              prootBinary(context).getPath(), "-r", rootDir(context).getPath(),
-              "/usr/bin/echo", PROBE_WORD);
-      builder.environment().put("PROOT_LOADER", prootLoader(context).getPath());
-      builder.environment().put("PROOT_TMP_DIR", context.getCacheDir().getPath());
-      builder.redirectErrorStream(true).redirectOutput(output);
-      probe = builder.start();
-      if (!probe.waitFor(PROBE_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)) return false;
-      String said = FileUtils.readString(output);
-      return said != null && said.contains(PROBE_WORD);
-    } catch (IOException e) {
-      return false;
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      return false;
-    } finally {
-      if (probe != null) probe.destroyForcibly();
-      output.delete();
-    }
-  }
-
   public static void clearSharedMemory(Context context) {
     File shm = new File(context.getCacheDir(), "shm");
     if (shm.isDirectory()) FileUtils.clear(shm);
