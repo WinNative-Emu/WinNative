@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.json.JSONObject;
+import org.json.JSONException;
 
 public final class DriverPackages {
   public enum Platform {
@@ -98,7 +99,20 @@ public final class DriverPackages {
         LEGACY.equals(id)
             ? LinuxRuntime.driverDir(context)
             : new File(linuxDirectory(context), id);
-    return new File(directory, LinuxRuntime.DRIVER_ICD);
+    File manifest = new File(directory, LinuxRuntime.DRIVER_ICD);
+    try {
+      if (!manifest.isFile() || manifest.length() > 65536) return null;
+      JSONObject icd = new JSONObject(new String(Files.readAllBytes(manifest.toPath()),
+          java.nio.charset.StandardCharsets.UTF_8)).getJSONObject("ICD");
+      String path = icd.getString("library_path");
+      File library = new File(path);
+      if (!library.isAbsolute()) library = new File(directory, path);
+      if (library.isFile() && library.canRead()) return manifest;
+    } catch (IOException | JSONException error) {
+      android.util.Log.w("DriverPackages", "Cannot read Linux driver " + id, error);
+    }
+    android.util.Log.w("DriverPackages", "Linux driver unavailable; using bundled Mesa: " + id);
+    return null;
   }
 
   public static List<String> linuxSelectionEntries(Context context) {
@@ -142,7 +156,7 @@ public final class DriverPackages {
       String id = driver.getName();
       if (selection.equals(id) || selection.equals(linuxName(context, id))) return id;
     }
-    return selectedLinux(context);
+    return BUNDLED;
   }
 
   public static synchronized void removeLinux(Context context, String id) {

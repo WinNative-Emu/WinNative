@@ -8965,7 +8965,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         EnvVars sessionEnv = FEXCorePresetManager.getEnvVars(this, effectiveFEXCorePreset());
         FEXCorePresetManager.normalizeSmcChecksEnvVars(sessionEnv, userEnv);
         sessionEnv.putAll(userEnv);
-        for (String entry : sessionEnv.toStringArray()) guest.add(entry);
+        for (String entry : sessionEnv.toStringArray()) {
+            if (!entry.startsWith("PROOT_NO_SECCOMP=")) guest.add(entry);
+        }
         guest.add("WN_WIDTH=" + xServer.screenInfo.width);
         guest.add("WN_HEIGHT=" + xServer.screenInfo.height);
         guest.add("WN_FPS=" + Math.max(0, runtimeFpsLimit));
@@ -8991,9 +8993,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         networkLink.publish();
         environment.addComponent(networkLink);
 
-        EnvVars hostEnv = new EnvVars();
-        hostEnv.put("PROOT_LOADER", LinuxRuntime.prootLoader(this).getPath());
-        hostEnv.put("PROOT_TMP_DIR", getCacheDir().getPath());
+        EnvVars hostEnv = LinuxRuntime.hostEnvironment(this, sessionEnv);
         List<String> binds = new ArrayList<>(com.winlator.cmod.feature.library.LinuxSteamLibrary.prepare(
                 this, LinuxRuntime.rootDir(this)));
         if (!reusingSession) binds.addAll(com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.sync(this));

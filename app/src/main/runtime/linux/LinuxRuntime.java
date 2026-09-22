@@ -7,6 +7,7 @@ import android.system.Os;
 import android.system.StructStat;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
 import com.winlator.cmod.shared.io.FileUtils;
+import com.winlator.cmod.runtime.wine.EnvVars;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -75,6 +76,17 @@ public final class LinuxRuntime {
     return new File(context.getApplicationInfo().nativeLibraryDir, "libproot-loader.so");
   }
 
+  public static EnvVars hostEnvironment(Context context, EnvVars sessionEnv) {
+    EnvVars host = new EnvVars();
+    host.put("PROOT_LOADER", prootLoader(context).getPath());
+    host.put("PROOT_TMP_DIR", context.getCacheDir().getPath());
+    String noSeccomp = sessionEnv.get("PROOT_NO_SECCOMP");
+    if ("1".equals(noSeccomp) || "true".equalsIgnoreCase(noSeccomp) || "on".equalsIgnoreCase(noSeccomp)) {
+      host.put("PROOT_NO_SECCOMP", "1");
+    }
+    return host;
+  }
+
   /** The rootfs is present with gamescope and the session script the launcher hands control to. */
   public static boolean isInstalled(Context context) {
     File root = rootDir(context);
@@ -141,6 +153,8 @@ public final class LinuxRuntime {
     List<String> cmd = new ArrayList<>();
     cmd.add(prootBinary(context).getPath());
     cmd.add("--kill-on-exit");
+    cmd.add("-i");
+    cmd.add(Process.myUid() + ":" + Process.myUid());
     cmd.add("-r");
     cmd.add(root.getPath());
     cmd.add("-w");
