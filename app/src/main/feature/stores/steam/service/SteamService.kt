@@ -4209,11 +4209,31 @@ class SteamService : Service() {
         }
     }
 
+    /** Whether the user asked chat to outlive the app, and there is a login for it to come back to. */
+    private fun wantsBackgroundChat(): Boolean =
+        PrefManager.chatStayRunningOnExit && PrefManager.refreshToken.isNotBlank()
+
     override fun onStartCommand(
         intent: Intent?,
         flags: Int,
         startId: Int,
     ): Int {
+        // A null intent is Android restarting this service on its own after the process died.
+        // Nobody asked for it and there is no UI, so coming back would only re-register the
+        // keep-alive component and leave a foreground service and its wakelock running for hours
+        // over nothing. Downloads do not need it: their state is in the database and
+        // DownloadCoordinator restores them on the next app start.
+        //
+        // Background chat is the one thing that does need it. When the user turns that on,
+        // stopManagedServices deliberately leaves this service started while onTaskRemoved kills
+        // the process anyway, so this restart is the only way chat ever comes back - refusing it
+        // would make the setting stop doing what it says.
+        if (intent == null && !wantsBackgroundChat()) {
+            Timber.i("Restarted by Android with no session, no UI and no background chat; stopping instead")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         // Notification intents
         when (intent?.action) {
             NotificationHelper.ACTION_EXIT -> {

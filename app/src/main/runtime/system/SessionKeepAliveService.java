@@ -408,7 +408,11 @@ public class SessionKeepAliveService extends Service {
                 String action = intent.getAction();
                 if (Intent.ACTION_SCREEN_OFF.equals(action)) {
                     isScreenLocked = true;
-                    acquireWakeLock();
+                    // Only hold the CPU for a session that is actually running, which is the one
+                    // thing this lock exists for. The service outlives the session whenever a
+                    // download or Steam chat keeps it alive, and the lock is released only when
+                    // the user unlocks - so without this an idle app holds the CPU awake all night.
+                    if (sessionActive.get()) acquireWakeLock();
                     LogManager.log(TAG, "Screen turned off / device locked");
                 } else if (Intent.ACTION_USER_PRESENT.equals(action)) {
                     isScreenLocked = false;
