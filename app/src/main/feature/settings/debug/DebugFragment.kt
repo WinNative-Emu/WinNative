@@ -394,7 +394,7 @@ class DebugFragment : Fragment() {
             files.forEach { file ->
                 if (file.isFile) {
                     zos.putNextEntry(ZipEntry(com.winlator.cmod.runtime.system.LogManager.archiveName(ctx, file)))
-                    file.inputStream().use { it.copyTo(zos) }
+                    com.winlator.cmod.runtime.system.LogManager.copyShareable(ctx, file, zos)
                     zos.closeEntry()
                 }
             }
@@ -491,8 +491,16 @@ class DebugFragment : Fragment() {
             return
         }
         try {
+            // Never the file itself: the Steam client's logs carry its account's session token,
+            // and what leaves here is the copy that has had it taken out. One directory of its
+            // own, emptied first, so two logs of the same name cannot be confused for each other.
+            val outbox = File(ctx.cacheDir, "shared-logs")
+            outbox.deleteRecursively()
+            outbox.mkdirs()
+            val shared = File(outbox, file.name)
+            FileOutputStream(shared).use { com.winlator.cmod.runtime.system.LogManager.copyShareable(ctx, file, it) }
             val authority = "${ctx.packageName}.tileprovider"
-            val uri = FileProvider.getUriForFile(ctx, authority, file)
+            val uri = FileProvider.getUriForFile(ctx, authority, shared)
             val shareIntent =
                 Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
@@ -530,7 +538,9 @@ class DebugFragment : Fragment() {
         }
         return try {
             val dest = File(logsDownloadDir(), exportFileName(file))
-            file.inputStream().use { input -> FileOutputStream(dest).use { input.copyTo(it) } }
+            FileOutputStream(dest).use {
+                com.winlator.cmod.runtime.system.LogManager.copyShareable(ctx, file, it)
+            }
             markLogDownloaded(file)
             "/WinNative/logs/${dest.name}"
         } catch (e: Exception) {

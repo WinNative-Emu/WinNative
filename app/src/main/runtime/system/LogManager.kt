@@ -579,6 +579,33 @@ object LogManager {
     }
 
     /**
+     * A token as Steam's own logs print one: three base64url pieces, the first starting `eyJ`.
+     * Its connection log records the account's session token in full on every logon.
+     */
+    private val SESSION_TOKEN = Regex("eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}")
+
+    /**
+     * Writes [file] to [out] as it should leave the device. A log is shared to be read by someone
+     * else, and the Steam client's own logs carry a token that signs its account in, so those are
+     * copied a line at a time with any token taken out. [out] is left open for the caller.
+     */
+    @JvmStatic
+    fun copyShareable(context: Context, file: File, out: java.io.OutputStream) {
+        if (file.parentFile != steamClientLogsDir(context)) {
+            file.inputStream().use { it.copyTo(out) }
+            return
+        }
+        val writer = java.io.OutputStreamWriter(out, Charsets.UTF_8)
+        file.bufferedReader(Charsets.UTF_8).use { reader ->
+            reader.lineSequence().forEach { line ->
+                writer.write(SESSION_TOKEN.replace(line, "[token removed by WinNative]"))
+                writer.write("\n")
+            }
+        }
+        writer.flush()
+    }
+
+    /**
      * The name a log goes by in an archive: the session's and the Steam client's logs in folders
      * of their own, so that none of them can take the name of another.
      */
