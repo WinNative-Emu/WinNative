@@ -50,7 +50,7 @@ class LinuxProtonsTest {
             assertTrue(File(target, "files/bin-arm64/wine").canExecute())
             assertEquals(build.id, JSONObject(File(target, "winnative-proton.json").readText()).getString("id"))
             assertTrue(File(target, "toolmanifest.vdf").readText().contains("/winnative-proton-wrap %verb%"))
-            assertTrue(File(target, "winnative-proton-wrap").readText().contains("wn_directaudio"))
+            assertTrue(File(target, "winnative-proton-wrap").readText().contains("winnative-proton-launch"))
             assertFalse(LinuxProtons.directory(context).listFiles().orEmpty().any { it.name.endsWith(".staging") })
             LinuxProtons.remove(context, build)?.join()
             assertFalse(target.exists())

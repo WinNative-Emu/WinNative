@@ -48,6 +48,23 @@ public class AdrenotoolsManager {
         return libraryName;
     }
     
+    public boolean isTurnipDriver(String driverId) {
+        if (driverId == null || driverId.isEmpty() || "System".equalsIgnoreCase(driverId)) return false;
+        File directory = new File(adrenotoolsContentDir, driverId);
+        String metadata = FileUtils.readString(new File(directory, "meta.json"));
+        if (metadata == null) return false;
+        try {
+            JSONObject json = new JSONObject(metadata);
+            String library = json.optString("libraryName");
+            if (library.isEmpty() || !new File(directory, library).isFile()) return false;
+            String identity = library + " " + json.optString("name") + " " + json.optString("driverName");
+            identity = identity.toLowerCase(java.util.Locale.ROOT);
+            return identity.contains("turnip") || identity.contains("freedreno");
+        } catch (JSONException e) {
+            return false;
+        }
+    }
+
     public String getDriverName(String adrenoToolsDriverId) {
         String driverName = "";
         File driverPath = new File(adrenotoolsContentDir, adrenoToolsDriverId);

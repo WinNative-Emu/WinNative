@@ -65,43 +65,12 @@ EXTRA_COMPAT_TOOL_VDF = '''"compatibilitytools"
 }
 '''
 
-PRELOAD_SH = '''fake=/usr/local/lib/libwninput.so
-if [ -f "$fake" ]; then
-  case ":${LD_PRELOAD:-}:" in
-    *":$fake:"*) ;;
-    *) LD_PRELOAD="$fake${LD_PRELOAD:+:$LD_PRELOAD}"; export LD_PRELOAD ;;
-  esac
-fi
-'''
-
-DIRECTAUDIO_SH = '''wn_directaudio() {
-  base=$1
-  stage=/usr/local/share/winnative/directaudio
-  [ -n "${WN_DIRECTAUDIO:-}" ] || return 0
-  [ -d "$stage/lib/wine" ] || return 0
-  [ -d "$base/files/bin-arm64" ] || return 0
-  WINEDLLPATH="$stage/lib/wine${WINEDLLPATH:+:$WINEDLLPATH}"
-  export WINEDLLPATH
-  reg="${STEAM_COMPAT_DATA_PATH:-}/pfx/user.reg"
-  if [ -f "$reg" ] && ! grep -q '"Audio"="directaudio"' "$reg" 2>/dev/null; then
-    printf '\n[Software\\\\Wine\\\\Drivers] %s\n"Audio"="directaudio"\n' "$(date +%s)" >> "$reg"
-  fi
-}
-'''
-
 LAUNCHER_SH = '''#!/bin/sh
 verb=$1
 shift || true
 steam_root=${STEAM_COMPAT_CLIENT_INSTALL_PATH:-${XDG_DATA_HOME:-$HOME/.local/share}/Steam}
-%s%srun_proton() {
-  proton=$1
-  shift
-  base=$(dirname "$proton")
-  wn_directaudio "$base"
-  if [ -n "$WN_EPIC" ] && [ -x /usr/local/bin/winnative-epic-launch ]; then
-    exec /usr/local/bin/winnative-epic-launch "$proton" "$@"
-  fi
-  exec "$proton" "$@"
+run_proton() {
+  exec /usr/local/bin/winnative-proton-launch "$@"
 }
 for name in %s; do
   depot="$steam_root/steamapps/common/$name"
@@ -114,18 +83,27 @@ if [ -d "%s/files/bin-arm64" ] && [ -x "%s/proton" ]; then
 fi
 echo "winnative-proton: no ARM64 Proton depot is installed yet" >&2
 exit 1
-''' % (PRELOAD_SH, DIRECTAUDIO_SH, " ".join('"%s"' % name for name in SOURCES), BUNDLED, BUNDLED, BUNDLED)
+''' % (" ".join('"%s"' % name for name in SOURCES), BUNDLED, BUNDLED, BUNDLED)
 
 EXTRA_WRAPPER_SH = '''#!/bin/sh
-verb=$1
-shift || true
 here=$(dirname "$0")
-%s%swn_directaudio "$here"
-if [ -n "$WN_EPIC" ] && [ -x /usr/local/bin/winnative-epic-launch ]; then
-  exec /usr/local/bin/winnative-epic-launch "$here/%s" "$verb" "$@"
-fi
-exec "$here/%s" "$verb" "$@"
+exec /usr/local/bin/winnative-proton-launch "$here/%s" "$@"
 '''
+
+
+def write_changed(path, body, mode=0o644):
+    try:
+        with open(path, encoding="utf-8") as source:
+            if source.read() == body:
+                os.chmod(path, mode)
+                return
+    except OSError:
+        pass
+    staged = path + ".winnative-staged"
+    with open(staged, "w", encoding="utf-8") as output:
+        output.write(body)
+    os.chmod(staged, mode)
+    os.replace(staged, path)
 
 
 def tokenize(text):
@@ -195,7 +173,8 @@ def serialize(tokens):
 
 def first_key(path, section):
     try:
-        tokens = tokenize(open(path, encoding="utf-8", errors="replace").read())
+        with open(path, encoding="utf-8", errors="replace") as source:
+            tokens = tokenize(source.read())
     except OSError:
         return None
     block = find_block(tokens, section)
@@ -209,7 +188,8 @@ def first_key(path, section):
 
 def manifest_entry_point(path):
     try:
-        tokens = tokenize(open(path, encoding="utf-8", errors="replace").read())
+        with open(path, encoding="utf-8", errors="replace") as source:
+            tokens = tokenize(source.read())
     except OSError:
         return None
     for i in range(len(tokens) - 1):
@@ -239,8 +219,6 @@ def build_tool(tools):
     tool_dir = os.path.join(tools, TOOL)
     if os.path.islink(tool_dir):
         os.unlink(tool_dir)
-    elif os.path.isdir(tool_dir):
-        shutil.rmtree(tool_dir)
     os.makedirs(tool_dir, exist_ok=True)
     files = {
         "toolmanifest.vdf": TOOLMANIFEST,
@@ -248,9 +226,7 @@ def build_tool(tools):
         LAUNCHER: LAUNCHER_SH,
     }
     for name, body in files.items():
-        with open(os.path.join(tool_dir, name), "w", encoding="utf-8") as output:
-            output.write(body)
-    os.chmod(os.path.join(tool_dir, LAUNCHER), 0o755)
+        write_changed(os.path.join(tool_dir, name), body, 0o755 if name == LAUNCHER else 0o644)
 
 
 def adopt_extras(tools):
@@ -277,14 +253,10 @@ def adopt_extras(tools):
             if not os.path.exists(os.path.join(tool_dir, entry_point)):
                 continue
             name = first_key(compat, ["compatibilitytools", "compat_tools"]) or entry
-            with open(os.path.join(tool_dir, EXTRA_WRAPPER), "w", encoding="utf-8") as output:
-                output.write(EXTRA_WRAPPER_SH % (PRELOAD_SH, DIRECTAUDIO_SH, entry_point, entry_point))
-            os.chmod(os.path.join(tool_dir, EXTRA_WRAPPER), 0o755)
-            with open(manifest, "w", encoding="utf-8") as output:
-                output.write(EXTRA_TOOLMANIFEST)
+            write_changed(os.path.join(tool_dir, EXTRA_WRAPPER), EXTRA_WRAPPER_SH % entry_point, 0o755)
+            write_changed(manifest, EXTRA_TOOLMANIFEST)
             if os.path.isfile(compat):
-                with open(compat, "w", encoding="utf-8") as output:
-                    output.write(EXTRA_COMPAT_TOOL_VDF % (name, entry))
+                write_changed(compat, EXTRA_COMPAT_TOOL_VDF % (name, entry))
             adopted.add(name)
         except (OSError, ValueError, IndexError) as error:
             print("winnative-steam-compat: could not adopt %s: %s" % (entry, error), file=sys.stderr)
@@ -305,28 +277,28 @@ def register_default(config_path, apps=(), protect=()):
         end = block_end(tokens, steam)
         tokens[end:end] = ['"CompatToolMapping"', "{"] + entry + ["}"]
         changed = True
-    else:
-        mapping += steam + 1
-        end = block_end(tokens, mapping)
-        for i in range(mapping, end):
-            if tokens[i] != '"name"' or i + 1 >= end:
-                continue
-            name = tokens[i + 1].strip('"')
-            lowered = name.lower()
-            if lowered.startswith("proton") and lowered != TOOL.lower() and lowered not in protect:
-                tokens[i + 1] = '"%s"' % TOOL
-                changed = True
-        if find_block(tokens[mapping + 1:end], ["0"]) is None:
-            tokens[mapping + 1:mapping + 1] = entry
-            end += len(entry)
+        mapping = find_block(tokens[steam + 1:], ["CompatToolMapping"])
+    mapping += steam + 1
+    end = block_end(tokens, mapping)
+    for i in range(mapping, end):
+        if tokens[i] != '"name"' or i + 1 >= end:
+            continue
+        name = tokens[i + 1].strip('"')
+        lowered = name.lower()
+        if lowered.startswith("proton") and lowered != TOOL.lower() and lowered not in protect:
+            tokens[i + 1] = '"%s"' % TOOL
             changed = True
-        for app in apps:
-            if find_block(tokens[mapping + 1:end], [app]) is not None:
-                continue
-            item = ['"%s"' % app, "{", '"name"', '"%s"' % TOOL, '"config"', '""', '"priority"', '"250"', "}"]
-            tokens[mapping + 1:mapping + 1] = item
-            end += len(item)
-            changed = True
+    if find_block(tokens[mapping + 1:end], ["0"]) is None:
+        tokens[mapping + 1:mapping + 1] = entry
+        end += len(entry)
+        changed = True
+    for app in apps:
+        if find_block(tokens[mapping + 1:end], [app]) is not None:
+            continue
+        item = ['"%s"' % app, "{", '"name"', '"%s"' % TOOL, '"config"', '""', '"priority"', '"250"', "}"]
+        tokens[mapping + 1:mapping + 1] = item
+        end += len(item)
+        changed = True
     if not changed:
         return
     tmp = config_path + ".winnative"
@@ -357,7 +329,7 @@ def main():
     state = os.path.basename(depot) if depot else "waiting for ARM64 Proton depot"
     print("winnative-steam-compat: registered %s (%s)" % (TOOL, state))
     config = os.path.join(steam_root, "config", "config.vdf")
-    if os.path.isfile(config):
+    if "--refresh" not in sys.argv[2:] and os.path.isfile(config):
         apps = mapped_apps(steam_root)
         register_default(config, apps, extras)
         print("winnative-steam-compat: default and %d installed title(s) set to %s" % (len(apps), TOOL))

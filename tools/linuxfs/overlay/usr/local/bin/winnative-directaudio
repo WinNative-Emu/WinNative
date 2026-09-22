@@ -135,7 +135,10 @@ def main():
         return ready[files]
 
     prefixes = []
-    for files in glob.glob(steam_root + "/steamapps/common/Proton*/files") + ["/opt/winnative-proton/files"]:
+    proton_files = glob.glob(steam_root + "/steamapps/common/Proton*/files")
+    proton_files += glob.glob(steam_root + "/compatibilitytools.d/*/files")
+    proton_files.append("/opt/winnative-proton/files")
+    for files in proton_files:
         files = os.path.realpath(files)
         for template in glob.glob(files + "/share/default_pfx*"):
             prefixes.append((template, files))
@@ -148,19 +151,36 @@ def main():
         if not os.path.isfile(user_reg):
             continue
         on = usable(files)
-        if on:
-            try:
-                for part, directory in HALVES.items():
-                    target = os.path.join(prefix, "drive_c/windows", directory)
-                    if os.path.isdir(target):
-                        place(os.path.join(STAGE, part), os.path.join(target, "winedirectaudio.drv"))
-            except OSError as e:
-                print(f"== directaudio: {prefix}: {e}")
-                on = False
-        set_driver(user_reg, on)
+        prepare_prefix(prefix, on)
+
+
+def prepare_prefix(prefix, on):
+    if on:
+        try:
+            for part, directory in HALVES.items():
+                target = os.path.join(prefix, "drive_c/windows", directory)
+                if os.path.isdir(target):
+                    place(os.path.join(STAGE, part), os.path.join(target, "winedirectaudio.drv"))
+        except OSError as e:
+            print(f"== directaudio: {prefix}: {e}")
+            on = False
+    set_driver(os.path.join(prefix, "user.reg"), on)
+
+
+def prepare_launch(files, compatdata, enabled):
+    wanted = call_table_entries(os.path.join(STAGE, UNIXLIB)) if enabled else 0
+    on = bool(wanted and install(files, wanted))
+    print(f"== directaudio: {files}: {'on' if on else 'off'}")
+    for template in glob.glob(files + "/share/default_pfx*"):
+        prepare_prefix(template, on)
+    if compatdata:
+        prepare_prefix(os.path.join(compatdata, "pfx"), on)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3 or sys.argv[2] not in ("on", "off"):
-        sys.exit("usage: winnative-directaudio <steam root> on|off")
-    main()
+    if len(sys.argv) == 5 and sys.argv[1] == "--prepare" and sys.argv[4] in ("on", "off"):
+        prepare_launch(sys.argv[2], sys.argv[3], sys.argv[4] == "on")
+    elif len(sys.argv) == 3 and sys.argv[2] in ("on", "off"):
+        main()
+    else:
+        sys.exit("usage: winnative-directaudio <steam root> on|off | --prepare <files> <compatdata> on|off")

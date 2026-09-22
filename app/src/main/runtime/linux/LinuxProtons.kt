@@ -51,36 +51,9 @@ object LinuxProtons {
 }
 """
     private val WRAPPER_SCRIPT = """#!/bin/sh
-verb=${'$'}1
-shift || true
 here=${'$'}(dirname "${'$'}0")
-fake=/usr/local/lib/libwninput.so
-if [ -f "${'$'}fake" ]; then
-  case ":${'$'}{LD_PRELOAD:-}:" in
-    *":${'$'}fake:"*) ;;
-    *) LD_PRELOAD="${'$'}fake${'$'}{LD_PRELOAD:+:${'$'}LD_PRELOAD}"; export LD_PRELOAD ;;
-  esac
-fi
-wn_directaudio() {
-  base=${'$'}1
-  stage=/usr/local/share/winnative/directaudio
-  [ -n "${'$'}{WN_DIRECTAUDIO:-}" ] || return 0
-  [ -d "${'$'}stage/lib/wine" ] || return 0
-  [ -d "${'$'}base/files/bin-arm64" ] || return 0
-  WINEDLLPATH="${'$'}stage/lib/wine${'$'}{WINEDLLPATH:+:${'$'}WINEDLLPATH}"
-  export WINEDLLPATH
-  reg="${'$'}{STEAM_COMPAT_DATA_PATH:-}/pfx/user.reg"
-  if [ -f "${'$'}reg" ] && ! grep -q '"Audio"="directaudio"' "${'$'}reg" 2>/dev/null; then
-    printf '\n[Software\\Wine\\Drivers] %s\n"Audio"="directaudio"\n' "${'$'}(date +%s)" >> "${'$'}reg"
-  fi
-}
-wn_directaudio "${'$'}here"
-if [ -n "${'$'}WN_EPIC" ] && [ -x /usr/local/bin/winnative-epic-launch ]; then
-  exec /usr/local/bin/winnative-epic-launch "${'$'}here/proton" "${'$'}verb" "${'$'}@"
-fi
-exec "${'$'}here/proton" "${'$'}verb" "${'$'}@"
+exec /usr/local/bin/winnative-proton-launch "${'$'}here/proton" "${'$'}@"
 """
-
 
     fun directory(context: Context) = File(LinuxRuntime.rootDir(context), "root/.local/share/Steam/compatibilitytools.d")
     private fun installed(context: Context) = directory(context).listFiles().orEmpty().mapNotNull { file ->

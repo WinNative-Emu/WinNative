@@ -1,0 +1,28 @@
+#!/bin/sh
+proton=$1
+shift
+base=$(dirname "$proton")
+if [ ! -x "$proton" ] || [ ! -x "$base/files/bin-arm64/wine" ]; then
+  echo "winnative-proton: incomplete ARM64 tool: $base" >&2
+  exit 126
+fi
+export PROTON_USE_ARM64=1
+fake=/usr/local/lib/libwninput.so
+if [ -f "$fake" ]; then
+  case ":${LD_PRELOAD:-}:" in
+    *":$fake:"*) ;;
+    *) LD_PRELOAD="$fake${LD_PRELOAD:+:$LD_PRELOAD}"; export LD_PRELOAD ;;
+  esac
+fi
+if [ -n "${WN_LOG:-}" ]; then
+  export PROTON_LOG=${PROTON_LOG:-1}
+  export PROTON_LOG_DIR=${PROTON_LOG_DIR:-$(dirname "$WN_LOG")}
+fi
+audio=off
+[ "${WN_DIRECTAUDIO:-0}" = 1 ] && audio=on
+winnative-directaudio --prepare "$base/files" "${STEAM_COMPAT_DATA_PATH:-}" "$audio" || exit $?
+echo "winnative-proton: tool=$base verb=${1:-missing} app=${SteamAppId:-unknown}" >&2
+if [ -n "${WN_EPIC:-}" ] && [ -x /usr/local/bin/winnative-epic-launch ]; then
+  exec /usr/local/bin/winnative-epic-launch "$proton" "$@"
+fi
+exec "$proton" "$@"

@@ -131,8 +131,7 @@ case $mode in
         winnative-seed-redists "$steam_root" >/dev/null 2>&1 || true
         beat=$((beat + 1))
         if [ "$((beat % 3))" -eq 0 ]; then
-          winnative-steam-compat "$steam_root" >/dev/null 2>&1 || true
-          winnative-directaudio "$steam_root" "$([ -n "${WN_DIRECTAUDIO:-}" ] && echo on || echo off)" >/dev/null 2>&1 || true
+          winnative-steam-compat "$steam_root" --refresh >/dev/null 2>&1 || true
         fi
       done
     ) &

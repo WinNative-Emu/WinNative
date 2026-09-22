@@ -8975,7 +8975,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         int panelHz = panel != null ? Math.round(panel.getRefreshRate()) : 0;
         if (panelHz > 1) guest.add("WN_REFRESH=" + panelHz);
         File logDir = com.winlator.cmod.runtime.system.LogManager.getSessionLogsDir(this);
-        guest.add("WN_LOG=" + new File(logDir, "linux-session.log").getPath());
+        File linuxLog = new File(logDir, "linux-session-" + java.time.LocalDateTime.now().format(
+                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss", java.util.Locale.US)) + ".log");
+        guest.add("WN_LOG=" + linuxLog.getPath());
         guest.add(LinuxRuntime.SESSION_SCRIPT);
         guest.addAll(session);
 
@@ -9000,7 +9002,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 android.os.Environment.getExternalStorageDirectory(), devInputDir, binds, guest);
         final long startedAt = android.os.SystemClock.elapsedRealtime();
         LinuxProgramLauncherComponent launcher = new LinuxProgramLauncherComponent(
-                command, hostEnv, LinuxRuntime.rootDir(this), (status) -> {
+                command, hostEnv, LinuxRuntime.rootDir(this), linuxLog, (status) -> {
                     com.winlator.cmod.runtime.linux.LinuxEpicTokens.stop();
                     LogManager.log(TAG, "Linux session [" + String.join(" ", session)
                             + "] ended with status: " + status, this);
@@ -9233,7 +9235,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 .parseGraphicsDriverConfig(container.getGraphicsDriverConfig()).get("version"));
         candidates.addAll(atm.enumarateInstalledDrivers());
         for (String driverId : candidates) {
-            if (driverId == null || driverId.isEmpty() || driverId.equals("System")) continue;
+            if (!atm.isTurnipDriver(driverId)) continue;
             String libraryName = atm.getLibraryName(driverId);
             if (libraryName == null || libraryName.isEmpty()) continue;
             cfg.driverPath = atm.getDriverPath(driverId);

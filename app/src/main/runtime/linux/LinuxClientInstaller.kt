@@ -152,7 +152,10 @@ object LinuxClientInstaller {
      * stays black. Any Turnip from Drivers serves, so one is only fetched when there is none.
      */
     @JvmStatic
-    fun hasCompositorDriver(context: Context): Boolean = AdrenotoolsManager(context).enumarateInstalledDrivers().isNotEmpty()
+    fun hasCompositorDriver(context: Context): Boolean {
+        val drivers = AdrenotoolsManager(context)
+        return drivers.enumarateInstalledDrivers().any { drivers.isTurnipDriver(it) }
+    }
 
     /** Reads what is on disk, off the calling thread, unless an install is running. */
     fun refresh(context: Context) {
