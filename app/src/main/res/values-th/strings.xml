@@ -273,7 +273,9 @@
     <string name="linux_client_update_session_running">เซสชัน Linux กำลังทำงานอยู่ ออกจากเซสชันก่อนแล้วจึงอัปเดต</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
-    <string name="linux_session_failed">The Linux session stopped as soon as it started. Its log is under Settings > Debug > Open Logs Manager; share it so the cause can be found.</string>
+    <string name="linux_session_failed">เซสชัน Linux หยุดทำงานทันทีที่เริ่ม บันทึกอยู่ที่ การตั้งค่า > ดีบัก > เปิดตัวจัดการบันทึก โปรดแชร์เพื่อให้หาสาเหตุได้</string>
+    <string name="linux_session_stopped">เซสชัน Linux หยุดทำงานเอง (สถานะ %1$d) บันทึกอยู่ที่ การตั้งค่า > ดีบัก > เปิดตัวจัดการบันทึก โปรดแชร์เพื่อให้หาสาเหตุได้</string>
+    <string name="linux_session_trimmed">Android หยุดเซสชัน Linux โดยปกติหมายความว่าถึงขีดจำกัดโปรเซสเบื้องหลังแล้ว ให้เปิด “ปิดใช้ข้อจำกัดโปรเซสลูก” ในตัวเลือกสำหรับนักพัฒนา แล้วลองอีกครั้ง</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">ร้านค้า</string>
@@ -2956,4 +2958,6 @@
     <string name="linux_protons_hint">เริ่มไคลเอนต์ Linux ใหม่หลังติดตั้ง เลือกรุ่นสำหรับแต่ละเกมใน Steam → คุณสมบัติ → ความเข้ากันได้</string>
     <string name="linux_protons_failed">ไม่สามารถโหลดหรือติดตั้ง Proton ได้ โปรดตรวจสอบการเชื่อมต่อและพื้นที่ว่างแล้วลองอีกครั้ง</string>
     <string name="linux_protons_requires_runtime">ติดตั้งไคลเอนต์ Linux ก่อน แล้วกลับมาที่นี่เพื่อดาวน์โหลดรุ่น Proton</string>
+    <string name="linux_child_processes_message">Android จำกัดจำนวนโปรเซสเบื้องหลังของแอป แต่เซสชัน Linux ใช้มากกว่านั้นมาก: Steam หรือเกมอาจถูกปิดระหว่างเล่น เปิด “ปิดใช้ข้อจำกัดโปรเซสลูก” ในตัวเลือกสำหรับนักพัฒนา เปิดตอนนี้ไหม?</string>
+    <string name="linux_child_processes_adb">Android จำกัดจำนวนโปรเซสเบื้องหลังของแอป แต่เซสชัน Linux ใช้มากกว่านั้นมาก: Steam หรือเกมอาจถูกปิดระหว่างเล่น Android รุ่นนี้ไม่มีสวิตช์นั้น ให้รันจากคอมพิวเตอร์:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

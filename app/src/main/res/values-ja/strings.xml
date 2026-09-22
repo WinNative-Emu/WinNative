@@ -273,7 +273,9 @@
     <string name="linux_client_update_session_running">Linux セッションが実行中です。終了してから更新してください。</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
-    <string name="linux_session_failed">The Linux session stopped as soon as it started. Its log is under Settings > Debug > Open Logs Manager; share it so the cause can be found.</string>
+    <string name="linux_session_failed">Linux セッションは開始直後に停止しました。ログは 設定 > デバッグ > ログマネージャーを開く にあります。原因を特定できるよう共有してください。</string>
+    <string name="linux_session_stopped">Linux セッションが自ら停止しました (状態 %1$d)。ログは 設定 > デバッグ > ログマネージャーを開く にあります。原因を特定できるよう共有してください。</string>
+    <string name="linux_session_trimmed">Android が Linux セッションを停止しました。通常はバックグラウンドプロセスの上限に達したことを意味します。開発者向けオプションで「子プロセスの制限を無効にする」をオンにして、もう一度お試しください。</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">ストア</string>
@@ -2957,4 +2959,6 @@
     <string name="linux_protons_hint">インストール後に Linux クライアントを再起動してください。各ゲームの Steam → プロパティ → 互換性でビルドを選択できます。</string>
     <string name="linux_protons_failed">Proton を読み込むかインストールできませんでした。接続と空き容量を確認して再試行してください。</string>
     <string name="linux_protons_requires_runtime">先に Linux クライアントをインストールしてから、ここに戻って Proton ビルドをダウンロードしてください。</string>
+    <string name="linux_child_processes_message">Android はアプリのバックグラウンドプロセス数を制限しますが、Linux セッションはそれを大きく上回ります。プレイ中に Steam やゲームが終了されることがあります。開発者向けオプションで「子プロセスの制限を無効にする」をオンにしてください。今開きますか？</string>
+    <string name="linux_child_processes_adb">Android はアプリのバックグラウンドプロセス数を制限しますが、Linux セッションはそれを大きく上回ります。プレイ中に Steam やゲームが終了されることがあります。この Android バージョンにその設定はありません。パソコンから次を実行してください:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

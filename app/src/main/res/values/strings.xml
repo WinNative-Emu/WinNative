@@ -275,6 +275,8 @@
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
     <string name="linux_session_failed">The Linux session stopped as soon as it started. Its log is under Settings > Debug > Open Logs Manager; share it so the cause can be found.</string>
+    <string name="linux_session_stopped">The Linux session stopped on its own (status %1$d). Its log is under Settings > Debug > Open Logs Manager; share it so the cause can be found.</string>
+    <string name="linux_session_trimmed">Android stopped the Linux session. This usually means its limit on background processes was reached: turn on “Disable child process restrictions” in Developer options and try again.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Stores</string>
@@ -2972,4 +2974,6 @@ Installed path:
     <string name="linux_protons_hint">Restart the Linux client after installing. Choose a build in Steam → Properties → Compatibility for each game.</string>
     <string name="linux_protons_failed">Could not load or install Proton. Check your connection and free space, then retry.</string>
     <string name="linux_protons_requires_runtime">Install the Linux client first, then return here to download Proton builds.</string>
+    <string name="linux_child_processes_message">Android limits how many background processes an app may have, and a Linux session runs far more than that: Steam or a game can be killed while you play. Turn on “Disable child process restrictions” in Developer options. Open it now?</string>
+    <string name="linux_child_processes_adb">Android limits how many background processes an app may have, and a Linux session runs far more than that: Steam or a game can be killed while you play. This version of Android has no switch for it. From a computer, run:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

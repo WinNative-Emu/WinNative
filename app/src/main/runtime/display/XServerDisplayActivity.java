@@ -86,6 +86,7 @@ import com.winlator.cmod.runtime.content.AdrenotoolsManager;
 import com.winlator.cmod.runtime.system.LogManager;
 import com.winlator.cmod.shared.android.AppUtils;
 import com.winlator.cmod.shared.android.AppTerminationHelper;
+import com.winlator.cmod.shared.ui.widget.EnvVarsView;
 import com.winlator.cmod.shared.ui.toast.WinToast;
 import com.winlator.cmod.runtime.wine.EnvVars;
 import com.winlator.cmod.runtime.display.wayland.WaylandCompositor;
@@ -514,6 +515,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private static final long WAYLAND_RENDERER_SETTLED_POLL_MS = 15000L;
     private static final long WAYLAND_RENDERER_SESSION_POLL_MS = 5000L;
     private static final long LINUX_SESSION_START_MS = 20000L;
+    /** 128 + SIGKILL: the session was stopped from outside, which on Android is Android itself. */
+    private static final int SIGKILL_STATUS = 137;
     private Thread waylandRendererThread;
     /* The process behind the window the compositor is showing, from the compositor itself. */
     private volatile int waylandGamePid;
@@ -3851,11 +3854,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             if (file == null || !file.isFile()) continue;
                             zos.putNextEntry(new java.util.zip.ZipEntry(
                                     com.winlator.cmod.runtime.system.LogManager.archiveName(this, file)));
-                            try (java.io.InputStream in = new java.io.FileInputStream(file)) {
-                                byte[] buf = new byte[8192];
-                                int n;
-                                while ((n = in.read(buf)) > 0) zos.write(buf, 0, n);
-                            }
+                            com.winlator.cmod.runtime.system.LogManager.copyShareable(this, file, zos);
                             zos.closeEntry();
                         }
                     }
@@ -8946,9 +8945,13 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("LIBGL_KOPPER_DRI2=true");
         File icd = LinuxRuntime.vulkanIcd(this, graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null);
         if (icd != null) guest.add("VK_ICD_FILENAMES=" + icd.getPath());
+        // A container made before it was a Linux one still carries the Android side's variables,
+        // so it is read here as a Linux session reads it rather than as it was saved.
+        EnvVars userEnv = new EnvVars(EnvVarsView.forGamescope(effectiveUserEnv().toString()));
         // The client, its web helper and native games only know PulseAudio, so it runs whatever
-        // the entry chose; DirectAudio takes the Windows games off it.
-        PulseAudioComponent.Options pulseOptions = PulseAudioComponent.Options.fromEnvVars(envVars);
+        // the entry chose; DirectAudio takes the Windows games off it. The server is built from the
+        // entry's own variables: the activity's hold only the few a Wine session starts with.
+        PulseAudioComponent.Options pulseOptions = PulseAudioComponent.Options.fromEnvVars(userEnv);
         guest.add("PULSE_SERVER=unix:" + rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
         guest.add("PULSE_LATENCY_MSEC=" + pulseOptions.latencyMillis);
         environment.addComponent(
@@ -8961,7 +8964,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         // bare defaults - single-block translation, no store ordering - and a multithreaded x86
         // title can sit at its loading screen for good waiting on a store it never sees. The
         // user's own variables are merged over the preset, so an explicit one still wins.
-        EnvVars userEnv = effectiveUserEnv();
         EnvVars sessionEnv = FEXCorePresetManager.getEnvVars(this, effectiveFEXCorePreset());
         FEXCorePresetManager.normalizeSmcChecksEnvVars(sessionEnv, userEnv);
         sessionEnv.putAll(userEnv);
@@ -9006,14 +9008,18 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     com.winlator.cmod.runtime.linux.LinuxEpicTokens.stop();
                     LogManager.log(TAG, "Linux session [" + String.join(" ", session)
                             + "] ended with status: " + status, this);
-                    // A session that is gone before anything could be drawn did not start; leaving
-                    // without a word looks like a button that does nothing.
-                    boolean neverStarted = status != 0 && !exitRequested.get()
-                            && android.os.SystemClock.elapsedRealtime() - startedAt < LINUX_SESSION_START_MS;
-                    if (neverStarted) {
+                    // A session nobody asked to end did not end well, whenever it went. Leaving
+                    // without a word is what a crash looks like from the outside, and it leaves
+                    // the one person who can send the log with no reason to go and find it.
+                    boolean unexpected = status != 0 && !exitRequested.get();
+                    if (!unexpected) {
+                        exit();
+                    } else if (status == SIGKILL_STATUS) {
+                        reportLaunchFailure(new LinuxSessionUnavailable(getString(R.string.linux_session_trimmed)));
+                    } else if (android.os.SystemClock.elapsedRealtime() - startedAt < LINUX_SESSION_START_MS) {
                         reportLaunchFailure(new LinuxSessionUnavailable(getString(R.string.linux_session_failed)));
                     } else {
-                        exit();
+                        reportLaunchFailure(new LinuxSessionUnavailable(getString(R.string.linux_session_stopped, status)));
                     }
                 });
         environment.addComponent(launcher);

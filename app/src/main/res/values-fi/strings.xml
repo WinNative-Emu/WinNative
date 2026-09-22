@@ -273,7 +273,9 @@
     <string name="linux_client_update_session_running">Linux-istunto on käynnissä. Sulje se ja päivitä sitten.</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
-    <string name="linux_session_failed">The Linux session stopped as soon as it started. Its log is under Settings > Debug > Open Logs Manager; share it so the cause can be found.</string>
+    <string name="linux_session_failed">Linux-istunto pysähtyi heti käynnistyttyään. Sen loki on kohdassa Asetukset > Virheenkorjaus > Avaa lokien hallinta; jaa se, jotta syy löytyy.</string>
+    <string name="linux_session_stopped">Linux-istunto pysähtyi itsestään (tila %1$d). Sen loki on kohdassa Asetukset > Virheenkorjaus > Avaa lokien hallinta; jaa se, jotta syy löytyy.</string>
+    <string name="linux_session_trimmed">Android pysäytti Linux-istunnon. Yleensä se tarkoittaa, että taustaprosessien raja tuli vastaan: ota käyttöön ”Poista aliprosessien rajoitukset käytöstä” kehittäjäasetuksissa ja yritä uudelleen.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Kaupat</string>
@@ -2957,4 +2959,6 @@ Asennuspolku:
     <string name="linux_protons_hint">Käynnistä Linux-asiakas uudelleen asennuksen jälkeen. Valitse versio kullekin pelille kohdasta Steam → Ominaisuudet → Yhteensopivuus.</string>
     <string name="linux_protons_failed">Protonin lataus tai asennus epäonnistui. Tarkista yhteys ja vapaa tila ja yritä uudelleen.</string>
     <string name="linux_protons_requires_runtime">Asenna ensin Linux-asiakas ja palaa sitten tänne lataamaan Proton-versioita.</string>
+    <string name="linux_child_processes_message">Android rajoittaa sovelluksen taustaprosessien määrää, ja Linux-istunto käyttää niitä paljon enemmän: Steam tai peli voi sulkeutua kesken pelin. Ota käyttöön ”Poista aliprosessien rajoitukset käytöstä” kehittäjäasetuksissa. Avataanko ne nyt?</string>
+    <string name="linux_child_processes_adb">Android rajoittaa sovelluksen taustaprosessien määrää, ja Linux-istunto käyttää niitä paljon enemmän: Steam tai peli voi sulkeutua kesken pelin. Tässä Android-versiossa ei ole sitä asetusta. Suorita tietokoneella:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

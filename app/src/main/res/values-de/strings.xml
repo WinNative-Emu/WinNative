@@ -272,7 +272,9 @@
     <string name="linux_client_update_session_running">Eine Linux-Sitzung läuft. Beende sie und aktualisiere dann.</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
-    <string name="linux_session_failed">The Linux session stopped as soon as it started. Its log is under Settings > Debug > Open Logs Manager; share it so the cause can be found.</string>
+    <string name="linux_session_failed">Die Linux-Sitzung wurde sofort nach dem Start beendet. Ihr Protokoll liegt unter Einstellungen > Debug > Protokollverwaltung öffnen; teile es, damit die Ursache gefunden werden kann.</string>
+    <string name="linux_session_stopped">Die Linux-Sitzung wurde von selbst beendet (Status %1$d). Ihr Protokoll liegt unter Einstellungen > Debug > Protokollverwaltung öffnen; teile es, damit die Ursache gefunden werden kann.</string>
+    <string name="linux_session_trimmed">Android hat die Linux-Sitzung beendet. Meist wurde dabei das Limit für Hintergrundprozesse erreicht: Aktiviere „Einschränkungen für untergeordnete Prozesse deaktivieren“ in den Entwickleroptionen und versuche es erneut.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Stores</string>
@@ -2959,4 +2961,6 @@ Installierter Pfad:
     <string name="linux_protons_hint">Starte den Linux-Client nach der Installation neu. Wähle für jedes Spiel eine Version unter Steam → Eigenschaften → Kompatibilität.</string>
     <string name="linux_protons_failed">Proton konnte nicht geladen oder installiert werden. Prüfe Verbindung und freien Speicher und versuche es erneut.</string>
     <string name="linux_protons_requires_runtime">Installiere zuerst den Linux-Client und kehre dann hierher zurück, um Proton-Versionen herunterzuladen.</string>
+    <string name="linux_child_processes_message">Android begrenzt die Anzahl der Hintergrundprozesse einer App, und eine Linux-Sitzung nutzt weit mehr: Steam oder ein Spiel kann während des Spielens beendet werden. Aktiviere „Einschränkungen für untergeordnete Prozesse deaktivieren“ in den Entwickleroptionen. Jetzt öffnen?</string>
+    <string name="linux_child_processes_adb">Android begrenzt die Anzahl der Hintergrundprozesse einer App, und eine Linux-Sitzung nutzt weit mehr: Steam oder ein Spiel kann während des Spielens beendet werden. Diese Android-Version hat dafür keinen Schalter. Führe an einem Computer aus:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

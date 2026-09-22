@@ -272,7 +272,9 @@
     <string name="linux_client_update_session_running">Uma sessão Linux está em execução. Saia dela e depois atualize.</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
-    <string name="linux_session_failed">The Linux session stopped as soon as it started. Its log is under Settings > Debug > Open Logs Manager; share it so the cause can be found.</string>
+    <string name="linux_session_failed">A sessao Linux parou assim que comecou. O log esta em Configuracoes > Depuracao > Abrir gerenciador de logs; compartilhe-o para que a causa possa ser encontrada.</string>
+    <string name="linux_session_stopped">A sessao Linux parou sozinha (status %1$d). O log esta em Configuracoes > Depuracao > Abrir gerenciador de logs; compartilhe-o para que a causa possa ser encontrada.</string>
+    <string name="linux_session_trimmed">O Android parou a sessao Linux. Normalmente significa que o limite de processos em segundo plano foi atingido: ative “Desativar restrições de processos filhos” nas Opcoes do desenvolvedor e tente novamente.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Lojas</string>
@@ -2957,5 +2959,7 @@ Caminho instalado:
     <string name="linux_protons_hint">Reinicie o cliente Linux após a instalação. Escolha uma versão para cada jogo em Steam → Propriedades → Compatibilidade.</string>
     <string name="linux_protons_failed">Não foi possível carregar ou instalar o Proton. Verifique a conexão e o espaço livre e tente novamente.</string>
     <string name="linux_protons_requires_runtime">Instale primeiro o cliente Linux e volte aqui para baixar versões do Proton.</string>
+    <string name="linux_child_processes_message">O Android limita quantos processos em segundo plano um app pode ter, e uma sessão Linux usa muito mais: o Steam ou um jogo pode ser encerrado durante a partida. Ative “Desativar restrições de processos filhos” nas Opções do desenvolvedor. Abrir agora?</string>
+    <string name="linux_child_processes_adb">O Android limita quantos processos em segundo plano um app pode ter, e uma sessão Linux usa muito mais: o Steam ou um jogo pode ser encerrado durante a partida. Esta versão do Android não tem essa opção. Em um computador, execute:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>
 
