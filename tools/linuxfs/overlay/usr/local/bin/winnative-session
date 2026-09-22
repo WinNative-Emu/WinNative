@@ -135,6 +135,7 @@ case $mode in
         fi
       done
     ) &
+    heartbeat=$!
     export STEAM_RUNTIME=1
     export LD_LIBRARY_PATH=$steam_root/steamrtarm64:$steam_root/steamrtarm64/panorama${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
     export SDL_VIDEO_X11_DGAMOUSE=0
@@ -203,8 +204,13 @@ case $mode in
       [ "$rc" -eq 42 ] || break
     done
     pkill -x xprop
-    kill "$netmanager" "$system_bus" 2>/dev/null
+    # Every job started here is ended here and waited for, before the sweep. One left running is
+    # adopted by gamescope's reaper on the way out, which waits for it and so holds the
+    # compositor and the proot above it open on a black screen; and the sweep is no second
+    # chance, since a job this shell still owns is not an orphan for it to find.
+    kill "$netmanager" "$system_bus" "$heartbeat" 2>/dev/null
     [ -z "$waiter" ] || kill "$waiter" 2>/dev/null
+    wait "$netmanager" "$system_bus" "$heartbeat" ${waiter:+"$waiter"} 2>/dev/null
     reap_orphans
     exit "$rc"
     ;;
