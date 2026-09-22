@@ -120,6 +120,8 @@ import com.winlator.cmod.feature.settings.DriversFragment
 import com.winlator.cmod.feature.settings.linuxClientMessage
 import com.winlator.cmod.feature.settings.linuxClientStageLabel
 import com.winlator.cmod.feature.settings.ContainerSettingsComposeDialog
+import com.winlator.cmod.shared.ui.dialog.ContentDialog
+import com.winlator.cmod.runtime.linux.ChildProcessRestrictions
 import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.runtime.container.Container
 import com.winlator.cmod.runtime.container.ContainerCreation
@@ -216,6 +218,8 @@ private suspend fun LazyListState.scrollToSelected(index: Int) {
 }
 
 class SetupWizardActivity : FixedFontScaleFragmentActivity() {
+    private var childProcessPromptShown = false
+
     companion object {
         private const val PREFS_NAME = "winnative_setup"
         private const val EXTRA_FORCE_SHOW = "force_show"
@@ -2317,6 +2321,24 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
     }
 
     /**
+     * Said once the Linux client is on its way, because the install is the point at which the
+     * device's own limit starts to matter and there are minutes of download to act in.
+     */
+    private fun promptChildProcessRestrictions() {
+        if (childProcessPromptShown || !ChildProcessRestrictions.active(this)) return
+        childProcessPromptShown = true
+        if (!ChildProcessRestrictions.hasSwitch()) {
+            ContentDialog.alert(this, getString(R.string.linux_child_processes_adb), null)
+            return
+        }
+        ContentDialog.confirm(this, getString(R.string.linux_child_processes_message)) {
+            if (!ChildProcessRestrictions.openDeveloperOptions(this)) {
+                ContentDialog.alert(this, getString(R.string.linux_child_processes_adb), null)
+            }
+        }
+    }
+
+    /**
      * Which Steam client the user is after. The Linux one is the install Settings > Stores offers,
      * run from here and shared with it, so it goes on while the rest of the wizard is filled in;
      * the Windows one is made of the components and the container of the pages that follow.
@@ -2334,6 +2356,7 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
         val startLinuxClient = {
             if (working == null && !installed && client !is LinuxClientInstaller.State.Blocked) {
                 LinuxClientInstaller.start(this)
+                promptChildProcessRestrictions()
             }
         }
 
