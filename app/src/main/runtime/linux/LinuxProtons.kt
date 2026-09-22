@@ -67,7 +67,11 @@ exec /usr/local/bin/winnative-proton-launch "${'$'}here/proton" "${'$'}@"
         val app = context.applicationContext
         mutable.value = mutable.value.copy(loading = true, failed = false)
         job = scope.launch {
-            directory(app).listFiles().orEmpty().filter { it.name.startsWith(".") && it.name.endsWith(".winnative-removing") }.forEach { it.deleteRecursively() }
+            // An install the system killed part-way leaves its half-unpacked tree behind, and
+            // nothing else ever looks at it again: a couple of gigabytes that no screen shows.
+            directory(app).listFiles().orEmpty()
+                .filter { it.name.startsWith(".") && (it.name.endsWith(".winnative-removing") || it.name.endsWith(".staging")) }
+                .forEach { it.deleteRecursively() }
             val local = installed(app)
             val results = sources.map { (repo, arch) -> runCatching { fetch(repo, arch) } }
             val builds = (results.flatMap { it.getOrDefault(emptyList()) } + local).distinctBy { it.id }
@@ -115,7 +119,10 @@ exec /usr/local/bin/winnative-proton-launch "${'$'}here/proton" "${'$'}@"
             SessionKeepAliveService.startDownload(app, "linux_proton")
             try {
                 check(LinuxRuntime.isInstalled(app))
-                check(app.filesDir.usableSpace > build.size * 5 + (512L shl 20))
+                // What the tree unpacks to, against the archive it unpacks from: measured at 3.4x
+                // for the gzip builds and 6.5x for the xz ones, and both are on disk at once.
+                val expansion = if (build.url.endsWith(".xz")) 8L else 5L
+                check(app.filesDir.usableSpace > build.size * expansion + (512L shl 20))
                 val connection = connection(build.url)
                 val digest = MessageDigest.getInstance("SHA-256")
                 var done = 0L

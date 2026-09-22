@@ -123,13 +123,65 @@ which is worth knowing before building it.
   same with `PROOT_NO_SECCOMP=1`. `proot -v 9` shows why - the first `execve` comes from proot's
   own bionic child with heap pointers tagged in the top byte (`0xb400007b80852f10`), and that
   kernel will not read a tagged address for a tracer, so the path is unreadable and the call is
-  answered EFAULT. `tracee/mem.c` strips the tag before every peek and poke.
+  answered EFAULT. `tracee/mem.c` strips the tag before every peek and poke. proot is given only
+  the options this tree has - it exits on one it does not know, before any session starts.
+  Upstream's `-i uid:gid` is one this tree does not have: passing it ended every session on every
+  device with `proot error: unknown option '-i'.` until it was taken out. Identity is answered
+  instead in `tracee/seccomp.c`, reached from Android's own SIGSYS and from the ENOSYS restart in
+  `syscall/exit.c`, not from proot's trace filter - so it is not in `proot_sysnums` and does not
+  belong there. `LinuxRuntimeTest.passesOnlyOptionsThisProotAccepts` runs the packaged binary with
+  the real option list; a list of accepted options kept by hand is what let `-i` ship.
+- **What a session log has to carry.** The build that wrote it, proot's own options, and a signal
+  named rather than left as a number, since `137` reads like a chosen exit code when it means the
+  session was killed from outside. The guest command is left out: the container's environment
+  rides in it, and a user may have typed anything there.
+- **A session that stops on its own.** Any non-zero end nobody asked for is said in a dialog, not
+  only one inside the first 20 s. Leaving silently is what a crash looks like from the outside,
+  and it leaves the one person who can send the log with no reason to go and find it. `137` names
+  Android's limit on background processes, which is the likeliest cause of a mid-session death.
+- **Ending a session.** proot gets a SIGTERM and 1.2 s before it is killed, so its own
+  `--kill-on-exit` can take its tracees down; a tracee that outlives its tracer gets `ENOSYS` from
+  every call proot used to answer and spins. The kernel is the backstop either way -
+  `PTRACE_O_EXITKILL` is in proot's default options. Inside the session the same rule holds for
+  every background job `winnative-session` starts: each one is killed and waited for before
+  `reap_orphans`. Steam mode's heartbeat was not, and that is a hang, not a leak - it outlives the
+  script by up to an hour, gamescope's reaper waits for it, gamescope is proot's root tracee, so
+  proot never exits, `Process.waitFor()` never returns and the activity never leaves the black
+  screen. The sweep is no second chance: it matches `ppid == $PPID`, so a job this shell still
+  owns is not yet an orphan it can see.
+- **HDR.** The compositor's `wp_color_manager_v1` is only advertised once the HDR gate opens, and
+  the app always asks for `HDR_MODE_OFF`, so it is never reached. Before that changes, note that
+  `get_information` answers every request with a protocol error and the output's preferred
+  description is a failed one: gamescope asks for both in one breath, and the error ends its
+  connection. A real description has to come first.
 - **proot's memory transfers.** Paths and buffers move between proot and a traced program with
   `process_vm_readv`/`process_vm_writev`, one call each, instead of a `ptrace` call per eight
   bytes; a transfer the kernel refuses (an unmapped or read-only page) falls back to `ptrace`.
   Strings are read in 1 KiB pieces so none crosses into an unmapped page.
 - **gamescope's refresh rate.** `-r` is the frame limit when one is set and otherwise the panel's
   rate (`WN_REFRESH`); without it gamescope advertises 60 Hz and games cap themselves there.
+- **Child process restrictions.** Android 12 and later kill an app's background child processes
+  past thirty-two, and a session is well past that: killing proot ends it. The wizard says so once,
+  when the Linux client download starts, and offers Developer options where Android 14 and later
+  carry the switch; `ChildProcessRestrictions` reads
+  `settings_enable_monitor_phantom_procs` to know whether the device still needs it, and on
+  Android 12 and 13 it gives the `adb` line instead, since only adb can set it there.
+- **The environment a Linux session reads.** `EnvVarsView.forGamescope` is applied to the
+  container's variables as the session starts, not only when one is created, so a container made
+  before it was a Linux one is read the same way as one made after. `TU_DEBUG` is left as it is:
+  `sysmem` reads like a frame cost - it keeps a render pass out of tile memory - but an A/B on the
+  RedMagic (Palworld in-world, same spot, GPU 91-93%) put it at 42.8 fps against 41.3 without, so
+  the reasoning loses to the measurement.
+- **The frame rate the session votes.** The game's layer is posted with the cadence the session is
+  aiming for - the frame limit when one is set, otherwise the panel's rate - through
+  `ASurfaceTransaction_setFrameRate`. It had been posted with a vote of zero every session, which
+  leaves the system to infer the cadence from the rate already being achieved; on a phone whose
+  vendor picks clocks from that, a session that has been slowed reads as a session that wants to be.
+- **Sharing logs.** The Steam client writes the token that signs its account in to its own
+  connection log, and Logs Manager hands those files to whoever the user is sending them to.
+  `LogManager.copyShareable` is what every export goes through - both archives and a single file -
+  and it copies the client's logs a line at a time with any token replaced. The app's own logs are
+  copied unchanged.
 - **Setup wizard.** Its second page (after access, before components) offers the Linux Steam
   Client and the Windows one. The Linux card runs `LinuxClientInstaller` - the same install and
   the same state Settings > Stores shows - and carries on while the user goes through the other

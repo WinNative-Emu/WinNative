@@ -127,6 +127,11 @@ public final class WaylandSession {
             WaylandCompositor.nativeSetOutputRefreshRate(cfg.refreshHz);
             WaylandCompositor.nativeSetOutputSize(cfg.outputWidth, cfg.outputHeight);
             WaylandCompositor.nativeSetFpsLimit(cfg.fpsLimit);
+            // The cadence the session is aiming for, on the layer the game presents on. Left
+            // unsaid, the layer is posted with a vote of zero and the system is free to read the
+            // rate it is already achieving as the rate it wants - which is the wrong way round on
+            // a device whose scheduler decides clocks from it.
+            WaylandCompositor.nativeSetLayerFrameRate(cfg.fpsLimit > 0 ? cfg.fpsLimit : cfg.refreshHz);
             WaylandCompositor.nativeSetZeroCopy(cfg.zeroCopy);
             WaylandCompositor.nativeSetUbwc(cfg.ubwc);
             WaylandCompositor.nativeSetNoRenderNode(cfg.noRenderNode);

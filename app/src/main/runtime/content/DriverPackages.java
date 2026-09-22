@@ -86,10 +86,16 @@ public final class DriverPackages {
     return linuxIcd(context, selectedLinux(context));
   }
 
+  /**
+   * The driver an entry runs on. Nothing saved means the entry never chose one, so it gets the
+   * driver chosen for the app - the one the Drivers page calls active - and a container made
+   * before this setting existed keeps the driver it was running on. A name that was saved and is
+   * now gone is a choice that cannot be honoured, and that falls back to the bundled Mesa rather
+   * than to someone else's driver.
+   */
   public static File selectedLinuxIcd(Context context, String selection) {
-    if (selection == null || selection.isEmpty() || selection.equalsIgnoreCase("System")) {
-      return linuxIcd(context, BUNDLED);
-    }
+    if (selection == null || selection.isEmpty()) return selectedLinuxIcd(context);
+    if (selection.equalsIgnoreCase("System")) return linuxIcd(context, BUNDLED);
     return linuxIcd(context, linuxIdForSelection(context, selection));
   }
 

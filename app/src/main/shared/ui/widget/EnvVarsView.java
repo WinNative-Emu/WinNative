@@ -48,7 +48,7 @@ public class EnvVarsView extends FrameLayout {
     return !GAMESCOPE_UNUSED.contains(name);
   }
 
-  /** {@code envVars} without the entries a Linux session never reads. */
+  /** {@code envVars} as a Linux session reads it: what it has no reader for is dropped. */
   public static String forGamescope(String envVars) {
     EnvVars kept = new EnvVars(envVars);
     for (String name : GAMESCOPE_UNUSED) kept.remove(name);
@@ -72,6 +72,11 @@ public class EnvVarsView extends FrameLayout {
     {"mesa_glthread", "CHECKBOX", "false", "true"},
     // Tells a game and Proton they are on a Steam Deck: gamepad-first menus and Deck presets.
     {"SteamDeck", "CHECKBOX", "0", "1"},
+    // xalia gives Windows programs gamepad navigation. It is an x86 program, so under FEX it
+    // cannot load the session's aarch64 preload and its calls reach the vendor's seccomp filter
+    // as they are; where that answers ENOSYS it does so in the hundreds and the session goes with
+    // it. Proton's own gate, so 0 takes the helper away without touching anything else.
+    {"PROTON_USE_XALIA", "CHECKBOX", "0", "1"},
     {"WINEESYNC", "CHECKBOX", "0", "1"},
     {"WINENTSYNC", "CHECKBOX", "0", "1"},
     {"FD_DEV_FEATURES", "SELECT_MULTIPLE", "enable_tp_ubwc_flag_hint=1", "storage_8bit=1"},
