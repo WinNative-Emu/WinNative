@@ -185,12 +185,26 @@ public final class LinuxRuntime {
     }
     // Android denies apps these; glibc, Steam and libcap read them at startup.
     File fakeProc = new File(root, "etc/winnative/proc");
+    // libpci picks its procfs backend on whether it can read the /proc/bus/pci directory, which the
+    // app can, then die()s - exit(1) - on the devices file inside it, which the app cannot. Chromium
+    // loads libpci in its GPU process to name the video card, so that exit kills the process; after
+    // a few tries CEF gives up on hardware and runs the rest of the session on SwiftShader. An empty
+    // list is the truthful answer from in here: nothing the app can see is on a PCI bus.
+    File pciDevices = new File(fakeProc, "pci_devices");
+    if (!pciDevices.isFile()) {
+      try {
+        pciDevices.createNewFile();
+      } catch (IOException e) {
+        // It then fails the isFile() test below and the session runs as it did before.
+      }
+    }
     String[][] procFiles = {
       {"stat", "/proc/stat"},
       {"version", "/proc/version"},
       {"loadavg", "/proc/loadavg"},
       {"uptime", "/proc/uptime"},
       {"vmstat", "/proc/vmstat"},
+      {"pci_devices", "/proc/bus/pci/devices"},
       {"cap_last_cap", "/proc/sys/kernel/cap_last_cap"},
       {"overflowuid", "/proc/sys/kernel/overflowuid"},
       {"overflowgid", "/proc/sys/kernel/overflowgid"},
