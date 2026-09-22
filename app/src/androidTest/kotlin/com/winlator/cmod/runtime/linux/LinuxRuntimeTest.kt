@@ -1,7 +1,8 @@
 package com.winlator.cmod.runtime.linux
 
-import android.os.Process
 import androidx.test.platform.app.InstrumentationRegistry
+import com.winlator.cmod.runtime.container.Container
+import com.winlator.cmod.shared.ui.widget.EnvVarsView
 import com.winlator.cmod.runtime.content.DriverPackages
 import com.winlator.cmod.runtime.display.environment.ImageFs
 import com.winlator.cmod.runtime.wine.EnvVars
@@ -13,14 +14,41 @@ import org.junit.Test
 class LinuxRuntimeTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
+    /**
+     * The options are put to the bundled proot rather than to a list of the ones it is believed to
+     * take: an option it does not know is fatal at startup, and a list kept by hand drifts from the
+     * binary that is actually shipped. The guest command is replaced so nothing starts a session.
+     */
     @Test
-    fun emulatesIdentityWithoutPretendingToBeRoot() {
+    fun passesOnlyOptionsThisProotAccepts() {
+        val guest = listOf("/usr/bin/env", "-i", "HOME=/root", "/usr/bin/id")
         val command = LinuxRuntime.command(context, ImageFs.find(context), context.cacheDir,
-            null, null, emptyList(), listOf("/usr/bin/env", "-i", "HOME=/root", "/usr/bin/id"))
-        val flag = command.indexOf("-i")
-        assertTrue(flag > 0 && flag < command.indexOf("-r"))
-        assertEquals("${Process.myUid()}:${Process.myUid()}", command[flag + 1])
-        assertEquals(listOf("/usr/bin/env", "-i", "HOME=/root", "/usr/bin/id"), command.takeLast(4))
+            null, null, emptyList(), guest)
+        assertEquals(guest, command.takeLast(guest.size))
+        val asked = command.dropLast(guest.size) + "/bin/true"
+        val proot = ProcessBuilder(asked)
+            .redirectErrorStream(true)
+            .also { it.environment()["PROOT_LOADER"] = LinuxRuntime.prootLoader(context).path }
+            .also { it.environment()["PROOT_TMP_DIR"] = context.cacheDir.path }
+            .start()
+        val said = try {
+            proot.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            if (!proot.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) proot.destroyForcibly()
+        }
+        assertFalse(said, said.contains("unknown option"))
+        assertFalse(said, said.contains("missing value for option"))
+        assertFalse(said, said.contains("expects no value"))
+    }
+
+    @Test
+    fun aLinuxSessionReadsTheContainerWithoutWhatOnlyWineAndAndroidRead() {
+        val kept = EnvVars(EnvVarsView.forGamescope(Container.DEFAULT_ENV_VARS))
+        assertFalse(kept.has("WINE_FAST_YIELD"))
+        assertFalse(kept.has("WRAPPER_MAX_IMAGE_COUNT"))
+        assertEquals("lazy", kept.get("ZINK_DESCRIPTORS"))
+        // Measured on device: sysmem is not a frame cost here, so the driver's flags are left alone.
+        assertEquals("noconform,sysmem", kept.get("TU_DEBUG"))
     }
 
     @Test

@@ -153,8 +153,6 @@ public final class LinuxRuntime {
     List<String> cmd = new ArrayList<>();
     cmd.add(prootBinary(context).getPath());
     cmd.add("--kill-on-exit");
-    cmd.add("-i");
-    cmd.add(Process.myUid() + ":" + Process.myUid());
     cmd.add("-r");
     cmd.add(root.getPath());
     cmd.add("-w");

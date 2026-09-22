@@ -16,7 +16,7 @@ The identity difference is relevant to the Odin report's failure before any gues
 
 - The ten shared preload C files are functionally equivalent after normalizing project prefixes, comments, and local fork-handler names. No additional syscall fixes were found there.
 - SteamDeck's GE/CachyOS wrappers remove pressure-vessel dependencies and restore input-preload ordering, as WinNative already does. They do not supply an additional GE/CachyOS startup shim missing from WinNative's shared launcher. WinNative retains its stricter DirectAudio compatibility preparation.
-- `PROTON_USE_XALIA=0`, `TU_DEBUG=sysmem`, and `ZINK_DESCRIPTORS=lazy` already reach the guest through WinNative's effective container/shortcut environment. SteamDeck exposes toggles for these, mostly off by default. No device-specific workaround is enabled globally by this change.
+- `TU_DEBUG=sysmem` and `ZINK_DESCRIPTORS=lazy` are in the container default and reach the guest. `PROTON_USE_XALIA` was not offered anywhere; it is now one of the known variables, unset by default, so Proton's own gate is reachable without typing the name. No device-specific workaround is enabled globally by this change.
 - SteamDeck optionally reapplies CPU affinity to the client and separately applies a mask to Proton games. This is performance tuning, not a demonstrated cause of the Odin early exit. It was not imposed on WinNative's sessions.
 - SteamDeck's additional `space.c` redirects free-space queries for a whole SD library whose `steamapps/common` is bound to the card. WinNative binds individual game directories, potentially from different locations. Copying this shim would report the wrong filesystem for that layout.
 - SteamDeck prefers a runtime-shipped proot/talloc pair. WinNative packages proot and its loader with the APK. No binary replacement was made without evidence that WinNative's packaged build is faulty.
@@ -25,7 +25,7 @@ The identity difference is relevant to the Odin report's failure before any gues
 
 ## Verification
 
-`tools/linuxfs/tests/test_proot_identity.sh` compiles a native test that deliberately returns ENOSYS for setuid/setgid using seccomp. Without proot it fails; with proot identity emulation it succeeds and retains UID/GID. This is a host reproduction of the mechanism, not an Odin hardware test.
+Identity emulation is not a command line option here. Upstream proot takes `-i uid:gid`; the bundled build has no such option and answers `setuid`, `setgid`, `setresuid`, `setresgid`, `setreuid` and `setregid` from its seccomp handler instead, granting an id the process already holds and refusing any other. A host proot cannot stand in for that, so the check belongs on device: `LinuxRuntimeTest.passesOnlyOptionsThisProotAccepts` runs the packaged binary with the real option list and fails if it reports an option it does not know.
 
 The PUBG debug and instrumentation APKs build. AVD tests cover proot argument construction, opt-in host environment routing, missing/malformed imported drivers, launcher output and argument handling, compositor driver gating, and Components navigation in portrait/landscape. The existing Python Proton regression suite also passes.
 
