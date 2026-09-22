@@ -1311,10 +1311,9 @@ Installeret sti:
     <string name="update_apk_notice">Denne opdatering ændrer selve appen, så Android beder dig bekræfte installationen. Dine spil, containere og indstillinger bevares.</string>
     <string name="update_up_to_date">WinNative er opdateret.</string>
     <string name="update_unsupported_build">Opdateringer i appen tilbydes kun på officielle signerede udgivelser.</string>
-    <string name="settings_general_update_channel">Opdateringskanal</string>
-    <string name="settings_general_update_channel_summary">Officiel leverer testede udgivelser. Udvikling leverer tidlige builds.</string>
+    <string name="settings_general_update_source">Opdateringskilde</string>
+    <string name="settings_general_update_source_summary">En build fra en pull request følger den pull request; en officiel installation følger de officielle udgivelser.</string>
     <string name="update_channel_official">Officiel</string>
-    <string name="update_channel_development">Udvikling</string>
     <string name="setup_wizard_containers">Containeropsætning</string>
     <string name="cloud_saves_title">Cloud-saves</string>
     <string name="cloud_saves_title_for_provider">%1$s cloud-saves - %2$s</string>

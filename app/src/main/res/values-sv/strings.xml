@@ -2912,10 +2912,9 @@ Installerad sökväg:
     <string name="update_apk_notice">Den här uppdateringen ändrar själva appen, så Android ber dig bekräfta installationen. Dina spel, containrar och inställningar behålls.</string>
     <string name="update_up_to_date">WinNative är uppdaterad.</string>
     <string name="update_unsupported_build">Uppdateringar i appen erbjuds endast för officiella signerade versioner.</string>
-    <string name="settings_general_update_channel">Uppdateringskanal</string>
-    <string name="settings_general_update_channel_summary">Officiell levererar testade versioner. Utveckling levererar tidiga byggen.</string>
+    <string name="settings_general_update_source">Uppdateringskälla</string>
+    <string name="settings_general_update_source_summary">Ett bygge från en pull request följer den pull requesten; en officiell installation följer de officiella utgåvorna.</string>
     <string name="update_channel_official">Officiell</string>
-    <string name="update_channel_development">Utveckling</string>
     <string name="networking_section_title">Nätverk</string>
     <string name="networking_driver">Nätverksdrivrutin</string>
     <string name="networking_driver_winnative">WinNative nätverksdrivrutin</string>

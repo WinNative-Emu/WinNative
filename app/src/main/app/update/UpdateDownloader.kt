@@ -30,6 +30,23 @@ object UpdateDownloader {
         }
     }
 
+    /**
+     * As [fetchText], except that a release which is not there answers null instead of raising.
+     * A pull request's release goes away when it is merged or closed, and that is an answer, not
+     * a fault to report.
+     */
+    fun fetchTextOrNull(url: String): String? {
+        val connection = open(url)
+        try {
+            val code = connection.responseCode
+            if (code == HttpURLConnection.HTTP_NOT_FOUND || code == HttpURLConnection.HTTP_GONE) return null
+            if (code !in 200..299) throw IllegalStateException("HTTP $code for $url")
+            return connection.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     fun downloadApk(
         context: Context,
         release: UpdateRelease,

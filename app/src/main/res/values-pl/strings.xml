@@ -2919,10 +2919,9 @@ Zainstalowana ścieżka:
     <string name="update_apk_notice">Ta aktualizacja zmienia samą aplikację, więc Android poprosi o potwierdzenie instalacji. Twoje gry, kontenery i ustawienia zostaną zachowane.</string>
     <string name="update_up_to_date">WinNative jest aktualny.</string>
     <string name="update_unsupported_build">Aktualizacje w aplikacji są dostępne tylko w oficjalnych podpisanych wydaniach.</string>
-    <string name="settings_general_update_channel">Kanał aktualizacji</string>
-    <string name="settings_general_update_channel_summary">Kanał Oficjalny dostarcza przetestowane wydania. Rozwojowy dostarcza wczesne kompilacje.</string>
+    <string name="settings_general_update_source">Źródło aktualizacji</string>
+    <string name="settings_general_update_source_summary">Kompilacja z pull requesta śledzi ten pull request; instalacja oficjalna śledzi oficjalne wydania.</string>
     <string name="update_channel_official">Oficjalny</string>
-    <string name="update_channel_development">Rozwojowy</string>
     <string name="networking_section_title">Sieć</string>
     <string name="networking_driver">Sterownik sieciowy</string>
     <string name="networking_driver_winnative">Sterownik sieciowy WinNative</string>

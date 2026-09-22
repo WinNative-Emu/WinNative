@@ -2911,10 +2911,9 @@
     <string name="update_apk_notice">การอัปเดตนี้เปลี่ยนตัวแอปเอง Android จึงจะขอให้คุณยืนยันการติดตั้ง เกม คอนเทนเนอร์ และการตั้งค่าของคุณจะยังอยู่ครบ</string>
     <string name="update_up_to_date">WinNative เป็นเวอร์ชันล่าสุดแล้ว</string>
     <string name="update_unsupported_build">การอัปเดตในแอปมีให้เฉพาะรุ่นที่ลงนามอย่างเป็นทางการเท่านั้น</string>
-    <string name="settings_general_update_channel">ช่องทางอัปเดต</string>
-    <string name="settings_general_update_channel_summary">ทางการจะปล่อยรุ่นที่ผ่านการทดสอบแล้ว ส่วนการพัฒนาจะปล่อยบิลด์รุ่นแรก</string>
+    <string name="settings_general_update_source">แหล่งอัปเดต</string>
+    <string name="settings_general_update_source_summary">บิลด์จากพูลรีเควสต์จะติดตามพูลรีเควสต์นั้น ส่วนการติดตั้งอย่างเป็นทางการจะติดตามรุ่นที่เผยแพร่อย่างเป็นทางการ</string>
     <string name="update_channel_official">ทางการ</string>
-    <string name="update_channel_development">การพัฒนา</string>
     <string name="networking_section_title">ระบบเครือข่าย</string>
     <string name="networking_driver">ไดรเวอร์เครือข่าย</string>
     <string name="networking_driver_winnative">ไดรเวอร์เครือข่าย WinNative</string>

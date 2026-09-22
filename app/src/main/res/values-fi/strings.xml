@@ -2912,10 +2912,9 @@ Asennuspolku:
     <string name="update_apk_notice">Tämä päivitys muuttaa itse sovellusta, joten Android pyytää sinua vahvistamaan asennuksen. Pelisi, säiliösi ja asetuksesi säilyvät.</string>
     <string name="update_up_to_date">WinNative on ajan tasalla.</string>
     <string name="update_unsupported_build">Sovelluksen sisäisiä päivityksiä tarjotaan vain virallisissa allekirjoitetuissa julkaisuissa.</string>
-    <string name="settings_general_update_channel">Päivityskanava</string>
-    <string name="settings_general_update_channel_summary">Virallinen tarjoaa testattuja julkaisuja. Kehitys tarjoaa varhaisia koontiversioita.</string>
+    <string name="settings_general_update_source">Päivitysten lähde</string>
+    <string name="settings_general_update_source_summary">Vetopyynnöstä tehty koonti seuraa sitä vetopyyntöä; virallinen asennus seuraa virallisia julkaisuja.</string>
     <string name="update_channel_official">Virallinen</string>
-    <string name="update_channel_development">Kehitys</string>
     <string name="networking_section_title">Verkko</string>
     <string name="networking_driver">Verkkoajuri</string>
     <string name="networking_driver_winnative">WinNative-verkkoajuri</string>

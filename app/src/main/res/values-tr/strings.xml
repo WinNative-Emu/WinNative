@@ -2912,10 +2912,9 @@ Yüklü konum:
     <string name="update_apk_notice">Bu güncelleme uygulamanın kendisini değiştirir, bu yüzden Android kurulumu onaylamanızı isteyecek. Oyunlarınız, kapsayıcılarınız ve ayarlarınız korunur.</string>
     <string name="update_up_to_date">WinNative güncel.</string>
     <string name="update_unsupported_build">Uygulama içi güncellemeler yalnızca resmi imzalı sürümlerde sunulur.</string>
-    <string name="settings_general_update_channel">Güncelleme Kanalı</string>
-    <string name="settings_general_update_channel_summary">Resmi kanal test edilmiş sürümler yayınlar. Geliştirme kanalı erken derlemeler yayınlar.</string>
+    <string name="settings_general_update_source">Güncelleme kaynağı</string>
+    <string name="settings_general_update_source_summary">Bir pull request’ten alınan yapı o pull request’i, resmi bir kurulum ise resmi sürümleri izler.</string>
     <string name="update_channel_official">Resmi</string>
-    <string name="update_channel_development">Geliştirme</string>
     <string name="networking_section_title">Ağ</string>
     <string name="networking_driver">Ağ sürücüsü</string>
     <string name="networking_driver_winnative">WinNative Ağ Sürücüsü</string>

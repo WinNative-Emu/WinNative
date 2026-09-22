@@ -2912,10 +2912,9 @@
     <string name="update_apk_notice">此更新会更改应用本身，因此 Android 会要求你确认安装。你的游戏、容器和设置都会保留。</string>
     <string name="update_up_to_date">WinNative 已是最新版本。</string>
     <string name="update_unsupported_build">仅官方签名版本提供应用内更新。</string>
-    <string name="settings_general_update_channel">更新通道</string>
-    <string name="settings_general_update_channel_summary">官方通道发布经过测试的版本，开发通道发布早期构建。</string>
+    <string name="settings_general_update_source">更新来源</string>
+    <string name="settings_general_update_source_summary">来自拉取请求的构建跟随该拉取请求；官方安装跟随官方版本。</string>
     <string name="update_channel_official">官方</string>
-    <string name="update_channel_development">开发</string>
     <string name="networking_section_title">网络</string>
     <string name="networking_driver">网络驱动</string>
     <string name="networking_driver_winnative">WinNative 网络驱动</string>

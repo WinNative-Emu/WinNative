@@ -2912,10 +2912,9 @@ Installert bane:
     <string name="update_apk_notice">Denne oppdateringen endrer selve appen, så Android ber deg bekrefte installasjonen. Spillene, containerne og innstillingene dine beholdes.</string>
     <string name="update_up_to_date">WinNative er oppdatert.</string>
     <string name="update_unsupported_build">Oppdateringer i appen tilbys bare på offisielle signerte utgivelser.</string>
-    <string name="settings_general_update_channel">Oppdateringskanal</string>
-    <string name="settings_general_update_channel_summary">Offisiell leverer testede utgivelser. Utvikling leverer tidlige builder.</string>
+    <string name="settings_general_update_source">Oppdateringskilde</string>
+    <string name="settings_general_update_source_summary">En build fra en pull request følger den pull requesten; en offisiell installasjon følger de offisielle utgivelsene.</string>
     <string name="update_channel_official">Offisiell</string>
-    <string name="update_channel_development">Utvikling</string>
     <string name="networking_section_title">Nettverk</string>
     <string name="networking_driver">Nettverksdriver</string>
     <string name="networking_driver_winnative">WinNative-nettverksdriver</string>

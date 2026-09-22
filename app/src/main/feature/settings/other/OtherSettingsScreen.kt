@@ -121,7 +121,8 @@ private val Error = Color(0xFFFF4444)
 // State
 data class OtherSettingsState(
     val checkForUpdates: Boolean = true,
-    val updateChannelIndex: Int = 0,
+    /** What this install follows, already worded for the screen; empty hides the row. */
+    val updateSource: String = "",
     val languageLabels: List<String> = emptyList(),
     val languageIndex: Int = 0,
     val soundFontFiles: List<String> = emptyList(),
@@ -169,7 +170,6 @@ fun OtherSettingsScreen(
     state: OtherSettingsState,
     onCheckForUpdatesChanged: (Boolean) -> Unit,
     onCheckForUpdatesNow: () -> Unit,
-    onUpdateChannelSelected: (Int) -> Unit,
     onLanguageSelected: (Int) -> Unit,
     onSoundFontSelected: (Int) -> Unit,
     onInstallSoundFont: () -> Unit,
@@ -238,18 +238,9 @@ fun OtherSettingsScreen(
                 onCheckNow = onCheckForUpdatesNow,
             )
 
-            SettingsDropdownCard(
-                title = stringResource(R.string.settings_general_update_channel),
-                subtitle = stringResource(R.string.settings_general_update_channel_summary),
-                icon = Icons.Outlined.Sync,
-                options =
-                    listOf(
-                        stringResource(R.string.update_channel_official),
-                        stringResource(R.string.update_channel_development),
-                    ),
-                selectedIndex = state.updateChannelIndex,
-                onOptionSelected = onUpdateChannelSelected,
-            )
+            if (state.updateSource.isNotEmpty()) {
+                UpdateSourceCard(source = state.updateSource)
+            }
 
             SettingsDropdownCard(
                 title = stringResource(R.string.settings_other_language_title),
@@ -565,7 +556,62 @@ private fun UpdatesCard(
     }
 }
 
-// Generic dropdown card (labels list + index selection)
+/**
+ * What this install takes updates from. It is shown rather than chosen: an official install and a
+ * pull request build are signed with different keys, so neither can be replaced by the other.
+ */
+@Composable
+private fun UpdateSourceCard(source: String) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(CardDark)
+                .border(1.dp, CardBorder, RoundedCornerShape(12.dp)),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(IconBoxBg),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Sync,
+                    contentDescription = null,
+                    tint = Accent,
+                    modifier = Modifier.size(17.dp),
+                )
+            }
+            Spacer(Modifier.width(13.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.settings_general_update_source),
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    stringResource(R.string.settings_general_update_source_summary),
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(source, color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
 @Composable
 private fun SettingsDropdownCard(
     title: String,

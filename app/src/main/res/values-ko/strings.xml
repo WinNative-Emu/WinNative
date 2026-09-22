@@ -2914,10 +2914,9 @@
     <string name="update_apk_notice">이 업데이트는 앱 자체를 변경하므로 Android가 설치 확인을 요청합니다. 게임, 컨테이너, 설정은 그대로 유지됩니다.</string>
     <string name="update_up_to_date">WinNative가 최신 상태입니다.</string>
     <string name="update_unsupported_build">인앱 업데이트는 공식 서명된 릴리스에서만 제공됩니다.</string>
-    <string name="settings_general_update_channel">업데이트 채널</string>
-    <string name="settings_general_update_channel_summary">공식은 테스트를 거친 릴리스를, 개발은 초기 빌드를 제공합니다.</string>
+    <string name="settings_general_update_source">업데이트 출처</string>
+    <string name="settings_general_update_source_summary">풀 리퀘스트 빌드는 해당 풀 리퀘스트를, 공식 설치는 공식 릴리스를 따릅니다.</string>
     <string name="update_channel_official">공식</string>
-    <string name="update_channel_development">개발</string>
     <string name="networking_section_title">네트워크</string>
     <string name="networking_driver">네트워크 드라이버</string>
     <string name="networking_driver_winnative">WinNative 네트워크 드라이버</string>

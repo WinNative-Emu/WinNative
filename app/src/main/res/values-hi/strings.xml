@@ -2808,10 +2808,9 @@
     <string name="update_apk_notice">यह अपडेट ऐप को ही बदलता है, इसलिए Android आपसे इंस्टॉल की पुष्टि माँगेगा। आपके गेम, कंटेनर और सेटिंग्स बनी रहती हैं।</string>
     <string name="update_up_to_date">WinNative अद्यतित है।</string>
     <string name="update_unsupported_build">इन-ऐप अपडेट केवल आधिकारिक हस्ताक्षरित रिलीज़ पर ही दिए जाते हैं।</string>
-    <string name="settings_general_update_channel">अपडेट चैनल</string>
-    <string name="settings_general_update_channel_summary">आधिकारिक परखी हुई रिलीज़ देता है। डेवलपमेंट शुरुआती बिल्ड देता है।</string>
+    <string name="settings_general_update_source">अपडेट स्रोत</string>
+    <string name="settings_general_update_source_summary">किसी पुल रिक्वेस्ट से बना बिल्ड उसी पुल रिक्वेस्ट का अनुसरण करता है; आधिकारिक इंस्टॉल आधिकारिक रिलीज़ का।</string>
     <string name="update_channel_official">आधिकारिक</string>
-    <string name="update_channel_development">डेवलपमेंट</string>
     <string name="networking_section_title">नेटवर्किंग</string>
     <string name="networking_driver">नेटवर्क ड्राइवर</string>
     <string name="networking_driver_winnative">WinNative नेटवर्क ड्राइवर</string>

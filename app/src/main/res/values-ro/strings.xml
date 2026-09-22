@@ -2912,10 +2912,9 @@ Cale instalata:
     <string name="update_apk_notice">Această actualizare modifică aplicația în sine, așa că Android îți va cere să confirmi instalarea. Jocurile, containerele și setările tale se păstrează.</string>
     <string name="update_up_to_date">WinNative este la zi.</string>
     <string name="update_unsupported_build">Actualizările din aplicație sunt oferite doar pentru versiunile oficiale semnate.</string>
-    <string name="settings_general_update_channel">Canal de actualizare</string>
-    <string name="settings_general_update_channel_summary">Oficial livrează versiuni testate. Dezvoltare livrează compilări timpurii.</string>
+    <string name="settings_general_update_source">Sursa actualizarilor</string>
+    <string name="settings_general_update_source_summary">O compilare dintr-un pull request urmeaza acel pull request; o instalare oficiala urmeaza versiunile oficiale.</string>
     <string name="update_channel_official">Oficial</string>
-    <string name="update_channel_development">Dezvoltare</string>
     <string name="networking_section_title">Rețea</string>
     <string name="networking_driver">Driver de rețea</string>
     <string name="networking_driver_winnative">Driver de rețea WinNative</string>

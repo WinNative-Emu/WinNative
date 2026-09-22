@@ -2914,10 +2914,9 @@ Installierter Pfad:
     <string name="update_apk_notice">Dieses Update ändert die App selbst, daher bittet dich Android, die Installation zu bestätigen. Deine Spiele, Container und Einstellungen bleiben erhalten.</string>
     <string name="update_up_to_date">WinNative ist aktuell.</string>
     <string name="update_unsupported_build">In-App-Updates werden nur für offiziell signierte Releases angeboten.</string>
-    <string name="settings_general_update_channel">Update-Kanal</string>
-    <string name="settings_general_update_channel_summary">Offiziell liefert getestete Releases. Entwicklung liefert frühe Builds.</string>
+    <string name="settings_general_update_source">Update-Quelle</string>
+    <string name="settings_general_update_source_summary">Ein Build aus einem Pull Request folgt diesem Pull Request; eine offizielle Installation folgt den offiziellen Releases.</string>
     <string name="update_channel_official">Offiziell</string>
-    <string name="update_channel_development">Entwicklung</string>
     <string name="networking_section_title">Netzwerk</string>
     <string name="networking_driver">Netzwerktreiber</string>
     <string name="networking_driver_winnative">WinNative-Netzwerktreiber</string>

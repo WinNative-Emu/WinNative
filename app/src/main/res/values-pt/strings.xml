@@ -2911,10 +2911,9 @@ Caminho instalado:
     <string name="update_apk_notice">Esta atualização altera a própria aplicação, por isso o Android vai pedir-lhe que confirme a instalação. Os seus jogos, contentores e definições são mantidos.</string>
     <string name="update_up_to_date">O WinNative está atualizado.</string>
     <string name="update_unsupported_build">As atualizações na aplicação só estão disponíveis em versões oficiais assinadas.</string>
-    <string name="settings_general_update_channel">Canal de Atualizações</string>
-    <string name="settings_general_update_channel_summary">Oficial disponibiliza versões testadas. Desenvolvimento disponibiliza compilações iniciais.</string>
+    <string name="settings_general_update_source">Origem das atualizações</string>
+    <string name="settings_general_update_source_summary">Uma compilação de um pull request segue esse pull request; uma instalação oficial segue as versões oficiais.</string>
     <string name="update_channel_official">Oficial</string>
-    <string name="update_channel_development">Desenvolvimento</string>
     <string name="networking_section_title">Rede</string>
     <string name="networking_driver">Controlador de rede</string>
     <string name="networking_driver_winnative">Controlador de Rede WinNative</string>

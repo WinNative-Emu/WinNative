@@ -171,7 +171,7 @@ private fun UpdateDialogHeader(release: UpdateRelease) {
                     fontSize = 11.sp,
                 )
             }
-            UpdateChannelBadge(release.preRelease)
+            UpdateChannelBadge(release)
         }
 
         val meta = buildMetaLine(release)
@@ -182,7 +182,7 @@ private fun UpdateDialogHeader(release: UpdateRelease) {
 
         Spacer(Modifier.height(9.dp))
         Text(
-            text = "${UpdateService.installedVersionName()}  →  ${release.tag}",
+            text = "${UpdateService.installedVersionName()}  →  ${release.displayVersion}",
             color = WinNativeAccent,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
@@ -191,9 +191,9 @@ private fun UpdateDialogHeader(release: UpdateRelease) {
 }
 
 @Composable
-private fun UpdateChannelBadge(preRelease: Boolean) {
-    val isDev = preRelease
-    val tint = if (isDev) Color(0xFFFFB74D) else WinNativeAccent
+private fun UpdateChannelBadge(release: UpdateRelease) {
+    val pullRequest = release.channel == UpdateChannel.PULL_REQUEST
+    val tint = if (pullRequest) Color(0xFFFFB74D) else WinNativeAccent
     Box(
         modifier =
             Modifier
@@ -203,7 +203,7 @@ private fun UpdateChannelBadge(preRelease: Boolean) {
                 .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
         Text(
-            text = if (isDev) "DEV" else "OFFICIAL",
+            text = if (pullRequest) release.tag.uppercase() else "OFFICIAL",
             color = tint,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,

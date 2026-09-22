@@ -2918,10 +2918,9 @@
     <string name="update_apk_notice">Це оновлення змінює сам застосунок, тому Android попросить підтвердити встановлення. Ваші ігри, контейнери та налаштування збережуться.</string>
     <string name="update_up_to_date">WinNative актуальний.</string>
     <string name="update_unsupported_build">Оновлення в застосунку доступні лише для офіційних підписаних випусків.</string>
-    <string name="settings_general_update_channel">Канал оновлень</string>
-    <string name="settings_general_update_channel_summary">Офіційний постачає перевірені випуски. Розробницький — ранні збірки.</string>
+    <string name="settings_general_update_source">Джерело оновлень</string>
+    <string name="settings_general_update_source_summary">Збірка з пулреквесту стежить за цим пулреквестом; офіційне встановлення — за офіційними випусками.</string>
     <string name="update_channel_official">Офіційний</string>
-    <string name="update_channel_development">Розробницький</string>
     <string name="networking_section_title">Мережа</string>
     <string name="networking_driver">Мережевий драйвер</string>
     <string name="networking_driver_winnative">Мережевий драйвер WinNative</string>

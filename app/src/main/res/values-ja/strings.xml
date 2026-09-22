@@ -2912,10 +2912,9 @@
     <string name="update_apk_notice">このアップデートはアプリ本体を変更するため、Android がインストールの確認を求めます。ゲーム、コンテナ、設定はそのまま保持されます。</string>
     <string name="update_up_to_date">WinNative は最新です。</string>
     <string name="update_unsupported_build">アプリ内アップデートは、公式の署名済みリリースでのみ提供されます。</string>
-    <string name="settings_general_update_channel">アップデートチャンネル</string>
-    <string name="settings_general_update_channel_summary">「公式」はテスト済みのリリースを配信します。「開発」は早期ビルドを配信します。</string>
+    <string name="settings_general_update_source">更新の取得元</string>
+    <string name="settings_general_update_source_summary">プルリクエストのビルドはそのプルリクエストを、公式インストールは公式リリースを追跡します。</string>
     <string name="update_channel_official">公式</string>
-    <string name="update_channel_development">開発</string>
     <string name="networking_section_title">ネットワーク</string>
     <string name="networking_driver">ネットワークドライバー</string>
     <string name="networking_driver_winnative">WinNative ネットワークドライバー</string>
