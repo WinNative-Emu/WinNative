@@ -7,6 +7,9 @@ if [ ! -x "$proton" ] || [ ! -x "$base/files/bin-arm64/wine" ]; then
   exit 126
 fi
 export PROTON_USE_ARM64=1
+# CachyOS Proton defaults to its PipeWire audio driver, and with no PipeWire server in the session
+# the game hung at audio init behind Steam's spinner. Off, it takes the PulseAudio path we do run.
+export PROTON_USE_PIPEWIRE=${PROTON_USE_PIPEWIRE:-0}
 fake=/usr/local/lib/libwninput.so
 if [ -f "$fake" ]; then
   case ":${LD_PRELOAD:-}:" in
