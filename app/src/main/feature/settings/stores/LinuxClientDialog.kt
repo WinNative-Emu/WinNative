@@ -49,7 +49,6 @@ internal fun LinuxClientDialog(
     state: State,
     onStart: () -> Unit,
     onCancelInstall: () -> Unit,
-    onProtons: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val nav = remember { PaneNavRegistry() }
@@ -67,7 +66,6 @@ internal fun LinuxClientDialog(
                 modifier = Modifier.widthIn(min = 300.dp, max = 420.dp),
                 content = {
                     if (state is State.Working) WorkingBody(state)
-                    else PopupTextAction(stringResource(R.string.linux_protons_title), InstallBlue, onProtons)
                 },
                 footer = {
                     LinuxClientFooter(

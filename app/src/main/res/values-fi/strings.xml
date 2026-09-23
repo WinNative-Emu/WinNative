@@ -2954,10 +2954,6 @@ Asennuspolku:
     <string name="settings_drivers_bundled">Mukana tuleva Mesa</string>
     <string name="settings_drivers_legacy">Linux-asiakasohjelman ajuri</string>
     <string name="settings_drivers_routed">Ajuri tunnistettiin ja asennettiin alustalle %1$s.</string>
-    <string name="linux_protons_title">Linuxin Proton-versiot</string>
-    <string name="linux_protons_hint">Käynnistä Linux-asiakas uudelleen asennuksen jälkeen. Valitse versio kullekin pelille kohdasta Steam → Ominaisuudet → Yhteensopivuus.</string>
-    <string name="linux_protons_failed">Protonin lataus tai asennus epäonnistui. Tarkista yhteys ja vapaa tila ja yritä uudelleen.</string>
-    <string name="linux_protons_requires_runtime">Asenna ensin Linux-asiakas ja palaa sitten tänne lataamaan Proton-versioita.</string>
     <string name="linux_child_processes_message">Android rajoittaa sovelluksen taustaprosessien määrää, ja Linux-istunto käyttää niitä paljon enemmän: Steam tai peli voi sulkeutua kesken pelin. Ota käyttöön ”Poista aliprosessien rajoitukset käytöstä” kehittäjäasetuksissa. Avataanko ne nyt?</string>
     <string name="linux_child_processes_adb">Android rajoittaa sovelluksen taustaprosessien määrää, ja Linux-istunto käyttää niitä paljon enemmän: Steam tai peli voi sulkeutua kesken pelin. Tässä Android-versiossa ei ole sitä asetusta. Suorita tietokoneella:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

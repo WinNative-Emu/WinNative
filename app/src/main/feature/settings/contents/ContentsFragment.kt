@@ -141,6 +141,7 @@ class ContentsFragment : Fragment() {
                         onRemoveLinuxItem = { item ->
                             linuxBuildsById[item.key]?.let { LinuxProtons.remove(ctx, it) }
                         },
+                        onCancelLinuxItem = { LinuxProtons.cancel() },
                         onDismissConflict = {
                             conflictingContentPath = null
                             publishState()

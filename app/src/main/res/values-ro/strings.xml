@@ -2954,10 +2954,6 @@ Cale instalata:
     <string name="settings_drivers_bundled">Mesa inclus</string>
     <string name="settings_drivers_legacy">Driverul clientului Linux</string>
     <string name="settings_drivers_routed">Driver identificat și instalat pentru %1$s.</string>
-    <string name="linux_protons_title">Versiuni Proton pentru Linux</string>
-    <string name="linux_protons_hint">Repornește clientul Linux după instalare. Alege o versiune pentru fiecare joc în Steam → Proprietăți → Compatibilitate.</string>
-    <string name="linux_protons_failed">Proton nu a putut fi încărcat sau instalat. Verifică conexiunea și spațiul liber, apoi reîncearcă.</string>
-    <string name="linux_protons_requires_runtime">Instalează mai întâi clientul Linux, apoi revino aici pentru a descărca versiuni Proton.</string>
     <string name="linux_child_processes_message">Android limitează numărul de procese de fundal ale unei aplicații, iar o sesiune Linux folosește mult mai multe: Steam sau un joc poate fi închis în timpul jocului. Activează „Dezactivează restricțiile proceselor secundare” în Opțiuni pentru dezvoltatori. Le deschizi acum?</string>
     <string name="linux_child_processes_adb">Android limitează numărul de procese de fundal ale unei aplicații, iar o sesiune Linux folosește mult mai multe: Steam sau un joc poate fi închis în timpul jocului. Această versiune de Android nu are acea opțiune. De pe un computer, rulează:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

@@ -167,6 +167,7 @@ fun ComponentsScreen(
     onRemoveItem: (ComponentItem) -> Unit,
     onDownloadLinuxItem: (LinuxComponentItem) -> Unit,
     onRemoveLinuxItem: (LinuxComponentItem) -> Unit,
+    onCancelLinuxItem: (LinuxComponentItem) -> Unit,
     onDismissConflict: () -> Unit,
     onToggleAutoCreateContainer: (Boolean) -> Unit,
     onRefresh: () -> Unit,
@@ -315,6 +316,7 @@ fun ComponentsScreen(
                                     item = item,
                                     onDownload = { onDownloadLinuxItem(item) },
                                     onRemove = { linuxItemPendingRemoval = item },
+                                    onCancel = { onCancelLinuxItem(item) },
                                 )
                             }
                         }
@@ -331,6 +333,7 @@ fun ComponentsScreen(
                                     item = item,
                                     onDownload = { onDownloadLinuxItem(item) },
                                     onRemove = { linuxItemPendingRemoval = item },
+                                    onCancel = { onCancelLinuxItem(item) },
                                 )
                             }
                         }
@@ -926,6 +929,7 @@ private fun LinuxComponentItemCard(
     item: LinuxComponentItem,
     onDownload: () -> Unit,
     onRemove: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     Box(
         modifier =
@@ -1001,6 +1005,16 @@ private fun LinuxComponentItemCard(
                             strokeWidth = 2.dp,
                             color = Accent,
                             progress = { if (item.progress.isFinite()) item.progress.coerceIn(0f, 1f) else 0f },
+                        )
+                        // These builds are several hundred megabytes; without this a mistaken tap
+                        // can only be stopped by killing the app.
+                        Spacer(Modifier.width(8.dp))
+                        SmallPillButton(
+                            label = stringResource(R.string.common_ui_cancel),
+                            icon = null,
+                            tint = DangerRed,
+                            compact = true,
+                            onClick = onCancel,
                         )
                     }
                     item.isInstalled -> {

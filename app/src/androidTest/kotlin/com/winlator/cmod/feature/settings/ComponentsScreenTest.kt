@@ -91,6 +91,7 @@ class ComponentsScreenTest {
                 onRemoveItem = {},
                 onDownloadLinuxItem = { downloadedLinuxProton = it.key },
                 onRemoveLinuxItem = {},
+                onCancelLinuxItem = {},
                 onDismissConflict = {},
                 onToggleAutoCreateContainer = {},
                 onRefresh = {},

@@ -2956,10 +2956,6 @@
     <string name="settings_drivers_bundled">기본 제공 Mesa</string>
     <string name="settings_drivers_legacy">Linux 클라이언트 드라이버</string>
     <string name="settings_drivers_routed">드라이버를 식별하여 %1$s용으로 설치했습니다.</string>
-    <string name="linux_protons_title">Linux용 Proton 빌드</string>
-    <string name="linux_protons_hint">설치 후 Linux 클라이언트를 다시 시작하세요. 각 게임의 Steam → 속성 → 호환성에서 빌드를 선택하세요.</string>
-    <string name="linux_protons_failed">Proton을 불러오거나 설치하지 못했습니다. 연결과 여유 공간을 확인한 후 다시 시도하세요.</string>
-    <string name="linux_protons_requires_runtime">먼저 Linux 클라이언트를 설치한 후 여기로 돌아와 Proton 빌드를 다운로드하세요.</string>
     <string name="linux_child_processes_message">Android는 앱의 백그라운드 프로세스 수를 제한하지만 Linux 세션은 그보다 훨씬 많이 실행합니다. 플레이 중에 Steam이나 게임이 종료될 수 있습니다. 개발자 옵션에서 “하위 프로세스 제한 해제”를 켜세요. 지금 열까요?</string>
     <string name="linux_child_processes_adb">Android는 앱의 백그라운드 프로세스 수를 제한하지만 Linux 세션은 그보다 훨씬 많이 실행합니다. 플레이 중에 Steam이나 게임이 종료될 수 있습니다. 이 Android 버전에는 해당 설정이 없습니다. 컴퓨터에서 다음을 실행하세요:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

@@ -2953,10 +2953,6 @@ Ruta instalada:
     <string name="settings_drivers_bundled">Mesa incluido</string>
     <string name="settings_drivers_legacy">Controlador del cliente Linux</string>
     <string name="settings_drivers_routed">Controlador identificado e instalado para %1$s.</string>
-    <string name="linux_protons_title">Versiones de Proton para Linux</string>
-    <string name="linux_protons_hint">Reinicia el cliente Linux después de instalar. Elige una versión para cada juego en Steam → Propiedades → Compatibilidad.</string>
-    <string name="linux_protons_failed">No se pudo cargar o instalar Proton. Revisa la conexión y el espacio libre e inténtalo de nuevo.</string>
-    <string name="linux_protons_requires_runtime">Instala primero el cliente Linux y vuelve aquí para descargar versiones de Proton.</string>
     <string name="linux_child_processes_message">Android limita cuántos procesos en segundo plano puede tener una aplicación, y una sesión de Linux usa muchos más: Steam o un juego pueden cerrarse mientras juegas. Activa “Desactivar restricciones de procesos secundarios” en Opciones de desarrollador. ¿Abrirlas ahora?</string>
     <string name="linux_child_processes_adb">Android limita cuántos procesos en segundo plano puede tener una aplicación, y una sesión de Linux usa muchos más: Steam o un juego pueden cerrarse mientras juegas. Esta versión de Android no tiene esa opción. Desde una computadora, ejecuta:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

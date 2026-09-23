@@ -2953,10 +2953,6 @@
     <string name="settings_drivers_bundled">內建 Mesa</string>
     <string name="settings_drivers_legacy">Linux 用戶端驅動程式</string>
     <string name="settings_drivers_routed">已辨識驅動程式並安裝至 %1$s。</string>
-    <string name="linux_protons_title">Linux Proton 版本</string>
-    <string name="linux_protons_hint">安裝後請重新啟動 Linux 用戶端。在每個遊戲的 Steam → 內容 → 相容性中選擇版本。</string>
-    <string name="linux_protons_failed">無法載入或安裝 Proton。請檢查網路連線與可用空間，然後重試。</string>
-    <string name="linux_protons_requires_runtime">請先安裝 Linux 用戶端，再返回此處下載 Proton 版本。</string>
     <string name="linux_child_processes_message">Android 會限制應用程式的背景程序數量，而 Linux 工作階段遠超此限制：Steam 或遊戲可能在遊玩時被終止。請在開發人員選項中開啟「停用子程序限制」。現在開啟嗎？</string>
     <string name="linux_child_processes_adb">Android 會限制應用程式的背景程序數量，而 Linux 工作階段遠超此限制：Steam 或遊戲可能在遊玩時被終止。此 Android 版本沒有該開關。請在電腦上執行：\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

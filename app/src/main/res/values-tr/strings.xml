@@ -2954,10 +2954,6 @@ Yüklü konum:
     <string name="settings_drivers_bundled">Dahili Mesa</string>
     <string name="settings_drivers_legacy">Linux istemci sürücüsü</string>
     <string name="settings_drivers_routed">Sürücü tanımlandı ve %1$s için kuruldu.</string>
-    <string name="linux_protons_title">Linux Proton sürümleri</string>
-    <string name="linux_protons_hint">Kurulumdan sonra Linux istemcisini yeniden başlatın. Her oyun için Steam → Özellikler → Uyumluluk bölümünden bir sürüm seçin.</string>
-    <string name="linux_protons_failed">Proton yüklenemedi veya kurulamadı. Bağlantınızı ve boş alanı kontrol edip tekrar deneyin.</string>
-    <string name="linux_protons_requires_runtime">Önce Linux istemcisini kurun, ardından Proton sürümlerini indirmek için buraya dönün.</string>
     <string name="linux_child_processes_message">Android bir uygulamanın arka plan işlem sayısını sınırlar, Linux oturumu ise çok daha fazlasını çalıştırır: Steam veya bir oyun sen oynarken kapatılabilir. Geliştirici seçeneklerinde “Alt işlem kısıtlamalarını devre dışı bırak”ı aç. Şimdi açılsın mı?</string>
     <string name="linux_child_processes_adb">Android bir uygulamanın arka plan işlem sayısını sınırlar, Linux oturumu ise çok daha fazlasını çalıştırır: Steam veya bir oyun sen oynarken kapatılabilir. Bu Android sürümünde bu seçenek yok. Bir bilgisayardan şunu çalıştır:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>
