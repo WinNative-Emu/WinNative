@@ -1,0 +1,93 @@
+#!/bin/bash
+# Marks Steam's shared redistributables as already run in every Proton prefix, and in the
+# template Proton makes new prefixes from.
+#
+# A game whose depot lists _CommonRedist makes the client run the real installer inside the
+# prefix on first launch. Those are x86 bundles, so they run under FEX, and the 2019 one leaves
+# a task behind every time: its main thread exits while a helper stays blocked reading a pipe it
+# also holds the write end of, so the process never reaps and the client keeps waiting on it.
+#
+# The client skips a "Run Process" block whose HasRunKey is already set, which is the same escape
+# WineUtils.seedVcRedistRegistryIfDllsPresent() takes for the app's own containers. The names and
+# versions come out of the install scripts rather than a list kept here, because Valve revises
+# them; a prefix already carrying the same set is left alone.
+set -u
+steam_root=${1:?steam root}
+
+redist="$steam_root/steamapps/common/Steamworks Shared/_CommonRedist"
+
+# Every process an install script would run, as the registry key and value the client writes once
+# it has run it. Names sit one level inside "Run Process", the key they share a level further in.
+pairs=$(find "$redist" -name installscript.vdf -print0 2>/dev/null | sort -z | xargs -0 -r awk '
+  FNR == 1 { depth = 0; name = ""; key = "" }
+  /^[[:space:]]*\{/ { depth++; next }
+  /^[[:space:]]*\}/ {
+    if (depth == 3 && name != "" && key != "")
+      printf "%s\t%s\n", key, name
+    depth--
+    next
+  }
+  {
+    n = split($0, part, "\"")
+    if (n >= 5 && tolower(part[2]) == "hasrunkey") { key = part[4]; next }
+    if (n >= 3 && depth == 2) { name = part[2]; key = "" }
+  }
+')
+# The client downloads the scripts with the first game that wants them, which is too late for that
+# game; until then the set they held when this was written stands in.
+[ -n "$pairs" ] || pairs=$(sed 's/^\([^ ]*\) /HKEY_LOCAL_MACHINE\\\\Software\\\\Valve\\\\Steam\\\\Apps\\\\CommonRedist\\\\\1\t/' <<'KNOWN'
+DirectX\\Jun2010 dxsetup
+.NET\\4.8 4.8
+vcredist\\2008 x86 SP1
+vcredist\\2008 x64 SP1
+vcredist\\2010 x86
+vcredist\\2010 x64
+vcredist\\2013 x86 12.0.30501
+vcredist\\2013 x64 12.0.30501
+vcredist\\2015 x86 Update 3 14.0.24215.0
+vcredist\\2015 x64 Update 3 14.0.24215.0
+vcredist\\2017 x86 14.10.25008.0
+vcredist\\2017 x64 14.10.25008.0
+vcredist\\2019 x86 14.28.29334.0
+vcredist\\2019 x64 14.28.29334.0
+vcredist\\2022 x86 14.51.36247.0
+vcredist\\2022 x64 14.51.36247.0
+KNOWN
+)
+stamp=$(printf '%s' "$pairs" | cksum)
+
+block=$(printf '%s\n' "$pairs" | awk -F'\t' -v now="$(date +%s)" '
+  {
+    path = $1
+    sub(/^HKEY_LOCAL_MACHINE\\\\/, "", path)
+    if (path == $1)
+      next
+    printf "\n[%s] %d\n\"%s\"=dword:00000001\n", path, now, $2
+    # The client writes these from 32-bit steam.exe, so its own copy lands under Wow6432Node;
+    # both spellings are seeded because the reader picks by its own word size.
+    sub(/^Software\\\\/, "Software\\\\\\\\Wow6432Node\\\\\\\\", path)
+    printf "\n[%s] %d\n\"%s\"=dword:00000001\n", path, now, $2
+  }
+')
+[ -n "$block" ] || exit 0
+
+# Proton builds a new prefix from its template, and the client runs the install scripts in that
+# prefix moments later, so the template carries the markers too. Its date is kept: Proton reads a
+# changed one as a new template and upgrades every prefix made from the old.
+for reg in "$steam_root"/steamapps/common/Proton*/files/share/default_pfx*/system.reg \
+           "$steam_root"/compatibilitytools.d/*/files/share/default_pfx*/system.reg \
+           /opt/winnative-proton/files/share/default_pfx*/system.reg \
+           "$steam_root"/steamapps/compatdata/*/pfx/system.reg \
+           /mnt/winnative/steamapps/compatdata/*/pfx/system.reg; do
+  [ -f "$reg" ] || continue
+  seeded=$(dirname "$reg")/.winnative-redists
+  [ "$(cat "$seeded" 2>/dev/null)" = "$stamp" ] && continue
+  dated=$(mktemp) || continue
+  touch -r "$reg" "$dated"
+  if printf '%s\n' "$block" >>"$reg"; then
+    printf '%s\n' "$stamp" >"$seeded"
+    echo "== seeded redist markers into $reg"
+  fi
+  touch -r "$dated" "$reg"
+  rm -f "$dated"
+done

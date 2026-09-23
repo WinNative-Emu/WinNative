@@ -192,6 +192,22 @@ bool vkd_bind(void* libvulkan_handle, VkInstance instance) {
     return vkd_load_instance(instance);
 }
 
+bool vkd_bind_proc(PFN_vkGetInstanceProcAddr gipa, VkInstance instance) {
+    if (!gipa || instance == VK_NULL_HANDLE) return false;
+    if (vkd.GetInstanceProcAddr == gipa && vkd_owner_instance == instance) return true;
+
+    memset(&vkd, 0, sizeof(vkd));
+    vkd_owner_handle = NULL;
+    vkd_owner_instance = VK_NULL_HANDLE;
+    vkd.GetInstanceProcAddr = gipa;
+    vkd.CreateInstance = (PFN_vkCreateInstance)gipa(VK_NULL_HANDLE, "vkCreateInstance");
+    vkd.EnumerateInstanceExtensionProperties = (PFN_vkEnumerateInstanceExtensionProperties)
+        gipa(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties");
+    vkd.EnumerateInstanceLayerProperties = (PFN_vkEnumerateInstanceLayerProperties)
+        gipa(VK_NULL_HANDLE, "vkEnumerateInstanceLayerProperties");
+    return vkd_load_instance(instance);
+}
+
 void vkd_unload(void) {
     memset(&vkd, 0, sizeof(vkd));
     vkd_owner_handle = NULL;

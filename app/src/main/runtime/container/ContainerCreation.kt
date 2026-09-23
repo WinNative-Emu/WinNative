@@ -1,6 +1,9 @@
 package com.winlator.cmod.runtime.container
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import com.winlator.cmod.feature.library.LinuxApps
 import com.winlator.cmod.runtime.compat.box64.Box64Preset
 import com.winlator.cmod.runtime.compat.fexcore.FEXCorePreset
 import com.winlator.cmod.runtime.content.ContentProfile
@@ -10,10 +13,12 @@ import com.winlator.cmod.runtime.wine.WineInfo
 import com.winlator.cmod.runtime.wine.WineThemeManager
 import com.winlator.cmod.runtime.wine.WineUtils
 import com.winlator.cmod.feature.setup.SetupWizardActivity
+import com.winlator.cmod.shared.ui.widget.EnvVarsView
 import com.winlator.cmod.shared.util.Callback
 import org.json.JSONObject
 
 object ContainerCreation {
+    const val GAMESCOPE_CONTAINER_NAME = "GameScope"
     private const val WINE_DISPLAY_NAME = "Wine"
     private const val PROTON_DISPLAY_NAME = "Proton"
     private const val BOX64_EMULATOR = "box64"
@@ -248,6 +253,65 @@ object ContainerCreation {
         containerManager.createContainerAsync(data, contentsManager) { container ->
             callback.call(container)
         }
+    }
+
+    /** The newest installed Wine or Proton, which every container's prefix is built from. */
+    @JvmStatic
+    fun newestInstalledRuntime(contentsManager: ContentsManager): ContentProfile? =
+        (
+            contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WINE).orEmpty() +
+                contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_PROTON).orEmpty()
+            ).filter { it.isInstalled }
+            .maxWithOrNull(compareBy<ContentProfile> { it.verCode }.thenBy { it.verName.lowercase() })
+
+    /**
+     * Creates the GameScope container: Linux programs and the native Steam client boot into it,
+     * so it always draws through Wayland and carries a Steam library entry. The callback gets null
+     * when creation fails.
+     */
+    @JvmStatic
+    fun createGamescopeContainerAsync(
+        context: Context,
+        containerManager: ContainerManager,
+        contentsManager: ContentsManager,
+        runtime: ContentProfile?,
+        callback: Callback<Container?>,
+    ) {
+        val handler = Handler(Looper.getMainLooper())
+        Thread {
+            val container = createGamescopeContainer(context, containerManager, contentsManager, runtime)
+            handler.post { callback.call(container) }
+        }.start()
+    }
+
+    /**
+     * Worker thread. [createGamescopeContainerAsync] without the thread; null when creation fails.
+     * Without a [runtime] the container gets no Wine prefix, which its sessions never use.
+     */
+    @JvmStatic
+    fun createGamescopeContainer(
+        context: Context,
+        containerManager: ContainerManager,
+        contentsManager: ContentsManager,
+        runtime: ContentProfile?,
+    ): Container? {
+        val name = uniqueName(containerManager, GAMESCOPE_CONTAINER_NAME)
+        val created =
+            if (runtime != null) {
+                val data = buildLaunchReadyData(context, contentsManager, name, ContentsManager.getEntryName(runtime))
+                containerManager.createContainer(data, contentsManager)
+            } else {
+                val data = buildLaunchReadyData(context, contentsManager, name, WineInfo.MAIN_WINE_VERSION.identifier())
+                containerManager.createPrefixlessContainer(data)
+            }
+        val container = created ?: return null
+        applyLaunchReadyDefaults(context, contentsManager, container)
+        container.setRuntime(Container.RUNTIME_GAMESCOPE)
+        container.setEnvVars(EnvVarsView.forGamescope(container.getEnvVars()))
+        container.setDisplayBackend(Container.DISPLAY_BACKEND_WAYLAND)
+        container.saveData()
+        LinuxApps.ensureSteamShortcut(context, container)
+        return container
     }
 
     @JvmStatic

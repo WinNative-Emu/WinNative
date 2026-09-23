@@ -1,0 +1,186 @@
+#!/usr/bin/python3
+# Points the Windows games the Steam client runs at DirectAudio, or back at Wine's own choice:
+#   winnative-directaudio <steam root> on|off
+#
+# The app stages the driver under /usr/local/share/winnative/directaudio. It goes into every
+# Proton whose mmdevapi walks the same unixlib call table - a driver built for another table
+# would crash the game at its first sound - and a prefix is only told to use it when the Proton
+# that runs it took it: mmdevapi has no fallback once the registry names a driver, and a title
+# that opens audio while loading then never starts.
+import glob
+import os
+import shutil
+import struct
+import sys
+import time
+
+STAGE = "/usr/local/share/winnative/directaudio"
+UNIXLIB = "aarch64-unix/winedirectaudio.so"
+HALVES = {"aarch64-windows/winedirectaudio.drv": "system32", "i386-windows/winedirectaudio.drv": "syswow64"}
+SECTION = b"[Software\\\\Wine\\\\Drivers]"
+VALUE = b'"Audio"="directaudio"'
+
+
+def call_table_entries(path):
+    """The length of an ELF64 unixlib's __wine_unix_call_funcs, or 0 when it cannot be read."""
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+        if data[:5] != b"\x7fELF\x02":
+            return 0
+        shoff, = struct.unpack_from("<Q", data, 0x28)
+        shentsize, shnum = struct.unpack_from("<HH", data, 0x3A)
+        sections = [struct.unpack_from("<IIQQQQIIQQ", data, shoff + i * shentsize) for i in range(shnum)]
+        for section in sections:
+            if section[1] != 11:  # SHT_DYNSYM
+                continue
+            strings = sections[section[6]][4]
+            for at in range(section[4], section[4] + section[5], 24):
+                name, _, _, _, _, size = struct.unpack_from("<IBBHQQ", data, at)
+                end = data.index(b"\0", strings + name)
+                if data[strings + name:end] == b"__wine_unix_call_funcs":
+                    return size // 8
+    except (OSError, ValueError, IndexError, struct.error):
+        pass
+    return 0
+
+
+def same(a, b):
+    try:
+        with open(a, "rb") as fa, open(b, "rb") as fb:
+            return fa.read() == fb.read()
+    except OSError:
+        return False
+
+
+def place(source, target):
+    if same(source, target):
+        return
+    staged = target + ".staged"
+    shutil.copyfile(source, staged)
+    os.chmod(staged, 0o755)
+    os.replace(staged, target)
+
+
+def install(files, wanted):
+    """Puts the driver into the Proton at `files`; False when that Proton cannot take it."""
+    wine = os.path.join(files, "lib/wine")
+    if call_table_entries(os.path.join(wine, "aarch64-unix/winealsa.so")) != wanted:
+        return False
+    try:
+        for part in (UNIXLIB, *HALVES):
+            if not os.path.isdir(os.path.join(wine, os.path.dirname(part))):
+                return False
+        for part in (UNIXLIB, *HALVES):
+            place(os.path.join(STAGE, part), os.path.join(wine, part))
+    except OSError as e:
+        print(f"== directaudio: {files}: {e}")
+        return False
+    return True
+
+
+def set_driver(user_reg, enabled):
+    """Writes or removes the Audio value; the file keeps its time, which Proton compares."""
+    try:
+        with open(user_reg, "rb") as f:
+            lines = f.read().split(b"\n")
+    except OSError:
+        return
+    start = next((i for i, line in enumerate(lines) if line.startswith(SECTION)), None)
+    if start is None:
+        if not enabled:
+            return
+        edited = lines + [SECTION + b" %d" % int(time.time()), VALUE, b""]
+    else:
+        end = next((i for i in range(start + 1, len(lines)) if not lines[i].strip()), len(lines))
+        body = [line for line in lines[start + 1:end] if not line.startswith(b'"Audio"=') or (not enabled and line.strip() != VALUE)]
+        if enabled:
+            body.append(VALUE)
+        edited = lines[:start + 1] + body + lines[end:]
+    if edited == lines:
+        return
+    stat = os.stat(user_reg)
+    staged = user_reg + ".staged"
+    with open(staged, "wb") as f:
+        f.write(b"\n".join(edited))
+    os.replace(staged, user_reg)
+    os.utime(user_reg, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    print(f"== directaudio {'on' if enabled else 'off'}: {user_reg}")
+
+
+def proton_of(prefix):
+    """The `files` directory of the Proton a compatdata prefix was last set up by."""
+    try:
+        with open(os.path.join(os.path.dirname(prefix), "config_info")) as f:
+            for line in f:
+                line = line.strip()
+                if line.endswith("/files/lib/") or line.endswith("/files/lib"):
+                    return os.path.realpath(os.path.dirname(line.rstrip("/")))
+    except OSError:
+        pass
+    return None
+
+
+def main():
+    steam_root, enabled = sys.argv[1], sys.argv[2] == "on"
+    wanted = call_table_entries(os.path.join(STAGE, UNIXLIB)) if enabled else 0
+    ready = {}
+
+    def usable(files):
+        if not enabled or not wanted or not files:
+            return False
+        if files not in ready:
+            ready[files] = install(files, wanted)
+            print(f"== directaudio: {files}: {'installed' if ready[files] else 'not taken'}")
+        return ready[files]
+
+    prefixes = []
+    proton_files = glob.glob(steam_root + "/steamapps/common/Proton*/files")
+    proton_files += glob.glob(steam_root + "/compatibilitytools.d/*/files")
+    proton_files.append("/opt/winnative-proton/files")
+    for files in proton_files:
+        files = os.path.realpath(files)
+        for template in glob.glob(files + "/share/default_pfx*"):
+            prefixes.append((template, files))
+    for library in (steam_root, "/mnt/winnative"):
+        for prefix in glob.glob(library + "/steamapps/compatdata/*/pfx"):
+            prefixes.append((prefix, proton_of(prefix)))
+
+    for prefix, files in prefixes:
+        user_reg = os.path.join(prefix, "user.reg")
+        if not os.path.isfile(user_reg):
+            continue
+        on = usable(files)
+        prepare_prefix(prefix, on)
+
+
+def prepare_prefix(prefix, on):
+    if on:
+        try:
+            for part, directory in HALVES.items():
+                target = os.path.join(prefix, "drive_c/windows", directory)
+                if os.path.isdir(target):
+                    place(os.path.join(STAGE, part), os.path.join(target, "winedirectaudio.drv"))
+        except OSError as e:
+            print(f"== directaudio: {prefix}: {e}")
+            on = False
+    set_driver(os.path.join(prefix, "user.reg"), on)
+
+
+def prepare_launch(files, compatdata, enabled):
+    wanted = call_table_entries(os.path.join(STAGE, UNIXLIB)) if enabled else 0
+    on = bool(wanted and install(files, wanted))
+    print(f"== directaudio: {files}: {'on' if on else 'off'}")
+    for template in glob.glob(files + "/share/default_pfx*"):
+        prepare_prefix(template, on)
+    if compatdata:
+        prepare_prefix(os.path.join(compatdata, "pfx"), on)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 5 and sys.argv[1] == "--prepare" and sys.argv[4] in ("on", "off"):
+        prepare_launch(sys.argv[2], sys.argv[3], sys.argv[4] == "on")
+    elif len(sys.argv) == 3 and sys.argv[2] in ("on", "off"):
+        main()
+    else:
+        sys.exit("usage: winnative-directaudio <steam root> on|off | --prepare <files> <compatdata> on|off")

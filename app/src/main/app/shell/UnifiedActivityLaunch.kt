@@ -277,7 +277,10 @@ internal fun UnifiedActivity.launchSteamGame(
         val detectedLaunchExecutable = SteamService.getInstalledExe(app.id)
 
         if (shortcut != null) {
-            if (!SetupWizardActivity.isContainerUsable(context, shortcut.container)) {
+            // An entry in the GameScope container hands the title to the native client, which
+            // needs no Wine and keeps its own Exec.
+            val throughClient = shortcut.container.isGamescopeRuntime
+            if (!throughClient && !SetupWizardActivity.isContainerUsable(context, shortcut.container)) {
                 withContext(Dispatchers.Main) {
                     SetupWizardActivity.promptToInstallWineOrCreateContainer(
                         context,
@@ -286,32 +289,34 @@ internal fun UnifiedActivity.launchSteamGame(
                 }
                 return@launch
             }
-            normalizeContainerDrives(shortcut.container)
+            if (!throughClient) normalizeContainerDrives(shortcut.container)
             shortcut.putExtra("game_source", "STEAM")
             shortcut.putExtra("game_install_path", gameInstallPath)
             val existingLaunchExecutable = shortcut.getExtra("launch_exe_path")
             if (existingLaunchExecutable.isNullOrBlank() && detectedLaunchExecutable.isNotBlank()) {
                 shortcut.putExtra("launch_exe_path", detectedLaunchExecutable)
             }
-            val loaderExec = "wine \"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
-            val lines =
-                com.winlator.cmod.shared.io.FileUtils
-                    .readLines(shortcut.file)
-            val rewritten = StringBuilder()
-            var execUpdated = false
-            for (line in lines) {
-                if (line.startsWith("Exec=")) {
-                    rewritten.append("Exec=").append(loaderExec).append("\n")
-                    execUpdated = true
-                } else {
-                    rewritten.append(line).append("\n")
+            if (!throughClient) {
+                val loaderExec = "wine \"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
+                val lines =
+                    com.winlator.cmod.shared.io.FileUtils
+                        .readLines(shortcut.file)
+                val rewritten = StringBuilder()
+                var execUpdated = false
+                for (line in lines) {
+                    if (line.startsWith("Exec=")) {
+                        rewritten.append("Exec=").append(loaderExec).append("\n")
+                        execUpdated = true
+                    } else {
+                        rewritten.append(line).append("\n")
+                    }
                 }
+                if (!execUpdated) {
+                    rewritten.append("Exec=").append(loaderExec).append("\n")
+                }
+                com.winlator.cmod.shared.io.FileUtils
+                    .writeString(shortcut.file, rewritten.toString())
             }
-            if (!execUpdated) {
-                rewritten.append("Exec=").append(loaderExec).append("\n")
-            }
-            com.winlator.cmod.shared.io.FileUtils
-                .writeString(shortcut.file, rewritten.toString())
             shortcut.saveData()
             val intent = Intent(context, XServerDisplayActivity::class.java)
             intent.putExtra("container_id", shortcut.container.id)
@@ -919,6 +924,13 @@ internal fun UnifiedActivity.launchCustomGame(
                     "Custom game shortcut not found: $gameName",
                     android.widget.Toast.LENGTH_SHORT,
                 )
+            }
+            return@launch
+        }
+
+        if (com.winlator.cmod.feature.library.LinuxApps.isLinuxShortcut(shortcut)) {
+            withContext(Dispatchers.Main) {
+                com.winlator.cmod.feature.library.LinuxApps.launch(context, shortcut)
             }
             return@launch
         }

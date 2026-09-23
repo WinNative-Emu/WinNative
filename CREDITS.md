@@ -24,6 +24,12 @@ corresponding source for every copyleft component is available from the projects
 - **Mesa/Turnip** contributions by the [Mesa3D](https://www.mesa3d.org/) team
 - **Goldberg Steam Emulator** by [Mr. Goldberg](https://gitlab.com/Mr_Goldberg/goldberg_emulator),
   maintained by [Detanup01](https://github.com/Detanup01/gbe_fork)
+- **Wayland display server** — the embedded Wayland compositor (`app/src/main/cpp/waylandcomp`),
+  its Wayland runtime design, clipboard and IME bridges, and the winewayland launch path by
+  **Banner ([The412Banner](https://github.com/The412Banner))** from
+  [Bannerlator](https://github.com/The412Banner/Bannerlator), ported to WinNative; ships the
+  vendored `libwayland-server` 1.26 and `libffi` from the same project. See
+  [docs/WAYLAND-DISPLAY.md](docs/WAYLAND-DISPLAY.md).
 
 ## Retro console emulation
 

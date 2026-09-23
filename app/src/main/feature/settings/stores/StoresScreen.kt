@@ -41,6 +41,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderShared
 import androidx.compose.material.icons.outlined.Gamepad
@@ -60,9 +62,12 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +77,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -80,6 +86,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.winlator.cmod.R
+import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.shared.ui.focus.rememberSettingsContentNav
 import com.winlator.cmod.shared.ui.nav.LocalPaneNav
 import com.winlator.cmod.shared.ui.nav.paneNavItem
@@ -159,6 +166,21 @@ fun StoresScreen(
     val navBarEndPadding = navBarPadding.calculateEndPadding(layoutDirection)
     val navBarBottomPadding = navBarPadding.calculateBottomPadding()
     val contentNav = rememberSettingsContentNav(bridge)
+    val context = LocalContext.current
+    val linuxClient by LinuxClientInstaller.state.collectAsState()
+    var linuxClientDialog by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) { LinuxClientInstaller.refresh(context) }
+    if (linuxClientDialog) {
+        LinuxClientDialog(
+            state = linuxClient,
+            onStart = { LinuxClientInstaller.start(context) },
+            onCancelInstall = {
+                LinuxClientInstaller.cancel()
+                linuxClientDialog = false
+            },
+            onDismiss = { linuxClientDialog = false },
+        )
+    }
     val downloadSpeedOptions =
         listOf(
             8 to stringResource(R.string.stores_accounts_download_speed_conservative),
@@ -190,6 +212,20 @@ fun StoresScreen(
                 isLoggedIn = state.isSteamLoggedIn,
                 onSignIn = onSteamSignIn,
                 onSignOut = onSteamSignOut,
+                extraAction = {
+                    val installed = linuxClient is LinuxClientInstaller.State.Installed
+                    // An update is offered in the window, not begun by opening it.
+                    val offered = linuxClient is LinuxClientInstaller.State.UpdateAvailable
+                    ActionButton(
+                        label = stringResource(R.string.linux_client_button),
+                        textColor = if (installed) StatusGreen else Accent,
+                        icon = if (installed) Icons.Outlined.Check else Icons.Outlined.ArrowDownward,
+                        onClick = {
+                            if (!installed && !offered) LinuxClientInstaller.start(context)
+                            linuxClientDialog = true
+                        },
+                    )
+                },
             )
             StoreCard(
                 name = stringResource(R.string.preloader_platform_epic),
@@ -404,6 +440,7 @@ private fun StoreCard(
     isLoggedIn: Boolean,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
+    extraAction: (@Composable () -> Unit)? = null,
 ) {
     var showSignOutDialog by remember { mutableStateOf(false) }
     if (showSignOutDialog) {
@@ -520,6 +557,10 @@ private fun StoreCard(
                 }
             }
 
+            if (extraAction != null) {
+                extraAction()
+                Spacer(Modifier.width(8.dp))
+            }
             ActionButton(
                 label = if (isLoggedIn) stringResource(R.string.common_ui_sign_out) else stringResource(R.string.common_ui_sign_in),
                 textColor = if (isLoggedIn) DangerRed else accentColor,
@@ -534,6 +575,7 @@ private fun ActionButton(
     label: String,
     textColor: Color,
     onClick: () -> Unit,
+    icon: ImageVector? = null,
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -565,12 +607,23 @@ private fun ActionButton(
                 }.padding(horizontal = 12.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            color = textColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+            }
+            Text(
+                text = label,
+                color = textColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }
 

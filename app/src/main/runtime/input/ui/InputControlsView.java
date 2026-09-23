@@ -60,6 +60,7 @@ public class InputControlsView extends View {
   public static final String EXTRA_ADAPTIVE_JOYSTICKS = "adaptiveJoysticks";
   private static final byte MOUSE_WHEEL_DELTA = 120;
   private boolean editMode = false;
+  private boolean guideButtonShown = true;
   private final HashMap<Integer, SteamPadInput> steamPadInputs = new HashMap<>();
 
   private static final class SteamPadInput {
@@ -191,6 +192,15 @@ public class InputControlsView extends View {
 
   public boolean isEditMode() {
     return editMode;
+  }
+
+  public void setGuideButtonShown(boolean shown) {
+    guideButtonShown = shown;
+    invalidate();
+  }
+
+  public boolean isGuideButtonShown() {
+    return guideButtonShown || editMode;
   }
 
   public void setOverlayOpacity(float overlayOpacity) {
@@ -1347,6 +1357,9 @@ public class InputControlsView extends View {
           stateChanged = state.isPressed(buttonIdx) != isActionDown;
           if (stateChanged) state.setPressed(buttonIdx, isActionDown);
         }
+      } else if (binding == Binding.GAMEPAD_BUTTON_GUIDE) {
+        stateChanged = state.isPressed(GamepadState.BUTTON_GUIDE) != isActionDown;
+        if (stateChanged) state.setPressed(GamepadState.BUTTON_GUIDE, isActionDown);
       } else if (binding == Binding.GAMEPAD_LEFT_THUMB_UP
           || binding == Binding.GAMEPAD_LEFT_THUMB_DOWN) {
         float val = (isActionDown && offset == 0) ? 1.0f : Math.abs(offset);

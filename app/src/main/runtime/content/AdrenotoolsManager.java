@@ -6,7 +6,6 @@ import android.net.Uri;
 import android.content.Context;
 import android.util.Log;
 
-import com.winlator.cmod.app.config.SettingsConfig;
 import com.winlator.cmod.runtime.container.Container;
 import com.winlator.cmod.runtime.container.Shortcut;
 import com.winlator.cmod.runtime.container.ContainerManager;
@@ -18,12 +17,8 @@ import com.winlator.cmod.runtime.display.environment.ImageFs;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -53,6 +48,23 @@ public class AdrenotoolsManager {
         return libraryName;
     }
     
+    public boolean isTurnipDriver(String driverId) {
+        if (driverId == null || driverId.isEmpty() || "System".equalsIgnoreCase(driverId)) return false;
+        File directory = new File(adrenotoolsContentDir, driverId);
+        String metadata = FileUtils.readString(new File(directory, "meta.json"));
+        if (metadata == null) return false;
+        try {
+            JSONObject json = new JSONObject(metadata);
+            String library = json.optString("libraryName");
+            if (library.isEmpty() || !new File(directory, library).isFile()) return false;
+            String identity = library + " " + json.optString("name") + " " + json.optString("driverName");
+            identity = identity.toLowerCase(java.util.Locale.ROOT);
+            return identity.contains("turnip") || identity.contains("freedreno");
+        } catch (JSONException e) {
+            return false;
+        }
+    }
+
     public String getDriverName(String adrenoToolsDriverId) {
         String driverName = "";
         File driverPath = new File(adrenotoolsContentDir, adrenoToolsDriverId);
@@ -199,64 +211,14 @@ public class AdrenotoolsManager {
      * detect that a remote GitHub asset with that filename is already installed.
      */
     public String installDriver(Uri driverUri, String sourceAssetName) {
-        com.winlator.cmod.runtime.system.GraphicsDriverCatalog.invalidate();
-        File tmpDir = new File(adrenotoolsContentDir, "tmp");
-        if (tmpDir.exists()) tmpDir.delete();
-        tmpDir.mkdirs();
-        ZipInputStream zis;
-        InputStream is;
-        String name = "";
-
         try {
-            is = mContext.getContentResolver().openInputStream(driverUri);
-            zis = new ZipInputStream(is);
-            ZipEntry entry = zis.getNextEntry();
-            while (entry != null) {
-                File dstFile = new File(tmpDir, entry.getName());
-                Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                entry = zis.getNextEntry();
-            }
-            zis.close();
-            if (new File(tmpDir, "meta.json").exists()) {
-                name = getDriverName(tmpDir.getName());
-                File dst = new File(adrenotoolsContentDir, name);
-                if (!dst.exists() && !name.equals("")) {
-                    tmpDir.renameTo(dst);
-                    if (sourceAssetName != null && !sourceAssetName.isEmpty()) {
-                        stampSourceAsset(dst, sourceAssetName);
-                    }
-                }
-                else {
-                    name = "";
-                    FileUtils.delete(tmpDir);
-                }
-            }
-            else {
-                Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
-                tmpDir.delete();
-            }
+            return DriverPackages.install(mContext, driverUri, sourceAssetName, DriverPackages.Platform.ANDROID).id;
+        } catch (Exception error) {
+            Log.w("AdrenotoolsManager", "Driver installation failed", error);
+            return "";
         }
-        catch (IOException e) {
-            Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
-            tmpDir.delete();
-        }
-
-        return name;
     }
 
-    private void stampSourceAsset(File driverDir, String sourceAssetName) {
-        File metaFile = new File(driverDir, "meta.json");
-        try {
-            String jsonStr = FileUtils.readString(metaFile);
-            JSONObject jsonObject = new JSONObject(jsonStr != null ? jsonStr : "{}");
-            jsonObject.put("sourceAsset", sourceAssetName);
-            FileUtils.writeString(metaFile, jsonObject.toString(2));
-        }
-        catch (JSONException e) {
-            Log.w("AdrenotoolsManager", "Failed to stamp sourceAsset into meta.json: " + e.getMessage());
-        }
-    }
-    
     public void setDriverById(EnvVars envVars, ImageFs imagefs, String adrenotoolsDriverId) {
         if (adrenotoolsDriverId == null || adrenotoolsDriverId.isEmpty()) {
             Log.w("AdrenotoolsManager", "setDriverById called with empty driver id - system driver will be used");

@@ -22,6 +22,8 @@
 
 #include "arch.h"
 
+#include <asm/ioctls.h>    /* TCGETS2, TCSETS*2, */
+#include <asm/termbits.h>  /* struct termios2, */
 #include <assert.h>        /* assert(3), */
 #include <errno.h>         /* E*, */
 #include <linux/audit.h>   /* AUDIT_, */
@@ -116,13 +118,50 @@ static int add_trace_syscall(struct sock_fprog *program, word_t syscall,
 }
 
 /**
- * Append to @program->filter the statements that allow anything (if
- * unfiltered).  Note that @nb_traced_syscalls is used to make a
- * sanity check.  This function returns -errno if an error occurred,
+ * glibc 2.42 and later read and write terminal settings with the
+ * termios2 requests, which Android's SELinux policy denies an app on
+ * a pty: it lists the older requests only, so nothing in the guest
+ * finds a terminal.  Append to @program->filter the statements that
+ * trace these requests of @syscall (ioctl), for enter.c to turn into
+ * the older ones, and allow any other request at once: nothing else
+ * handles ioctl, and the GPU driver's are spared the rest of the
+ * list.  This function returns -errno if an error occurred,
  * otherwise 0.
  */
+static int add_trace_tty_ioctl(struct sock_fprog *program, word_t syscall) {
+  const size_t request_offset = offsetof(struct seccomp_data, args[1]);
+
+#define LENGTH_TRACE_TTY_IOCTL 8
+  struct sock_filter statements[LENGTH_TRACE_TTY_IOCTL] = {
+      /* Not this syscall: skip the block, the accumulator
+       * still holds the syscall number.  */
+      BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, syscall, 0, 7),
+
+      /* Load the request's low word into the accumulator.  */
+      BPF_STMT(BPF_LD + BPF_W + BPF_ABS, request_offset),
+
+      BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, TCGETS2, 3, 0),
+      BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, TCSETS2, 2, 0),
+      BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, TCSETSW2, 1, 0),
+      BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, TCSETSF2, 0, 1),
+
+      BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + FILTER_SYSEXIT),
+      BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_ALLOW)};
+
+  DEBUG_FILTER("FILTER:     trace if syscall == %ld and a termios2 request\n",
+               syscall);
+
+  return add_statements(program, LENGTH_TRACE_TTY_IOCTL, statements);
+}
+
+/**
+ * Append to @program->filter the statements that allow anything (if
+ * unfiltered).  Note that @nb_traced_syscalls and @nb_tty_ioctls are
+ * used to make a sanity check.  This function returns -errno if an
+ * error occurred, otherwise 0.
+ */
 static int end_arch_section(struct sock_fprog *program,
-                            size_t nb_traced_syscalls) {
+                            size_t nb_traced_syscalls, size_t nb_tty_ioctls) {
   int status;
 
 #define LENGTH_END_SECTION 1
@@ -137,7 +176,8 @@ static int end_arch_section(struct sock_fprog *program,
 
   /* Sanity check, see start_arch_section().  */
   if (talloc_array_length(program->filter) - program->len !=
-      LENGTH_END_SECTION + nb_traced_syscalls * LENGTH_TRACE_SYSCALL)
+      LENGTH_END_SECTION + nb_traced_syscalls * LENGTH_TRACE_SYSCALL +
+          nb_tty_ioctls * LENGTH_TRACE_TTY_IOCTL)
     return -ERANGE;
 
   return 0;
@@ -145,16 +185,17 @@ static int end_arch_section(struct sock_fprog *program,
 
 /**
  * Append to @program->filter the statements that check the current
- * @architecture.  Note that @nb_traced_syscalls is used to make a
- * sanity check.  This function returns -errno if an error occurred,
- * otherwise 0.
+ * @architecture.  Note that @nb_traced_syscalls and @nb_tty_ioctls
+ * give the length of the section.  This function returns -errno if an
+ * error occurred, otherwise 0.
  */
 static int start_arch_section(struct sock_fprog *program, uint32_t arch,
-                              size_t nb_traced_syscalls) {
+                              size_t nb_traced_syscalls, size_t nb_tty_ioctls) {
   const size_t arch_offset = offsetof(struct seccomp_data, arch);
   const size_t syscall_offset = offsetof(struct seccomp_data, nr);
   const size_t section_length =
-      LENGTH_END_SECTION + nb_traced_syscalls * LENGTH_TRACE_SYSCALL;
+      LENGTH_END_SECTION + nb_traced_syscalls * LENGTH_TRACE_SYSCALL +
+      nb_tty_ioctls * LENGTH_TRACE_TTY_IOCTL;
   int status;
 
   /* Sanity checks.  */
@@ -244,6 +285,7 @@ static int set_seccomp_filters(const FilteredSysnum *sysnums) {
 
   struct sock_fprog program = {.len = 0, .filter = NULL};
   size_t nb_traced_syscalls;
+  size_t nb_tty_ioctls;
   size_t i, j, k;
   int status;
 
@@ -256,9 +298,13 @@ static int set_seccomp_filters(const FilteredSysnum *sysnums) {
     word_t syscall;
 
     nb_traced_syscalls = 0;
+    nb_tty_ioctls = 0;
 
     /* Pre-compute the number of traced syscalls for this architecture.  */
     for (j = 0; j < seccomp_archs[i].nb_abis; j++) {
+      if (detranslate_sysnum(seccomp_archs[i].abis[j], PR_ioctl) !=
+          SYSCALL_AVOIDER)
+        nb_tty_ioctls++;
       for (k = 0; sysnums[k].value != PR_void; k++) {
         syscall =
             detranslate_sysnum(seccomp_archs[i].abis[j], sysnums[k].value);
@@ -269,9 +315,20 @@ static int set_seccomp_filters(const FilteredSysnum *sysnums) {
 
     /* Filter: if handled architecture */
     status = start_arch_section(&program, seccomp_archs[i].value,
-                                nb_traced_syscalls);
+                                nb_traced_syscalls, nb_tty_ioctls);
     if (status < 0)
       goto end;
+
+    /* Filter: ioctl first, it is by far the most frequent syscall */
+    for (j = 0; j < seccomp_archs[i].nb_abis; j++) {
+      syscall = detranslate_sysnum(seccomp_archs[i].abis[j], PR_ioctl);
+      if (syscall == SYSCALL_AVOIDER)
+        continue;
+
+      status = add_trace_tty_ioctl(&program, syscall);
+      if (status < 0)
+        goto end;
+    }
 
     for (j = 0; j < seccomp_archs[i].nb_abis; j++) {
       for (k = 0; sysnums[k].value != PR_void; k++) {
@@ -289,7 +346,7 @@ static int set_seccomp_filters(const FilteredSysnum *sysnums) {
     }
 
     /* Filter: allow untraced syscalls for this architecture */
-    status = end_arch_section(&program, nb_traced_syscalls);
+    status = end_arch_section(&program, nb_traced_syscalls, nb_tty_ioctls);
     if (status < 0)
       goto end;
   }
@@ -330,6 +387,7 @@ static FilteredSysnum proot_sysnums[] = {
     {PR_chown32, 0},
     {PR_connect, 0},
     {PR_execve, FILTER_SYSEXIT},
+    {PR_execveat, FILTER_SYSEXIT},
     {PR_faccessat, 0},
     {PR_faccessat2, 0},
     {PR_fchdir, FILTER_SYSEXIT},
@@ -359,6 +417,7 @@ static FilteredSysnum proot_sysnums[] = {
     {PR_mknodat, 0},
     {PR_name_to_handle_at, 0},
     {PR_newfstatat, 0},
+    {PR_statx, 0},
     {PR_open, 0},
     {PR_openat, 0},
     {PR_prctl, 0},

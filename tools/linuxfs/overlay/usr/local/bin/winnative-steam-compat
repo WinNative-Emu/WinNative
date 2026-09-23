@@ -1,0 +1,339 @@
+#!/usr/bin/python3
+import os
+import re
+import shutil
+import sys
+
+TOOL = "winnative-proton"
+LAUNCHER = "winnative-launch"
+EXTRA_WRAPPER = "winnative-proton-wrap"
+SOURCES = ("Proton Experimental (ARM64)", "Proton 11.0 (ARM64)")
+BUNDLED = "/opt/winnative-proton"
+LIBRARY = "/mnt/winnative"
+TOKEN = re.compile(r'\s*(?:"((?:[^"\\]|\\.)*)"|([{}])|//[^\n]*)')
+NOT_GAMES = frozenset((
+    "228980", "1070560", "1391110", "1493710", "3127680", "4183110",
+    "4185400", "4427310", "4628740",
+))
+ANTICHEAT_RUNTIMES = ("1161040", "1826330")
+
+TOOLMANIFEST = '''"manifest"
+{
+	"version"		"2"
+	"commandline"		"/%s %%verb%%"
+	"use_sessions"		"1"
+	"compatmanager_layer_name"		"proton"
+}
+''' % LAUNCHER
+
+EXTRA_TOOLMANIFEST = '''"manifest"
+{
+	"version"		"2"
+	"commandline"		"/%s %%verb%%"
+	"use_sessions"		"1"
+	"compatmanager_layer_name"		"proton"
+}
+''' % EXTRA_WRAPPER
+
+COMPAT_TOOL_VDF = '''"compatibilitytools"
+{
+	"compat_tools"
+	{
+		"%s"
+		{
+			"install_path"		"."
+			"display_name"		"WN Proton Experimental"
+			"from_oslist"		"windows"
+			"to_oslist"		"linux"
+		}
+	}
+}
+''' % TOOL
+
+EXTRA_COMPAT_TOOL_VDF = '''"compatibilitytools"
+{
+	"compat_tools"
+	{
+		"%s"
+		{
+			"install_path"		"."
+			"display_name"		"%s (WinNative)"
+			"from_oslist"		"windows"
+			"to_oslist"		"linux"
+		}
+	}
+}
+'''
+
+LAUNCHER_SH = '''#!/bin/sh
+verb=$1
+shift || true
+steam_root=${STEAM_COMPAT_CLIENT_INSTALL_PATH:-${XDG_DATA_HOME:-$HOME/.local/share}/Steam}
+run_proton() {
+  exec /usr/local/bin/winnative-proton-launch "$@"
+}
+if [ -d "%s/files/bin-arm64" ] && [ -x "%s/proton" ]; then
+  run_proton "%s/proton" "$verb" "$@"
+fi
+for name in %s; do
+  depot="$steam_root/steamapps/common/$name"
+  if [ -d "$depot/files/bin-arm64" ] && [ -x "$depot/proton" ]; then
+    run_proton "$depot/proton" "$verb" "$@"
+  fi
+done
+echo "winnative-proton: no ARM64 Proton depot is installed yet" >&2
+exit 1
+''' % (BUNDLED, BUNDLED, BUNDLED, " ".join('"%s"' % name for name in SOURCES))
+
+EXTRA_WRAPPER_SH = '''#!/bin/sh
+here=$(dirname "$0")
+exec /usr/local/bin/winnative-proton-launch "$here/%s" "$@"
+'''
+
+
+def write_changed(path, body, mode=0o644):
+    try:
+        with open(path, encoding="utf-8") as source:
+            if source.read() == body:
+                os.chmod(path, mode)
+                return
+    except OSError:
+        pass
+    staged = path + ".winnative-staged"
+    with open(staged, "w", encoding="utf-8") as output:
+        output.write(body)
+    os.chmod(staged, mode)
+    os.replace(staged, path)
+
+
+def tokenize(text):
+    tokens = []
+    pos = 0
+    while pos < len(text):
+        m = TOKEN.match(text, pos)
+        if not m or m.end() == pos:
+            break
+        pos = m.end()
+        if m.group(2):
+            tokens.append(m.group(2))
+        elif m.group(1) is not None:
+            tokens.append('"' + m.group(1) + '"')
+    return tokens
+
+
+def find_block(tokens, path):
+    depth, want, i = 0, 0, 0
+    while i < len(tokens):
+        token = tokens[i]
+        if token == "{":
+            depth += 1
+        elif token == "}":
+            depth -= 1
+            if depth < want:
+                return None
+        elif depth == want and i + 1 < len(tokens) and tokens[i + 1] == "{":
+            if token.lower() == '"%s"' % path[want].lower():
+                if want == len(path) - 1:
+                    return i + 1
+                want += 1
+        i += 1
+    return None
+
+
+def block_end(tokens, start):
+    depth = 0
+    for i in range(start, len(tokens)):
+        if tokens[i] == "{":
+            depth += 1
+        elif tokens[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+    return len(tokens)
+
+
+def serialize(tokens):
+    out, depth, i = [], 0, 0
+    while i < len(tokens):
+        token = tokens[i]
+        if token == "}":
+            depth -= 1
+            out.append("\t" * depth + "}")
+            i += 1
+        elif i + 1 < len(tokens) and tokens[i + 1] == "{":
+            out.append("\t" * depth + token)
+            out.append("\t" * depth + "{")
+            depth += 1
+            i += 2
+        else:
+            out.append("\t" * depth + token + "\t\t" + tokens[i + 1])
+            i += 2
+    return "\n".join(out) + "\n"
+
+
+def first_key(path, section):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as source:
+            tokens = tokenize(source.read())
+    except OSError:
+        return None
+    block = find_block(tokens, section)
+    if block is None:
+        return None
+    for i in range(block + 1, block_end(tokens, block)):
+        if i + 1 < len(tokens) and tokens[i + 1] == "{":
+            return tokens[i].strip('"')
+    return None
+
+
+def manifest_entry_point(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as source:
+            tokens = tokenize(source.read())
+    except OSError:
+        return None
+    for i in range(len(tokens) - 1):
+        if tokens[i].lower() == '"commandline"':
+            parts = tokens[i + 1].strip('"').split()
+            if parts:
+                return parts[0].lstrip("/")
+    return None
+
+
+def mapped_apps(steam_root):
+    apps = set()
+    for library in (steam_root, LIBRARY):
+        steamapps = os.path.join(library, "steamapps")
+        try:
+            names = os.listdir(steamapps)
+        except OSError:
+            continue
+        for name in names:
+            match = re.fullmatch(r"appmanifest_(\d+)\.acf", name)
+            if match and match.group(1) not in NOT_GAMES:
+                apps.add(match.group(1))
+    return sorted(apps.union(ANTICHEAT_RUNTIMES), key=int)
+
+
+def build_tool(tools):
+    tool_dir = os.path.join(tools, TOOL)
+    if os.path.islink(tool_dir):
+        os.unlink(tool_dir)
+    os.makedirs(tool_dir, exist_ok=True)
+    files = {
+        "toolmanifest.vdf": TOOLMANIFEST,
+        "compatibilitytool.vdf": COMPAT_TOOL_VDF,
+        LAUNCHER: LAUNCHER_SH,
+    }
+    for name, body in files.items():
+        write_changed(os.path.join(tool_dir, name), body, 0o755 if name == LAUNCHER else 0o644)
+
+
+def adopt_extras(tools):
+    adopted = set()
+    try:
+        entries = sorted(os.listdir(tools))
+    except OSError:
+        return adopted
+    for entry in entries:
+        if entry == TOOL or entry.startswith("."):
+            continue
+        tool_dir = os.path.join(tools, entry)
+        manifest = os.path.join(tool_dir, "toolmanifest.vdf")
+        compat = os.path.join(tool_dir, "compatibilitytool.vdf")
+        if not os.path.isdir(tool_dir) or not os.path.isfile(manifest):
+            continue
+        original = manifest + ".winnative-original"
+        try:
+            if not os.path.isfile(original):
+                shutil.copy2(manifest, original)
+            entry_point = manifest_entry_point(original)
+            if not entry_point or entry_point in (EXTRA_WRAPPER, LAUNCHER):
+                entry_point = "proton"
+            if not os.path.exists(os.path.join(tool_dir, entry_point)):
+                continue
+            name = first_key(compat, ["compatibilitytools", "compat_tools"]) or entry
+            write_changed(os.path.join(tool_dir, EXTRA_WRAPPER), EXTRA_WRAPPER_SH % entry_point, 0o755)
+            write_changed(manifest, EXTRA_TOOLMANIFEST)
+            if os.path.isfile(compat):
+                write_changed(compat, EXTRA_COMPAT_TOOL_VDF % (name, entry))
+            adopted.add(name)
+        except (OSError, ValueError, IndexError) as error:
+            print("winnative-steam-compat: could not adopt %s: %s" % (entry, error), file=sys.stderr)
+    return adopted
+
+
+def register_default(config_path, apps=(), protect=()):
+    with open(config_path, encoding="utf-8", errors="replace") as source:
+        tokens = tokenize(source.read())
+    steam = find_block(tokens, ["InstallConfigStore", "Software", "Valve", "Steam"])
+    if steam is None:
+        return
+    protect = {name.lower() for name in protect}
+    mapping = find_block(tokens[steam + 1:], ["CompatToolMapping"])
+    entry = ['"0"', "{", '"name"', '"%s"' % TOOL, '"config"', '""', '"priority"', '"75"', "}"]
+    changed = False
+    if mapping is None:
+        end = block_end(tokens, steam)
+        tokens[end:end] = ['"CompatToolMapping"', "{"] + entry + ["}"]
+        changed = True
+        mapping = find_block(tokens[steam + 1:], ["CompatToolMapping"])
+    mapping += steam + 1
+    end = block_end(tokens, mapping)
+    for i in range(mapping, end):
+        if tokens[i] != '"name"' or i + 1 >= end:
+            continue
+        name = tokens[i + 1].strip('"')
+        lowered = name.lower()
+        if lowered.startswith("proton") and lowered != TOOL.lower() and lowered not in protect:
+            tokens[i + 1] = '"%s"' % TOOL
+            changed = True
+    if find_block(tokens[mapping + 1:end], ["0"]) is None:
+        tokens[mapping + 1:mapping + 1] = entry
+        end += len(entry)
+        changed = True
+    for app in apps:
+        if find_block(tokens[mapping + 1:end], [app]) is not None:
+            continue
+        item = ['"%s"' % app, "{", '"name"', '"%s"' % TOOL, '"config"', '""', '"priority"', '"250"', "}"]
+        tokens[mapping + 1:mapping + 1] = item
+        end += len(item)
+        changed = True
+    if not changed:
+        return
+    tmp = config_path + ".winnative"
+    with open(tmp, "w", encoding="utf-8") as output:
+        output.write(serialize(tokens))
+    os.replace(tmp, config_path)
+
+
+def find_depot(steam_root):
+    if os.path.isdir(os.path.join(BUNDLED, "files", "bin-arm64")) and os.path.isfile(os.path.join(BUNDLED, "proton")):
+        return BUNDLED
+    for name in SOURCES:
+        depot = os.path.join(steam_root, "steamapps", "common", name)
+        if os.path.isdir(os.path.join(depot, "files", "bin-arm64")) and os.path.isfile(os.path.join(depot, "proton")):
+            return depot
+    return None
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit(2)
+    steam_root = sys.argv[1]
+    tools = os.path.join(steam_root, "compatibilitytools.d")
+    os.makedirs(tools, exist_ok=True)
+    build_tool(tools)
+    extras = adopt_extras(tools)
+    depot = find_depot(steam_root)
+    state = os.path.basename(depot) if depot else "waiting for ARM64 Proton depot"
+    print("winnative-steam-compat: registered %s (%s)" % (TOOL, state))
+    config = os.path.join(steam_root, "config", "config.vdf")
+    if "--refresh" not in sys.argv[2:] and os.path.isfile(config):
+        apps = mapped_apps(steam_root)
+        register_default(config, apps, extras)
+        print("winnative-steam-compat: default and %d installed title(s) set to %s" % (len(apps), TOOL))
+
+
+if __name__ == "__main__":
+    main()

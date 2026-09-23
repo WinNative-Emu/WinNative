@@ -164,6 +164,56 @@ public class Container {
         putExtra("zinkMode", zinkMode);
     }
 
+    /** Display server the session runs on: the X server (default) or the embedded Wayland compositor. */
+    public static final String EXTRA_DISPLAY_BACKEND = "displayBackend";
+    public static final String DISPLAY_BACKEND_X11 = "x11";
+    public static final String DISPLAY_BACKEND_WAYLAND = "wayland";
+
+    public String getDisplayBackend() {
+        String value = getExtra(EXTRA_DISPLAY_BACKEND, DISPLAY_BACKEND_X11);
+        return DISPLAY_BACKEND_WAYLAND.equals(value) ? DISPLAY_BACKEND_WAYLAND : DISPLAY_BACKEND_X11;
+    }
+
+    public void setDisplayBackend(String value) {
+        putExtra(EXTRA_DISPLAY_BACKEND, DISPLAY_BACKEND_WAYLAND.equals(value) ? DISPLAY_BACKEND_WAYLAND : null);
+    }
+
+    public boolean isWaylandBackend() {
+        return DISPLAY_BACKEND_WAYLAND.equals(getDisplayBackend());
+    }
+
+    /** What the container boots: Wine on the bionic imagefs (default) or gamescope in the Linux runtime. */
+    public static final String EXTRA_RUNTIME = "runtime";
+    public static final String RUNTIME_WINE = "wine";
+    public static final String RUNTIME_GAMESCOPE = "gamescope";
+
+    public String getRuntime() {
+        String value = getExtra(EXTRA_RUNTIME, RUNTIME_WINE);
+        return RUNTIME_GAMESCOPE.equals(value) ? RUNTIME_GAMESCOPE : RUNTIME_WINE;
+    }
+
+    public void setRuntime(String value) {
+        putExtra(EXTRA_RUNTIME, RUNTIME_GAMESCOPE.equals(value) ? RUNTIME_GAMESCOPE : null);
+    }
+
+    public boolean isGamescopeRuntime() {
+        return RUNTIME_GAMESCOPE.equals(getRuntime());
+    }
+
+    /** The Proton a GameScope container's games run under, by its compatibilitytools.d name. */
+    public static final String EXTRA_LINUX_PROTON = "linuxProton";
+    /** WinNative's own Proton Experimental, the tool every title is mapped to until the user picks another. */
+    public static final String LINUX_PROTON_DEFAULT = "winnative-proton";
+
+    public String getLinuxProton() {
+        String value = getExtra(EXTRA_LINUX_PROTON, "");
+        return value.isEmpty() ? LINUX_PROTON_DEFAULT : value;
+    }
+
+    public void setLinuxProton(String value) {
+        putExtra(EXTRA_LINUX_PROTON, value == null || value.isEmpty() || LINUX_PROTON_DEFAULT.equals(value) ? null : value);
+    }
+
     public String getGraphicsDriverConfig() { return this.graphicsDriverConfig; }
 
     public void setGraphicsDriverConfig(String graphicsDriverConfig) { this.graphicsDriverConfig = graphicsDriverConfig; }

@@ -65,6 +65,10 @@ class TouchpadView(
     private var scrolling = false
     private var sensitivity = 1.0f
     private var simTouchScreen = false
+    private var sinkTouchActive = false
+    private var sinkTapTime = 0L
+    private var sinkTapX = 0f
+    private var sinkTapY = 0f
     private var screenTouchMode = MODE_TRACKPAD
     private var rtsGesturesEnabled = false
     private val xform = XForm.getInstance()
@@ -362,6 +366,10 @@ class TouchpadView(
             1, 6 -> { if (event.pointerCount == 2) handleTwoFingerTap(event) else handleTouchUp(event); return true }
             2 -> { if (event.pointerCount == 2) handleTwoFingerScroll(event) else handleTouchMove(event); return true }
             3 -> {
+                if (sinkTouchActive) {
+                    sinkTouchActive = false
+                    touchscreenSink?.onTouch(2, event.rawX, event.rawY)
+                }
                 xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
                 xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT)
                 return true
@@ -370,7 +378,20 @@ class TouchpadView(
         return true
     }
 
+    /**
+     * Takes touchscreen-mode touches (0 = down, 1 = move, 2 = up, in screen coordinates) while a
+     * Wayland session presents: the compositor knows where on the screen it draws the scene,
+     * which this view's own transform does not. Returns false when no such session is attached.
+     */
+    fun interface TouchscreenSink {
+        fun onTouch(action: Int, rawX: Float, rawY: Float): Boolean
+    }
+
+    var touchscreenSink: TouchscreenSink? = null
+
     private fun handleTouchDown(event: MotionEvent) {
+        if (sinkTouchActive) return
+        if (event.pointerCount == 1 && tapToClickEnabled && !isInputSuspended && sinkTouchDown(event)) return
         val transformedPoint = XForm.transformPoint(xform, event.x, event.y)
         var tx = transformedPoint[0].toInt()
         var ty = transformedPoint[1].toInt()
@@ -393,13 +414,36 @@ class TouchpadView(
         }
     }
 
+    /** A second tap close to the first lands exactly on it, so a double tap is a double click. */
+    private fun sinkTouchDown(event: MotionEvent): Boolean {
+        val sink = touchscreenSink ?: return false
+        val now = System.currentTimeMillis()
+        val near = Math.hypot((event.rawX - sinkTapX).toDouble(), (event.rawY - sinkTapY).toDouble()) < TOUCHSCREEN_DOUBLE_TAP_DISTANCE
+        if (now - sinkTapTime >= TOUCHSCREEN_DOUBLE_TAP_MS || !near) {
+            sinkTapX = event.rawX
+            sinkTapY = event.rawY
+        }
+        sinkTapTime = now
+        sinkTouchActive = sink.onTouch(0, sinkTapX, sinkTapY)
+        return sinkTouchActive
+    }
+
     private fun handleTouchMove(event: MotionEvent) {
         if (isInputSuspended) return
+        if (sinkTouchActive) {
+            touchscreenSink?.onTouch(1, event.rawX, event.rawY)
+            return
+        }
         val transformedPoint = XForm.transformPoint(xform, event.x, event.y)
         xServer.injectPointerMove(transformedPoint[0].toInt(), transformedPoint[1].toInt())
     }
 
     private fun handleTouchUp(event: MotionEvent) {
+        if (sinkTouchActive) {
+            sinkTouchActive = false
+            touchscreenSink?.onTouch(2, event.rawX, event.rawY)
+            return
+        }
         if (!isInputSuspended) xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
     }
 

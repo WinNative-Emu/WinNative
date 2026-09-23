@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cerrno>
+#include <climits>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -39,10 +40,22 @@
 
 #define EXPORT __attribute__((visibility("default"))) extern "C"
 
+// glibc declares the request as unsigned long; bionic as int. The same source also serves the
+// Linux runtime's preload (tools/linuxfs), where Steam and SDL run against glibc.
+#ifdef __GLIBC__
+typedef unsigned long ioctl_request_t;
+#else
+typedef int ioctl_request_t;
+#endif
+
 static constexpr uint16_t GAMEPAD_VENDOR_ID_BASE = 0x1234;
 static constexpr uint16_t GAMEPAD_PRODUCT_ID_BASE = 0x5678;
 static constexpr uint16_t GAMEPAD_VERSION = 0x0110;
 static constexpr const char *GAMEPAD_NAME_TEMPLATE = "Generic HID Gamepad %d";
+// The gamepad Steam Input presents to a game, and the name SDL reads its slot from.
+static constexpr uint16_t STEAM_VIRTUAL_VENDOR_ID = 0x28de;
+static constexpr uint16_t STEAM_VIRTUAL_PRODUCT_ID = 0x11ff;
+static constexpr const char *STEAM_VIRTUAL_NAME_TEMPLATE = "Microsoft X-Box 360 pad %d";
 static constexpr const char *GAMEPAD_PHYS_TEMPLATE = "usb-fakeinput/input%d";
 static constexpr const char *GAMEPAD_UNIQ_TEMPLATE = "0000000000%02d";
 static constexpr uint8_t GAMEPAD_AXIS_COUNT = 8;
@@ -130,9 +143,11 @@ static constexpr size_t kNeutralEventCount =
 static const uint16_t kSnapshotAxisCodes[8] = {
     ABS_X, ABS_Y, ABS_RX, ABS_RY, ABS_GAS, ABS_BRAKE, ABS_HAT0X, ABS_HAT0Y};
 // Bit i of FakeInputRingHeader::snapshot_buttons maps to this button code.
-static const uint16_t kSnapshotButtons[10] = {
-    BTN_A,  BTN_B,      BTN_X,     BTN_Y,      BTN_TL,
-    BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR};
+static const uint16_t kSnapshotButtons[] = {
+    BTN_A,  BTN_B,      BTN_X,     BTN_Y,      BTN_TL,    BTN_TR,
+    BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR, BTN_MODE};
+static const int kSnapshotButtonCount =
+    sizeof(kSnapshotButtons) / sizeof(kSnapshotButtons[0]);
 
 static std::unordered_map<int, std::shared_ptr<FakeController>> controller_map;
 static std::unordered_map<int, std::string> ring_paths;
@@ -144,6 +159,29 @@ static bool vibration_enabled = true;
 
 static std::unordered_map<int, struct ff_effect> ff_effects;
 static int next_ff_id = 0;
+
+// fork() carries over only the calling thread, so a lock another thread was holding at that
+// instant stays held in the child by a thread that is not there to release it. Every hook below
+// takes controller_mutex, and the Steam client forks while its other threads are inside them, so
+// the child blocked on its first open() and never reached exec: the spawn never completed, the
+// client's main loop stalled past its own watchdog and it tore the session down.
+//
+// Taking the lock before the fork is what makes the copy consistent - no thread is part way
+// through the tables it guards. The parent then unlocks it. The child cannot: a recursive mutex
+// records the owning thread, the child's one thread has a new id, and unlocking one it does not
+// own is refused, which would leave the lock held for good. It gets a fresh mutex instead, which
+// is sound precisely because the fork was taken with the lock held.
+static void controller_fork_prepare() { controller_mutex.lock(); }
+static void controller_fork_parent() { controller_mutex.unlock(); }
+
+static void controller_fork_child() {
+  pthread_mutexattr_t attr;
+
+  pthread_mutexattr_init(&attr);
+  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(controller_mutex.native_handle(), &attr);
+  pthread_mutexattr_destroy(&attr);
+}
 
 namespace Logger {
 int log_enabled;
@@ -173,6 +211,9 @@ __attribute__((constructor)) static void library_init() {
   udev_data_dir = getenv("FAKE_UDEV_DATA_DIR");
   vibration_enabled =
       getenv("FAKE_EVDEV_VIBRATION") && atoi(getenv("FAKE_EVDEV_VIBRATION"));
+
+  pthread_atfork(controller_fork_prepare, controller_fork_parent,
+                 controller_fork_child);
 
   Logger::init();
 }
@@ -409,10 +450,10 @@ capture_keyframe(FakeController &fake, const SnapshotState &snap) {
 __attribute__((visibility("hidden"))) static int32_t
 keyframe_value(const FakeController &fake, uint16_t type, uint16_t code) {
   if (type == EV_KEY) {
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < kSnapshotButtonCount; i++)
       if (kSnapshotButtons[i] == code)
         return (fake.keyframe_buttons >> i) & 1u;
-    return 0; // e.g. BTN_MODE, which the writer never presses
+    return 0;
   }
   if (type == EV_ABS) {
     for (int i = 0; i < 8; i++)
@@ -427,6 +468,7 @@ open_fake_input_ring(const char *event, int flags) {
   int slot = get_event_number(event);
   std::string ring_path = get_ring_path_for_slot(slot);
   if (ring_path.empty()) {
+    Logger::log("No input ring is configured for %s (slot %d)\n", event, slot);
     errno = ENODEV;
     return -1;
   }
@@ -449,6 +491,7 @@ open_fake_input_ring(const char *event, int flags) {
   FakeInputRingHeader *ring =
       reinterpret_cast<FakeInputRingHeader *>(mapping);
   if (!ring_header_is_valid(ring)) {
+    Logger::log("Input ring %s has no valid header\n", ring_path.c_str());
     munmap(mapping, FAKE_INPUT_RING_SIZE);
     syscall(SYS_close, fd);
     errno = ENODEV;
@@ -474,6 +517,47 @@ open_fake_input_ring(const char *event, int flags) {
   Logger::log("Adding ring-backed controller, fd %d event %s slot %d\n", fd,
               event, slot);
   return fd;
+}
+
+// Under the Steam client a pad it manages is hidden from the game: the client lists it in
+// SDL_GAMECONTROLLER_IGNORE_DEVICES, its overlay refuses the game's open() of the node, and the
+// game is meant to see Steam Input's virtual gamepad instead. That one is a uinput device, which
+// does not exist here, so the game was left with no controller at all. With
+// FAKE_EVDEV_STEAM_VIRTUAL set the pad carries the virtual gamepad's identity for every process
+// but the client's own, which must keep seeing the pad as the physical one it reads.
+__attribute__((visibility("hidden"))) static bool presents_steam_virtual() {
+  static int known;
+  if (known == 0) {
+    const char *enabled = getenv("FAKE_EVDEV_STEAM_VIRTUAL");
+    char exe[PATH_MAX];
+    ssize_t length = enabled && atoi(enabled) ? readlink("/proc/self/exe", exe, sizeof(exe) - 1) : -1;
+    bool client = false;
+    if (length > 0) {
+      exe[length] = '\0';
+      const char *name = strrchr(exe, '/');
+      client = !strncmp(name ? name + 1 : exe, "steam", 5);
+    }
+    known = length > 0 && !client ? 1 : -1;
+  }
+  return known == 1;
+}
+
+// The virtual gamepad is an X-Box 360 pad, whose triggers are ABS_Z and ABS_RZ. Wine places a
+// gamepad's axes by their position among the ones it advertises, so the triggers have to sit
+// where that pad has them: as ABS_GAS and ABS_BRAKE they follow the sticks, the right stick
+// lands on the left trigger, and a released right trigger reads as the right stick held up.
+__attribute__((visibility("hidden"))) static uint16_t presented_abs_code(uint16_t code) {
+  if (!presents_steam_virtual()) return code;
+  if (code == ABS_BRAKE) return ABS_Z;
+  if (code == ABS_GAS) return ABS_RZ;
+  return code;
+}
+
+__attribute__((visibility("hidden"))) static uint16_t ring_abs_code(uint16_t code) {
+  if (!presents_steam_virtual()) return code;
+  if (code == ABS_Z) return ABS_BRAKE;
+  if (code == ABS_RZ) return ABS_GAS;
+  return code;
 }
 
 __attribute__((visibility("hidden"))) static void
@@ -866,7 +950,7 @@ static bool wait_snapshot(std::shared_ptr<FakeController> fake,
   }
 }
 
-EXPORT int ioctl(int fd, int op, ...) {
+EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
   va_list va;
   void *argp;
 
@@ -899,14 +983,21 @@ EXPORT int ioctl(int fd, int op, ...) {
     struct input_id id;
     memset(&id, 0, sizeof(id));
     id.bustype = 0x03;
-    id.vendor = static_cast<uint16_t>(GAMEPAD_VENDOR_ID_BASE + event_number);
-    id.product = static_cast<uint16_t>(GAMEPAD_PRODUCT_ID_BASE + event_number);
+    if (presents_steam_virtual()) {
+      id.vendor = STEAM_VIRTUAL_VENDOR_ID;
+      id.product = STEAM_VIRTUAL_PRODUCT_ID;
+    } else {
+      id.vendor = static_cast<uint16_t>(GAMEPAD_VENDOR_ID_BASE + event_number);
+      id.product = static_cast<uint16_t>(GAMEPAD_PRODUCT_ID_BASE + event_number);
+    }
     id.version = GAMEPAD_VERSION;
     memcpy(argp, (void *)&id, sizeof(id));
     return 0;
   } else if (type == 0x45 && number == 0x6) {
     Logger::log("Hooking ioctl EVIOCGNAME for event %s\n", event);
-    copy_slot_ioctl_string(op, argp, GAMEPAD_NAME_TEMPLATE, event_number);
+    copy_slot_ioctl_string(op, argp,
+                           presents_steam_virtual() ? STEAM_VIRTUAL_NAME_TEMPLATE : GAMEPAD_NAME_TEMPLATE,
+                           event_number);
     return 0;
   } else if (type == 0x45 && number == 0x7) {
     Logger::log("Hooking ioctl EVIOCGPHYS for event %s\n", event);
@@ -923,7 +1014,7 @@ EXPORT int ioctl(int fd, int op, ...) {
     SnapshotState snap;
     if (!wait_snapshot(controller->second, guard, snap)) return -1;
     unsigned char bitmask[(KEY_MAX + 8) / 8] = {};
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < kSnapshotButtonCount; ++i) {
       if (snap.buttons & (1u << i))
         bitmask[kSnapshotButtons[i] / 8] |= 1u << (kSnapshotButtons[i] % 8);
     }
@@ -955,8 +1046,10 @@ EXPORT int ioctl(int fd, int op, ...) {
     bitmask[ABS_Y / 8] |= (1 << (ABS_Y % 8));
     bitmask[ABS_RX / 8] |= (1 << (ABS_RX % 8));
     bitmask[ABS_RY / 8] |= (1 << (ABS_RY % 8));
-    bitmask[ABS_GAS / 8] |= (1 << (ABS_GAS % 8));
-    bitmask[ABS_BRAKE / 8] |= (1 << (ABS_BRAKE % 8));
+    for (uint16_t trigger : {ABS_GAS, ABS_BRAKE}) {
+      uint16_t code = presented_abs_code(trigger);
+      bitmask[code / 8] |= (1 << (code % 8));
+    }
     bitmask[ABS_HAT0X / 8] |= (1 << (ABS_HAT0X % 8));
     bitmask[ABS_HAT0Y / 8] |= (1 << (ABS_HAT0Y % 8));
     return copy_ioctl_bits(op, argp, bitmask);
@@ -994,15 +1087,16 @@ EXPORT int ioctl(int fd, int op, ...) {
     Logger::log("Hooking ioctl EVIOCGABS(ABS) for event %s\n", event);
     struct input_absinfo abs_info;
     memset(&abs_info, 0, sizeof(abs_info));
-    if (number >= 0x40 && number <= 0x44) {
-      abs_info.value = 0;
-      abs_info.minimum = -32768;
-      abs_info.maximum = 32767;
-    } else if (number >= 0x49 && number <= 0x4A) {
+    uint16_t code = ring_abs_code(number - 0x40);
+    if (code == ABS_GAS || code == ABS_BRAKE) {
       abs_info.value = 0;
       abs_info.minimum = 0;
       abs_info.maximum = 255;
-    } else if (number >= 0x50 && number <= 0x51) {
+    } else if (code <= ABS_RY) {
+      abs_info.value = 0;
+      abs_info.minimum = -32768;
+      abs_info.maximum = 32767;
+    } else if (code == ABS_HAT0X || code == ABS_HAT0Y) {
       abs_info.value = 0;
       abs_info.minimum = -1;
       abs_info.maximum = 1;
@@ -1010,7 +1104,7 @@ EXPORT int ioctl(int fd, int op, ...) {
     SnapshotState snap;
     if (!wait_snapshot(controller->second, guard, snap)) return -1;
     for (int i = 0; i < 8; ++i)
-      if (kSnapshotAxisCodes[i] == number - 0x40) abs_info.value = snap.axes[i];
+      if (kSnapshotAxisCodes[i] == code) abs_info.value = snap.axes[i];
     memcpy(argp, &abs_info, std::min<size_t>(_IOC_SIZE(op), sizeof(abs_info)));
     return 0;
   } else if (type == 0x45 && number == 0x90) {
@@ -1106,8 +1200,11 @@ EXPORT ssize_t read(int fd, void *buf, size_t count) {
                                        FAKE_INPUT_RING_HEADER_SIZE;
           for (size_t i = 0; i < events; ++i) {
             size_t index = (fake.read_seq + i) % FAKE_INPUT_RING_CAPACITY;
-            memcpy(static_cast<uint8_t *>(buf) + i * FAKE_INPUT_EVENT_SIZE,
-                   ring_events + index * FAKE_INPUT_EVENT_SIZE, FAKE_INPUT_EVENT_SIZE);
+            struct input_event ev;
+            memcpy(&ev, ring_events + index * FAKE_INPUT_EVENT_SIZE, FAKE_INPUT_EVENT_SIZE);
+            if (ev.type == EV_ABS) ev.code = presented_abs_code(ev.code);
+            memcpy(static_cast<uint8_t *>(buf) + i * FAKE_INPUT_EVENT_SIZE, &ev,
+                   FAKE_INPUT_EVENT_SIZE);
           }
           // A producer can lap the reader while it copies. Discard that copy
           // instead of delivering torn/overwritten events or losing a release.
@@ -1131,6 +1228,7 @@ EXPORT ssize_t read(int fd, void *buf, size_t count) {
         ev.type = kNeutralEvents[index].type;
         ev.code = kNeutralEvents[index].code;
         ev.value = keyframe_value(fake, ev.type, ev.code);
+        if (ev.type == EV_ABS) ev.code = presented_abs_code(ev.code);
         memcpy(static_cast<uint8_t *>(buf) + i * FAKE_INPUT_EVENT_SIZE,
                &ev, FAKE_INPUT_EVENT_SIZE);
         --fake.keyframe_remaining;
@@ -1471,3 +1569,55 @@ EXPORT int select(int nfds, fd_set *readfds, fd_set *writefds,
       backoff_ms *= 2;
   }
 }
+
+#ifdef __GLIBC__
+// Steam's binaries were linked against an older glibc and reach the calls above through these
+// names instead.
+static mode_t open_mode(int flags, va_list va) {
+  return (flags & (O_CREAT | O_TMPFILE)) ? va_arg(va, mode_t) : 0;
+}
+
+EXPORT int open64(const char *pathname, int flags, ...) {
+  va_list va;
+  va_start(va, flags);
+  mode_t mode = open_mode(flags, va);
+  va_end(va);
+  return open(pathname, flags, mode);
+}
+
+EXPORT int openat64(int dirfd, const char *pathname, int flags, ...) {
+  va_list va;
+  va_start(va, flags);
+  mode_t mode = open_mode(flags, va);
+  va_end(va);
+  return openat(dirfd, pathname, flags, mode);
+}
+
+EXPORT int stat64(const char *pathname, struct stat64 *statbuf) {
+  return stat(pathname, reinterpret_cast<struct stat *>(statbuf));
+}
+
+EXPORT int fstat64(int fd, struct stat64 *buf) {
+  return fstat(fd, reinterpret_cast<struct stat *>(buf));
+}
+
+EXPORT int __xstat(int version, const char *pathname, struct stat *statbuf) {
+  (void)version;
+  return stat(pathname, statbuf);
+}
+
+EXPORT int __xstat64(int version, const char *pathname, struct stat64 *statbuf) {
+  (void)version;
+  return stat(pathname, reinterpret_cast<struct stat *>(statbuf));
+}
+
+EXPORT int __fxstat(int version, int fd, struct stat *buf) {
+  (void)version;
+  return fstat(fd, buf);
+}
+
+EXPORT int __fxstat64(int version, int fd, struct stat64 *buf) {
+  (void)version;
+  return fstat(fd, reinterpret_cast<struct stat *>(buf));
+}
+#endif

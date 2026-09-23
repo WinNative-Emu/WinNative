@@ -1,0 +1,243 @@
+#!/usr/bin/python3
+# Answers for NetworkManager on the runtime's system bus, for the Steam client:
+#   winnative-netmanager
+#
+# The client's network page and its connection indicator are built on NetworkManager. It asks for
+# one over the system bus as it starts, and without an answer it leaves out half of what its
+# interface then calls: Settings > Internet stops with "StartScanningForNetworks is not a function"
+# and the header shows no connection while downloads run.
+#
+# The network here is Android's: the app has no say in Wi-Fi, and nothing in this runtime could
+# scan or join one. So this reports what is true and no more - one connection that is up while
+# Android has a route out, under the address the app was given - and refuses what it cannot do.
+import socket
+import sys
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
+
+NAME = "org.freedesktop.NetworkManager"
+ROOT = "/org/freedesktop/NetworkManager"
+SETTINGS = ROOT + "/Settings"
+DEVICE = ROOT + "/Devices/1"
+ACTIVE = ROOT + "/ActiveConnection/1"
+IP4 = ROOT + "/IP4Config/1"
+PROFILE = SETTINGS + "/1"
+UUID = "b1d0c8e4-57f0-4c0e-9d60-77696e6e6174"
+CHECK_SECONDS = 10
+
+# NetworkManager's own numbers.
+NM_STATE_DISCONNECTED, NM_STATE_CONNECTED_GLOBAL = 20, 70
+NM_CONNECTIVITY_NONE, NM_CONNECTIVITY_FULL = 1, 4
+NM_DEVICE_TYPE_ETHERNET = 1
+NM_DEVICE_STATE_DISCONNECTED, NM_DEVICE_STATE_ACTIVATED = 30, 100
+NM_ACTIVE_CONNECTION_STATE_ACTIVATED = 2
+
+INTROSPECTION = """
+<node>
+  <interface name="org.freedesktop.DBus.ObjectManager">
+    <method name="GetManagedObjects">
+      <arg type="a{oa{sa{sv}}}" direction="out"/>
+    </method>
+  </interface>
+  <interface name="org.freedesktop.NetworkManager">
+    <method name="GetPermissions"><arg type="a{ss}" direction="out"/></method>
+    <method name="CheckConnectivity"><arg type="u" direction="out"/></method>
+    <method name="GetDevices"><arg type="ao" direction="out"/></method>
+    <method name="GetAllDevices"><arg type="ao" direction="out"/></method>
+    <signal name="StateChanged"><arg type="u"/></signal>
+  </interface>
+  <interface name="org.freedesktop.NetworkManager.Settings.Connection">
+    <method name="GetSettings"><arg type="a{sa{sv}}" direction="out"/></method>
+  </interface>
+  <interface name="org.freedesktop.NetworkManager.Device">
+    <signal name="StateChanged"><arg type="u"/><arg type="u"/><arg type="u"/></signal>
+  </interface>
+</node>
+"""
+
+
+def address():
+    """The address Android routes out by, or None without a route. Nothing is sent."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("192.0.2.1", 9))
+            return s.getsockname()[0]
+    except OSError:
+        return None
+
+
+def v(signature, value):
+    return GLib.Variant(signature, value)
+
+
+def objects(ip):
+    """Every object NetworkManager would export, as its ObjectManager describes them."""
+    up = ip is not None
+    found = {
+        ROOT: {NAME: {
+            "Devices": v("ao", [DEVICE]),
+            "AllDevices": v("ao", [DEVICE]),
+            "ActiveConnections": v("ao", [ACTIVE] if up else []),
+            "PrimaryConnection": v("o", ACTIVE if up else "/"),
+            "PrimaryConnectionType": v("s", "802-3-ethernet" if up else ""),
+            "ActivatingConnection": v("o", "/"),
+            "NetworkingEnabled": v("b", True),
+            "WirelessEnabled": v("b", False),
+            "WirelessHardwareEnabled": v("b", False),
+            "WwanEnabled": v("b", False),
+            "WwanHardwareEnabled": v("b", False),
+            "Startup": v("b", False),
+            "Version": v("s", "1.46.0"),
+            "State": v("u", NM_STATE_CONNECTED_GLOBAL if up else NM_STATE_DISCONNECTED),
+            "Connectivity": v("u", NM_CONNECTIVITY_FULL if up else NM_CONNECTIVITY_NONE),
+            "ConnectivityCheckAvailable": v("b", False),
+            "ConnectivityCheckEnabled": v("b", False),
+            "Metered": v("u", 0),
+        }},
+        SETTINGS: {NAME + ".Settings": {
+            "Connections": v("ao", [PROFILE]),
+            "Hostname": v("s", socket.gethostname()),
+            "CanModify": v("b", False),
+        }},
+        PROFILE: {NAME + ".Settings.Connection": {
+            "Unsaved": v("b", False),
+            "Flags": v("u", 0),
+            "Filename": v("s", ""),
+        }},
+        DEVICE: {
+            NAME + ".Device": {
+                "Interface": v("s", "android"),
+                "IpInterface": v("s", "android" if up else ""),
+                "Driver": v("s", "android"),
+                "DeviceType": v("u", NM_DEVICE_TYPE_ETHERNET),
+                "State": v("u", NM_DEVICE_STATE_ACTIVATED if up else NM_DEVICE_STATE_DISCONNECTED),
+                "StateReason": v("(uu)", (NM_DEVICE_STATE_ACTIVATED if up else NM_DEVICE_STATE_DISCONNECTED, 0)),
+                "ActiveConnection": v("o", ACTIVE if up else "/"),
+                "Ip4Config": v("o", IP4 if up else "/"),
+                "Ip6Config": v("o", "/"),
+                "Dhcp4Config": v("o", "/"),
+                "Dhcp6Config": v("o", "/"),
+                "AvailableConnections": v("ao", [PROFILE]),
+                "Managed": v("b", True),
+                "Autoconnect": v("b", True),
+                "Real": v("b", True),
+                "Capabilities": v("u", 1),
+                "Mtu": v("u", 1500),
+                "HwAddress": v("s", ""),
+            },
+            NAME + ".Device.Wired": {
+                "HwAddress": v("s", ""),
+                "PermHwAddress": v("s", ""),
+                "Speed": v("u", 0),
+                "Carrier": v("b", up),
+            },
+        },
+    }
+    if up:
+        found[ACTIVE] = {NAME + ".Connection.Active": {
+            "Connection": v("o", PROFILE),
+            "SpecificObject": v("o", "/"),
+            "Id": v("s", "Android"),
+            "Uuid": v("s", UUID),
+            "Type": v("s", "802-3-ethernet"),
+            "Devices": v("ao", [DEVICE]),
+            "State": v("u", NM_ACTIVE_CONNECTION_STATE_ACTIVATED),
+            "StateFlags": v("u", 0),
+            "Default": v("b", True),
+            "Ip4Config": v("o", IP4),
+            "Dhcp4Config": v("o", "/"),
+            "Default6": v("b", False),
+            "Ip6Config": v("o", "/"),
+            "Dhcp6Config": v("o", "/"),
+            "Vpn": v("b", False),
+            "Master": v("o", "/"),
+        }}
+        found[IP4] = {NAME + ".IP4Config": {
+            # The one address the app can see; the prefix says only that much is known.
+            "AddressData": v("aa{sv}", [{"address": v("s", ip), "prefix": v("u", 32)}]),
+            "Addresses": v("aau", []),
+            "Gateway": v("s", ""),
+            "RouteData": v("aa{sv}", []),
+            "Routes": v("aau", []),
+            "NameserverData": v("aa{sv}", []),
+            "Nameservers": v("au", []),
+            "Domains": v("as", []),
+            "Searches": v("as", []),
+            "DnsOptions": v("as", []),
+            "DnsPriority": v("i", 0),
+            "WinsServerData": v("as", []),
+            "WinsServers": v("au", []),
+        }}
+    return found
+
+
+class NetworkManager:
+    def __init__(self, bus):
+        self.bus = bus
+        self.ip = address()
+        node = Gio.DBusNodeInfo.new_for_xml(INTROSPECTION)
+        manager, root, profile, device = node.interfaces
+        for path, interface in (("/org/freedesktop", manager), (ROOT, root), (PROFILE, profile), (DEVICE, device)):
+            bus.register_object_with_closures2(path, interface, self.call, None, None)
+        GLib.timeout_add_seconds(CHECK_SECONDS, self.check)
+
+    def call(self, bus, sender, path, interface, method, args, invocation):
+        if method == "GetManagedObjects":
+            invocation.return_value(v("(a{oa{sa{sv}}})", (objects(self.ip),)))
+        elif method == "GetPermissions":
+            invocation.return_value(v("(a{ss})", ({},)))
+        elif method == "CheckConnectivity":
+            self.check()
+            invocation.return_value(v("(u)", (NM_CONNECTIVITY_FULL if self.ip else NM_CONNECTIVITY_NONE,)))
+        elif method == "GetSettings":
+            # The name the client shows the connection under.
+            invocation.return_value(v("(a{sa{sv}})", ({"connection": {
+                "id": v("s", "Android"), "uuid": v("s", UUID), "type": v("s", "802-3-ethernet")}},)))
+        else:
+            invocation.return_value(v("(ao)", ([DEVICE],)))
+
+    def check(self):
+        """Tells the bus when Android gains or loses its route, as NetworkManager would."""
+        ip = address()
+        if (ip is None) != (self.ip is None) or (ip and ip != self.ip):
+            before, after = objects(self.ip), objects(ip)
+            self.ip = ip
+            for path in before.keys() - after.keys():
+                self.announce("InterfacesRemoved", path, v("(oas)", (path, list(before[path]))))
+            for path in after.keys() - before.keys():
+                self.announce("InterfacesAdded", path, v("(oa{sa{sv}})", (path, after[path])))
+            for path in after.keys() & before.keys():
+                for interface, values in after[path].items():
+                    self.bus.emit_signal(None, path, "org.freedesktop.DBus.Properties", "PropertiesChanged",
+                                         v("(sa{sv}as)", (interface, values, [])))
+            state = after[ROOT][NAME]["State"].unpack()
+            device = after[DEVICE][NAME + ".Device"]["State"].unpack()
+            was = before[DEVICE][NAME + ".Device"]["State"].unpack()
+            self.bus.emit_signal(None, ROOT, NAME, "StateChanged", v("(u)", (state,)))
+            self.bus.emit_signal(None, DEVICE, NAME + ".Device", "StateChanged", v("(uuu)", (device, was, 0)))
+        return True
+
+    def announce(self, signal, path, body):
+        self.bus.emit_signal(None, "/org/freedesktop", "org.freedesktop.DBus.ObjectManager", signal, body)
+
+
+def main():
+    loop = GLib.MainLoop()
+    state = {}
+
+    def acquired(bus, name):
+        state["manager"] = NetworkManager(bus)
+
+    def lost(bus, name):
+        print("== netmanager: the system bus is gone", file=sys.stderr)
+        loop.quit()
+
+    Gio.bus_own_name(Gio.BusType.SYSTEM, NAME, Gio.BusNameOwnerFlags.NONE, acquired, None, lost)
+    loop.run()
+
+
+if __name__ == "__main__":
+    main()

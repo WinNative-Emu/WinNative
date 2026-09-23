@@ -202,6 +202,7 @@ public class ContentDialog extends Dialog {
     dialog.setMessage(msgResId);
     dialog.setOnConfirmCallback(callback);
     dialog.findViewById(R.id.BTCancel).setVisibility(View.GONE);
+    if (callback != null) dialog.setOnCancelListener(d -> callback.run());
     dialog.show();
   }
 
@@ -211,6 +212,7 @@ public class ContentDialog extends Dialog {
     dialog.setMessage(msg);
     dialog.setOnConfirmCallback(callback);
     dialog.findViewById(R.id.BTCancel).setVisibility(View.GONE);
+    if (callback != null) dialog.setOnCancelListener(d -> callback.run());
     dialog.show();
   }
 

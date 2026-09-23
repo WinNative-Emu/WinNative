@@ -89,7 +89,8 @@ int launch_process(Tracee *tracee, char *const argv[]) {
     kill(getpid(), SIGSTOP);
 
     /* Improve performance by using seccomp mode 2  */
-    enable_syscall_filtering(tracee);
+    if (getenv("PROOT_NO_SECCOMP") == NULL)
+      enable_syscall_filtering(tracee);
 
     /* Now process is ptraced, so the current rootfs is already the
      * guest rootfs.  Note: Valgrind can't handle execve(2) on
@@ -368,7 +369,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status) {
       const unsigned long default_ptrace_options =
           (PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK |
            PTRACE_O_TRACEVFORKDONE | PTRACE_O_TRACEEXEC | PTRACE_O_TRACECLONE |
-           PTRACE_O_TRACEEXIT);
+           PTRACE_O_TRACEEXIT | PTRACE_O_EXITKILL);
 
       /* Distinguish some events from others and
        * automatically trace each new process with

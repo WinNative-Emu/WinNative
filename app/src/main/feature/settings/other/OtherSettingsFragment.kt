@@ -27,7 +27,6 @@ import androidx.preference.PreferenceManager
 import com.winlator.cmod.R
 import com.winlator.cmod.app.config.SettingsConfig
 import com.winlator.cmod.app.shell.UnifiedActivity
-import com.winlator.cmod.app.update.UpdateChannel
 import com.winlator.cmod.app.update.UpdateService
 import com.winlator.cmod.feature.shortcuts.FrontendExporter
 import com.winlator.cmod.feature.setup.SetupWizardActivity
@@ -111,10 +110,6 @@ class OtherSettingsFragment : Fragment() {
                                     getString(R.string.settings_other_update_check_cooldown, seconds),
                                 )
                             }
-                        },
-                        onUpdateChannelSelected = { index ->
-                            UpdateService.setChannel(ctx, UpdateChannel.entries[index])
-                            refresh()
                         },
                         onLanguageSelected = { index ->
                             val currentIndex =
@@ -252,7 +247,7 @@ class OtherSettingsFragment : Fragment() {
         uiState =
             OtherSettingsState(
                 checkForUpdates = preferences.getBoolean("check_for_updates", true),
-                updateChannelIndex = UpdateChannel.entries.indexOf(UpdateService.channel(ctx)),
+                updateSource = updateSourceLabel(ctx),
                 languageLabels = languageLabels,
                 languageIndex = languageIndex,
                 soundFontFiles = soundFontFiles,
@@ -280,6 +275,12 @@ class OtherSettingsFragment : Fragment() {
                 externalDisplayOutput = preferences.getBoolean("external_display_output", false),
                 imagefsInstallProgress = uiState.imagefsInstallProgress,
             )
+    }
+
+    /** The pull request a CI build follows, or the official releases. Blank when neither applies. */
+    private fun updateSourceLabel(ctx: Context): String {
+        if (!UpdateService.isSupported(ctx)) return ""
+        return UpdateService.updateSourceName().ifEmpty { getString(R.string.update_channel_official) }
     }
 
     private fun loadSoundFontFiles(ctx: Context): List<String> {

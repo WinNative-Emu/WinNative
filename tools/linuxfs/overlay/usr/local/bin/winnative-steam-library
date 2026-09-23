@@ -1,0 +1,55 @@
+#!/usr/bin/python3
+# Registers the games WinNative downloaded (bound at /mnt/winnative) as a library folder of the
+# native Steam client, so they show as installed there.
+#
+#   winnative-steam-library <steam root>
+import os
+import re
+import sys
+
+LIBRARY = "/mnt/winnative"
+
+
+def main():
+    steam_root = sys.argv[1]
+    steamapps = os.path.join(LIBRARY, "steamapps")
+    if not os.path.isdir(steamapps):
+        return
+    apps = sorted(
+        int(m.group(1))
+        for m in (re.fullmatch(r"appmanifest_(\d+)\.acf", n) for n in os.listdir(steamapps))
+        if m
+    )
+    marker = os.path.join(LIBRARY, "libraryfolder.vdf")
+    if not os.path.isfile(marker):
+        with open(marker, "w", encoding="utf-8") as f:
+            f.write('"libraryfolder"\n{\n\t"contentid"\t\t"%d"\n\t"label"\t\t"WinNative"\n}\n'
+                    % int.from_bytes(os.urandom(8), "little"))
+    # The client reads steamapps/libraryfolders.vdf at startup and rewrites config/ from it.
+    steamapps_dir = os.path.join(steam_root, "steamapps")
+    path = os.path.join(steamapps_dir, "libraryfolders.vdf")
+    text = ""
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    if re.search(r'"path"\s+"%s"' % re.escape(LIBRARY), text):
+        return
+    indexes = [int(i) for i in re.findall(r'^\t"(\d+)"\s*$', text, re.M)]
+    if not text.strip():
+        text = '"libraryfolders"\n{\n\t"0"\n\t{\n\t\t"path"\t\t"%s"\n\t\t"label"\t\t""\n\t}\n}\n' % steam_root
+        indexes = [0]
+    entry = ['\t"%d"' % (max(indexes) + 1), "\t{", '\t\t"path"\t\t"%s"' % LIBRARY,
+             '\t\t"label"\t\t"WinNative"', '\t\t"apps"', "\t\t{"]
+    entry += ['\t\t\t"%d"\t\t"0"' % app for app in apps]
+    entry += ["\t\t}", "\t}"]
+    closing = text.rstrip().rfind("}")
+    if closing < 0:
+        return
+    text = text[:closing] + "\n".join(entry) + "\n" + text[closing:]
+    os.makedirs(steamapps_dir, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
+if __name__ == "__main__":
+    main()

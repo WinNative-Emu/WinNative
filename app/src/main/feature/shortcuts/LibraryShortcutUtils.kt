@@ -6,6 +6,7 @@ import android.util.Log
 import com.winlator.cmod.R
 import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.runtime.container.Shortcut
+import com.winlator.cmod.runtime.linux.LinuxSteamShortcuts
 import java.io.File
 import java.util.Locale
 
@@ -164,6 +165,7 @@ object LibraryShortcutUtils {
             deletedAny = lnkFile.delete() || deletedAny
         }
 
+        LinuxSteamShortcuts.removed(context, shortcut)
         return deletedAny
     }
 

@@ -20,6 +20,8 @@
  * 02110-1301 USA.
  */
 
+#include <asm/ioctls.h>   /* TCGETS2, */
+#include <asm/termbits.h> /* struct termios2, CBAUD, */
 #include <errno.h>       /* errno(3), E* */
 #include <linux/net.h>   /* SYS_*, */
 #include <string.h>      /* strlen(3), */
@@ -78,6 +80,33 @@ void translate_syscall_exit(Tracee *tracee) {
   case PR_brk:
     translate_brk_exit(tracee);
     return;
+
+  case PR_ioctl: {
+    /* TCGETS answered a TCGETS2, see enter.c: the speeds the kernel
+     * would have reported are those its c_cflag encodes.  */
+    static const uint32_t speeds[] = {
+        0,      50,     75,     110,    134,     150,     200,     300,
+        600,    1200,   1800,   2400,   4800,    9600,    19200,   38400,
+        0,      57600,  115200, 230400, 460800,  500000,  576000,  921600,
+        1000000, 1152000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000};
+    struct termios2 settings;
+    word_t address;
+    uint32_t baud;
+
+    if ((int)syscall_result < 0 ||
+        (uint32_t)peek_reg(tracee, ORIGINAL, SYSARG_2) != TCGETS2)
+      return;
+
+    address = peek_reg(tracee, ORIGINAL, SYSARG_3);
+    if (read_data(tracee, &settings, address, sizeof(settings)) < 0)
+      return;
+
+    baud = settings.c_cflag & CBAUD;
+    settings.c_ispeed = settings.c_ospeed =
+        speeds[(baud & ~CBAUDEX) | (baud & CBAUDEX ? 16 : 0)];
+    (void)write_data(tracee, address, &settings, sizeof(settings));
+    return;
+  }
 
   case PR_getcwd: {
     char path[PATH_MAX];
@@ -341,6 +370,7 @@ void translate_syscall_exit(Tracee *tracee) {
   }
 
   case PR_execve:
+  case PR_execveat:
     translate_execve_exit(tracee);
     return;
 

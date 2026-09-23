@@ -19,6 +19,8 @@
     <string name="common_ui_enter_path">Enter Path</string>
     <string name="common_ui_path_not_found">Path not found</string>
     <string name="common_ui_select_valid_exe_file">Please select a valid .exe file</string>
+    <string name="common_ui_select_executable">Select Executable</string>
+    <string name="common_ui_select_valid_executable">Select a Windows or Linux executable</string>
     <string name="common_ui_select_valid_icon_file">Please select a valid .ico or .png file.</string>
     <string name="common_ui_exit">Exit</string>
     <string name="common_ui_exit_app">Exit App</string>
@@ -150,6 +152,16 @@
     <string name="store_game_branch_switch_installed">Version set to %1$s. Check for Update to switch the installed files.</string>
     <string name="common_ui_select">Select</string>
     <string name="common_ui_storage_roots">Storage Roots</string>
+    <string name="common_ui_app_storage">App storage</string>
+    <string name="common_ui_move">Move</string>
+    <string name="library_games_move_to_app_storage_title">Move to Internal</string>
+    <string name="library_games_move_to_download_folder_title">Move to External</string>
+    <string name="library_games_move_to_app_storage_confirm">Move %1$s to internal storage?</string>
+    <string name="library_games_move_to_download_folder_confirm">Move %1$s to external storage?</string>
+    <string name="library_games_moving">Moving game</string>
+    <string name="library_games_move_done">%1$s moved</string>
+    <string name="library_games_move_failed">Could not move %1$s</string>
+    <string name="containers_wine_proton_section">Wine/Proton</string>
     <string name="common_ui_browse_local_folders_directly">Browse local folders directly</string>
     <string name="common_ui_no_folders_available_here">No folders available here</string>
     <string name="common_ui_grant_all_files_access_browse">Grant all file access to browse folders directly.</string>
@@ -228,11 +240,43 @@
     <string name="hero_graphics_test_32">32-bit</string>
     <string name="hero_graphics_test_64">64-bit</string>
     <string name="hero_input_tests_title">Input Tests</string>
-    <string name="library_games_add_custom_game">Add Custom Game</string>
     <string name="library_games_game_name">Game Name</string>
     <string name="library_games_game_folder_mapped_drive">Game Folder (Mapped Game Drive)</string>
     <string name="library_games_select_exe_provide_name">Select an exe and provide a name</string>
     <string name="library_games_sign_in_prompt">Sign into a store or add a custom game to build your library.</string>
+    <string name="library_games_add_title">Add Game or App</string>
+    <string name="library_games_add_linux_steam">Add Steam Client</string>
+    <string name="library_games_type">Type</string>
+    <string name="library_games_type_game">Game</string>
+    <string name="library_games_type_app">App</string>
+    <string name="library_games_select_executable_or_rom">Select an executable or console ROM</string>
+    <string name="library_games_added">%1$s added</string>
+    <string name="library_games_add_failed">Could not add %1$s</string>
+    <string name="linux_runtime_not_installed">The Linux runtime is not installed yet, so %1$s cannot be started. Install it with Linux Client in Settings > Stores.</string>
+    <string name="linux_client_button">Linux Client</string>
+    <string name="linux_client_title">Linux Steam Client</string>
+    <string name="linux_client_install_message">Downloads the Linux runtime from WinNative and the Steam client from Valve, then installs both. The download is over 2 GB, so use Wi-Fi.</string>
+    <string name="linux_client_installed_message">The Linux runtime and the Steam client are installed, and Steam is in the Library.</string>
+    <string name="linux_client_failed_message">The install did not finish. Check your connection and try again.</string>
+    <string name="linux_client_no_space_message">Not enough free space: %1$s is needed and %2$s is available.</string>
+    <string name="linux_client_stage_connect">Connecting</string>
+    <string name="linux_client_stage_download_runtime">Downloading the Linux runtime</string>
+    <string name="linux_client_stage_install_runtime">Installing the Linux runtime</string>
+    <string name="linux_client_stage_download_proton">Downloading Proton</string>
+    <string name="linux_client_stage_install_proton">Installing Proton</string>
+    <string name="linux_client_stage_download_steam">Downloading the Steam client</string>
+    <string name="linux_client_stage_install_steam">Installing the Steam client</string>
+    <string name="linux_client_stage_library">Adding Steam to the Library</string>
+    <string name="linux_client_progress_amount">%1$s of %2$s</string>
+    <string name="linux_client_retry">Retry</string>
+    <string name="linux_client_busy">The Linux Steam Client is still installing. Try again when it finishes.</string>
+    <string name="linux_client_update_message">A newer Linux runtime is available. Updating keeps your Steam sign-in, installed games, saves and containers.</string>
+    <string name="linux_client_update_session_running">A Linux session is running. Exit it, then update.</string>
+    <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
+    <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
+    <string name="linux_session_failed">The Linux session stopped as soon as it started. Its log is under Settings > Debug > Open Logs Manager; share it so the cause can be found.</string>
+    <string name="linux_session_stopped">The Linux session stopped on its own (status %1$d). Its log is under Settings > Debug > Open Logs Manager; share it so the cause can be found.</string>
+    <string name="linux_session_trimmed">Android stopped the Linux session. This usually means its limit on background processes was reached: turn on “Disable child process restrictions” in Developer options and try again.</string>
 
     <!-- Stores > Accounts -->
     <string name="stores_accounts_title">Stores</string>
@@ -1557,6 +1601,10 @@ Installed path:
     <string name="setup_wizard_title">Setup Wizard</string>
     <string name="setup_wizard_advanced_user">Advanced User</string>
     <string name="setup_wizard_next">Next</string>
+    <string name="setup_wizard_steam_client">Steam Client</string>
+    <string name="setup_wizard_windows_steam_client">Windows Steam Client</string>
+    <string name="setup_wizard_windows_steam_summary">The Windows Steam Client runs through Wine or Proton; its components and container are set up on the next pages.</string>
+    <string name="setup_wizard_linux_client_continues">The install carries on while you finish the setup, and shows under Linux Client in Settings > Stores.</string>
     <string name="setup_wizard_finish">Finish</string>
     <string name="setup_wizard_download_and_install">Download + Install</string>
     <string name="setup_wizard_open_drivers">Open Drivers</string>
@@ -2791,10 +2839,9 @@ Installed path:
     <string name="update_apk_notice">This update changes the app itself, so Android will ask you to confirm the install. Your games, containers and settings are kept.</string>
     <string name="update_up_to_date">WinNative is up to date.</string>
     <string name="update_unsupported_build">In-app updates are only offered on official signed releases.</string>
-    <string name="settings_general_update_channel">Update Channel</string>
-    <string name="settings_general_update_channel_summary">Official ships tested releases. Development ships early builds.</string>
+    <string name="settings_general_update_source">Update Source</string>
+    <string name="settings_general_update_source_summary">A build from a pull request follows that pull request; an official install follows the official releases.</string>
     <string name="update_channel_official">Official</string>
-    <string name="update_channel_development">Development</string>
     <string name="networking_section_title">Networking</string>
     <string name="networking_driver">Network driver</string>
     <string name="networking_driver_winnative">WinNative Network Driver</string>
@@ -2892,4 +2939,39 @@ Installed path:
     <string name="steam_controller_left_pad_click">Left pad click</string>
     <string name="steam_controller_right_pad_click">Right pad click</string>
     <string name="controller_test_generic">Generic</string>
+    <string name="container_display_server">Display Server</string>
+    <string name="container_display_server_help">Experimental. The session draws through the embedded Wayland compositor instead of the X server.</string>
+    <string name="container_display_server_wayland_requirements">Wayland needs an Adreno GPU and a Wayland-capable Proton with winewayland and the Wayland Turnip driver. Install one from Contents.</string>
+    <string name="container_display_server_needs_wayland_proton">This Proton has no winewayland or Wayland Turnip driver, so X11 is used. Install a Wayland Proton layer from Contents and select it as the container\'s Proton.</string>
+    <string name="wayland_unavailable_fallback">Wayland is not available for this game. Launching on X11.</string>
+    <string name="wayland_needs_turnip_driver">Wayland needs a Turnip graphics driver to show the game. Install one under Contents and select it as the graphics driver.</string>
+    <string name="containers_gamescope_section" translatable="false">GameScope</string>
+    <string name="containers_gamescope_new">Create GameScope container</string>
+    <string name="containers_gamescope_create_failed">Failed to create the GameScope container</string>
+    <string name="linux_apps_need_gamescope_container">Create the GameScope container under Settings › Containers first.</string>
+    <string name="linux_runtime_missing">The Linux runtime is not installed, so this container cannot start yet. Install it with Linux Client in Settings > Stores.</string>
+    <string name="container_display_server_gamescope">Gamescope always draws through the Wayland compositor.</string>
+    <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
+    <string name="container_graphics_driver_gamescope_help">Built into the Linux runtime. Downloaded Android drivers apply to Wine and Proton containers only.</string>
+    <string name="linux_runtime_windows_program">This is a Windows program. Move it to a Wine container in Shortcut Settings to start it.</string>
+    <string name="display_server_x11" translatable="false">X11</string>
+    <string name="display_server_wayland" translatable="false">Wayland</string>
+    <string name="settings_content_badge_online">Online</string>
+    <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
+    <string name="gamescope_fex_preset">FEX Preset</string>
+    <string name="gamescope_fex_summary">Games here run on the FEX that Steam\'s Proton (ARM64) carries, for 64-bit and 32-bit titles alike. The FEXCore, Box64 and WoWBox64 builds installed in WinNative are not used; the preset is.</string>
+    <string name="gamescope_proton_title">Proton</string>
+    <string name="gamescope_proton_summary">Games here start with this Proton. WN Proton Experimental comes with WinNative, and the builds downloaded under Components, Linux are listed with it. A game\'s own choice stays in step with its Compatibility setting in Steam, whichever was changed last.</string>
+    <string name="gamescope_proton_default" translatable="false">WN Proton Experimental</string>
+    <string name="settings_drivers_android">Android</string>
+    <string name="settings_drivers_linux">Linux</string>
+    <string name="settings_drivers_platform_hint">Choose where to install the driver. Recognized packages automatically use the correct platform.</string>
+    <string name="settings_drivers_restore_defaults">Restore defaults</string>
+    <string name="settings_drivers_defaults_present">Default repositories already present</string>
+    <string name="settings_drivers_active">Active</string>
+    <string name="settings_drivers_bundled">Bundled Mesa</string>
+    <string name="settings_drivers_legacy">Linux Client driver</string>
+    <string name="settings_drivers_routed">Driver identified and installed for %1$s.</string>
+    <string name="linux_child_processes_message">Android limits how many background processes an app may have, and a Linux session runs far more than that: Steam or a game can be killed while you play. Turn on “Disable child process restrictions” in Developer options. Open it now?</string>
+    <string name="linux_child_processes_adb">Android limits how many background processes an app may have, and a Linux session runs far more than that: Steam or a game can be killed while you play. This version of Android has no switch for it. From a computer, run:\n\nadb shell settings put global settings_enable_monitor_phantom_procs false</string>
 </resources>

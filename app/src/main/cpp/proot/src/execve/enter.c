@@ -22,6 +22,7 @@
 
 #include <assert.h>    /* assert(3), */
 #include <errno.h>     /* E*, */
+#include <fcntl.h>     /* open(2), */
 #include <stdio.h>     /* fwrite(3), */
 #include <stdlib.h>    /* getenv(3), */
 #include <string.h>    /* strlen(3), strcpy(3), */
@@ -40,7 +41,13 @@
 #include "path/temp.h"
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
+
+#ifndef AT_EMPTY_PATH
+#define AT_EMPTY_PATH 0x1000
+#endif
 #include "tracee/tracee.h"
+#include "tracee/mem.h"
+#include "tracee/reg.h"
 
 #define P(a) PROGRAM_FIELD(load_info->elf_header, *program_header, a)
 
@@ -125,6 +132,27 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
  * executable and is a regular file.  This function returns -errno if
  * an error occured, 0 otherwise.
  */
+/**
+ * A tracee executing "/proc/self/fd/N" expects the kernel to open the
+ * descriptor before the exec closes it; the loader runs after, so hand
+ * it the descriptor's target instead.  Returns -errno on error.
+ */
+static int resolve_proc_fd(pid_t pid, char host_path[PATH_MAX]) {
+  char prefix[32];
+  char *end;
+  long fd;
+  int length;
+
+  length = snprintf(prefix, sizeof(prefix), "/proc/%d/fd/", pid);
+  if (length < 0 || strncmp(host_path, prefix, length) != 0)
+    return 0;
+  errno = 0;
+  fd = strtol(host_path + length, &end, 10);
+  if (errno != 0 || end == host_path + length || *end != '\0')
+    return 0;
+  return readlink_proc_pid_fd(pid, fd, host_path);
+}
+
 int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX],
                              const char *user_path) {
   struct stat statl;
@@ -134,6 +162,10 @@ int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX],
     return -ENOEXEC;
 
   status = translate_path(tracee, host_path, AT_FDCWD, user_path, true);
+  if (status < 0)
+    return status;
+
+  status = resolve_proc_fd(tracee->pid, host_path);
   if (status < 0)
     return status;
 
@@ -348,17 +380,168 @@ static inline const char *get_loader_path(const Tracee *tracee) {
   return loader_path;
 }
 
+#define SHEBANG_MAX 256
+
+/**
+ * Read the "#!" line of @host_path into @interp and @argument (the rest of the
+ * line, one argument as the kernel passes it).  Returns 1 for a script, 0 for
+ * anything else, -errno on error.
+ */
+static int extract_shebang(const char *host_path, char interp[PATH_MAX],
+                           char argument[SHEBANG_MAX]) {
+  char line[SHEBANG_MAX];
+  char *start, *end, *tail;
+  ssize_t size;
+  int fd;
+
+  fd = open(host_path, O_RDONLY);
+  if (fd < 0)
+    return -errno;
+  size = read(fd, line, sizeof(line) - 1);
+  close(fd);
+  if (size < 2 || line[0] != '#' || line[1] != '!')
+    return 0;
+  line[size] = '\0';
+  end = strchr(line, '\n');
+  if (end != NULL)
+    *end = '\0';
+
+  start = line + 2;
+  while (*start == ' ' || *start == '\t')
+    start++;
+  end = start;
+  while (*end != '\0' && *end != ' ' && *end != '\t')
+    end++;
+  if (end == start || end - start >= PATH_MAX)
+    return -ENOEXEC;
+  memcpy(interp, start, end - start);
+  interp[end - start] = '\0';
+
+  while (*end == ' ' || *end == '\t')
+    end++;
+  tail = end + strlen(end);
+  while (tail > end && (tail[-1] == ' ' || tail[-1] == '\t' || tail[-1] == '\r'))
+    tail--;
+  *tail = '\0';
+  strcpy(argument, end);
+  return 1;
+}
+
+static word_t push_string(Tracee *tracee, const char *string) {
+  size_t size = strlen(string) + 1;
+  word_t address = alloc_mem(tracee, size);
+  if (address == 0 || write_data(tracee, address, string, size) < 0)
+    return 0;
+  return address;
+}
+
+/**
+ * Replace argv[0] of the current execve with "@interp [@argument] @file", as the
+ * kernel does for a script.  Returns -errno on error, 0 otherwise.
+ */
+static int prepend_shebang_argv(Tracee *tracee, const char *interp,
+                                const char *argument, const char *file) {
+  const size_t max_args = 1 << 16;
+  word_t old_argv = peek_reg(tracee, CURRENT, SYSARG_2);
+  word_t *argv;
+  size_t count = 0, head = 0, i;
+  word_t address;
+
+  argv = talloc_array(tracee->ctx, word_t, 4);
+  if (argv == NULL)
+    return -ENOMEM;
+  argv[head++] = push_string(tracee, interp);
+  if (argument[0] != '\0')
+    argv[head++] = push_string(tracee, argument);
+  argv[head++] = push_string(tracee, file);
+  for (i = 0; i < head; i++)
+    if (argv[i] == 0)
+      return -EFAULT;
+  count = head;
+
+  /* The caller's argv[0] names the script and is dropped; the rest follows.  */
+  if (old_argv != 0) {
+    for (i = 1;; i++) {
+      word_t item;
+      if (i > max_args)
+        return -E2BIG;
+      if (read_data(tracee, &item, old_argv + i * sizeof(word_t), sizeof(word_t)) < 0)
+        return -EFAULT;
+      if (item == 0)
+        break;
+      argv = talloc_realloc(tracee->ctx, argv, word_t, count + 2);
+      if (argv == NULL)
+        return -ENOMEM;
+      argv[count++] = item;
+    }
+  }
+  argv = talloc_realloc(tracee->ctx, argv, word_t, count + 1);
+  if (argv == NULL)
+    return -ENOMEM;
+  argv[count] = 0;
+
+  address = alloc_mem(tracee, (count + 1) * sizeof(word_t));
+  if (address == 0)
+    return -EFAULT;
+  if (write_data(tracee, address, argv, (count + 1) * sizeof(word_t)) < 0)
+    return -EFAULT;
+  poke_reg(tracee, SYSARG_2, address);
+  return 0;
+}
+
 /**
  * Extract all the information that will be required by
  * translate_load_*().  This function returns -errno if an error
  * occured, otherwise 0.
  */
+/**
+ * Rewrite an execveat(2) into the execve(2) the rest of this file understands:
+ * the target becomes SYSARG_1 (named through /proc/self/fd for an fd-relative
+ * call, which resolve_proc_fd() then turns into the real path), and argv/envp
+ * shift down from SYSARG_3/4 to SYSARG_2/3.  Returns -errno on error.
+ */
+static int normalize_execveat_enter(Tracee *tracee) {
+  char path[PATH_MAX];
+  char rewritten[PATH_MAX];
+  word_t flags;
+  int dirfd;
+  int status;
+
+  dirfd = (int)peek_reg(tracee, CURRENT, SYSARG_1);
+  flags = peek_reg(tracee, CURRENT, SYSARG_5);
+
+  status = get_sysarg_path(tracee, path, SYSARG_2);
+  if (status < 0)
+    return status;
+
+  if (path[0] == '/') {
+    status = snprintf(rewritten, sizeof(rewritten), "%s", path);
+  } else if (path[0] == '\0' && (flags & AT_EMPTY_PATH) != 0) {
+    status = snprintf(rewritten, sizeof(rewritten), "/proc/self/fd/%d", dirfd);
+  } else if (dirfd == AT_FDCWD) {
+    status = snprintf(rewritten, sizeof(rewritten), "%s", path);
+  } else {
+    status = snprintf(rewritten, sizeof(rewritten), "/proc/self/fd/%d/%s", dirfd, path);
+  }
+  if (status < 0 || (size_t)status >= sizeof(rewritten))
+    return -ENAMETOOLONG;
+
+  status = set_sysarg_path(tracee, rewritten, SYSARG_1);
+  if (status < 0)
+    return status;
+  poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_3));
+  poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_4));
+  set_sysnum(tracee, PR_execve);
+  return 0;
+}
+
 int translate_execve_enter(Tracee *tracee) {
   char user_path[PATH_MAX];
   char host_path[PATH_MAX];
   char new_exe[PATH_MAX];
   const char *loader_path;
   int status;
+  int depth;
 
   if (IS_NOTIFICATION_PTRACED_LOAD_DONE(tracee)) {
     /* Syscalls can now be reported to its ptracer.  */
@@ -370,6 +553,12 @@ int translate_execve_enter(Tracee *tracee) {
     return 0;
   }
 
+  if (get_sysnum(tracee, ORIGINAL) == PR_execveat) {
+    status = normalize_execveat_enter(tracee);
+    if (status < 0)
+      return status;
+  }
+
   status = get_sysarg_path(tracee, user_path, SYSARG_1);
   if (status < 0)
     return status;
@@ -378,6 +567,29 @@ int translate_execve_enter(Tracee *tracee) {
   status = translate_and_check_exec(tracee, host_path, user_path);
   if (status < 0)
     return status;
+
+  /* A script runs its interpreter; the kernel allows four levels of them.  */
+  for (depth = 0;; depth++) {
+    char interp[PATH_MAX];
+    char argument[SHEBANG_MAX];
+
+    status = extract_shebang(host_path, interp, argument);
+    if (status < 0)
+      return status;
+    if (status == 0)
+      break;
+    if (depth == 4)
+      return -ELOOP;
+
+    status = prepend_shebang_argv(tracee, interp, argument, user_path);
+    if (status < 0)
+      return status;
+
+    strcpy(user_path, interp);
+    status = translate_and_check_exec(tracee, host_path, user_path);
+    if (status < 0)
+      return status;
+  }
 
   strcpy(new_exe, host_path);
   status = detranslate_path(tracee, new_exe, NULL);

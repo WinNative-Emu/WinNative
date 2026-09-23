@@ -158,6 +158,7 @@ import com.winlator.cmod.app.db.PluviaDatabase
 import com.winlator.cmod.app.service.DownloadService
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.app.update.UpdateService
+import com.winlator.cmod.feature.library.LibraryStorageMove
 import com.winlator.cmod.feature.library.LibraryStoreOption
 import com.winlator.cmod.feature.settings.InputControlsFragment
 import com.winlator.cmod.feature.settings.SettingsFocusZone
@@ -228,6 +229,7 @@ import com.winlator.cmod.shared.android.RefreshRateUtils
 import com.winlator.cmod.shared.io.StorageUtils
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.ui.CarouselView
+import com.winlator.cmod.shared.ui.dialog.ContainerProgressPopup
 import com.winlator.cmod.shared.ui.dialog.PopupDialog
 import com.winlator.cmod.shared.ui.dialog.PopupTextAction
 import androidx.compose.foundation.focusGroup
@@ -1766,6 +1768,20 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                 ?.takeIf { it.isNotBlank() }
         }
 
+    // Only a Steam install can be relocated here; the other stores own their own install paths.
+    val canMoveStorage = !isCustom && !isEpic && !isGog
+    var moveRefreshKey by remember(app.id) { mutableStateOf(0) }
+    var movePlan by remember(app.id) { mutableStateOf<LibraryStorageMove.Plan?>(null) }
+    var moveConfirmVisible by remember(app.id) { mutableStateOf(false) }
+    LaunchedEffect(app.id, canMoveStorage, moveRefreshKey) {
+        movePlan =
+            if (!canMoveStorage) {
+                null
+            } else {
+                withContext(Dispatchers.IO) { LibraryStorageMove.plan(context, app.id) }
+            }
+    }
+
     var steamBranches by remember(app.id) { mutableStateOf<List<StoreBranchOption>>(emptyList()) }
     var selectedSteamBranch by remember(app.id) { mutableStateOf(STEAM_DEFAULT_BRANCH) }
     var steamBranchRefreshKey by remember(app.id) { mutableStateOf(0) }
@@ -2785,6 +2801,8 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                                         isGog -> !hasBlockingGogDownloadForLibrary
                                         else -> !hasBlockingSteamDownloadForLibrary
                                     },
+                                moveTarget = movePlan?.target,
+                                onMoveGame = { moveConfirmVisible = movePlan != null },
                                 onVerifyFiles = {
                                     context.runIfOnlineOrToast {
                                         scope.launch {
@@ -3312,6 +3330,74 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                     onDismissRequest = { showWorkshopDialog = false },
                 )
             }
+
+            movePlan?.let { plan ->
+                val toAppStorage = plan.target == LibraryStorageMove.Target.APP_STORAGE
+                LaunchDangerConfirmDialog(
+                    visible = moveConfirmVisible,
+                    title =
+                        stringResource(
+                            if (toAppStorage) {
+                                R.string.library_games_move_to_app_storage_title
+                            } else {
+                                R.string.library_games_move_to_download_folder_title
+                            },
+                        ),
+                    message =
+                        stringResource(
+                            if (toAppStorage) {
+                                R.string.library_games_move_to_app_storage_confirm
+                            } else {
+                                R.string.library_games_move_to_download_folder_confirm
+                            },
+                            app.name,
+                        ),
+                    confirmLabel = stringResource(R.string.common_ui_move),
+                    icon = Icons.Outlined.DriveFileMove,
+                    accentColor = LaunchAccent,
+                    onDismissRequest = { moveConfirmVisible = false },
+                    onConfirm = {
+                        moveConfirmVisible = false
+                        startLibraryStorageMove(plan, app.name) { moveRefreshKey++ }
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Runs a [LibraryStorageMove] behind a progress popup. The popup is the only thing holding the
+ * activity, so it is closed on every path out; [onMoved] refreshes the entry's move offer so the
+ * menu immediately names the other direction.
+ */
+private fun UnifiedActivity.startLibraryStorageMove(
+    plan: LibraryStorageMove.Plan,
+    appName: String,
+    onMoved: () -> Unit,
+) {
+    val popup = ContainerProgressPopup(this, R.string.library_games_moving, indeterminate = false)
+    popup.show()
+    lifecycleScope.launch {
+        val result =
+            LibraryStorageMove.move(plan) { copied, total ->
+                if (total > 0L) popup.setProgress(((copied * 100L) / total).toInt())
+            }
+        popup.close()
+        if (result.isSuccess) {
+            onMoved()
+            PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(plan.appId))
+            com.winlator.cmod.shared.ui.toast.WinToast.show(
+                this@startLibraryStorageMove,
+                getString(R.string.library_games_move_done, appName),
+                android.widget.Toast.LENGTH_SHORT,
+            )
+        } else {
+            com.winlator.cmod.shared.ui.toast.WinToast.show(
+                this@startLibraryStorageMove,
+                getString(R.string.library_games_move_failed, appName),
+                android.widget.Toast.LENGTH_LONG,
+            )
         }
     }
 }

@@ -1,0 +1,221 @@
+#!/bin/bash
+# The Linux runtime's session. WinNative execs this under proot with the output size and mode;
+# the first pass starts gamescope, which execs this script again inside it for the program:
+#   winnative-session desktop            the XFCE desktop
+#   winnative-session run <path>         a Linux program (AppImage, script or ELF)
+#   winnative-session steam [steam-url]  the native Steam client
+# WN_WIDTH / WN_HEIGHT size the output, WN_FPS limits it, WN_LOG collects everything said here.
+set -u
+export HOME=${HOME:-/root}
+mode=${1:-desktop}
+shift || true
+if [ -n "${WN_LOG:-}" ] && [ -z "${WN_INSIDE:-}" ]; then
+  mkdir -p "$(dirname "$WN_LOG")" 2>/dev/null
+  # The client alone writes megabytes an hour; one earlier log is kept, not every session's.
+  if [ "$(stat -c %s "$WN_LOG" 2>/dev/null || echo 0)" -gt 8388608 ]; then
+    mv -f "$WN_LOG" "$WN_LOG.1"
+  fi
+  exec >>"$WN_LOG" 2>&1
+  echo "== winnative-session $(date) mode=$mode $*"
+  echo "== uid=$(id -u) size=${WN_WIDTH:-?}x${WN_HEIGHT:-?} fps=${WN_FPS:-0} icd=${VK_ICD_FILENAMES:-none}"
+  echo "== gamescope: $(gamescope --version 2>&1 | head -1)"
+fi
+export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+
+if [ -z "${WN_INSIDE:-}" ]; then
+  # The compositor may still be starting, and a socket left by an earlier session is not
+  # a compositor: probe until a connection succeeds.
+  for _ in $(seq 1 100); do
+    wayland-info >/dev/null 2>&1 && break
+    sleep 0.1
+  done
+  # The desktop is XFCE on labwc, a compositor of its own that draws into one window of the
+  # app's: gamescope shows a single program at a time and cannot hold a panel and its windows.
+  # A runtime installed before the desktop was part of it still gets the file manager.
+  if [ "$mode" = desktop ] && command -v labwc >/dev/null && command -v xfce4-session >/dev/null; then
+    export WN_INSIDE=1 XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=XFCE
+    export WLR_BACKENDS=wayland WLR_RENDERER=${WN_DESKTOP_RENDERER:-pixman}
+    exec dbus-run-session -- labwc -S xfce4-session
+  fi
+  width=${WN_WIDTH:-1280}
+  height=${WN_HEIGHT:-720}
+  args=(--backend wayland --expose-wayland -f -W "$width" -H "$height" -w "$width" -h "$height")
+  # -r is the refresh rate gamescope advertises, which a game reads as the display's; without it
+  # gamescope says 60. A frame limit is a deliberate cap, so it wins over the panel's rate.
+  if [ "${WN_FPS:-0}" -gt 0 ]; then
+    args+=(-r "$WN_FPS")
+  elif [ "${WN_REFRESH:-0}" -gt 0 ]; then
+    args+=(-r "$WN_REFRESH")
+  fi
+  [ "$mode" = steam ] && args+=(-e)
+  export WN_INSIDE=1
+  exec gamescope "${args[@]}" -- "$0" "$mode" "$@"
+fi
+
+# gamescope manages X windows: toolkits go through Xwayland, not gamescope's own Wayland socket.
+export GDK_BACKEND=x11 QT_QPA_PLATFORM=xcb SDL_VIDEODRIVER=x11
+
+# gamescope's reaper waits for every process left under it before the compositor comes down. A
+# process a game left behind - a Wine service blocked on a server that is already gone - is
+# reparented there when the client exits, and the screen stays black on it for good. Nothing of
+# the session outlives the program it was started for.
+reap_orphans() {
+  local round p stat pid left
+  for round in 1 2 3 4 5; do
+    left=
+    for p in /proc/[0-9]*; do
+      pid=${p#/proc/}
+      [ "$pid" = "$$" ] && continue
+      stat=$(cat "$p/stat" 2>/dev/null) || continue
+      # The parent follows the bracketed command name, which may itself contain spaces.
+      stat=${stat##*) }
+      set -- $stat
+      [ "${2:-}" = "$PPID" ] && left="$left $pid"
+    done
+    [ -n "$left" ] || return 0
+    echo "== leaving behind:$left"
+    kill -9 $left 2>/dev/null
+    sleep 0.2
+  done
+}
+
+case $mode in
+  desktop)
+    exec pcmanfm
+    ;;
+  run)
+    target=${1:?program path}
+    shift
+    case ${target,,} in
+      *.appimage)
+        export APPIMAGE_EXTRACT_AND_RUN=1
+        chmod +x "$target" 2>/dev/null
+        exec "$target" "$@"
+        ;;
+      *.sh)
+        exec bash "$target" "$@"
+        ;;
+      *)
+        chmod +x "$target" 2>/dev/null
+        cd "$(dirname "$target")" && exec "$target" "$@"
+        ;;
+    esac
+    ;;
+  steam)
+    winnative-steam-install || exit $?
+    steam_root=$XDG_DATA_HOME/Steam
+    # A non-Steam game has nothing to update or sync, so as an argument it is launched within a
+    # second of sign-in - before the client's interface listens for the launch's prompts, which
+    # the launch then waits on for good. Its URL is held back for the client's pipe instead.
+    deferred=
+    case ${1:-} in
+      steam://rungameid/?????????????????*) deferred=$1; shift ;;
+    esac
+    # Register the games the app downloaded (bound at /mnt/winnative) with the client, and the
+    # ARM64 Proton that lets it launch the Windows ones. Neither is worth losing the session over.
+    winnative-steam-library "$steam_root" || true
+    winnative-steam-compat "$steam_root" || true
+    # Steam runs a game's shared redistributables inside its prefix on first launch; marking
+    # them as already run keeps those x86 installers from starting under emulation at all.
+    winnative-seed-redists "$steam_root" || true
+    # With DirectAudio chosen the games' prefixes name it as their audio driver; otherwise they
+    # are handed back to Wine's own choice, which finds the PulseAudio server.
+    winnative-directaudio "$steam_root" "$([ -n "${WN_DIRECTAUDIO:-}" ] && echo on || echo off)" || true
+    (
+      beat=0
+      for _ in $(seq 1 720); do
+        sleep 5
+        winnative-seed-redists "$steam_root" >/dev/null 2>&1 || true
+        beat=$((beat + 1))
+        if [ "$((beat % 3))" -eq 0 ]; then
+          winnative-steam-compat "$steam_root" --refresh >/dev/null 2>&1 || true
+        fi
+      done
+    ) &
+    heartbeat=$!
+    export STEAM_RUNTIME=1
+    export LD_LIBRARY_PATH=$steam_root/steamrtarm64:$steam_root/steamrtarm64/panorama${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+    export SDL_VIDEO_X11_DGAMOUSE=0
+    [ -d /usr/share/guestos/fex-mesa ] && export FEX_ROOTFS=/usr/share/guestos/fex-mesa
+    # The compatibility tool runs Valve's arm64 Proton. The app installs a copy with the runtime;
+    # a runtime from before that has the client fetch the depot instead.
+    if [ ! -f /opt/winnative-proton/proton ] && [ ! -f "$steam_root/steamapps/appmanifest_4427310.acf" ]; then
+      set -- "$@" steam://install/4427310
+    fi
+    # An app id left in ~/.wn-autolaunch is handed to the client as a URL, so a launch can be
+    # reproduced without touching the screen while the runtime is being brought up.
+    if [ -s "$HOME/.wn-autolaunch" ]; then
+      _wn_app=$(cat "$HOME/.wn-autolaunch")
+      # A bare app id runs the game; a full steam:// URL is passed through, which is how a
+      # validate or an install is driven without touching the screen.
+      case $_wn_app in
+        steam://*) _wn_url=$_wn_app ;;
+        *) _wn_url=steam://rungameid/$_wn_app ;;
+      esac
+      echo "== autolaunch $_wn_url"
+      set -- "$@" "$_wn_url"
+    fi
+    # The client asks gamescope to pass touches through as touches, and gamescope then drops a
+    # nested pointer's position: a click lands wherever the cursor was last left. The app sends
+    # a tap as a pointer, so the mode is held at "hover", where the position moves the cursor.
+    xprop -root -spy STEAM_TOUCH_CLICK_MODE 2>/dev/null | while read -r _ _ touch_mode; do
+      [ "$touch_mode" = 0 ] || xprop -root -f STEAM_TOUCH_CLICK_MODE 32c -set STEAM_TOUCH_CLICK_MODE 0
+    done &
+    # The client builds its network page and its connection indicator on NetworkManager, which
+    # it looks for on the system bus as it starts. The network is Android's, so the runtime has
+    # neither; without them Settings > Internet fails and the header shows no connection.
+    mkdir -p /run/dbus
+    rm -f /run/dbus/system_bus_socket
+    dbus-daemon --config-file=/usr/local/share/winnative/system-bus.conf --nofork --nopidfile &
+    system_bus=$!
+    for _ in $(seq 1 50); do
+      [ -S /run/dbus/system_bus_socket ] && break
+      sleep 0.1
+    done
+    winnative-netmanager &
+    netmanager=$!
+    waiter=
+    if [ -n "$deferred" ]; then
+      (
+        ui_log=$steam_root/logs/webhelper_js.txt
+        loaded="SteamApp Init - After Login total time"
+        before=$(grep -ac "$loaded" "$ui_log" 2>/dev/null)
+        for _ in $(seq 1 180); do
+          sleep 1
+          [ "$(grep -ac "$loaded" "$ui_log" 2>/dev/null)" = "$before" ] || break
+        done
+        sleep 2
+        echo "== launching $deferred"
+        # A pipe nobody reads would hold this open for good; the client reads it while it lives.
+        timeout 10 bash -c 'echo "$0" > "$1"' "$deferred" "$HOME/.steam/steam.pipe"
+      ) &
+      waiter=$!
+    fi
+    # The client exits 42 when it has updated itself and wants a fresh start (steam.sh does this).
+    while :; do
+      "$steam_root/steamrtarm64/steam" -gamepadui -clientbeta publicbeta \
+        -no-cef-sandbox -cef-force-gpu -cef-ozone-platform=x11 \
+        -cef-use-gl=angle -cef-use-angle=vulkan "$@"
+      rc=$?
+      echo "== steam exited rc=$rc"
+      [ "$rc" -eq 42 ] || break
+    done
+    pkill -x xprop
+    # Every job started here is ended here and waited for, before the sweep. One left running is
+    # adopted by gamescope's reaper on the way out, which waits for it and so holds the
+    # compositor and the proot above it open on a black screen; and the sweep is no second
+    # chance, since a job this shell still owns is not an orphan for it to find.
+    kill "$netmanager" "$system_bus" "$heartbeat" 2>/dev/null
+    [ -z "$waiter" ] || kill "$waiter" 2>/dev/null
+    wait "$netmanager" "$system_bus" "$heartbeat" ${waiter:+"$waiter"} 2>/dev/null
+    reap_orphans
+    exit "$rc"
+    ;;
+  *)
+    echo "winnative-session: unknown mode '$mode'" >&2
+    exit 64
+    ;;
+esac

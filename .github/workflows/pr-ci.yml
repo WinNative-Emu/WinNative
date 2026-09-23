@@ -107,7 +107,16 @@ jobs:
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         GRADLE_OPTS: -Xmx4g -XX:+UseG1GC
+        PR_NUMBER_RAW: ${{ github.event.pull_request.number }}
+        HEAD_SHA_RAW: ${{ github.event.pull_request.head.sha }}
       run: |
+        # A pull request build carries the pull request it came from and the commit the release
+        # notes name, so the update check can tell it from a later build of the same pull request.
+        # The checkout is the merge commit, so the head commit has to be passed in.
+        if [ -n "$PR_NUMBER_RAW" ]; then
+          export PR_NUMBER="$PR_NUMBER_RAW"
+          export BUILD_ID="$(printf '%s' "$HEAD_SHA_RAW" | cut -c1-8)"
+        fi
         export KEYSTORE_FILE="${{ github.workspace }}/release.jks"
         if [ -n "$KEYSTORE_BASE64" ]; then
           echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_FILE"

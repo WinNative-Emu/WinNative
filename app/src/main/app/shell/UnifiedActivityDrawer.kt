@@ -163,6 +163,9 @@ import com.winlator.cmod.feature.settings.SettingsHost
 import com.winlator.cmod.feature.settings.SettingsNavBridge
 import com.winlator.cmod.feature.settings.SettingsNavItem
 import com.winlator.cmod.feature.setup.SetupWizardActivity
+import com.winlator.cmod.feature.library.LibraryItemType
+import com.winlator.cmod.feature.library.LinuxApps
+import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutUtils
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutArtwork
 import com.winlator.cmod.feature.artwork.SteamArtworkScraper
@@ -782,13 +785,18 @@ internal fun UnifiedActivity.DrawerSwitchCard(
 }
 
 @Composable
-internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
+internal fun UnifiedActivity.AddCustomGameDialog(
+    onDismiss: () -> Unit,
+    onInstallLinuxClient: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var selectedExePath by remember { mutableStateOf<String?>(null) }
     var gameName by remember { mutableStateOf("") }
     var gameFolder by remember { mutableStateOf<String?>(null) }
     var retroSystem by remember { mutableStateOf<com.winlator.cmod.feature.retro.RetroSystem?>(null) }
+    var linuxApp by remember { mutableStateOf(false) }
+    var itemType by remember { mutableStateOf(LibraryItemType.GAME) }
     var isAdding by remember { mutableStateOf(false) }
     var nameEditing by remember { mutableStateOf(false) }
     val nameFocus = remember { FocusRequester() }
@@ -800,34 +808,70 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
         }
     }
     val registry = remember { PaneNavRegistry() }
+    var steamRestorable by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        steamRestorable = withContext(Dispatchers.IO) { LinuxApps.isSteamShortcutMissing(context) }
+    }
+    val restoreSteam: () -> Unit = {
+        isAdding = true
+        scope.launch(Dispatchers.IO) {
+            val container = LinuxApps.gamescopeContainer(ContainerManager(context))
+            if (container == null) {
+                // The entry lives in the GameScope container, which the Linux Client install creates.
+                withContext(Dispatchers.Main) {
+                    isAdding = false
+                    onDismiss()
+                    LinuxClientInstaller.start(context)
+                    onInstallLinuxClient()
+                }
+                return@launch
+            }
+            val added = runCatching { LinuxApps.ensureSteamShortcut(context, container) }.isSuccess
+            withContext(Dispatchers.Main) {
+                isAdding = false
+                val name = LinuxApps.STEAM_SHORTCUT_NAME
+                com.winlator.cmod.shared.ui.toast.WinToast.show(
+                    context,
+                    context.getString(if (added) R.string.library_games_added else R.string.library_games_add_failed, name),
+                    android.widget.Toast.LENGTH_SHORT,
+                )
+                if (added) onDismiss()
+            }
+        }
+    }
     val addEnabled =
         selectedExePath != null && gameName.isNotBlank() && !isAdding &&
-            (retroSystem != null || gameFolder != null)
+            (retroSystem != null || linuxApp || gameFolder != null)
     val doAdd: () -> Unit = {
         isAdding = true
         val chosenRetro = retroSystem
+        val chosenType = itemType
+        val name = gameName.trim()
         scope.launch(Dispatchers.IO) {
             val added =
-                if (chosenRetro != null) {
-                    com.winlator.cmod.feature.retro.RetroShortcuts
-                        .create(context, gameName.trim(), selectedExePath!!, chosenRetro)
-                } else {
-                    addCustomGame(context, gameName.trim(), selectedExePath!!, gameFolder!!)
-                    true
+                when {
+                    chosenRetro != null ->
+                        com.winlator.cmod.feature.retro.RetroShortcuts
+                            .create(context, name, selectedExePath!!, chosenRetro)
+                    linuxApp -> LinuxApps.create(context, name, selectedExePath!!, chosenType)
+                    else -> {
+                        addCustomGame(context, name, selectedExePath!!, gameFolder!!, type = chosenType)
+                        true
+                    }
                 }
             withContext(Dispatchers.Main) {
                 isAdding = false
                 if (added) {
                     com.winlator.cmod.shared.ui.toast.WinToast.show(
                         context,
-                        "$gameName added!",
+                        context.getString(R.string.library_games_added, name),
                         android.widget.Toast.LENGTH_SHORT,
                     )
                     onDismiss()
                 } else {
                     com.winlator.cmod.shared.ui.toast.WinToast.show(
                         context,
-                        "Could not add game",
+                        context.getString(R.string.library_games_add_failed, name),
                         android.widget.Toast.LENGTH_SHORT,
                     )
                 }
@@ -839,10 +883,11 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
         val detectedRetro = com.winlator.cmod.feature.retro.RetroSystems.detectForFile(path)
         val file = java.io.File(path)
         val launchable = file.extension.lowercase() in DirectoryPickerDialog.ExecutableExtensions
-        if (!file.isFile || (!launchable && detectedRetro == null)) {
+        val linux = detectedRetro == null && !launchable && LinuxApps.isLinuxExecutable(file)
+        if (!file.isFile || (!launchable && !linux && detectedRetro == null)) {
             com.winlator.cmod.shared.ui.toast.WinToast.show(
                 context,
-                R.string.common_ui_select_valid_exe_file,
+                R.string.common_ui_select_valid_executable,
                 android.widget.Toast.LENGTH_SHORT,
             )
             return
@@ -850,9 +895,10 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
 
         selectedExePath = path
         retroSystem = detectedRetro
+        linuxApp = linux
         gameFolder =
-            if (detectedRetro != null) {
-                java.io.File(path).parent
+            if (detectedRetro != null || linux) {
+                file.parent
             } else {
                 LibraryShortcutUtils.detectCustomGameFolder(path)
             }
@@ -892,7 +938,7 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                     // Title
                     Text(
-                        stringResource(R.string.library_games_add_custom_game),
+                        stringResource(R.string.library_games_add_title),
                         color = TextPrimary,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 15.sp,
@@ -927,8 +973,9 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
                                                             .getExternalStoragePublicDirectory(
                                                                 android.os.Environment.DIRECTORY_DOWNLOADS,
                                                             ).absolutePath,
-                                                title = getString(R.string.common_ui_select_exe),
+                                                title = getString(R.string.common_ui_select_executable),
                                                 allowedExtensions = DirectoryPickerDialog.ExecutableExtensions +
+                                                    LinuxApps.Extensions +
                                                     com.winlator.cmod.feature.retro.RetroSystems.allExtensions,
                                                 dimAmount = 0.5f,
                                                 preserveBackdropBlur = true,
@@ -942,13 +989,39 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
                             Icon(Icons.Outlined.FolderOpen, contentDescription = null, tint = Accent, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                selectedExePath ?: "Select Executable or Console ROM",
+                                selectedExePath ?: stringResource(R.string.library_games_select_executable_or_rom),
                                 color = if (selectedExePath == null) TextSecondary else TextPrimary,
                                 maxLines = if (selectedExePath == null) 1 else Int.MAX_VALUE,
                                 overflow = if (selectedExePath == null) TextOverflow.Ellipsis else TextOverflow.Visible,
                                 fontSize = if (selectedExePath == null) 12.sp else 10.sp,
                                 modifier = Modifier.weight(1f),
                             )
+                        }
+
+                        if (selectedExePath == null && steamRestorable) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White.copy(alpha = 0.05f))
+                                        .paneNavItem(
+                                            cornerRadius = 12.dp,
+                                            tapToSelect = true,
+                                            onActivate = { if (!isAdding) restoreSteam() },
+                                        ).padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Outlined.SportsEsports, contentDescription = null, tint = Accent, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    stringResource(R.string.library_games_add_linux_steam),
+                                    color = TextPrimary,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
 
                         if (selectedExePath != null) {
@@ -989,6 +1062,36 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
                             )
 
                             Spacer(Modifier.height(8.dp))
+
+                            if (retroSystem == null) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        stringResource(R.string.library_games_type),
+                                        color = TextSecondary,
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    LibraryItemType.entries.forEach { candidate ->
+                                        Spacer(Modifier.width(6.dp))
+                                        DrawerFilterButton(
+                                            label =
+                                                stringResource(
+                                                    when (candidate) {
+                                                        LibraryItemType.GAME -> R.string.library_games_type_game
+                                                        LibraryItemType.APPLICATION -> R.string.library_games_type_app
+                                                    },
+                                                ),
+                                            checked = itemType == candidate,
+                                            fontSize = 11.sp,
+                                        ) { itemType = candidate }
+                                    }
+                                }
+
+                                Spacer(Modifier.height(8.dp))
+                            }
 
                             if (retroSystem != null) {
                                 val activeRetroSystem = retroSystem
@@ -1055,7 +1158,7 @@ internal fun UnifiedActivity.AddCustomGameDialog(onDismiss: () -> Unit) {
                                         }
                                     }
                                 }
-                            } else {
+                            } else if (!linuxApp) {
                             // Game folder — single compact row
                             Row(
                                 modifier =
@@ -1262,6 +1365,7 @@ internal fun addCustomGame(
     exePath: String,
     gameFolderPath: String,
     coverArt: java.io.File? = null,
+    type: LibraryItemType = LibraryItemType.GAME,
 ) {
     val containerManager = ContainerManager(context)
     val container = SetupWizardActivity.getPreferredGameContainer(context, containerManager)
@@ -1310,6 +1414,7 @@ internal fun addCustomGame(
     content.append("custom_name=$name\n")
     content.append("custom_exe=$exePath\n")
     content.append("custom_game_folder=$gameFolderPath\n")
+    content.append("${LibraryItemType.EXTRA_KEY}=${type.key}\n")
     content.append("uuid=$shortcutUuid\n")
     extractedArtworkPath?.let { content.append("customCoverArtPath=$it\n") }
     content.append("container_id=${container.id}\n")

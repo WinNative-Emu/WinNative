@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="banner_ahb_v1">
+  <copyright>
+    Copyright 2026 The412Banner
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice (including the next
+    paragraph) shall be included in all copies or substantial portions of the
+    Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+  </copyright>
+
+  <interface name="banner_ahb_v1" version="2">
+    <description summary="Android gralloc buffers behind dma-buf wl_buffers">
+      Zero-copy window layers on Android. A Vulkan swapchain image that the
+      client allocated as an Android AHardwareBuffer (gralloc) is still shared
+      as a dma-buf through zwp_linux_dmabuf_v1, so the compositor can import
+      and draw it the usual way. This interface additionally hands the
+      compositor the AHardwareBuffer itself, once per wl_buffer, so the
+      compositor can put the buffer straight on an Android SurfaceControl
+      layer (SurfaceFlinger / the display hardware composite it) without
+      copying it.
+
+      The AHardwareBuffer travels over a Unix socket: the client creates a
+      socketpair, writes the buffer's handle into one end with
+      AHardwareBuffer_sendHandleToUnixSocket, then sends the other end in the
+      attach request. The compositor reads it with
+      AHardwareBuffer_recvHandleFromUnixSocket and closes the socket. Its
+      reference to the AHardwareBuffer lives as long as the wl_buffer (plus
+      whatever the display still holds).
+
+      The compositor advertises this global whenever it can put buffers on a
+      display layer at all; whether it WANTS gralloc buffers right now is the
+      mode event (version 2), sent on bind and every time the user switches
+      zero-copy on or off during the session. A client decides per swapchain,
+      when it creates the swapchain, from the last mode it received, and a
+      client whose live swapchain was built for the other mode retires it
+      (VK_ERROR_OUT_OF_DATE_KHR on its next acquire or present) so the program
+      rebuilds it for the new mode. Buffers of the old swapchain stay fully
+      presentable until then: an attached AHardwareBuffer keeps its association
+      for the wl_buffer's lifetime whatever the mode is now. A version 1
+      client (no mode event) keeps deciding from its own environment. A
+      client that does not see the global (or does not want it) allocates
+      swapchain images the standard way; nothing else changes.
+
+      Synchronisation stays implicit: the dma-buf carries the client's render
+      fence (DMA_BUF_IOCTL_IMPORT_SYNC_FILE by the client's driver), the
+      compositor exports it as the layer's acquire fence, and the compositor
+      imports the display's release fence into the dma-buf before it sends
+      wl_buffer.release, so the client's next acquire waits on it.
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the object">
+        Buffers already attached keep their AHardwareBuffer association.
+      </description>
+    </request>
+
+    <request name="attach">
+      <description summary="hand the compositor a buffer's AHardwareBuffer">
+        Associates the AHardwareBuffer readable from socket with the
+        (already created) dma-buf wl_buffer. width, height and stride
+        (pixels) describe the gralloc allocation; modifier_hi/lo is the DRM
+        format modifier the dma-buf was shared with (the same value passed to
+        zwp_linux_buffer_params_v1.add); image_count is the number of images
+        in the swapchain this buffer belongs to (for the compositor's log).
+        Sent once per wl_buffer, before the buffer is first attached to a
+        surface.
+      </description>
+      <arg name="buffer" type="object" interface="wl_buffer" summary="the dma-buf wl_buffer"/>
+      <arg name="socket" type="fd" summary="socket the AHardwareBuffer handle was written to"/>
+      <arg name="width" type="uint" summary="buffer width in pixels"/>
+      <arg name="height" type="uint" summary="buffer height in pixels"/>
+      <arg name="stride" type="uint" summary="gralloc row stride in pixels"/>
+      <arg name="modifier_hi" type="uint" summary="high 32 bits of the DRM format modifier"/>
+      <arg name="modifier_lo" type="uint" summary="low 32 bits of the DRM format modifier"/>
+      <arg name="image_count" type="uint" summary="images in the client's swapchain"/>
+    </request>
+
+    <event name="mode" since="2">
+      <description summary="whether the compositor wants gralloc swapchain images now">
+        Sent once right after bind and again whenever the compositor's
+        zero-copy state flips (the in-game switch). enabled = 1: swapchains
+        created from now on should use gralloc AHardwareBuffers and attach
+        them; 0: standard buffers. A live swapchain built for the other value
+        should be retired by the client (out of date) so the program rebuilds
+        it; until it is, its buffers are shown as before.
+      </description>
+      <arg name="enabled" type="uint" summary="1 = gralloc swapchain images wanted, 0 = not"/>
+    </event>
+  </interface>
+</protocol>
