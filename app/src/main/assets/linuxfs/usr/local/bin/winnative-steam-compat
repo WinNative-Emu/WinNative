@@ -42,7 +42,7 @@ COMPAT_TOOL_VDF = '''"compatibilitytools"
 		"%s"
 		{
 			"install_path"		"."
-			"display_name"		"Proton ARM64 (WinNative)"
+			"display_name"		"WN Proton Experimental"
 			"from_oslist"		"windows"
 			"to_oslist"		"linux"
 		}
@@ -72,18 +72,18 @@ steam_root=${STEAM_COMPAT_CLIENT_INSTALL_PATH:-${XDG_DATA_HOME:-$HOME/.local/sha
 run_proton() {
   exec /usr/local/bin/winnative-proton-launch "$@"
 }
+if [ -d "%s/files/bin-arm64" ] && [ -x "%s/proton" ]; then
+  run_proton "%s/proton" "$verb" "$@"
+fi
 for name in %s; do
   depot="$steam_root/steamapps/common/$name"
   if [ -d "$depot/files/bin-arm64" ] && [ -x "$depot/proton" ]; then
     run_proton "$depot/proton" "$verb" "$@"
   fi
 done
-if [ -d "%s/files/bin-arm64" ] && [ -x "%s/proton" ]; then
-  run_proton "%s/proton" "$verb" "$@"
-fi
 echo "winnative-proton: no ARM64 Proton depot is installed yet" >&2
 exit 1
-''' % (" ".join('"%s"' % name for name in SOURCES), BUNDLED, BUNDLED, BUNDLED)
+''' % (BUNDLED, BUNDLED, BUNDLED, " ".join('"%s"' % name for name in SOURCES))
 
 EXTRA_WRAPPER_SH = '''#!/bin/sh
 here=$(dirname "$0")
@@ -308,12 +308,12 @@ def register_default(config_path, apps=(), protect=()):
 
 
 def find_depot(steam_root):
+    if os.path.isdir(os.path.join(BUNDLED, "files", "bin-arm64")) and os.path.isfile(os.path.join(BUNDLED, "proton")):
+        return BUNDLED
     for name in SOURCES:
         depot = os.path.join(steam_root, "steamapps", "common", name)
         if os.path.isdir(os.path.join(depot, "files", "bin-arm64")) and os.path.isfile(os.path.join(depot, "proton")):
             return depot
-    if os.path.isdir(os.path.join(BUNDLED, "files", "bin-arm64")) and os.path.isfile(os.path.join(BUNDLED, "proton")):
-        return BUNDLED
     return None
 
 
