@@ -37,7 +37,7 @@ public final class LinuxRuntime {
    * downloaded driver is used only while it is newer, so an app update that ships a later driver
    * takes over from it.
    */
-  public static final long TURNIP_BUILD = 202609190000L;
+  public static final long TURNIP_BUILD = 202609220000L;
   /** A driver the Linux Client install downloaded, beside the rootfs so a new runtime leaves it be. */
   public static final String DRIVER_DIR = "linux-driver";
   public static final String DRIVER_LIBRARY = "libvulkan_freedreno.so";

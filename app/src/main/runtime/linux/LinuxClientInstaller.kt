@@ -157,6 +157,13 @@ object LinuxClientInstaller {
         return drivers.enumarateInstalledDrivers().any { drivers.isTurnipDriver(it) }
     }
 
+    /** Whether an installed driver is the Turnip this install fetches for the compositor. */
+    @JvmStatic
+    fun isCompositorDriver(
+        drivers: AdrenotoolsManager,
+        driverId: String,
+    ): Boolean = drivers.getSourceAsset(driverId) == COMPOSITOR_DRIVER_ASSET
+
     /** Reads what is on disk, off the calling thread, unless an install is running. */
     fun refresh(context: Context) {
         val appContext = context.applicationContext

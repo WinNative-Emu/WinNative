@@ -9232,15 +9232,25 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
      * Picks the Turnip the compositor imports the guest's frames with. The stock Vulkan driver has
      * no VK_EXT_image_drm_format_modifier, so vkCreateDevice fails and the session shows nothing;
      * a shortcut or container left on "System" therefore falls back to the container's own driver
-     * and then to any installed one, the way the X11 path never needs to.
+     * and then to any installed one, the way the X11 path never needs to. A GameScope container's
+     * driver setting names its Linux Turnip, so there the WN Turnip the Linux Client install
+     * fetched comes first; its swapchain carries the UBWC usage the display expects.
      */
     private boolean resolveCompositorDriver(WaylandSession.Config cfg) {
         AdrenotoolsManager atm = new AdrenotoolsManager(this);
+        ArrayList<String> installed = atm.enumarateInstalledDrivers();
         ArrayList<String> candidates = new ArrayList<>();
+        if (gamescopeMode) {
+            for (String driverId : installed) {
+                if (com.winlator.cmod.runtime.linux.LinuxClientInstaller.isCompositorDriver(atm, driverId)) {
+                    candidates.add(driverId);
+                }
+            }
+        }
         if (graphicsDriverConfig != null) candidates.add(graphicsDriverConfig.get("version"));
         candidates.add(GraphicsDriverConfigUtils
                 .parseGraphicsDriverConfig(container.getGraphicsDriverConfig()).get("version"));
-        candidates.addAll(atm.enumarateInstalledDrivers());
+        candidates.addAll(installed);
         for (String driverId : candidates) {
             if (!atm.isTurnipDriver(driverId)) continue;
             String libraryName = atm.getLibraryName(driverId);
