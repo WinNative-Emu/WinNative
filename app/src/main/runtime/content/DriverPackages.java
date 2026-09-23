@@ -80,6 +80,7 @@ public final class DriverPackages {
             || linuxDrivers(context).stream().anyMatch(file -> file.getName().equals(id));
     if (!valid) throw new IllegalArgumentException("Unknown Linux driver");
     PreferenceManager.getDefaultSharedPreferences(context).edit().putString(SELECTED, id).apply();
+    com.winlator.cmod.runtime.linux.LinuxDriverChoices.update(context);
   }
 
   public static File selectedLinuxIcd(Context context) {

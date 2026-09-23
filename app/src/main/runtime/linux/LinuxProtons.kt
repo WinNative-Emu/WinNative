@@ -112,9 +112,7 @@ exec /usr/local/bin/winnative-proton-launch "${'$'}here/proton" "${'$'}@"
             for (entry in container.desktopDir.listFiles { f -> f.name.endsWith(".desktop") }.orEmpty()) {
                 val shortcut = Shortcut(container, entry)
                 if (LinuxApps.isLinuxShortcut(shortcut)) continue
-                val appId =
-                    (if (shortcut.getExtra("game_source") == "STEAM") shortcut.getExtra("app_id").toLongOrNull()
-                    else LinuxSteamShortcuts.steamAppId(context, shortcut))?.toString() ?: continue
+                val appId = LinuxSteamShortcuts.clientAppId(context, shortcut)?.toString() ?: continue
                 val own = if (shortcut.usesContainerDefaults()) "" else shortcut.getExtra(Container.EXTRA_LINUX_PROTON)
                 var tool = own.ifEmpty { fallback }
                 // Steam's "Default" deletes the game's entry, which leaves it on the "0" one.
@@ -184,9 +182,7 @@ exec /usr/local/bin/winnative-proton-launch "${'$'}here/proton" "${'$'}@"
      * account, or null when it is not a game the client starts.
      */
     fun choiceFor(context: Context, shortcut: Shortcut): String? {
-        val appId =
-            (if (shortcut.getExtra("game_source") == "STEAM") shortcut.getExtra("app_id").toLongOrNull()
-            else LinuxSteamShortcuts.steamAppId(context, shortcut))?.toString() ?: return null
+        val appId = LinuxSteamShortcuts.clientAppId(context, shortcut)?.toString() ?: return null
         return reconcile(context)[appId]
     }
 

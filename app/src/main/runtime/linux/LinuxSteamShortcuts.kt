@@ -73,6 +73,12 @@ object LinuxSteamShortcuts {
     @JvmStatic
     fun steamAppId(context: Context, shortcut: Shortcut): Long? = game(context, shortcut)?.let { unsigned(it.appId) }
 
+    /** Worker thread. The id the client starts [shortcut]'s game under, or null when the client does not start it. */
+    @JvmStatic
+    fun clientAppId(context: Context, shortcut: Shortcut): Long? =
+        if (shortcut.getExtra("game_source") == "STEAM") shortcut.getExtra("app_id").toLongOrNull()
+        else steamAppId(context, shortcut)
+
     /**
      * Worker thread, with no client running. Brings the client's non-Steam games in line with the
      * library and returns the proot bind specs for game folders the session does not already see.

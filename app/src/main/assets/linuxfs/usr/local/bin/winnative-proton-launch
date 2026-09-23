@@ -31,6 +31,20 @@ if [ -n "$app" ] && [ -r "$choices" ]; then
     proton=$chosen
   fi
 fi
+# The Vulkan driver the app's settings chose for this game, else the container's `*`. The session
+# draws with the driver of whichever entry started it, and the game would otherwise inherit that.
+drivers=/etc/winnative/driver-choices
+if [ -n "$app" ] && [ -r "$drivers" ]; then
+  icd=
+  while read -r key path; do
+    if [ "$key" = "$app" ]; then
+      icd=$path
+      break
+    fi
+    [ "$key" = "*" ] && icd=$path
+  done < "$drivers"
+  [ -n "$icd" ] && [ -r "$icd" ] && export VK_ICD_FILENAMES="$icd"
+fi
 base=$(dirname "$proton")
 if [ ! -x "$proton" ] || [ ! -x "$base/files/bin-arm64/wine" ]; then
   echo "winnative-proton: incomplete ARM64 tool: $base" >&2
@@ -54,7 +68,7 @@ fi
 audio=off
 [ "${WN_DIRECTAUDIO:-0}" = 1 ] && audio=on
 winnative-directaudio --prepare "$base/files" "${STEAM_COMPAT_DATA_PATH:-}" "$audio" || exit $?
-echo "winnative-proton: tool=$base verb=${1:-missing} app=${SteamAppId:-unknown}" >&2
+echo "winnative-proton: tool=$base verb=${1:-missing} app=${SteamAppId:-unknown} icd=${VK_ICD_FILENAMES:-none}" >&2
 if [ -n "${WN_EPIC:-}" ] && [ -x /usr/local/bin/winnative-epic-launch ]; then
   exec /usr/local/bin/winnative-epic-launch "$proton" "$@"
 fi
