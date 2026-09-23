@@ -101,7 +101,7 @@ int launch_process(Tracee *tracee, char *const argv[]) {
 
   default: /* parent */
     /* We know the pid of the first tracee now.  */
-    tracee->pid = pid;
+    set_tracee_pid(tracee, pid);
     return 0;
   }
 
