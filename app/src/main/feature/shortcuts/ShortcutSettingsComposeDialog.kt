@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.net.toUri
 import com.winlator.cmod.shared.ui.focus.controllerMenuInput
 import com.winlator.cmod.feature.library.GameSettingsStateHolder
+import com.winlator.cmod.feature.library.LinuxApps
 import com.winlator.cmod.feature.library.WinComponentItem
 import com.winlator.cmod.feature.settings.DXVKConfigUtils
 import com.winlator.cmod.feature.settings.GraphicsDriverConfigUtils
@@ -93,6 +94,7 @@ import com.winlator.cmod.feature.shortcuts.ShortcutsFragment
 import com.winlator.cmod.runtime.display.XServerDisplayActivity
 import com.winlator.cmod.runtime.input.controls.GestureProfileManager
 import com.winlator.cmod.runtime.input.controls.InputControlsManager
+import com.winlator.cmod.runtime.linux.LinuxProtons
 import com.winlator.cmod.runtime.audio.midi.MidiManager
 import com.winlator.cmod.runtime.display.winhandler.WinHandler
 import com.winlator.cmod.feature.artwork.SteamArtworkScraper
@@ -137,6 +139,9 @@ class ShortcutSettingsComposeDialog private constructor(
     // Preset ID lists (parallel to display name lists)
     private var box64PresetIds = mutableListOf<String>()
     private var fexcorePresetIds = mutableListOf<String>()
+    /** Tool names behind [GameSettingsStateHolder.linuxProtonEntries]; null until they are read. */
+    private var linuxProtonIds: List<String>? = null
+    private var linuxProtonRequest = 0
     private var shouldRefreshLibraryOnSave = false
 
     // SDL2 Compatibility env vars — must match ContainerDetailFragment.SDL2_ENV_VARS.
@@ -631,6 +636,7 @@ class ShortcutSettingsComposeDialog private constructor(
                 Container.DISPLAY_BACKEND_WAYLAND
             ) DISPLAY_SERVER_WAYLAND_INDEX else DISPLAY_SERVER_X11_INDEX
         state.gamescopeContainer.value = container.isGamescopeRuntime
+        loadLinuxProtons(container)
 
         // DX Wrapper
         val dxWrapperArr =
@@ -910,6 +916,30 @@ class ShortcutSettingsComposeDialog private constructor(
             container.getFEXCorePreset()
         val idx = ids.indexOfFirst { it == savedPreset }
         state.selectedFexcorePreset.intValue = if (idx >= 0) idx else 0
+    }
+
+    private fun loadLinuxProtons(container: Container) {
+        val request = ++linuxProtonRequest
+        linuxProtonIds = null
+        state.linuxProtonEntries.value = emptyList()
+        // The client's own entry and native programs start no Proton; the container's choice covers Steam.
+        if (!container.isGamescopeRuntime || LinuxApps.isLinuxShortcut(shortcut)) return
+        val own = shouldUseShortcutOverrides(container)
+        val stored = if (own)
+            getShortcutSetting(Container.EXTRA_LINUX_PROTON, container.getLinuxProton())
+        else
+            container.getLinuxProton()
+        Thread({
+            // A change made in Steam's own Properties shows here too.
+            val saved = (if (own) LinuxProtons.choiceFor(context, shortcut) else null) ?: stored
+            val choices = LinuxProtons.choices(context)
+            activity.runOnUiThread {
+                if (request != linuxProtonRequest) return@runOnUiThread
+                linuxProtonIds = choices.map { it.first }
+                state.linuxProtonEntries.value = choices.map { it.second }
+                state.selectedLinuxProton.intValue = choices.indexOfFirst { it.first == saved }.coerceAtLeast(0)
+            }
+        }, "LinuxProtons").start()
     }
 
     private fun loadBox64Versions(container: Container = shortcut.container) {
@@ -1251,6 +1281,14 @@ class ShortcutSettingsComposeDialog private constructor(
                 "fexcorePreset", fexcorePreset, container.getFEXCorePreset()
             )
 
+            linuxProtonIds?.let { ids ->
+                hasContainerOverride = hasContainerOverride or saveOverride(
+                    Container.EXTRA_LINUX_PROTON,
+                    ids.getOrElse(state.selectedLinuxProton.intValue) { Container.LINUX_PROTON_DEFAULT },
+                    container.getLinuxProton()
+                )
+            }
+
             // Box64
             val box64VersionEntries = state.box64VersionEntries.value
             val box64VersionIdx = state.selectedBox64Version.intValue
@@ -1571,6 +1609,7 @@ class ShortcutSettingsComposeDialog private constructor(
             } else {
                 shortcut.saveData()
             }
+            if (container.isGamescopeRuntime || originalContainer.isGamescopeRuntime) LinuxProtons.updateChoices(context)
             com.winlator.cmod.app.shell.UnifiedActivity.refreshLibrary()
         }
     }
@@ -2382,6 +2421,7 @@ class ShortcutSettingsComposeDialog private constructor(
         state.wineVersionIdentifier.value = wineVersionStr
         // Which pages and rows exist depends on this, so it moves with the container too.
         state.gamescopeContainer.value = newContainer.isGamescopeRuntime
+        loadLinuxProtons(newContainer)
         rebuildEmulatorLists()
 
         selectByIdentifier(

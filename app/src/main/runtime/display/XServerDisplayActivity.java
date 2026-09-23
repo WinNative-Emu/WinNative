@@ -8906,6 +8906,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
+        com.winlator.cmod.runtime.linux.LinuxProtons.INSTANCE.reconcile(this);
         List<String> session = linuxSessionArgs();
         File runtimeDir = GuestProgramLauncherComponent.getWaylandRuntimeDir(this);
         runtimeDir.mkdirs();

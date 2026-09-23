@@ -69,6 +69,10 @@ object LinuxSteamShortcuts {
     fun launchUrl(context: Context, shortcut: Shortcut): String? =
         game(context, shortcut)?.let { "steam://rungameid/" + java.lang.Long.toUnsignedString((unsigned(it.appId) shl 32) or NON_STEAM) }
 
+    /** Worker thread. The id the client knows [shortcut] by as a non-Steam game, or null when it is not one. */
+    @JvmStatic
+    fun steamAppId(context: Context, shortcut: Shortcut): Long? = game(context, shortcut)?.let { unsigned(it.appId) }
+
     /**
      * Worker thread, with no client running. Brings the client's non-Steam games in line with the
      * library and returns the proot bind specs for game folders the session does not already see.

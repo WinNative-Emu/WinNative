@@ -617,6 +617,8 @@ class GameSettingsStateHolder {
     val selectedFexcoreVersion = mutableIntStateOf(0)
     val fexcorePresetEntries = mutableStateOf<List<String>>(emptyList())
     val selectedFexcorePreset = mutableIntStateOf(0)
+    val linuxProtonEntries = mutableStateOf<List<String>>(emptyList())
+    val selectedLinuxProton = mutableIntStateOf(0)
     val useUnixLibs = mutableStateOf(true)
 
     // Advanced - System
@@ -5410,10 +5412,27 @@ private fun InputSection(state: GameSettingsStateHolder) {
  * Proton's ARM64 build brings its own FEX for 64-bit and 32-bit games alike, so the emulators
  * installed in the app, their versions, the Wine startup options and the Wine-side processor
  * affinity have nothing to act on. FEX still reads its settings from the environment, which is
- * what a preset is.
+ * what a preset is. Which Proton build runs the game is chosen here instead of a Wine version.
  */
 @Composable
 private fun GamescopeAdvancedSection(state: GameSettingsStateHolder) {
+    if (state.linuxProtonEntries.value.isNotEmpty()) {
+        SettingGroup {
+            SettingDropdown(
+                label = stringResource(R.string.gamescope_proton_title),
+                entries = state.linuxProtonEntries.value,
+                selectedIndex = state.selectedLinuxProton.intValue,
+                onSelected = { state.selectedLinuxProton.intValue = it }
+            )
+            Spacer(Modifier.height(SettingTightGap))
+            Text(
+                text = stringResource(R.string.gamescope_proton_summary),
+                color = TextDim,
+                fontSize = SettingLabelSize
+            )
+        }
+        Spacer(Modifier.height(SettingSectionGap))
+    }
     EmulatorSectionHeader(stringResource(R.string.gamescope_fex_title), null)
     Spacer(Modifier.height(8.dp))
     SettingGroup {

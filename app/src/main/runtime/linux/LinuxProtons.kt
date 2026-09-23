@@ -2,7 +2,13 @@ package com.winlator.cmod.runtime.linux
 
 import android.content.Context
 import android.system.Os
+import android.util.Log
 import com.winlator.cmod.R
+import com.winlator.cmod.feature.library.LinuxApps
+import com.winlator.cmod.feature.stores.steam.utils.KeyValue
+import com.winlator.cmod.runtime.container.Container
+import com.winlator.cmod.runtime.container.ContainerManager
+import com.winlator.cmod.runtime.container.Shortcut
 import com.winlator.cmod.runtime.system.SessionKeepAliveService
 import java.io.File
 import java.net.HttpURLConnection
@@ -39,7 +45,11 @@ object LinuxProtons {
     val state = mutable.asStateFlow()
     private var job: Job? = null
     private val sources = listOf("GloriousEggroll/proton-ge-custom" to "aarch64", "CachyOS/proton-cachyos" to "arm64")
+    private const val TAG = "LinuxProtons"
     private const val MARKER = "winnative-proton.json"
+    private const val CHOICES = "etc/winnative/proton-choices"
+    private val TOOL_NAME = Regex("[A-Za-z0-9_-][A-Za-z0-9._-]*")
+    private val choicesLock = Any()
     private const val ORIGINAL_MANIFEST = "toolmanifest.vdf.winnative-original"
     private const val WRAPPER = "winnative-proton-wrap"
     private const val TOOL_MANIFEST = """"manifest"
@@ -59,6 +69,127 @@ exec /usr/local/bin/winnative-proton-launch "${'$'}here/proton" "${'$'}@"
     private fun installed(context: Context) = directory(context).listFiles().orEmpty().mapNotNull { file ->
         runCatching { parse(JSONObject(File(file, MARKER).readText())) }.getOrNull()?.takeIf { it.id == file.name }
     }
+    /**
+     * Worker thread. What a GameScope game can be set to run under, as tool name to label: WinNative's
+     * own Proton Experimental first, then the builds downloaded from Components.
+     */
+    fun choices(context: Context): List<Pair<String, String>> =
+        listOf(Container.LINUX_PROTON_DEFAULT to context.getString(R.string.gamescope_proton_default)) +
+            installed(context).sortedBy { it.displayName }.map { it.id to it.displayName }
+
+    /**
+     * Worker thread. Settles each GameScope game's Proton between the app and the Steam client,
+     * whichever changed it last, and writes what `winnative-proton-launch` reads as the game starts.
+     *
+     * A game's line keeps the tool the client mapped when the line was written. While the client
+     * still maps that tool, the app's choice is the newer one and the launcher follows it; once the
+     * client maps something else, the change was made in Steam and the shortcut takes it. With no
+     * client running, the app's choice is also written into the client's mapping so Steam shows it.
+     * The container's `*` covers games with no shortcut that the client leaves on WinNative's own.
+     *
+     * Returns each game's tool by app id.
+     */
+    fun reconcile(context: Context): Map<String, String> = synchronized(choicesLock) {
+        if (!LinuxRuntime.isInstalled(context)) return emptyMap()
+        val rootfs = LinuxRuntime.rootDir(context)
+        val file = File(rootfs, CHOICES)
+        val chosen = HashMap<String, String>()
+        try {
+            val container = LinuxApps.gamescopeContainer(ContainerManager(context))
+            if (container == null) {
+                file.delete()
+                return emptyMap()
+            }
+            val config = File(LinuxSteamVdf.steamRoot(rootfs), "config/config.vdf")
+            val tree = if (config.isFile) LinuxSteamVdf.load(config, "InstallConfigStore") else null
+            val mapping = tree?.let { LinuxSteamVdf.section(it, LinuxSteamVdf.STEAM_KEY + "CompatToolMapping") }
+            val recorded = readChoices(file)
+            val clientIdle = !SessionKeepAliveService.isLinuxSessionActive()
+            val fallback = container.getLinuxProton()
+            val lines = ArrayList<String>()
+            if (fallback != Container.LINUX_PROTON_DEFAULT && fallback.matches(TOOL_NAME)) lines += "* $fallback"
+            var pushed = false
+            for (entry in container.desktopDir.listFiles { f -> f.name.endsWith(".desktop") }.orEmpty()) {
+                val shortcut = Shortcut(container, entry)
+                if (LinuxApps.isLinuxShortcut(shortcut)) continue
+                val appId =
+                    (if (shortcut.getExtra("game_source") == "STEAM") shortcut.getExtra("app_id").toLongOrNull()
+                    else LinuxSteamShortcuts.steamAppId(context, shortcut))?.toString() ?: continue
+                val own = if (shortcut.usesContainerDefaults()) "" else shortcut.getExtra(Container.EXTRA_LINUX_PROTON)
+                var tool = own.ifEmpty { fallback }
+                // Steam's "Default" deletes the game's entry, which leaves it on the "0" one.
+                val mapped = mapping?.let { toolOf(it[appId]) ?: toolOf(it["0"]) ?: Container.LINUX_PROTON_DEFAULT }
+                val base = recorded[appId]
+                val changedInClient =
+                    if (base != null) mapped != null && mapped != base
+                    // Nothing recorded yet: a tool the user picked in Steam outranks a default.
+                    else mapped != null && mapped != Container.LINUX_PROTON_DEFAULT && own.isEmpty()
+                if (changedInClient && mapped != tool) {
+                    tool = mapped!!
+                    if (tool == fallback) {
+                        shortcut.putExtra(Container.EXTRA_LINUX_PROTON, null)
+                    } else {
+                        shortcut.putExtra(Container.EXTRA_LINUX_PROTON, tool)
+                        shortcut.putExtra("use_container_defaults", "0")
+                    }
+                    shortcut.saveData()
+                }
+                if (!tool.matches(TOOL_NAME)) continue
+                var current = mapped ?: Container.LINUX_PROTON_DEFAULT
+                if (clientIdle && mapping != null && current != tool) {
+                    val item = mapping[appId].takeIf { it !== KeyValue.INVALID } ?: KeyValue(appId).apply {
+                        isSection = true
+                        children += KeyValue("name", tool)
+                        children += KeyValue("config", "")
+                        children += KeyValue("priority", "250")
+                        mapping.children += this
+                    }
+                    val name = item["name"]
+                    if (name === KeyValue.INVALID) item.children += KeyValue("name", tool) else name.value = tool
+                    current = tool
+                    pushed = true
+                }
+                chosen[appId] = tool
+                lines += "$appId $tool $current"
+            }
+            if (pushed && tree != null) LinuxSteamVdf.save(config, tree)
+            if (lines.isEmpty()) {
+                file.delete()
+            } else {
+                LinuxSteamVdf.replace(file) { it.writeText(lines.joinToString("\n", postfix = "\n")) }
+            }
+        } catch (error: Exception) {
+            Log.w(TAG, "Could not settle the Proton choices", error)
+        }
+        chosen
+    }
+
+    private fun toolOf(entry: KeyValue): String? = entry["name"].value?.takeIf { it.matches(TOOL_NAME) }
+
+    /** What the last [reconcile] recorded for each game: the tool the client had mapped then. */
+    private fun readChoices(file: File): Map<String, String> =
+        runCatching { file.readLines() }.getOrDefault(emptyList()).mapNotNull { line ->
+            val fields = line.split(' ')
+            if (fields.size == 3 && fields[0] != "*") fields[0] to fields[2] else null
+        }.toMap()
+
+    /** [reconcile] off the caller's thread, for a settings screen that has just saved. */
+    fun updateChoices(context: Context) {
+        val app = context.applicationContext
+        Thread({ reconcile(app) }, "LinuxProtonChoices").start()
+    }
+
+    /**
+     * Worker thread. The tool [shortcut] runs its game under once the client's side is taken into
+     * account, or null when it is not a game the client starts.
+     */
+    fun choiceFor(context: Context, shortcut: Shortcut): String? {
+        val appId =
+            (if (shortcut.getExtra("game_source") == "STEAM") shortcut.getExtra("app_id").toLongOrNull()
+            else LinuxSteamShortcuts.steamAppId(context, shortcut))?.toString() ?: return null
+        return reconcile(context)[appId]
+    }
+
     private fun parse(json: JSONObject) = Build(json.getString("id"), json.getString("name"), json.getString("url"), json.getString("sha256"), json.getLong("size"))
 
     @Synchronized

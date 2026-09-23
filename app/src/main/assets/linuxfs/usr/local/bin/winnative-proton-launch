@@ -1,6 +1,36 @@
 #!/bin/sh
 proton=$1
 shift
+# The Proton the app's settings chose for this game. Its line keeps the tool Steam mapped when it
+# was written: while Steam still starts that one the app's choice is newer, otherwise the user
+# changed it in Steam and Steam's stands. `*` is the container's, for games Steam leaves on ours.
+choices=/etc/winnative/proton-choices
+app=${STEAM_COMPAT_APP_ID:-${STEAM_COMPAT_DATA_PATH##*/}}
+if [ -n "$app" ] && [ -r "$choices" ]; then
+  case $proton in
+    */compatibilitytools.d/*/proton) started=${proton%/proton}; started=${started##*/} ;;
+    *) started=winnative-proton ;;
+  esac
+  tool=
+  fallback=
+  while read -r key name mapped; do
+    if [ "$key" = "$app" ]; then
+      [ "$mapped" = "$started" ] && tool=$name
+      fallback=
+      break
+    fi
+    [ "$key" = "*" ] && [ "$started" = winnative-proton ] && fallback=$name
+  done < "$choices"
+  tool=${tool:-$fallback}
+  case $tool in
+    "" | */* | .*) chosen= ;;
+    winnative-proton) chosen=/opt/winnative-proton/proton ;;
+    *) chosen=${STEAM_COMPAT_CLIENT_INSTALL_PATH:-$HOME/.local/share/Steam}/compatibilitytools.d/$tool/proton ;;
+  esac
+  if [ -n "$chosen" ] && [ -x "$chosen" ] && [ -x "$(dirname "$chosen")/files/bin-arm64/wine" ]; then
+    proton=$chosen
+  fi
+fi
 base=$(dirname "$proton")
 if [ ! -x "$proton" ] || [ ! -x "$base/files/bin-arm64/wine" ]; then
   echo "winnative-proton: incomplete ARM64 tool: $base" >&2

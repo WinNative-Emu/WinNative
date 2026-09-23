@@ -2880,6 +2880,8 @@
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>
     <string name="gamescope_fex_summary">Games here run on the FEX that Steam\'s Proton (ARM64) carries, for 64-bit and 32-bit titles alike. The FEXCore, Box64 and WoWBox64 builds installed in WinNative are not used; the preset is.</string>
+    <string name="gamescope_proton_title">Proton</string>
+    <string name="gamescope_proton_summary">Games here start with this Proton. WN Proton Experimental comes with WinNative, and the builds downloaded under Components, Linux are listed with it. A game\'s own choice stays in step with its Compatibility setting in Steam, whichever was changed last.</string>
     <string name="settings_drivers_android">Android</string>
     <string name="settings_drivers_linux">Linux</string>
     <string name="settings_drivers_platform_hint">ड्राइवर कहाँ इंस्टॉल करना है, चुनें। पहचाने गए पैकेज अपने आप सही प्लेटफ़ॉर्म का उपयोग करते हैं।</string>
