@@ -185,19 +185,20 @@ public final class LinuxRuntime {
     }
     // Android denies apps these; glibc, Steam and libcap read them at startup.
     File fakeProc = new File(root, "etc/winnative/proc");
+    // The last two the rootfs does not ship, so they are written here: an install that already has
+    // a rootfs would never receive them from the overlay.
+    //
     // libpci picks its procfs backend on whether it can read the /proc/bus/pci directory, which the
     // app can, then die()s - exit(1) - on the devices file inside it, which the app cannot. Chromium
-    // loads libpci in its GPU process to name the video card, so that exit kills the process; after
-    // a few tries CEF gives up on hardware and runs the rest of the session on SwiftShader. An empty
-    // list is the truthful answer from in here: nothing the app can see is on a PCI bus.
-    File pciDevices = new File(fakeProc, "pci_devices");
-    if (!pciDevices.isFile()) {
-      try {
-        pciDevices.createNewFile();
-      } catch (IOException e) {
-        // It then fails the isFile() test below and the session runs as it did before.
-      }
-    }
+    // loads libpci in its GPU process to name the video card, so that exit took the GPU process with
+    // it and the Steam UI ran at half the frame rate. An empty list is the truthful answer from in
+    // here: nothing the app can see is on a PCI bus.
+    stage(new File(fakeProc, "pci_devices"), "");
+    // GE-Proton and CachyOS Proton import protonfixes from the top of their proton script, and its
+    // esync check opens file-max with nothing catching a failure, so the PermissionError ended the
+    // launch before the game started and Steam fell back to the Play button. The check only warns
+    // below 8192; what matters is that the read succeeds.
+    stage(new File(fakeProc, "file_max"), "1048576\n");
     String[][] procFiles = {
       {"stat", "/proc/stat"},
       {"version", "/proc/version"},
@@ -205,6 +206,7 @@ public final class LinuxRuntime {
       {"uptime", "/proc/uptime"},
       {"vmstat", "/proc/vmstat"},
       {"pci_devices", "/proc/bus/pci/devices"},
+      {"file_max", "/proc/sys/fs/file-max"},
       {"cap_last_cap", "/proc/sys/kernel/cap_last_cap"},
       {"overflowuid", "/proc/sys/kernel/overflowuid"},
       {"overflowgid", "/proc/sys/kernel/overflowgid"},
@@ -263,6 +265,16 @@ public final class LinuxRuntime {
   private static void bind(List<String> cmd, String spec) {
     cmd.add("-b");
     cmd.add(spec);
+  }
+
+  /** Writes a stand-in /proc file the rootfs does not carry, leaving one already there alone. */
+  private static void stage(File file, String contents) {
+    if (file.isFile()) return;
+    try {
+      Files.write(file.toPath(), contents.getBytes(StandardCharsets.UTF_8));
+    } catch (IOException e) {
+      // Absent, it fails the isFile() test in command() and the session runs as it did before.
+    }
   }
 
   /**
