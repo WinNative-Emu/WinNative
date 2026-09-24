@@ -10372,7 +10372,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     + "' gameSource='" + gameSource + "') - system Vulkan driver will be used");
         }
 
-        envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
+        envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd." + com.winlator.cmod.shared.android.HostPlatform.vulkanIcdCpuName() + ".json");
 
         String vulkanVersion = graphicsDriverConfig.get("vulkanVersion");
         if (vulkanVersion == null) vulkanVersion = "1.4";

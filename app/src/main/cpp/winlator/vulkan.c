@@ -1,6 +1,8 @@
 #include <vulkan/vulkan.h>
 
+#ifdef WN_HAS_ADRENOTOOLS
 #include "../adrenotools/include/adrenotools/driver.h"
+#endif
 #include <android/api-level.h>
 #include <android/log.h>
 #include <dlfcn.h>
@@ -226,7 +228,11 @@ static void preload_vendor_icd_deps() {
 
 void *winlator_open_system_vulkan(void) {
   preload_vendor_icd_deps();
-  return dlopen("/system/lib64/libvulkan.so", RTLD_LOCAL | RTLD_NOW);
+  void *handle = dlopen("/system/lib64/libvulkan.so", RTLD_LOCAL | RTLD_NOW);
+  // Not every 64-bit Android keeps the loader at that path (x86_64 images such as
+  // Windows Subsystem for Android or Android-x86 may not), so let the linker resolve it.
+  if (!handle) handle = dlopen("libvulkan.so", RTLD_LOCAL | RTLD_NOW);
+  return handle;
 }
 
 void *winlator_open_vulkan(JNIEnv *env, jobject context, const char *driver_name) {
@@ -236,6 +242,13 @@ void *winlator_open_vulkan(JNIEnv *env, jobject context, const char *driver_name
 
   preload_vendor_icd_deps();
 
+#ifndef WN_HAS_ADRENOTOOLS
+  // libadrenotools only exists for arm64. Everywhere else a custom driver name degrades
+  // to the system Vulkan loader instead of failing the whole session.
+  (void)env;
+  (void)context;
+  return winlator_open_system_vulkan();
+#else
   char *driver_path = get_driver_path(env, context, driver_name);
   if (!driver_path || access(driver_path, F_OK) != 0) {
     free(driver_path);
@@ -261,6 +274,7 @@ void *winlator_open_vulkan(JNIEnv *env, jobject context, const char *driver_name
   free(driver_path);
   if (!handle) return winlator_open_system_vulkan();
   return handle;
+#endif  // WN_HAS_ADRENOTOOLS
 }
 
 static void init_original_vulkan() {

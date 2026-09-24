@@ -12,6 +12,7 @@ import com.winlator.cmod.runtime.container.ContainerManager;
 import com.winlator.cmod.runtime.content.AdrenotoolsManager;
 import com.winlator.cmod.runtime.wine.WineInfo;
 import com.winlator.cmod.shared.android.AppUtils;
+import com.winlator.cmod.shared.android.HostPlatform;
 import com.winlator.cmod.shared.ui.toast.WinToast;
 import com.winlator.cmod.shared.io.FileUtils;
 import com.winlator.cmod.shared.io.TarCompressorUtils;
@@ -30,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public abstract class ImageFsInstaller {
   public static final byte LATEST_VERSION = 22;
   private static final String IMAGEFS_ARCHIVE = "imagefs.tzst";
+  private static final String IMAGEFS_ARCHIVE_X86_64 = "imagefs-x86_64.tzst";
   private static final TarCompressorUtils.Type IMAGEFS_ARCHIVE_TYPE = TarCompressorUtils.Type.ZSTD;
   private static final long IMAGEFS_EXTRACTED_BYTES = 869024992L;
   private static final int XZ_PROGRESS_COMPRESSION_RATIO = 22;
@@ -412,13 +414,43 @@ public abstract class ImageFsInstaller {
     }
   }
 
+  /**
+   * arm64 keeps its historical asset names. x86_64 ships its own image, because the rootfs holds
+   * native binaries and an arm64 one is useless there.
+   */
+  private static String imageFsArchive() {
+    return HostPlatform.isX86_64() ? IMAGEFS_ARCHIVE_X86_64 : IMAGEFS_ARCHIVE;
+  }
+
+  private static String imageFsShardPrefix() {
+    return HostPlatform.isX86_64() ? "imagefs-x86_64.part" : "imagefs.part";
+  }
+
+  private static boolean assetExists(Context context, String name) {
+    try (java.io.InputStream ignored = context.getAssets().open(name)) {
+      return true;
+    } catch (java.io.IOException e) {
+      return false;
+    }
+  }
+
   private static boolean extractImageFs(
       android.app.Activity activity, File rootDir, OnExtractFileListener listener) {
     String[] shards = listImageFsShards(activity);
     if (shards.length == 0) {
+      if (HostPlatform.isX86_64() && !assetExists(activity, imageFsArchive())) {
+        Log.e(
+            "ImageFsInstaller",
+            "No runtime image for "
+                + HostPlatform.processAbi()
+                + ": asset '"
+                + imageFsArchive()
+                + "' is not packaged in this build. See docs/X86_64-WSA.md.");
+        return false;
+      }
       return waitForExtraction(
           TarCompressorUtils.extractAsync(
-              IMAGEFS_ARCHIVE_TYPE, activity, IMAGEFS_ARCHIVE, rootDir, listener));
+              IMAGEFS_ARCHIVE_TYPE, activity, imageFsArchive(), rootDir, listener));
     }
     int threads = Math.max(2, Math.min(shards.length, Runtime.getRuntime().availableProcessors()));
     ExecutorService pool = Executors.newFixedThreadPool(threads);
@@ -443,7 +475,7 @@ public abstract class ImageFsInstaller {
       String[] names = context.getAssets().list("");
       if (names != null) {
         for (String name : names) {
-          if (name.startsWith("imagefs.part") && name.endsWith(".tzst")) shards.add(name);
+          if (name.startsWith(imageFsShardPrefix()) && name.endsWith(".tzst")) shards.add(name);
         }
       }
     } catch (Exception e) {
