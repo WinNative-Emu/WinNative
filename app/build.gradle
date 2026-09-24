@@ -177,6 +177,23 @@ if (brandedVersionCode < playUnreachableVersionCodeBase || brandedVersionCode > 
     throw new GradleException("VERSION_CODE ${appVersionCode} pushes the branded versionCode past the 32-bit limit")
 }
 
+// Target ABIs. arm64-v8a stays the default so existing builds are unchanged.
+// x86_64 is opt-in and targets Android-x86/BlissOS, Windows Subsystem for Android (WSA),
+// ChromeOS and the Android Emulator. See docs/X86_64-WSA.md.
+//   ./gradlew assembleStandardDebug -Pwinnative.abis=x86_64
+//   ./gradlew assembleStandardDebug -Pwinnative.abis=arm64-v8a,x86_64
+def winnativeSupportedAbis = ['arm64-v8a', 'x86_64']
+def winnativeAbis = (findProperty('winnative.abis') ?: 'arm64-v8a')
+        .toString().split(',').collect { it.trim() }.findAll { it }.unique()
+if (winnativeAbis.isEmpty()) {
+    throw new GradleException("winnative.abis is empty (supported: ${winnativeSupportedAbis.join(', ')})")
+}
+winnativeAbis.each { abi ->
+    if (!winnativeSupportedAbis.contains(abi)) {
+        throw new GradleException("winnative.abis: unsupported ABI '${abi}' (supported: ${winnativeSupportedAbis.join(', ')})")
+    }
+}
+
 def coldClientVersionFile = rootProject.file("tools/gbe_fork.version")
 def coldClientVersion = coldClientVersionFile.exists() ? coldClientVersionFile.text.trim() : "unknown"
 
@@ -202,12 +219,13 @@ android {
         }
 
         ndk {
-            abiFilters 'arm64-v8a'
+            abiFilters.addAll(winnativeAbis)
         }
 
         resConfigs "en", "da", "de", "es", "b+es+419", "fi", "fr", "hi", "it", "ja", "ko", "no", "pl", "pt", "pt-rBR", "ro", "ru", "sv", "th", "tr", "uk", "zh-rCN", "zh-rTW"
 
         buildConfigField("String", "COLD_CLIENT_VERSION", "\"${coldClientVersion}\"")
+        buildConfigField "String", "WN_ABIS", "\"${winnativeAbis.join(',')}\""
         buildConfigField "int", "TRUE_VERSION_CODE", "${appVersionCode}"
         buildConfigField "String", "BUILD_ID", "\"${appBuildId}\""
         buildConfigField "String", "PR_NUMBER", "\"${appPullRequest}\""

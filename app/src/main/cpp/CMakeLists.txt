@@ -38,12 +38,36 @@ if(NOT xz_POPULATED)
     set(BUILD_SHARED_LIBS "${_winlator_saved_bsl}")
 endif()
 
+# ----------------------------------------------------------------------------
+# ABI switch.
+#
+# arm64-v8a is the shipping ABI. x86_64 (Android-x86/BlissOS, Windows Subsystem for Android,
+# ChromeOS, the Android Emulator) runs Wine natively, so it needs no CPU translator, but several
+# components below exist only for arm64 today. They are gated on WN_ARM64 so the tree still
+# configures and builds for x86_64; the matching Java entry points already tolerate the libraries
+# being absent. See docs/X86_64-WSA.md for the list and how to lift each restriction.
+#
+#   adrenotools           - libadrenotools is arm64-only (custom Adreno/Turnip drivers)
+#   wn-steam-*            - the Rust Steam client is only built for aarch64-linux-android
+#   steamctrl             - the vendored SDL3 prefab AAR only ships android.arm64-v8a
+#   waylandcomp           - links a prebuilt aarch64 libwayland-server.so
+#   proot                 - the loader here only carries ARM/ARM64 assembly
+# ----------------------------------------------------------------------------
+if(ANDROID_ABI STREQUAL "arm64-v8a" OR CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
+    set(WN_ARM64 ON)
+else()
+    set(WN_ARM64 OFF)
+    message(STATUS "WinNative: building for ${ANDROID_ABI}; arm64-only components are disabled")
+endif()
+
 add_subdirectory(thirdparty/dxbc EXCLUDE_FROM_ALL)
 add_subdirectory(patchelf)
-add_subdirectory(adrenotools)
-add_subdirectory(wn-steam-client)
-add_subdirectory(wn-steam-bootstrap)
-add_subdirectory(wn-libsteamclient)
+if(WN_ARM64)
+    add_subdirectory(adrenotools)
+    add_subdirectory(wn-steam-client)
+    add_subdirectory(wn-steam-bootstrap)
+    add_subdirectory(wn-libsteamclient)
+endif()
 
 find_package(curl REQUIRED CONFIG)
 
@@ -200,13 +224,22 @@ target_include_directories(winlator PRIVATE
 
 target_compile_features(winlator PRIVATE cxx_std_17)
 
+# Custom Adreno driver loading (libadrenotools) only exists for arm64; elsewhere vulkan.c falls
+# back to the system Vulkan loader. Kept in one plain target_link_libraries() call below, because
+# CMake forbids mixing the plain and keyword signatures on a single target.
+set(WN_WINLATOR_ARM64_LIBS "")
+if(WN_ARM64)
+    list(APPEND WN_WINLATOR_ARM64_LIBS adrenotools)
+    target_compile_definitions(winlator PRIVATE WN_HAS_ADRENOTOOLS=1)
+endif()
+
 target_link_libraries(winlator
         log
         android
         mediandk
         jnigraphics
         vulkan
-        adrenotools
+        ${WN_WINLATOR_ARM64_LIBS}
         dxbc
         libzstd_static
         liblzma
@@ -239,14 +272,16 @@ add_library(wnaudiohost SHARED
 target_compile_options(wnaudiohost PRIVATE -Wall -Wextra -fvisibility=hidden)
 target_link_libraries(wnaudiohost aaudio android log)
 
-find_package(SDL3 REQUIRED CONFIG)
+if(WN_ARM64)
+    find_package(SDL3 REQUIRED CONFIG)
 
-add_library(steamctrl SHARED
-        steamctrl/steam_controller_bridge.cpp
-)
-target_compile_options(steamctrl PRIVATE -Wall -Wextra -fvisibility=hidden)
-target_link_libraries(steamctrl SDL3::SDL3 log)
+    add_library(steamctrl SHARED
+            steamctrl/steam_controller_bridge.cpp
+    )
+    target_compile_options(steamctrl PRIVATE -Wall -Wextra -fvisibility=hidden)
+    target_link_libraries(steamctrl SDL3::SDL3 log)
 
-# Embedded Wayland compositor (winewayland.drv sessions); see waylandcomp/CMakeLists.txt.
-add_subdirectory(waylandcomp)
-add_subdirectory(proot)
+    # Embedded Wayland compositor (winewayland.drv sessions); see waylandcomp/CMakeLists.txt.
+    add_subdirectory(waylandcomp)
+    add_subdirectory(proot)
+endif()
