@@ -990,6 +990,8 @@ public class InputControlsView extends View {
             }
 
             batchingUpdates = false;
+            // Held back to the next frame, a stick drag reaches the game up to a frame late.
+            if (eventHandled) requestUnbufferedDispatch(event);
             if (eventHandled || staleReleased) flushGamepadState();
             syncCapturedPointers();
             if (!eventHandled) dispatchUnhandledTouch(event);
@@ -1068,6 +1070,7 @@ public class InputControlsView extends View {
 
             batchingUpdates = false;
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+            if (anyControlHandled) requestUnbufferedDispatch(event);
             if (anyControlHandled && winHandler != null) {
               winHandler.sendGamepadState();
             }

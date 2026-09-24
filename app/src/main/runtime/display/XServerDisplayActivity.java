@@ -7413,6 +7413,21 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
     }
 
+    /** Sticks, triggers, hats and captured mice/touchpads: held back to the next frame, they arrive up to a frame late. */
+    private static final int UNBUFFERED_INPUT_SOURCES = InputDevice.SOURCE_CLASS_JOYSTICK
+            | InputDevice.SOURCE_CLASS_TRACKBALL | InputDevice.SOURCE_CLASS_POSITION;
+
+    @Override
+    public void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return;
+        View decor = getWindow().getDecorView();
+        decor.requestUnbufferedDispatch(UNBUFFERED_INPUT_SOURCES);
+        // A focus change recomputes the window's request from the focused view, dropping this one.
+        decor.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) ->
+                decor.post(() -> decor.requestUnbufferedDispatch(UNBUFFERED_INPUT_SOURCES)));
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
