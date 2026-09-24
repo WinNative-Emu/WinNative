@@ -117,6 +117,10 @@ public class XServer {
     inputSink = sink;
   }
 
+  public boolean hasInputSink() {
+    return inputSink != null;
+  }
+
   private void sinkPointerMove() {
     InputSink sink = inputSink;
     if (sink != null) sink.onPointerMove(pointer.getX(), pointer.getY());

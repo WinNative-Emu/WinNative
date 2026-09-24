@@ -344,7 +344,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private boolean isVolumeDownPressed = false;
     private boolean guideHoldPending = false;
     private long guideMenuOpenedAt = 0L;
-    private static final long GUIDE_HOLD_OPEN_MS = 450L;
+    private static final long GUIDE_HOLD_OPEN_MS = 2000L;
     private static final long GUIDE_HOLD_TAIL_MS = 1200L;
     private final Runnable guideHoldOpenRunnable = new Runnable() {
         @Override
@@ -472,6 +472,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     public boolean isInputSuspended() {
         return isPaused;
     }
+
+    public boolean isGamescopeMode() { return gamescopeMode; }
 
     private boolean isAnyControllerConnected() {
         if (winHandler != null && winHandler.hasSdlPads()) return true;
@@ -3257,7 +3259,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         boolean handled = false;
 
         int actionButton = event.getActionButton();
-        switch (event.getAction()) {
+        switch (event.getActionMasked()) {
             case MotionEvent.ACTION_BUTTON_PRESS:
                 if (actionButton == MotionEvent.BUTTON_PRIMARY) {
                     xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
@@ -3291,18 +3293,22 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 handled = true;
                 break;
             case MotionEvent.ACTION_SCROLL:
-                float scrollY = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
-                if (scrollY <= -1.0f) {
-                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_DOWN);
-                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_DOWN);
-                } else if (scrollY >= 1.0f) {
-                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_UP);
-                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_UP);
-                }
+                touchpadView.onMouseWheel(event.getAxisValue(MotionEvent.AXIS_VSCROLL));
                 handled = true;
+                break;
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_POINTER_DOWN:
+            case MotionEvent.ACTION_POINTER_UP:
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                capturedTouchpadX = Float.NaN;
                 break;
         }
     }
+
+    /** Where a captured touchpad's first finger was: touchpads report positions, not motion. */
+    private float capturedTouchpadX = Float.NaN;
+    private float capturedTouchpadY = Float.NaN;
 
     private int[] getCapturedPointerDelta(MotionEvent event) {
         // Sum batched samples; skipping history drops movement at low refresh rates.
@@ -3315,7 +3321,14 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
         dx += event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
         dy += event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
-        if (dx == 0.0f && dy == 0.0f) {
+        if (event.isFromSource(InputDevice.SOURCE_TOUCHPAD)) {
+            if (dx == 0.0f && dy == 0.0f && !Float.isNaN(capturedTouchpadX)) {
+                dx = event.getX() - capturedTouchpadX;
+                dy = event.getY() - capturedTouchpadY;
+            }
+            capturedTouchpadX = event.getX();
+            capturedTouchpadY = event.getY();
+        } else if (dx == 0.0f && dy == 0.0f) {
             for (int i = 0; i < historySize; i++) {
                 dx += event.getHistoricalX(i);
                 dy += event.getHistoricalY(i);
@@ -10632,8 +10645,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (isSteamControllerShadowEvent(event.getDevice())) return true;
+        // A held guide button repeats; only a fresh press may close the menu it opened.
+        boolean freshKey = event.getKeyCode() != KeyEvent.KEYCODE_BUTTON_MODE || event.getRepeatCount() == 0;
         if (ExternalController.isGameController(event.getDevice())
-                && handleControllerMenuKey(event.getKeyCode(), event.getAction() == KeyEvent.ACTION_DOWN, event.getEventTime())) return true;
+                && handleControllerMenuKey(event.getKeyCode(), event.getAction() == KeyEvent.ACTION_DOWN && freshKey, event.getEventTime())) return true;
         if (controllerTestComposeView != null
                 && com.winlator.cmod.shared.ui.controllertest.ControllerTestBus.isActive()
                 && consumeControllerTestKeyEvent(event)) {
@@ -10674,8 +10689,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         }
 
         if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE) {
-            // Menu closed: hold the guide button to open (a quick tap does nothing). Timer-based, so a
-            // missed release can never leave it stuck.
+            // Menu closed: holding the guide button opens it; a shorter press reaches the guest as a
+            // tap on release. Timer-based, so a missed release can never leave it stuck.
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 if (!guideHoldPending) {
                     guideHoldPending = true;
@@ -10683,6 +10698,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     handler.postDelayed(guideHoldOpenRunnable, GUIDE_HOLD_OPEN_MS);
                 }
             } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                if (guideHoldPending && winHandler != null && ExternalController.isGameController(event.getDevice())) {
+                    winHandler.tapGuide(event.getDeviceId());
+                }
                 guideHoldPending = false;
                 handler.removeCallbacks(guideHoldOpenRunnable);
             }
@@ -10781,6 +10799,9 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             handler.postDelayed(guideHoldOpenRunnable, GUIDE_HOLD_OPEN_MS);
         }
         if (previous.contains(KeyEvent.KEYCODE_BUTTON_MODE) && !pressed.contains(KeyEvent.KEYCODE_BUTTON_MODE)) {
+            if (guideHoldPending && winHandler != null && isSteamControllerInputEnabled()) {
+                winHandler.tapGuide(pad.getDeviceId());
+            }
             guideHoldPending = false;
             handler.removeCallbacks(guideHoldOpenRunnable);
         }

@@ -6,9 +6,11 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.StateListDrawable
 import android.os.Handler
 import android.os.Looper
+import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.PointerIcon
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import com.winlator.cmod.R
 import com.winlator.cmod.runtime.display.XServerDisplayActivity
@@ -42,6 +44,7 @@ class TouchpadView(
         const val MODE_MAP_TO_RIGHT_STICK = 2
         private const val TOUCHSCREEN_DOUBLE_TAP_MS = 500L
         private const val TOUCHSCREEN_DOUBLE_TAP_DISTANCE = 100f
+        private const val TOUCHSCREEN_PRESS_DELAY_MS = 50L
     }
 
     private var continueClick = true
@@ -69,6 +72,26 @@ class TouchpadView(
     private var sinkTapTime = 0L
     private var sinkTapX = 0f
     private var sinkTapY = 0f
+    private var sinkTouchX = 0f
+    private var sinkTouchY = 0f
+    private var touchLeftPressed = false
+    private var touchPrimaryId = -1
+    private var touchSecondId = -1
+    private var twoFingerGesture = false
+    private var pressPending = false
+    private val pressDown = FloatArray(4)
+    private val pressCurrent = FloatArray(4)
+    private val pendingPressRunnable = Runnable { firePendingPress() }
+    private var twoFingerMoved = false
+    private var twoFingerLastY = 0f
+    private val twoFingerStart = FloatArray(4)
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val twoFingerScrollStep = 40f * resources.displayMetrics.density
+    private var wheelAccum = 0f
+    private var mouseLastX = Float.NaN
+    private var mouseLastY = Float.NaN
+    private var mouseRemainderX = 0f
+    private var mouseRemainderY = 0f
     private var screenTouchMode = MODE_TRACKPAD
     private var rtsGesturesEnabled = false
     private val xform = XForm.getInstance()
@@ -112,8 +135,7 @@ class TouchpadView(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        rtsGestureEngine.releaseAll()
-        screenTouchStick.releaseAll()
+        resetInputState()
     }
 
     private fun updateXform(outerWidth: Int, outerHeight: Int, innerWidth: Int, innerHeight: Int) {
@@ -182,6 +204,7 @@ class TouchpadView(
         if (!mouseEnabled) return true
         resetTouchscreenTimeout()
         if (event.getToolType(0) == MotionEvent.TOOL_TYPE_STYLUS) return handleStylusEvent(event)
+        if (event.isFromSource(InputDevice.SOURCE_MOUSE)) return handleMouseTouchEvent(event)
         val action = event.actionMasked
         if (action == MotionEvent.ACTION_DOWN || activeTouchHandler == null) {
             activeTouchHandler = selectTouchHandler()
@@ -262,10 +285,13 @@ class TouchpadView(
         val actionIndex = event.actionIndex
         val pointerId = event.getPointerId(actionIndex)
         val actionMasked = event.actionMasked
+        if (actionMasked == MotionEvent.ACTION_CANCEL) {
+            releaseTouches()
+            return true
+        }
         if (actionMasked != MotionEvent.ACTION_MOVE && (pointerId >= MAX_FINGERS || pointerIdsToIgnore.contains(pointerId))) return true
         when (actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                if (event.isFromSource(8194)) return true
                 scrollAccumY = 0.0f
                 scrolling = false
                 fingers[pointerId] = Finger(event.getX(actionIndex), event.getY(actionIndex))
@@ -316,64 +342,120 @@ class TouchpadView(
                 }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (event.isFromSource(8194)) {
-                    if (isInputSuspended) return true
-                    val transformedPoint = XForm.transformPoint(xform, event.x, event.y)
-                    if (xServer.isRelativeMouseMovement) {
-                        xServer.winHandler.mouseEvent(MouseEventFlags.MOVE, transformedPoint[0].toInt(), transformedPoint[1].toInt(), 0)
-                        updateVisibleRelativeCursor(transformedPoint[0].toInt(), transformedPoint[1].toInt())
-                    } else {
-                        xServer.injectPointerMove(transformedPoint[0].toInt(), transformedPoint[1].toInt())
-                    }
-                } else {
-                    for (i in 0 until 4) {
-                        if (fingers[i] != null) {
-                            if (pointerIdsToIgnore.contains(i)) {
-                                fingers[i] = null
-                                numFingers = (numFingers - 1).toByte()
-                                continue
-                            }
-                            val pointerIndex = event.findPointerIndex(i)
-                            if (pointerIndex >= 0) {
-                                fingers[i]!!.update(event.getX(pointerIndex), event.getY(pointerIndex))
-                                handleFingerMove(fingers[i]!!)
-                            } else {
-                                handleFingerUp(fingers[i]!!)
-                                fingers[i] = null
-                                numFingers = (numFingers - 1).toByte()
-                            }
+                for (i in 0 until 4) {
+                    if (fingers[i] != null) {
+                        val pointerIndex = event.findPointerIndex(i)
+                        if (pointerIndex >= 0) {
+                            fingers[i]!!.update(event.getX(pointerIndex), event.getY(pointerIndex))
+                            handleFingerMove(fingers[i]!!)
+                        } else {
+                            handleFingerUp(fingers[i]!!)
+                            fingers[i] = null
+                            numFingers = (numFingers - 1).toByte()
                         }
                     }
                 }
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                longPressHandler.removeCallbacks(longPressRunnable)
-                longPressActive = false
-                for (i in 0 until 4) fingers[i] = null
-                numFingers = 0
             }
         }
         return true
     }
 
+    /** A mouse the app doesn't capture: its buttons arrive through [onExternalMouseEvent], its drags come here. */
+    private fun handleMouseTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_MOVE && !isInputSuspended) moveExternalMouse(event)
+        return true
+    }
+
+    private fun moveExternalMouse(event: MotionEvent) {
+        val transformedPoint = XForm.transformPoint(xform, event.x, event.y)
+        if (xServer.isRelativeMouseMovement) {
+            var dx = event.getAxisValue(MotionEvent.AXIS_RELATIVE_X)
+            var dy = event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y)
+            for (i in 0 until event.historySize) {
+                dx += event.getHistoricalAxisValue(MotionEvent.AXIS_RELATIVE_X, i)
+                dy += event.getHistoricalAxisValue(MotionEvent.AXIS_RELATIVE_Y, i)
+            }
+            if (dx == 0f && dy == 0f && !mouseLastX.isNaN()) {
+                dx = event.x - mouseLastX
+                dy = event.y - mouseLastY
+            }
+            val delta = computeDeltaPoint(0f, 0f, dx, dy)
+            mouseRemainderX += delta[0]
+            mouseRemainderY += delta[1]
+            val moveX = mouseRemainderX.toInt()
+            val moveY = mouseRemainderY.toInt()
+            mouseRemainderX -= moveX
+            mouseRemainderY -= moveY
+            if (moveX != 0 || moveY != 0) xServer.winHandler.mouseEvent(MouseEventFlags.MOVE, moveX, moveY, 0)
+            updateVisibleRelativeCursor(transformedPoint[0].toInt(), transformedPoint[1].toInt())
+        } else {
+            xServer.injectPointerMove(transformedPoint[0].toInt(), transformedPoint[1].toInt())
+        }
+        mouseLastX = event.x
+        mouseLastY = event.y
+    }
+
+    /** Wheel motion in notches; high-resolution wheels and touchpads send fractions of one. */
+    fun onMouseWheel(amount: Float) {
+        if (amount == 0f || amount.isNaN()) return
+        if (wheelAccum != 0f && Math.signum(wheelAccum) != Math.signum(amount)) wheelAccum = 0f
+        wheelAccum += amount
+        while (wheelAccum >= 1f) {
+            clickPointerButton(Pointer.Button.BUTTON_SCROLL_UP)
+            wheelAccum -= 1f
+        }
+        while (wheelAccum <= -1f) {
+            clickPointerButton(Pointer.Button.BUTTON_SCROLL_DOWN)
+            wheelAccum += 1f
+        }
+    }
+
+    private fun clickPointerButton(button: Pointer.Button) {
+        xServer.injectPointerButtonPress(button)
+        xServer.injectPointerButtonRelease(button)
+    }
+
+    /**
+     * The first finger clicks and drags where it touches. A second finger ends that press: the
+     * pair then scrolls as it moves, and right-clicks if it lifts without having moved.
+     */
     private fun handleTouchscreenEvent(event: MotionEvent): Boolean {
         if (isInputSuspended) return true
-        val action = event.actionMasked
-        val ignorePointerId = event.getPointerId(event.actionIndex)
-        if (action != MotionEvent.ACTION_MOVE && (ignorePointerId >= MAX_FINGERS || pointerIdsToIgnore.contains(ignorePointerId))) return true
-        when (action) {
-            0, 5 -> { handleTouchDown(event); return true }
-            1, 6 -> { if (event.pointerCount == 2) handleTwoFingerTap(event) else handleTouchUp(event); return true }
-            2 -> { if (event.pointerCount == 2) handleTwoFingerScroll(event) else handleTouchMove(event); return true }
-            3 -> {
-                if (sinkTouchActive) {
-                    sinkTouchActive = false
-                    touchscreenSink?.onTouch(2, event.rawX, event.rawY)
+        val index = event.actionIndex
+        val pointerId = event.getPointerId(index)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                if (pointerId >= MAX_FINGERS || pointerIdsToIgnore.contains(pointerId) || twoFingerGesture) return true
+                if (touchPrimaryId == -1) {
+                    touchPrimaryId = pointerId
+                    handleTouchDown(event, index)
+                } else if (touchSecondId == -1) {
+                    touchSecondId = pointerId
+                    startTwoFingerGesture(event)
                 }
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT)
-                return true
             }
+            MotionEvent.ACTION_MOVE -> {
+                if (twoFingerGesture) {
+                    handleTwoFingerMove(event)
+                } else if (touchPrimaryId != -1) {
+                    val primaryIndex = event.findPointerIndex(touchPrimaryId)
+                    if (primaryIndex >= 0) handleTouchMove(event, primaryIndex)
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                if (twoFingerGesture) {
+                    if (pointerId == touchPrimaryId || pointerId == touchSecondId) {
+                        if (!twoFingerMoved && tapToClickEnabled) clickPointerButton(Pointer.Button.BUTTON_RIGHT)
+                        twoFingerMoved = true
+                        if (pointerId == touchPrimaryId) touchPrimaryId = -1 else touchSecondId = -1
+                        if (touchPrimaryId == -1 && touchSecondId == -1) twoFingerGesture = false
+                    }
+                } else if (pointerId == touchPrimaryId) {
+                    handleTouchUp(event, index)
+                }
+                if (event.actionMasked == MotionEvent.ACTION_UP) releaseTouchscreenPointers()
+            }
+            MotionEvent.ACTION_CANCEL -> releaseTouches()
         }
         return true
     }
@@ -389,86 +471,174 @@ class TouchpadView(
 
     var touchscreenSink: TouchscreenSink? = null
 
-    private fun handleTouchDown(event: MotionEvent) {
-        if (sinkTouchActive) return
-        if (event.pointerCount == 1 && tapToClickEnabled && !isInputSuspended && sinkTouchDown(event)) return
-        val transformedPoint = XForm.transformPoint(xform, event.x, event.y)
+    private fun rawX(event: MotionEvent, index: Int): Float = event.getX(index) + event.rawX - event.x
+
+    private fun rawY(event: MotionEvent, index: Int): Float = event.getY(index) + event.rawY - event.y
+
+    private fun readTouch(event: MotionEvent, index: Int, into: FloatArray) {
+        into[0] = event.getX(index)
+        into[1] = event.getY(index)
+        into[2] = rawX(event, index)
+        into[3] = rawY(event, index)
+    }
+
+    /** The press waits briefly so a second finger landing with the first starts a gesture, not a click. */
+    private fun handleTouchDown(event: MotionEvent, index: Int) {
+        readTouch(event, index, pressDown)
+        pressDown.copyInto(pressCurrent)
+        pressPending = true
+        postDelayed(pendingPressRunnable, TOUCHSCREEN_PRESS_DELAY_MS)
+    }
+
+    private fun firePendingPress() {
+        if (!pressPending) return
+        cancelPendingPress()
+        if (isInputSuspended) return
+        pressAt(pressDown[0], pressDown[1], pressDown[2], pressDown[3])
+        if (!pressCurrent.contentEquals(pressDown)) moveTouch()
+    }
+
+    private fun cancelPendingPress() {
+        pressPending = false
+        removeCallbacks(pendingPressRunnable)
+    }
+
+    private fun pressAt(x: Float, y: Float, rawX: Float, rawY: Float) {
+        if (tapToClickEnabled && sinkTouchDown(rawX, rawY)) return
+        val transformedPoint = XForm.transformPoint(xform, x, y)
         var tx = transformedPoint[0].toInt()
         var ty = transformedPoint[1].toInt()
-        if (event.pointerCount == 1) {
-            val now = System.currentTimeMillis()
-            val near = Math.hypot((event.x - lastTapRawX).toDouble(), (event.y - lastTapRawY).toDouble()) < TOUCHSCREEN_DOUBLE_TAP_DISTANCE
-            if (now - lastTapDownTime < TOUCHSCREEN_DOUBLE_TAP_MS && near) {
-                tx = lastTapTransX
-                ty = lastTapTransY
-            }
-            lastTapDownTime = now
-            lastTapRawX = event.x
-            lastTapRawY = event.y
-            lastTapTransX = tx
-            lastTapTransY = ty
+        val now = System.currentTimeMillis()
+        val near = Math.hypot((x - lastTapRawX).toDouble(), (y - lastTapRawY).toDouble()) < TOUCHSCREEN_DOUBLE_TAP_DISTANCE
+        if (now - lastTapDownTime < TOUCHSCREEN_DOUBLE_TAP_MS && near) {
+            tx = lastTapTransX
+            ty = lastTapTransY
         }
-        if (!isInputSuspended) {
-            xServer.injectPointerMove(tx, ty)
-            if (event.pointerCount == 1 && tapToClickEnabled) xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT)
+        lastTapDownTime = now
+        lastTapRawX = x
+        lastTapRawY = y
+        lastTapTransX = tx
+        lastTapTransY = ty
+        xServer.injectPointerMove(tx, ty)
+        if (tapToClickEnabled) {
+            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT)
+            touchLeftPressed = true
         }
     }
 
     /** A second tap close to the first lands exactly on it, so a double tap is a double click. */
-    private fun sinkTouchDown(event: MotionEvent): Boolean {
+    private fun sinkTouchDown(rawX: Float, rawY: Float): Boolean {
         val sink = touchscreenSink ?: return false
         val now = System.currentTimeMillis()
-        val near = Math.hypot((event.rawX - sinkTapX).toDouble(), (event.rawY - sinkTapY).toDouble()) < TOUCHSCREEN_DOUBLE_TAP_DISTANCE
+        val near = Math.hypot((rawX - sinkTapX).toDouble(), (rawY - sinkTapY).toDouble()) < TOUCHSCREEN_DOUBLE_TAP_DISTANCE
         if (now - sinkTapTime >= TOUCHSCREEN_DOUBLE_TAP_MS || !near) {
-            sinkTapX = event.rawX
-            sinkTapY = event.rawY
+            sinkTapX = rawX
+            sinkTapY = rawY
         }
         sinkTapTime = now
+        sinkTouchX = sinkTapX
+        sinkTouchY = sinkTapY
         sinkTouchActive = sink.onTouch(0, sinkTapX, sinkTapY)
         return sinkTouchActive
     }
 
-    private fun handleTouchMove(event: MotionEvent) {
-        if (isInputSuspended) return
-        if (sinkTouchActive) {
-            touchscreenSink?.onTouch(1, event.rawX, event.rawY)
+    private fun handleTouchMove(event: MotionEvent, index: Int) {
+        readTouch(event, index, pressCurrent)
+        if (pressPending) {
+            val travel = Math.hypot((pressCurrent[0] - pressDown[0]).toDouble(), (pressCurrent[1] - pressDown[1]).toDouble())
+            if (travel > touchSlop) firePendingPress()
             return
         }
-        val transformedPoint = XForm.transformPoint(xform, event.x, event.y)
+        moveTouch()
+    }
+
+    private fun moveTouch() {
+        if (sinkTouchActive) {
+            sinkTouchX = pressCurrent[2]
+            sinkTouchY = pressCurrent[3]
+            touchscreenSink?.onTouch(1, sinkTouchX, sinkTouchY)
+            return
+        }
+        val transformedPoint = XForm.transformPoint(xform, pressCurrent[0], pressCurrent[1])
         xServer.injectPointerMove(transformedPoint[0].toInt(), transformedPoint[1].toInt())
     }
 
-    private fun handleTouchUp(event: MotionEvent) {
+    private fun handleTouchUp(event: MotionEvent, index: Int) {
+        readTouch(event, index, pressCurrent)
+        firePendingPress()
         if (sinkTouchActive) {
-            sinkTouchActive = false
-            touchscreenSink?.onTouch(2, event.rawX, event.rawY)
+            sinkTouchX = pressCurrent[2]
+            sinkTouchY = pressCurrent[3]
+        }
+        releaseTouchscreenPointers()
+    }
+
+    /** Ends (or never starts) the first finger's press; the pointer stays there for the pair's clicks. */
+    private fun startTwoFingerGesture(event: MotionEvent) {
+        val pressed = !pressPending
+        endTouchscreenPress()
+        if (!pressed && touchscreenSink?.onTouch(1, pressCurrent[2], pressCurrent[3]) != true) {
+            val transformedPoint = XForm.transformPoint(xform, pressCurrent[0], pressCurrent[1])
+            xServer.injectPointerMove(transformedPoint[0].toInt(), transformedPoint[1].toInt())
+        }
+        twoFingerGesture = true
+        twoFingerMoved = false
+        scrollAccumY = 0f
+        val first = event.findPointerIndex(touchPrimaryId)
+        val second = event.findPointerIndex(touchSecondId)
+        if (first < 0 || second < 0) {
+            twoFingerMoved = true
             return
         }
-        if (!isInputSuspended) xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
+        twoFingerStart[0] = event.getX(first)
+        twoFingerStart[1] = event.getY(first)
+        twoFingerStart[2] = event.getX(second)
+        twoFingerStart[3] = event.getY(second)
+        twoFingerLastY = (twoFingerStart[1] + twoFingerStart[3]) * 0.5f
     }
 
-    private fun handleTwoFingerScroll(event: MotionEvent) {
-        if (isInputSuspended) return
-        val activeFingers = fingers.filterNotNull()
-        if (activeFingers.size < 2) return
-        val finger1 = activeFingers[0]
-        val finger2 = activeFingers[1]
-        val scrollDistance = finger1.y - finger2.y
-        if (Math.abs(scrollDistance) > 10) {
-            val button = if (scrollDistance > 0) Pointer.Button.BUTTON_SCROLL_UP else Pointer.Button.BUTTON_SCROLL_DOWN
-            xServer.injectPointerButtonPress(button)
-            xServer.injectPointerButtonRelease(button)
+    private fun handleTwoFingerMove(event: MotionEvent) {
+        val first = event.findPointerIndex(touchPrimaryId)
+        val second = event.findPointerIndex(touchSecondId)
+        if (first < 0 || second < 0) return
+        val y1 = event.getY(first)
+        val y2 = event.getY(second)
+        if (!twoFingerMoved &&
+            (Math.hypot((event.getX(first) - twoFingerStart[0]).toDouble(), (y1 - twoFingerStart[1]).toDouble()) > touchSlop ||
+                Math.hypot((event.getX(second) - twoFingerStart[2]).toDouble(), (y2 - twoFingerStart[3]).toDouble()) > touchSlop)
+        ) {
+            twoFingerMoved = true
+        }
+        val y = (y1 + y2) * 0.5f
+        scrollAccumY += y - twoFingerLastY
+        twoFingerLastY = y
+        while (scrollAccumY <= -twoFingerScrollStep) {
+            clickPointerButton(Pointer.Button.BUTTON_SCROLL_DOWN)
+            scrollAccumY += twoFingerScrollStep
+        }
+        while (scrollAccumY >= twoFingerScrollStep) {
+            clickPointerButton(Pointer.Button.BUTTON_SCROLL_UP)
+            scrollAccumY -= twoFingerScrollStep
         }
     }
 
-    private fun handleTwoFingerTap(event: MotionEvent) {
-        if (event.pointerCount == 2 && tapToClickEnabled && !isInputSuspended) {
-            if (xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
-            }
-            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT)
-            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT)
+    private fun endTouchscreenPress() {
+        cancelPendingPress()
+        if (sinkTouchActive) {
+            sinkTouchActive = false
+            touchscreenSink?.onTouch(2, sinkTouchX, sinkTouchY)
         }
+        if (touchLeftPressed) {
+            touchLeftPressed = false
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
+        }
+    }
+
+    private fun releaseTouchscreenPointers() {
+        endTouchscreenPress()
+        touchPrimaryId = -1
+        touchSecondId = -1
+        twoFingerGesture = false
     }
 
     private fun handleFingerUp(finger1: Finger) {
@@ -612,31 +782,17 @@ class TouchpadView(
         val actionButton = event.actionButton
         when (event.action) {
             2, 7 -> {
-                val transformedPoint = XForm.transformPoint(xform, event.x, event.y)
-                if (xServer.isRelativeMouseMovement) {
-                    xServer.winHandler.mouseEvent(MouseEventFlags.MOVE, transformedPoint[0].toInt(), transformedPoint[1].toInt(), 0)
-                    updateVisibleRelativeCursor(transformedPoint[0].toInt(), transformedPoint[1].toInt())
-                } else {
-                    xServer.injectPointerMove(transformedPoint[0].toInt(), transformedPoint[1].toInt())
-                }
+                moveExternalMouse(event)
                 return true
             }
             8 -> {
-                val scrollY = event.getAxisValue(9)
-                if (scrollY <= -1.0f) {
-                    if (xServer.isRelativeMouseMovement) xServer.winHandler.mouseEvent(MouseEventFlags.WHEEL, 0, 0, scrollY.toInt())
-                    else {
-                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_DOWN)
-                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_DOWN)
-                    }
-                } else if (scrollY >= 1.0f) {
-                    if (xServer.isRelativeMouseMovement) xServer.winHandler.mouseEvent(MouseEventFlags.WHEEL, 0, 0, scrollY.toInt())
-                    else {
-                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_UP)
-                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_UP)
-                    }
-                }
+                onMouseWheel(event.getAxisValue(MotionEvent.AXIS_VSCROLL))
                 return true
+            }
+            9, 10 -> {
+                mouseLastX = Float.NaN
+                mouseLastY = Float.NaN
+                return false
             }
             11 -> {
                 if (actionButton == 1) {
@@ -717,9 +873,19 @@ class TouchpadView(
 
     private val pointerIdsToIgnore = mutableSetOf<Int>()
 
+    /** Pointers the on-screen controls hold; one that slides onto a control lets go of what it pressed here. */
     fun setPointerIdsToIgnore(ids: Set<Int>) {
         pointerIdsToIgnore.clear()
         pointerIdsToIgnore.addAll(ids)
+        if (touchPrimaryId in ids || touchSecondId in ids) releaseTouchscreenPointers()
+        for (i in 0 until MAX_FINGERS) {
+            val finger = fingers[i] ?: continue
+            if (i !in ids) continue
+            releasePointerButtonLeft(finger)
+            releasePointerButtonRight(finger)
+            fingers[i] = null
+            numFingers = (numFingers - 1).toByte()
+        }
     }
 
     var tapToClickEnabled = true
@@ -742,6 +908,15 @@ class TouchpadView(
     fun resetInputState() {
         screenTouchStick.releaseAll()
         rtsGestureEngine.releaseAll()
+        releaseTouches()
+        wheelAccum = 0f
+        mouseRemainderX = 0f
+        mouseRemainderY = 0f
+    }
+
+    private fun releaseTouches() {
+        longPressHandler.removeCallbacks(longPressRunnable)
+        longPressActive = false
         continueClick = false
         scrolling = false
         scrollAccumY = 0f
@@ -751,6 +926,7 @@ class TouchpadView(
         numFingers = 0
         fingerPointerButtonLeft = null
         fingerPointerButtonRight = null
+        releaseTouchscreenPointers()
 
         if (xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
             xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
