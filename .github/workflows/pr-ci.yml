@@ -2,12 +2,12 @@ name: PR CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ Windows-subsystem-test ]
     paths-ignore:
       - '**.md'
       - '.gitignore'
   pull_request:
-    branches: [ main ]
+    branches: [ Windows-subsystem-test ]
     paths-ignore:
       - '**.md'
       - '.gitignore'
