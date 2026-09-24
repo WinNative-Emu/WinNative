@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.winlator.cmod.feature.library.LinuxApps
+import com.winlator.cmod.runtime.audio.directaudio.DirectAudioDriver
 import com.winlator.cmod.runtime.compat.box64.Box64Preset
 import com.winlator.cmod.runtime.compat.fexcore.FEXCorePreset
 import com.winlator.cmod.runtime.content.ContentProfile
@@ -296,12 +297,14 @@ object ContainerCreation {
         runtime: ContentProfile?,
     ): Container? {
         val name = uniqueName(containerManager, GAMESCOPE_CONTAINER_NAME)
+        val wineVersion = runtime?.let { ContentsManager.getEntryName(it) } ?: WineInfo.MAIN_WINE_VERSION.identifier()
+        // Starts on DirectAudio; the container's settings can change it later.
+        val data = buildLaunchReadyData(context, contentsManager, name, wineVersion)
+            .put("audioDriver", DirectAudioDriver.IDENTIFIER)
         val created =
             if (runtime != null) {
-                val data = buildLaunchReadyData(context, contentsManager, name, ContentsManager.getEntryName(runtime))
                 containerManager.createContainer(data, contentsManager)
             } else {
-                val data = buildLaunchReadyData(context, contentsManager, name, WineInfo.MAIN_WINE_VERSION.identifier())
                 containerManager.createPrefixlessContainer(data)
             }
         val container = created ?: return null
