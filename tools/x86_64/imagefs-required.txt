@@ -1,0 +1,14 @@
+# Paths the app reads inside the x86_64 imagefs (relative to the imagefs root), one per line.
+# "#" starts a comment. Derived from ImageFs.java and GuestProgramLauncherComponent.java; anything else
+# the arm64 image carries is unknown (imagefs.tzst is a Git LFS object that has not been inspected).
+#
+# NOT listed on purpose: libandroid-sysvshm.so. The launcher copies it from the APK's nativeLibraryDir
+# (ensureImageFsNativeLibrary), so it belongs in app/src/main/jniLibs/x86_64/, not in the image.
+
+usr/lib                                            # ImageFs.getLibDir(); the guest's LD_LIBRARY_PATH
+usr/bin                                            # ImageFs.getBinDir()
+usr/share                                          # ImageFs.getShareDir()
+usr/lib/libc++_shared.so                           # C++ runtime for the bionic-linked Wine components
+usr/lib/libvulkan.so.1                             # Vulkan loader used by Wine's Vulkan layer
+usr/lib/libredirect.so                             # LD_PRELOAD path redirection; source of the x86_64 build unknown
+usr/share/vulkan/icd.d/wrapper_icd.x86_64.json     # VK_ICD_FILENAMES target; needs an x86_64 wrapper build
