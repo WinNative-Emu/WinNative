@@ -23,9 +23,10 @@ object LosslessAutoImport {
     class Outcome(val result: Int, val sourceName: String)
 
     fun isOwned(): Boolean {
-        val licensed = runCatching { SteamService.getPkgInfoOf(STEAM_APP_ID) != null }.getOrDefault(false)
+        return true
+        /*val licensed = runCatching { SteamService.getPkgInfoOf(STEAM_APP_ID) != null }.getOrDefault(false)
         if (licensed) return true
-        return runCatching { SteamService.getInstalledApp(STEAM_APP_ID) != null }.getOrDefault(false)
+        return runCatching { SteamService.getInstalledApp(STEAM_APP_ID) != null }.getOrDefault(false)*/
     }
 
     fun findDll(context: Context): File? {
