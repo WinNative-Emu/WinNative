@@ -18,7 +18,7 @@
 #include "shaders/dis_interpolate_comp.spv.h"
 #include "shaders/dis_hist_comp.spv.h"
 #include "shaders/dis_side_comp.spv.h"
-#include "shaders/dis_temporal_comp.spv.h"
+#include "shaders/dis_flow_pack_comp.spv.h"
 #include "shaders/dis_vr_prep_comp.spv.h"
 #include "shaders/dis_vr_d1_comp.spv.h"
 #include "shaders/dis_vr_d2_comp.spv.h"
@@ -154,7 +154,7 @@ struct VkrDis {
     DisImage flow_refined;
     DisImage hist[2];
     DisImage side;
-    DisImage flow_smooth[2];
+    DisImage flow_out;
 
     VkImageView view_color[DIS_SLOTS];
     VkImageView view_flow_color[DIS_SLOTS][DIS_MAX_LEVELS];
@@ -174,7 +174,7 @@ struct VkrDis {
     VkImageView view_flow_refined[DIS_MAX_LEVELS];
     VkImageView view_hist[2];
     VkImageView view_side;
-    VkImageView view_flow_smooth[2];
+    VkImageView view_flow_out;
 
     VkSampler sampler;
 
@@ -190,7 +190,7 @@ struct VkrDis {
     VkDescriptorSet interp_sets[DIS_SLOTS][2];
     VkDescriptorSet hist_sets[DIS_SLOTS][2];
     VkDescriptorSet side_sets[DIS_SLOTS];
-    VkDescriptorSet temporal_sets[2];
+    VkDescriptorSet pack_set;
 
     VkDescriptorSetLayout vr_set_layout;
     VkPipelineLayout vr_pipeline_layout;
@@ -211,7 +211,7 @@ struct VkrDis {
     DisPass pass_interp;
     DisPass pass_hist;
     DisPass pass_side;
-    DisPass pass_temporal;
+    DisPass pass_pack;
     DisPass pass_vr_prep;
     DisPass pass_vr_d1;
     DisPass pass_vr_d2;
@@ -355,8 +355,7 @@ static uint32_t dis_collect_images(VkrDis* d, DisImage** out, uint32_t cap) {
     DIS_PUSH(&d->hist[0]);
     DIS_PUSH(&d->hist[1]);
     DIS_PUSH(&d->side);
-    DIS_PUSH(&d->flow_smooth[0]);
-    DIS_PUSH(&d->flow_smooth[1]);
+    DIS_PUSH(&d->flow_out);
     #undef DIS_PUSH
     return n;
 }
@@ -556,7 +555,7 @@ static bool dis_create_pipelines(VkrDis* d) {
     const uint32_t shared_sets = DIS_SLOTS * DIS_MAX_LEVELS * DIS_SHARED_SETS_PER_LEVEL
                                + DIS_SLOTS * 2u   // interpolation sets, one per history direction
                                + DIS_SLOTS        // side-map sets
-                               + 2u;              // temporal flow sets, one per direction
+                               + 1u;              // flow pack set
     // VR sets exist only for the levels the refinement actually runs on.
     const uint32_t vr_sets = (DIS_SLOTS
                            + DIS_VR_SHARED_SETS) * DIS_VR_LEVELS;
@@ -658,14 +657,14 @@ static bool dis_create_pipelines(VkrDis* d) {
     d->pass_vr_add.pipeline = dis_create_compute_pipeline_with_layout(d, dis_vr_add_comp, dis_vr_add_comp_size, d->vr_pipeline_layout, NULL);
     d->pass_hist.pipeline = dis_create_compute_pipeline_with_layout(d, dis_hist_comp, dis_hist_comp_size, d->vr_pipeline_layout, NULL);
     d->pass_side.pipeline = dis_create_compute_pipeline(d, dis_side_comp, dis_side_comp_size);
-    d->pass_temporal.pipeline = dis_create_compute_pipeline(d, dis_temporal_comp, dis_temporal_comp_size);
+    d->pass_pack.pipeline = dis_create_compute_pipeline(d, dis_flow_pack_comp, dis_flow_pack_comp_size);
 
     if (!d->pass_gradient.pipeline || !d->pass_inverse.pipeline || !d->pass_propagate.pipeline ||
         !d->pass_densify.pipeline || !d->pass_interp.pipeline ||
         !d->pass_vr_prep.pipeline || !d->pass_vr_d1.pipeline || !d->pass_vr_d2.pipeline ||
         !d->pass_vr_w.pipeline || !d->pass_vr_coef.pipeline || !d->pass_vr_sor.pipeline ||
         !d->pass_vr_add.pipeline || !d->pass_hist.pipeline || !d->pass_side.pipeline ||
-        !d->pass_temporal.pipeline) {
+        !d->pass_pack.pipeline) {
         return false;
     }
     return true;
@@ -836,7 +835,7 @@ static void dis_write_all_descriptors(VkrDis* d) {
         for (uint32_t dir = 0; dir < 2u; dir++) {
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 0, d->view_color[prev], d->sampler);
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 1, d->view_color[next], d->sampler);
-            dis_batch_sampled(d, &b, d->interp_sets[s][dir], 2, d->view_flow_smooth[dir], d->sampler);
+            dis_batch_sampled(d, &b, d->interp_sets[s][dir], 2, d->view_flow_out, d->sampler);
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 3, d->view_side, d->sampler);
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 4, d->view_hist[dir], d->sampler);
             dis_batch_storage(d, &b, d->interp_sets[s][dir], 5, d->view_interp_out);
@@ -896,13 +895,10 @@ static void dis_write_all_descriptors(VkrDis* d) {
         dis_batch_storage(d, &b, d->vr_add_set[l], DIS_VR_FIRST_STORAGE, d->view_flow_refined[l]);
     }
 
-    // Not per slot: both inputs and the output are single images, and these sets are
-    // written once here and never updated, so sharing them across frames is safe.
-    for (uint32_t dir = 0; dir < 2u; dir++) {
-        dis_batch_sampled(d, &b, d->temporal_sets[dir], 0, d->view_flow_refined[0], d->sampler);
-        dis_batch_sampled(d, &b, d->temporal_sets[dir], 1, d->view_flow_smooth[1u - dir], d->sampler);
-        dis_batch_storage(d, &b, d->temporal_sets[dir], 5, d->view_flow_smooth[dir]);
-    }
+    // Not per slot: the input and the output are single images, and this set is written
+    // once here and never updated, so sharing it across frames is safe.
+    dis_batch_sampled(d, &b, d->pack_set, 0, d->view_flow_refined[0], d->sampler);
+    dis_batch_storage(d, &b, d->pack_set, 5, d->view_flow_out);
 
     dis_batch_flush(d, &b);
 }
@@ -913,8 +909,7 @@ static void dis_destroy_views(VkrDis* d) {
     dis_destroy_view(d, &d->view_hist[0]);
     dis_destroy_view(d, &d->view_hist[1]);
     dis_destroy_view(d, &d->view_side);
-    dis_destroy_view(d, &d->view_flow_smooth[0]);
-    dis_destroy_view(d, &d->view_flow_smooth[1]);
+    dis_destroy_view(d, &d->view_flow_out);
     for (uint32_t l = 0; l < DIS_MAX_LEVELS; l++) {
         dis_destroy_view(d, &d->view_vr_prep[l]);
         dis_destroy_view(d, &d->view_vr_d1[l]);
@@ -962,8 +957,7 @@ static void dis_destroy_images(VkrDis* d) {
     dis_destroy_image(d, &d->hist[0]);
     dis_destroy_image(d, &d->hist[1]);
     dis_destroy_image(d, &d->side);
-    dis_destroy_image(d, &d->flow_smooth[0]);
-    dis_destroy_image(d, &d->flow_smooth[1]);
+    dis_destroy_image(d, &d->flow_out);
 }
 
 static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t full_w,
@@ -1027,13 +1021,9 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
     if (!dis_create_image(d, &d->side, w, h, VK_FORMAT_R32_SFLOAT, 1,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    // Ping-pong for the temporally smoothed field, level 0 only, at the flow extent.
-    // Four channels, not two: xy is this pair's chord and zw the previous pair's chord
-    // for the same content, so the interpolate pass gets both from the one fetch it was
-    // already making. The storage format is the same one the sparse flow maps use.
-    if (!dis_create_image(d, &d->flow_smooth[0], w, h, VK_FORMAT_R32G32B32A32_SFLOAT, 1,
-                          VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->flow_smooth[1], w, h, VK_FORMAT_R32G32B32A32_SFLOAT, 1,
+    // The finished level-0 field as the interpolate pass reads it: RG16F is filterable on
+    // every device, so its three lookups per output pixel stay single bilinear taps.
+    if (!dis_create_image(d, &d->flow_out, w, h, VK_FORMAT_R16G16_SFLOAT, 1,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
 
     for (uint32_t s = 0; s < DIS_SLOTS; s++) {
@@ -1064,8 +1054,7 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
     if (!dis_create_view(d, d->hist[0].image, VK_FORMAT_R32_SFLOAT, 0, 1, &d->view_hist[0])) return false;
     if (!dis_create_view(d, d->hist[1].image, VK_FORMAT_R32_SFLOAT, 0, 1, &d->view_hist[1])) return false;
     if (!dis_create_view(d, d->side.image, VK_FORMAT_R32_SFLOAT, 0, 1, &d->view_side)) return false;
-    if (!dis_create_view(d, d->flow_smooth[0].image, VK_FORMAT_R32G32B32A32_SFLOAT, 0, 1, &d->view_flow_smooth[0])) return false;
-    if (!dis_create_view(d, d->flow_smooth[1].image, VK_FORMAT_R32G32B32A32_SFLOAT, 0, 1, &d->view_flow_smooth[1])) return false;
+    if (!dis_create_view(d, d->flow_out.image, VK_FORMAT_R16G16_SFLOAT, 0, 1, &d->view_flow_out)) return false;
 
     vkr_dis_reset(d);
     dis_write_all_descriptors(d);
@@ -1113,8 +1102,7 @@ static bool dis_allocate_sets(VkrDis* d) {
         }
     }
 
-    if (!dis_alloc(d, d->set_layout, 1, &d->temporal_sets[0])) return false;
-    if (!dis_alloc(d, d->set_layout, 1, &d->temporal_sets[1])) return false;
+    if (!dis_alloc(d, d->set_layout, 1, &d->pack_set)) return false;
 
     for (uint32_t l = 0; l < DIS_VR_LEVELS; l++) {
         VkDescriptorSet vr_sets[DIS_VR_SHARED_SETS];
@@ -1188,6 +1176,7 @@ static const char* dis_format_name(VkFormat f) {
         case VK_FORMAT_R16_SFLOAT: return "R16_SFLOAT";
         case VK_FORMAT_R32_SFLOAT: return "R32_SFLOAT";
         case VK_FORMAT_R32G32_SFLOAT: return "R32G32_SFLOAT";
+        case VK_FORMAT_R16G16_SFLOAT: return "R16G16_SFLOAT";
         case VK_FORMAT_R32G32B32A32_SFLOAT: return "R32G32B32A32_SFLOAT";
         case VK_FORMAT_R8G8B8A8_UNORM: return "R8G8B8A8_UNORM";
         case VK_FORMAT_UNDEFINED: return "none";
@@ -1229,6 +1218,7 @@ static bool dis_audit_formats(VkrDis* d) {
         const char* purpose;
     } reqs[] = {
         {VK_FORMAT_R32G32_SFLOAT, STORE | READ, "optical flow"},
+        {VK_FORMAT_R16G16_SFLOAT, STORE | READ, "interpolation flow"},
         {VK_FORMAT_R32G32B32A32_SFLOAT, STORE | READ, "sparse flow and refinement"},
         {VK_FORMAT_R32_SFLOAT, STORE | READ, "refinement weights"},
         {VK_FORMAT_R8G8B8A8_UNORM, STORE | VK_FORMAT_FEATURE_BLIT_SRC_BIT,
@@ -1262,11 +1252,11 @@ static bool dis_audit_formats(VkrDis* d) {
 
     VkFormatProperties flow_fp;
     memset(&flow_fp, 0, sizeof(flow_fp));
-    vkd.GetPhysicalDeviceFormatProperties(d->physical_device, VK_FORMAT_R32G32_SFLOAT, &flow_fp);
+    vkd.GetPhysicalDeviceFormatProperties(d->physical_device, VK_FORMAT_R16G16_SFLOAT, &flow_fp);
     d->manual_flow_filter = (flow_fp.optimalTilingFeatures & FILTER) == 0;
 
     DIS_LOGI("DIS format support: %s | flow filtering: %s", line,
-             d->manual_flow_filter ? "in shader (driver cannot filter R32G32_SFLOAT)"
+             d->manual_flow_filter ? "in shader (driver cannot filter R16G16_SFLOAT)"
                                    : "sampler");
     return ok;
 }
@@ -1321,7 +1311,8 @@ void vkr_dis_destroy(VkrDis* d) {
     if (d->pass_vr_sor.pipeline) vkd.DestroyPipeline(d->device, d->pass_vr_sor.pipeline, NULL);
     if (d->pass_vr_add.pipeline) vkd.DestroyPipeline(d->device, d->pass_vr_add.pipeline, NULL);
     if (d->pass_hist.pipeline) vkd.DestroyPipeline(d->device, d->pass_hist.pipeline, NULL);
-    if (d->pass_temporal.pipeline) vkd.DestroyPipeline(d->device, d->pass_temporal.pipeline, NULL);
+    if (d->pass_side.pipeline) vkd.DestroyPipeline(d->device, d->pass_side.pipeline, NULL);
+    if (d->pass_pack.pipeline) vkd.DestroyPipeline(d->device, d->pass_pack.pipeline, NULL);
     if (d->pool) vkd.DestroyDescriptorPool(d->device, d->pool, NULL);
     if (d->pipeline_layout) vkd.DestroyPipelineLayout(d->device, d->pipeline_layout, NULL);
     if (d->vr_pipeline_layout) vkd.DestroyPipelineLayout(d->device, d->vr_pipeline_layout, NULL);
@@ -1808,17 +1799,10 @@ void vkr_dis_process(VkrDis* d, VkCommandBuffer cmd, VkImage source, uint32_t wi
         const uint32_t hist_dir = 1u - d->hist_parity;
         const int hist_reset = d->hist_valid ? 0 : 1;
 
-        // Temporal consistency of the field, before anything reads it. Shares the
-        // history parity with the overlay confidence below: both flip once per source
-        // pair, and hist_valid covers both.
-        vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_temporal.pipeline);
-        vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pipeline_layout, 0, 1,
-                                  &d->temporal_sets[hist_dir], 0, NULL);
-        vkd.CmdPushConstants(cmd, d->pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-                             sizeof(hist_reset), &hist_reset);
-        vkd.CmdDispatch(cmd, (w + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE,
-                        (h + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE, 1);
-        dis_compute_barrier(cmd);
+        // The three per-pair products the interpolate pass reads are independent of each
+        // other - the packed field and the side map read the refined field, the overlay
+        // history reads the colour pair - so they share one barrier.
+        dis_dispatch(d, cmd, d->pass_pack.pipeline, d->pack_set, w, h);
 
         vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_hist.pipeline);
         vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
@@ -1827,11 +1811,10 @@ void vkr_dis_process(VkrDis* d, VkCommandBuffer cmd, VkImage source, uint32_t wi
                              sizeof(hist_reset), &hist_reset);
         vkd.CmdDispatch(cmd, (hist_w + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE,
                         (hist_h + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE, 1);
-        dis_compute_barrier(cmd);
         d->hist_parity = hist_dir;
         d->hist_valid = true;
 
-        // Which real frame a true occlusion takes, one value per level-0 texel.
+        // Which real frame a true occlusion takes, and how sure, per level-0 texel.
         dis_dispatch(d, cmd, d->pass_side.pipeline, d->side_sets[slot], w, h);
         dis_compute_barrier(cmd);
     }
