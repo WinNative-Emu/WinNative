@@ -385,7 +385,7 @@ int main(int argc, char *const argv[]) {
   tracee = get_tracee(NULL, 0, true);
   if (tracee == NULL)
     goto error;
-  tracee->pid = getpid();
+  set_tracee_pid(tracee, getpid());
 
   /* Set verboseness from env variable, may be overriden by option */
   {

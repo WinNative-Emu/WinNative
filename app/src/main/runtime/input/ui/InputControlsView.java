@@ -685,7 +685,7 @@ public class InputControlsView extends View {
 
   @Override
   protected void onDetachedFromWindow() {
-    cancelContinuousMouseMove();
+    cancelActiveTouches();
     if (mouseMoveTimer != null) {
       mouseMoveTimer.cancel();
       mouseMoveTimer = null;
@@ -701,14 +701,17 @@ public class InputControlsView extends View {
     if (xServer == null) return;
     WinHandler winHandler = xServer.getWinHandler();
     if (mouseMoveTimer == null && profile != null) {
-      final float cursorSpeed = profile.getCursorSpeed();
       mouseMoveTimer = new Timer();
       mouseMoveTimer.schedule(
           new TimerTask() {
             @Override
             public void run() {
               if (getContext() instanceof XServerDisplayActivity && ((XServerDisplayActivity)getContext()).isInputSuspended()) return;
-              if (mouseMoveOffsetX != 0 || mouseMoveOffsetY != 0) {                int dx = (int) (mouseMoveOffsetX * cursorSpeed * 20);
+              ControlsProfile currentProfile = profile;
+              if (currentProfile == null) return;
+              if (mouseMoveOffsetX != 0 || mouseMoveOffsetY != 0) {
+                float cursorSpeed = currentProfile.getCursorSpeed();
+                int dx = (int) (mouseMoveOffsetX * cursorSpeed * 20);
                 int dy = (int) (mouseMoveOffsetY * cursorSpeed * 20);
                 if (xServer.isRelativeMouseMovement()) {
                   xServer.updatePointerForDisplayDelta(dx, dy);
@@ -987,6 +990,8 @@ public class InputControlsView extends View {
             }
 
             batchingUpdates = false;
+            // Held back to the next frame, a stick drag reaches the game up to a frame late.
+            if (eventHandled) requestUnbufferedDispatch(event);
             if (eventHandled || staleReleased) flushGamepadState();
             syncCapturedPointers();
             if (!eventHandled) dispatchUnhandledTouch(event);
@@ -1065,6 +1070,7 @@ public class InputControlsView extends View {
 
             batchingUpdates = false;
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+            if (anyControlHandled) requestUnbufferedDispatch(event);
             if (anyControlHandled && winHandler != null) {
               winHandler.sendGamepadState();
             }

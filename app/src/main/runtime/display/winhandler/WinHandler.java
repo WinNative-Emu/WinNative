@@ -711,9 +711,23 @@ public class WinHandler {
     if (xServer != null && xServer.getRenderer() != null) xServer.getRenderer().requestRenderCoalesced(VulkanRenderer.WAKE_WINHANDLER);
   }
 
+  /**
+   * A GameScope guest learns of pads only as it starts (its udev monitor never reports one added
+   * later), so there no slot is ever removed: a disconnect or a move leaves it present and
+   * neutral, and whichever pad takes it next reaches the game through it.
+   */
+  private boolean slotsOutliveDevices() {
+    return this.activity.isGamescopeMode();
+  }
+
   public void representVirtualGamepad() {
     Integer slot = this.deviceToSlot.get(OSC_DEVICE_ID);
     if (slot == null || slot < 0 || slot >= MAX_CONTROLLERS) {
+      return;
+    }
+    if (slotsOutliveDevices()) {
+      ensureWriterForSlot(slot);
+      if (this.writers[slot] != null) this.writers[slot].requestFullResend();
       return;
     }
     if (this.writers[slot] != null) {
@@ -825,6 +839,38 @@ public class WinHandler {
       this.writers[virtualSlot].writeGamepadState(this.idleGamepadState);
     } catch (IOException ignored) {
     }
+  }
+
+  private static final long GUIDE_TAP_MS = 120;
+  private volatile Runnable pendingGuideRelease;
+
+  /** A guide press released before the hold opens the menu: the guest gets a tap (Steam opens its menu). */
+  public void tapGuide(int deviceId) {
+    if (Looper.myLooper() != Looper.getMainLooper()) {
+      this.inputHandler.post(() -> tapGuide(deviceId));
+      return;
+    }
+    ExternalController controller = getController(deviceId);
+    if (controller == null) return;
+    // A tap still in flight ends first, so two quick taps reach the guest as two presses.
+    Runnable inFlight = this.pendingGuideRelease;
+    if (inFlight != null) {
+      this.inputHandler.removeCallbacks(inFlight);
+      inFlight.run();
+    }
+    setGuidePressed(controller, true);
+    Runnable release = () -> {
+      pendingGuideRelease = null;
+      setGuidePressed(controller, false);
+    };
+    pendingGuideRelease = release;
+    this.inputHandler.postDelayed(release, GUIDE_TAP_MS);
+  }
+
+  private void setGuidePressed(ExternalController controller, boolean pressed) {
+    controller.state.setPressed(GamepadState.BUTTON_GUIDE, pressed);
+    controller.remappedState.setPressed(GamepadState.BUTTON_GUIDE, pressed);
+    sendGamepadState(controller);
   }
 
   public void sendGamepadState(ExternalController controller) {
@@ -988,7 +1034,7 @@ public class WinHandler {
 
     ensureWriterForSlot(targetSlot);
     if (this.writers[currentSlot] != null) {
-      if (releaseVacatedSlot && !isPhysicalSlotOccupied(currentSlot)) {
+      if (releaseVacatedSlot && !isPhysicalSlotOccupied(currentSlot) && !slotsOutliveDevices()) {
         // The virtual pad is leaving this slot for good (consolidation, not a
         // hand-off to an incoming physical pad). Tear it down so winebus sees the
         // device disappear instead of a phantom stuck-at-neutral controller.
@@ -1165,7 +1211,10 @@ public class WinHandler {
         if (this.fallbackSlot == slot) {
           this.fallbackSlot = -1;
         }
-        if (this.writers[slot] != null) {
+        if (this.writers[slot] != null && slotsOutliveDevices()) {
+          // Released to neutral and kept for the next pad; the guest would never find a new one.
+          this.writers[slot].reset();
+        } else if (this.writers[slot] != null) {
           // Remove the discovery node so winebus sees a disconnect; event bytes live in
           // the slot ring and are not replayed by reopening this path.
           this.writers[slot].destroy();
@@ -1534,6 +1583,11 @@ public class WinHandler {
 
   public void closeFakeInputWriter() {
     cancelPendingVirtualGamepadRebalance();
+    Runnable guideRelease = this.pendingGuideRelease;
+    if (guideRelease != null) {
+      this.inputHandler.removeCallbacks(guideRelease);
+      this.pendingGuideRelease = null;
+    }
     cancelAllPendingDeviceReleases();
     if (this.inputManager != null && this.inputDeviceListener != null) {
       this.inputManager.unregisterInputDeviceListener(this.inputDeviceListener);
@@ -1629,7 +1683,12 @@ public class WinHandler {
     boolean handled = false;
     int deviceId = event.getDeviceId();
     ExternalController controller = getController(deviceId);
-    if (controller != null && event.getRepeatCount() == 0) {
+    if (controller != null && event.getRepeatCount() > 0) {
+      // A held button repeats. Its state is already set; passed on, a repeat would move Android's
+      // focus (D-pad) or be treated as another key. Guide stays with the activity's hold timer.
+      return event.getKeyCode() != KeyEvent.KEYCODE_BUTTON_MODE;
+    }
+    if (controller != null) {
       int action = event.getAction();
       if (action == 0 || action == 1) {
         handled = controller.updateStateFromKeyEvent(event);
