@@ -2941,6 +2941,9 @@ Cale instalata:
     <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
     <string name="container_graphics_driver_gamescope_help">Inclus în mediul Linux. Driverele Android descărcate se aplică doar containerelor Wine și Proton.</string>
     <string name="linux_runtime_windows_program">Acesta este un program Windows. Mută-l într-un container Wine din setările scurtăturii pentru a-l porni.</string>
+    <string name="linux_steam_library_named">WinNative (%1$s)</string>
+    <string name="linux_steam_library_internal">Stocare internă</string>
+    <string name="linux_steam_library_device_storage">Stocarea dispozitivului</string>
     <string name="settings_content_badge_online">Online</string>
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>

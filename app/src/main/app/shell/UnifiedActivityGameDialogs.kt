@@ -3380,7 +3380,7 @@ private fun UnifiedActivity.startLibraryStorageMove(
     popup.show()
     lifecycleScope.launch {
         val result =
-            LibraryStorageMove.move(plan) { copied, total ->
+            LibraryStorageMove.move(applicationContext, plan) { copied, total ->
                 if (total > 0L) popup.setProgress(((copied * 100L) / total).toInt())
             }
         popup.close()

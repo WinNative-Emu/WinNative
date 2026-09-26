@@ -114,7 +114,7 @@ case $mode in
     case ${1:-} in
       steam://rungameid/?????????????????*) deferred=$1; shift ;;
     esac
-    # Register the games the app downloaded (bound at /mnt/winnative) with the client, and the
+    # Register the libraries the app maps in (/etc/winnative/steam-libraries) with the client, and the
     # ARM64 Proton that lets it launch the Windows ones. Neither is worth losing the session over.
     winnative-steam-library "$steam_root" || true
     winnative-steam-compat "$steam_root" || true

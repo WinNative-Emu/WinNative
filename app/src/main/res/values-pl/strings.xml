@@ -2948,6 +2948,9 @@ Zainstalowana ścieżka:
     <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
     <string name="container_graphics_driver_gamescope_help">Wbudowany w środowisko Linux. Pobrane sterowniki Androida dotyczą tylko kontenerów Wine i Proton.</string>
     <string name="linux_runtime_windows_program">To program dla Windows. Aby go uruchomić, przenieś go do kontenera Wine w ustawieniach skrótu.</string>
+    <string name="linux_steam_library_named">WinNative (%1$s)</string>
+    <string name="linux_steam_library_internal">Pamięć wewnętrzna</string>
+    <string name="linux_steam_library_device_storage">Pamięć urządzenia</string>
     <string name="settings_content_badge_online">Online</string>
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>

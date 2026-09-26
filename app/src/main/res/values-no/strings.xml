@@ -2941,6 +2941,9 @@ Installert bane:
     <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
     <string name="container_graphics_driver_gamescope_help">Innebygd i Linux-miljøet. Nedlastede Android-drivere gjelder bare for Wine- og Proton-containere.</string>
     <string name="linux_runtime_windows_program">Dette er et Windows-program. Flytt det til en Wine-container i snarveisinnstillingene for å starte det.</string>
+    <string name="linux_steam_library_named">WinNative (%1$s)</string>
+    <string name="linux_steam_library_internal">Intern lagring</string>
+    <string name="linux_steam_library_device_storage">Enhetslagring</string>
     <string name="settings_content_badge_online">Online</string>
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>

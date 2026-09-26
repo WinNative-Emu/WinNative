@@ -10,6 +10,7 @@ EXTRA_WRAPPER = "winnative-proton-wrap"
 SOURCES = ("Proton Experimental (ARM64)", "Proton 11.0 (ARM64)")
 BUNDLED = "/opt/winnative-proton"
 LIBRARY = "/mnt/winnative"
+LIBRARY_LIST = "/etc/winnative/steam-libraries"
 TOKEN = re.compile(r'\s*(?:"((?:[^"\\]|\\.)*)"|([{}])|//[^\n]*)')
 NOT_GAMES = frozenset((
     "228980", "1070560", "1391110", "1493710", "3127680", "4183110",
@@ -200,9 +201,19 @@ def manifest_entry_point(path):
     return None
 
 
+def libraries(steam_root):
+    found = [steam_root, LIBRARY]
+    try:
+        with open(LIBRARY_LIST, encoding="utf-8") as f:
+            found += [line.partition("\t")[0] for line in f.read().splitlines() if line]
+    except OSError:
+        pass
+    return list(dict.fromkeys(found))
+
+
 def mapped_apps(steam_root):
     apps = set()
-    for library in (steam_root, LIBRARY):
+    for library in libraries(steam_root):
         steamapps = os.path.join(library, "steamapps")
         try:
             names = os.listdir(steamapps)

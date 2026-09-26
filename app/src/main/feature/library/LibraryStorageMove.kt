@@ -5,8 +5,18 @@ import android.os.StatFs
 import com.winlator.cmod.app.db.PluviaDatabase
 import com.winlator.cmod.feature.stores.steam.data.AppInfo
 import com.winlator.cmod.feature.stores.steam.service.SteamService
+import com.winlator.cmod.runtime.container.ContainerManager
 import com.winlator.cmod.shared.android.StoragePathUtils
 import java.io.File
+import java.io.IOException
+import java.nio.file.FileVisitResult
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
+import java.nio.file.attribute.BasicFileAttributes
+import java.util.stream.Collectors
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -88,10 +98,12 @@ object LibraryStorageMove {
      * Moves the game and records the new location. [onProgress] is called with bytes copied so far
      * and the total, and is not called at all when the move turns out to be a rename.
      *
-     * The source is only removed once every file has been written, so a failure part way through
-     * leaves the playable copy where it was.
+     * With room for a second copy the source is only removed once every file has been written. Without
+     * it, the game is moved a file at a time, so only the largest file needs room; a failure moves the
+     * files back, and a move that is cut short resumes from where it stopped the next time it is run.
      */
     suspend fun move(
+        context: Context,
         plan: Plan,
         onProgress: (Long, Long) -> Unit = { _, _ -> },
     ): Result<File> =
@@ -99,8 +111,10 @@ object LibraryStorageMove {
             runCatching {
                 val source = plan.source
                 val destination = plan.destination
+                val journal = File(source, JOURNAL)
                 check(source.isDirectory) { "${source.path} is not a directory" }
-                check(!destination.exists() || destination.list()?.isEmpty() != false) {
+                val resuming = journal.isFile && journal.readText().trim() == destination.path
+                check(resuming || !destination.exists() || destination.list()?.isEmpty() != false) {
                     "${destination.path} already exists"
                 }
                 val parent = destination.parentFile
@@ -108,16 +122,50 @@ object LibraryStorageMove {
                     "cannot create ${destination.parent}"
                 }
 
-                val total = sizeOf(source)
-                check(freeSpace(parent) >= total) { "not enough room in ${parent.path}" }
-
-                if (!source.renameTo(destination)) {
-                    copyTree(source, destination, total, onProgress)
-                    check(sizeOf(destination) == total) { "copy of ${source.name} is incomplete" }
-                    check(deleteTree(source)) { "could not remove ${source.path}" }
+                if (!resuming && destination.isDirectory) destination.delete()
+                val renamed = !resuming && source.renameTo(destination)
+                if (!renamed) {
+                    val all = entries(source)
+                    val files = all.filter { it.isFile && it != journal }
+                    val total = files.sumOf { it.length() } + if (resuming && destination.isDirectory) sizeOf(destination) else 0L
+                    val free = freeSpace(parent)
+                    if (!resuming && free >= total) {
+                        try {
+                            copyTree(source, destination, total, onProgress)
+                            check(sizeOf(destination) == total) { "copy of ${source.name} is incomplete" }
+                        } catch (error: Throwable) {
+                            deleteTree(destination)
+                            throw error
+                        }
+                    } else {
+                        val largest = files.maxOfOrNull { it.length() } ?: 0L
+                        check(free >= largest + MOVE_HEADROOM) { "not enough room in ${parent.path}" }
+                        journal.writeText(destination.path)
+                        for (dir in all.filter { it.isDirectory }) {
+                            val target = target(source, destination, dir)
+                            check(target.isDirectory || target.mkdirs()) { "cannot create ${target.path}" }
+                        }
+                        val (markers, data) = files.partition { it.parentFile == source && it.name.startsWith(".") }
+                        try {
+                            moveFiles(source, destination, data, total, onProgress)
+                            for (marker in markers) copyFile(marker, target(source, destination, marker))
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (error: Throwable) {
+                            runCatching { moveFiles(destination, source, entries(destination).filter { it.isFile }, 0L) { _, _ -> } }
+                                .onSuccess { deleteTree(destination); journal.delete() }
+                                .onFailure { Timber.e(it, "Could not put %s back after a failed move", source.path) }
+                            throw error
+                        }
+                    }
                 }
 
                 record(plan.appId, destination)
+                runCatching { LinuxSteamLibrary.relink(ContainerManager(context), plan.appId, destination) }
+                    .onFailure { Timber.w(it, "Could not update the entries of appId=%d", plan.appId) }
+                if (!renamed && !deleteTree(source)) {
+                    Timber.w("Moved appId=%d but could not fully remove %s", plan.appId, source.path)
+                }
                 destination
             }.onFailure { Timber.e(it, "Could not move appId=%d to %s", plan.appId, plan.destination.path) }
         }
@@ -139,14 +187,36 @@ object LibraryStorageMove {
         }
     }
 
-    private fun sizeOf(dir: File): Long =
-        dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+    private fun entries(root: File): List<File> =
+        Files.walk(root.toPath()).use { stream -> stream.map { it.toFile() }.collect(Collectors.toList()) }
+
+    private fun sizeOf(dir: File): Long = entries(dir).filter { it.isFile }.sumOf { it.length() }
 
     private fun freeSpace(dir: File): Long =
         runCatching {
             val stat = StatFs(dir.path)
             stat.availableBlocksLong * stat.blockSizeLong
         }.getOrDefault(Long.MAX_VALUE)
+
+    private fun target(
+        from: File,
+        to: File,
+        entry: File,
+    ): File = File(to, entry.path.substring(from.path.length).trimStart(File.separatorChar))
+
+    private fun copyFile(
+        entry: File,
+        target: File,
+    ) {
+        val dir = target.parentFile
+        check(dir != null && (dir.isDirectory || dir.mkdirs())) { "cannot create ${target.parent}" }
+        entry.inputStream().use { input ->
+            target.outputStream().use { output -> input.copyTo(output, DEFAULT_BUFFER_SIZE) }
+        }
+        // The executable bit is what shared storage could not keep, so it is carried over here.
+        if (entry.canExecute()) target.setExecutable(true, false)
+        target.setLastModified(entry.lastModified())
+    }
 
     private suspend fun copyTree(
         source: File,
@@ -156,20 +226,15 @@ object LibraryStorageMove {
     ) {
         var copied = 0L
         var reported = 0L
-        val prefix = source.path.length
-        for (entry in source.walkTopDown()) {
+        for (entry in entries(source)) {
             coroutineContext.ensureActive()
-            val target = File(destination, entry.path.substring(prefix).trimStart(File.separatorChar))
+            val target = target(source, destination, entry)
             if (entry.isDirectory) {
                 check(target.isDirectory || target.mkdirs()) { "cannot create ${target.path}" }
                 continue
             }
-            entry.inputStream().use { input ->
-                target.outputStream().use { output -> input.copyTo(output, DEFAULT_BUFFER_SIZE) }
-            }
-            // The executable bit is what shared storage could not keep, so it is carried over here.
-            if (entry.canExecute()) target.setExecutable(true, false)
-            target.setLastModified(entry.lastModified())
+            if (!entry.isFile || entry.name == JOURNAL) continue
+            copyFile(entry, target)
             copied += entry.length()
             // Progress redraws cost more than the copy does when a game holds thousands of files.
             if (copied - reported >= PROGRESS_STEP || copied == total) {
@@ -179,10 +244,75 @@ object LibraryStorageMove {
         }
     }
 
+    /** Copies each file, checks it landed whole, then drops the original before taking the next. */
+    private suspend fun moveFiles(
+        from: File,
+        to: File,
+        files: List<File>,
+        total: Long,
+        onProgress: (Long, Long) -> Unit,
+    ) {
+        var moved = total - files.sumOf { it.length() }
+        var reported = 0L
+        for (entry in files) {
+            coroutineContext.ensureActive()
+            val target = target(from, to, entry)
+            val length = entry.length()
+            copyFile(entry, target)
+            check(target.length() == length) { "copy of ${entry.path} is incomplete" }
+            check(entry.delete()) { "cannot remove ${entry.path}" }
+            moved += length
+            if (moved - reported >= PROGRESS_STEP || moved == total) {
+                reported = moved
+                onProgress(moved, total)
+            }
+        }
+    }
+
     private fun deleteTree(dir: File): Boolean {
-        dir.walkBottomUp().forEach { if (!it.delete() && it.exists()) return false }
-        return !dir.exists()
+        val root = dir.toPath()
+        if (!Files.exists(root, LinkOption.NOFOLLOW_LINKS)) return true
+        var clean = true
+        Files.walkFileTree(
+            root,
+            object : SimpleFileVisitor<Path>() {
+                override fun preVisitDirectory(
+                    path: Path,
+                    attrs: BasicFileAttributes,
+                ): FileVisitResult {
+                    path.toFile().setWritable(true, true)
+                    return FileVisitResult.CONTINUE
+                }
+
+                override fun visitFile(
+                    path: Path,
+                    attrs: BasicFileAttributes,
+                ): FileVisitResult {
+                    if (!runCatching { Files.deleteIfExists(path) }.getOrDefault(false)) clean = false
+                    return FileVisitResult.CONTINUE
+                }
+
+                override fun visitFileFailed(
+                    path: Path,
+                    exc: IOException,
+                ): FileVisitResult {
+                    clean = false
+                    return FileVisitResult.CONTINUE
+                }
+
+                override fun postVisitDirectory(
+                    path: Path,
+                    exc: IOException?,
+                ): FileVisitResult {
+                    if (!runCatching { Files.deleteIfExists(path) }.getOrDefault(false)) clean = false
+                    return FileVisitResult.CONTINUE
+                }
+            },
+        )
+        return clean && !Files.exists(root, LinkOption.NOFOLLOW_LINKS)
     }
 
     private const val PROGRESS_STEP = 16L * 1024 * 1024
+    private const val MOVE_HEADROOM = 256L * 1024 * 1024
+    private const val JOURNAL = ".winnative-move"
 }

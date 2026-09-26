@@ -218,6 +218,23 @@ which is worth knowing before building it.
   only, behind a secret written into the runtime for that session alone - for the command line as
   the game starts. A DRM title's ownership token is written into the runtime and read back through
   Proton's `Z:`, which needs no prefix. A game whose sign-in cannot be had still starts.
+- **Steam libraries.** `LinuxSteamLibrary.prepare` gives the client one library folder per place
+  the app keeps Steam games: the download folder chosen in Settings > Stores (labelled
+  `WinNative`), every connected external drive, and any other folder holding an installed game
+  (the app's own storage after Move to Internal, an old download folder). Each is
+  `/mnt/winnative-lib/<sha1 of the host folder, 12 hex>`, bound from `<folder>/.winnative-steam`
+  with the folder itself bound over its `steamapps/common`, so a game the client installs lands in
+  that folder beside the app's own downloads, and `steamapps/downloading` sits on the same
+  filesystem as `common`, which Steam needs to finish a download by renaming. Prefixes and shader
+  caches stay on the app's own storage (`/mnt/winnative/steamapps/compatdata` and `shadercache`,
+  bound into every library): shared storage can hold neither a symlink nor a Wine prefix, and one
+  shared directory keeps a game's saves when it moves between libraries. The folders are listed in
+  `/etc/winnative/steam-libraries`, which `winnative-steam-library` registers in
+  `steamapps/libraryfolders.vdf`, dropping the app's folders that are no longer listed (a drive that
+  was removed) and leaving the user's own. A manifest follows its game when the game is moved,
+  so the client never keeps one for a folder that has gone; the old `/mnt/winnative` library of
+  earlier builds is retired the same way. After a session `adoptClientInstalls` records what the
+  client installed, at its real path, and every Steam entry of the game follows a move.
 - **A store game with no shortcut.** The library writes a shortcut for one only once it has been
   played, so an installed GOG or Epic game is also taken from the store's own records
   (`LinuxGogGames`, `LinuxEpicTokens.installedGames`) under the same id a shortcut would give it.

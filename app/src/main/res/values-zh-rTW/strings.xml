@@ -2940,6 +2940,9 @@
     <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
     <string name="container_graphics_driver_gamescope_help">內建於 Linux 執行環境。下載的 Android 驅動程式僅適用於 Wine 和 Proton 容器。</string>
     <string name="linux_runtime_windows_program">這是 Windows 程式。請在捷徑設定中將它移至 Wine 容器後再啟動。</string>
+    <string name="linux_steam_library_named">WinNative（%1$s）</string>
+    <string name="linux_steam_library_internal">內部儲存空間</string>
+    <string name="linux_steam_library_device_storage">裝置儲存空間</string>
     <string name="settings_content_badge_online">連線</string>
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>

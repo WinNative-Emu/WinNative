@@ -1,54 +1,173 @@
 #!/usr/bin/python3
-# Registers the games WinNative downloaded (bound at /mnt/winnative) as a library folder of the
-# native Steam client, so they show as installed there.
-#
-#   winnative-steam-library <steam root>
 import os
 import re
 import sys
 
 LIBRARY = "/mnt/winnative"
+LIBRARIES = "/mnt/winnative-lib/"
+LIST = "/etc/winnative/steam-libraries"
+TOKEN = re.compile(r'\s*(?:"((?:[^"\\]|\\.)*)"|([{}])|//[^\n]*)')
+MANIFEST = re.compile(r"appmanifest_(\d+)\.acf")
 
 
-def main():
-    steam_root = sys.argv[1]
-    steamapps = os.path.join(LIBRARY, "steamapps")
-    if not os.path.isdir(steamapps):
+def wanted_libraries(list_path=None):
+    try:
+        with open(list_path or LIST, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return None
+    libraries = []
+    for line in lines:
+        path, _, label = line.partition("\t")
+        if path and os.path.isdir(os.path.join(path, "steamapps")):
+            libraries.append((path, label))
+    return libraries
+
+
+def is_managed(path):
+    return path == LIBRARY or path.startswith(LIBRARIES)
+
+
+def parse(text):
+    stack = [[]]
+    key = None
+    for match in TOKEN.finditer(text):
+        string, brace = match.group(1), match.group(2)
+        if brace == "{":
+            block = []
+            stack[-1].append([key or "", block])
+            stack.append(block)
+            key = None
+        elif brace == "}":
+            if len(stack) > 1:
+                stack.pop()
+            key = None
+        elif string is not None:
+            if key is None:
+                key = string
+            else:
+                stack[-1].append([key, string])
+                key = None
+    return stack[0]
+
+
+def dump(entries, depth=0):
+    lines = []
+    indent = "\t" * depth
+    for key, value in entries:
+        if isinstance(value, list):
+            lines.append('%s"%s"' % (indent, key))
+            lines.append("%s{" % indent)
+            lines.extend(dump(value, depth + 1))
+            lines.append("%s}" % indent)
+        else:
+            lines.append('%s"%s"\t\t"%s"' % (indent, key, value))
+    return lines
+
+
+def value_of(entries, key):
+    for name, value in entries:
+        if name.lower() == key.lower():
+            return value
+    return None
+
+
+def set_value(entries, key, value):
+    for entry in entries:
+        if entry[0].lower() == key.lower():
+            entry[1] = value
+            return
+    entries.append([key, value])
+
+
+def quoted(value):
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def installed_apps(library):
+    try:
+        names = os.listdir(os.path.join(library, "steamapps"))
+    except OSError:
+        return []
+    return sorted(int(m.group(1)) for m in (MANIFEST.fullmatch(n) for n in names) if m)
+
+
+def write_marker(library, label):
+    marker = os.path.join(library, "libraryfolder.vdf")
+    entries = []
+    if os.path.isfile(marker):
+        with open(marker, encoding="utf-8", errors="replace") as f:
+            entries = parse(f.read())
+    block = value_of(entries, "libraryfolder")
+    if not isinstance(block, list):
+        block = []
+        entries = [["libraryfolder", block]]
+    if value_of(block, "contentid") is None:
+        set_value(block, "contentid", str(int.from_bytes(os.urandom(8), "little") >> 1))
+    if value_of(block, "label") == quoted(label):
         return
-    apps = sorted(
-        int(m.group(1))
-        for m in (re.fullmatch(r"appmanifest_(\d+)\.acf", n) for n in os.listdir(steamapps))
-        if m
-    )
-    marker = os.path.join(LIBRARY, "libraryfolder.vdf")
-    if not os.path.isfile(marker):
-        with open(marker, "w", encoding="utf-8") as f:
-            f.write('"libraryfolder"\n{\n\t"contentid"\t\t"%d"\n\t"label"\t\t"WinNative"\n}\n'
-                    % int.from_bytes(os.urandom(8), "little"))
-    # The client reads steamapps/libraryfolders.vdf at startup and rewrites config/ from it.
-    steamapps_dir = os.path.join(steam_root, "steamapps")
-    path = os.path.join(steamapps_dir, "libraryfolders.vdf")
+    set_value(block, "label", quoted(label))
+    with open(marker, "w", encoding="utf-8") as f:
+        f.write("\n".join(dump(entries)) + "\n")
+
+
+def register(steam_root, libraries):
+    steamapps = os.path.join(steam_root, "steamapps")
+    path = os.path.join(steamapps, "libraryfolders.vdf")
     text = ""
     if os.path.isfile(path):
         with open(path, encoding="utf-8", errors="replace") as f:
             text = f.read()
-    if re.search(r'"path"\s+"%s"' % re.escape(LIBRARY), text):
+    entries = parse(text)
+    folders = value_of(entries, "libraryfolders")
+    if not isinstance(folders, list):
+        folders = [["0", [["path", quoted(steam_root)], ["label", ""]]]]
+        entries = [["libraryfolders", folders]]
+    wanted = {path: label for path, label in libraries}
+    kept = []
+    seen = set()
+    for key, value in folders:
+        if not isinstance(value, list):
+            kept.append([key, value])
+            continue
+        folder = (value_of(value, "path") or "").replace("\\\\", "\\")
+        if is_managed(folder):
+            if folder not in wanted or folder in seen:
+                continue
+            set_value(value, "label", quoted(wanted[folder]))
+            seen.add(folder)
+        kept.append([key, value])
+    for folder, label in libraries:
+        if folder in seen:
+            continue
+        apps = [[str(app), "0"] for app in installed_apps(folder)]
+        kept.append(["", [["path", quoted(folder)], ["label", quoted(label)], ["apps", apps]]])
+    index = 0
+    for entry in kept:
+        if isinstance(entry[1], list):
+            entry[0] = str(index)
+            index += 1
+    set_value(entries, "libraryfolders", kept)
+    result = "\n".join(dump(entries)) + "\n"
+    if result == text:
         return
-    indexes = [int(i) for i in re.findall(r'^\t"(\d+)"\s*$', text, re.M)]
-    if not text.strip():
-        text = '"libraryfolders"\n{\n\t"0"\n\t{\n\t\t"path"\t\t"%s"\n\t\t"label"\t\t""\n\t}\n}\n' % steam_root
-        indexes = [0]
-    entry = ['\t"%d"' % (max(indexes) + 1), "\t{", '\t\t"path"\t\t"%s"' % LIBRARY,
-             '\t\t"label"\t\t"WinNative"', '\t\t"apps"', "\t\t{"]
-    entry += ['\t\t\t"%d"\t\t"0"' % app for app in apps]
-    entry += ["\t\t}", "\t}"]
-    closing = text.rstrip().rfind("}")
-    if closing < 0:
+    os.makedirs(steamapps, exist_ok=True)
+    staged = path + ".winnative"
+    with open(staged, "w", encoding="utf-8") as f:
+        f.write(result)
+    os.replace(staged, path)
+
+
+def main():
+    libraries = wanted_libraries()
+    if libraries is None:
         return
-    text = text[:closing] + "\n".join(entry) + "\n" + text[closing:]
-    os.makedirs(steamapps_dir, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(text)
+    for library, label in libraries:
+        try:
+            write_marker(library, label)
+        except OSError as error:
+            print("winnative-steam-library: %s: %s" % (library, error), file=sys.stderr)
+    register(sys.argv[1], libraries)
 
 
 if __name__ == "__main__":

@@ -3208,7 +3208,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             String shortcutInstallPath = shortcut.getExtra("game_install_path");
             String resolvedShortcutInstallPath =
                     sanitizeSteamGameInstallPath(appId, shortcutInstallPath, "shortcut");
-            if (resolvedShortcutInstallPath != null && !resolvedShortcutInstallPath.isEmpty()) {
+            if (resolvedShortcutInstallPath != null && new File(resolvedShortcutInstallPath).isDirectory()) {
                 if (!resolvedShortcutInstallPath.equals(shortcutInstallPath)) {
                     shortcut.putExtra("game_install_path", resolvedShortcutInstallPath);
                     shortcut.saveData();
@@ -9026,9 +9026,11 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         environment.addComponent(networkLink);
 
         EnvVars hostEnv = LinuxRuntime.hostEnvironment(this, sessionEnv);
-        List<String> binds = new ArrayList<>(com.winlator.cmod.feature.library.LinuxSteamLibrary.prepare(
-                this, LinuxRuntime.rootDir(this)));
-        if (!reusingSession) binds.addAll(com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.sync(this));
+        List<String> binds = new ArrayList<>();
+        if (!reusingSession) {
+            binds.addAll(com.winlator.cmod.feature.library.LinuxSteamLibrary.prepare(this, LinuxRuntime.rootDir(this)));
+            binds.addAll(com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.sync(this));
+        }
         com.winlator.cmod.runtime.linux.LinuxEpicTokens.start(this);
         List<String> command = LinuxRuntime.command(this, imageFs, runtimeDir,
                 android.os.Environment.getExternalStorageDirectory(), devInputDir, binds, guest);

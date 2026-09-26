@@ -27,7 +27,7 @@ class ProtonTests(unittest.TestCase):
         self.audio = load('winnative-directaudio')
 
     def test_runtime_sources_match_apk(self):
-        for name in ('winnative-session', 'winnative-steam-compat', 'winnative-directaudio',
+        for name in ('winnative-session', 'winnative-steam-compat', 'winnative-steam-library', 'winnative-directaudio',
                      'winnative-seed-redists', 'winnative-proton-launch'):
             self.assertEqual((ASSETS / name).read_bytes(),
                              (ROOT / 'tools/linuxfs/overlay/usr/local/bin' / name).read_bytes())

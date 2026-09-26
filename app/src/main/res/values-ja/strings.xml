@@ -2941,6 +2941,9 @@
     <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
     <string name="container_graphics_driver_gamescope_help">Linux ランタイムに組み込まれています。ダウンロードした Android ドライバーは Wine と Proton のコンテナにのみ適用されます。</string>
     <string name="linux_runtime_windows_program">これは Windows プログラムです。起動するには、ショートカット設定で Wine コンテナに移動してください。</string>
+    <string name="linux_steam_library_named">WinNative（%1$s）</string>
+    <string name="linux_steam_library_internal">内部ストレージ</string>
+    <string name="linux_steam_library_device_storage">端末のストレージ</string>
     <string name="settings_content_badge_online">オンライン</string>
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>

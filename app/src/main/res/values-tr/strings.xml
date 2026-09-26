@@ -2941,6 +2941,9 @@ Yüklü konum:
     <string name="container_graphics_driver_gamescope">Turnip %1$s (Linux ARM64)</string>
     <string name="container_graphics_driver_gamescope_help">Linux çalışma ortamına dahildir. İndirilen Android sürücüleri yalnızca Wine ve Proton kapsayıcıları için geçerlidir.</string>
     <string name="linux_runtime_windows_program">Bu bir Windows programı. Başlatmak için kısayol ayarlarından bir Wine kapsayıcısına taşıyın.</string>
+    <string name="linux_steam_library_named">WinNative (%1$s)</string>
+    <string name="linux_steam_library_internal">Dahili depolama</string>
+    <string name="linux_steam_library_device_storage">Cihaz depolaması</string>
     <string name="settings_content_badge_online">Çevrimiçi</string>
     <string name="gamescope_fex_title">FEX (64-bit and 32-bit)</string>
     <string name="gamescope_fex_preset">FEX Preset</string>
