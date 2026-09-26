@@ -1923,12 +1923,49 @@ static void destroy_dis(VkRenderer* r) {
     if (!r->dis) return;
     vkr_dis_destroy(r->dis);
     r->dis = NULL;
+    if (r->dis_flush_fence) {
+        vkDestroyFence(r->device, r->dis_flush_fence, NULL);
+        r->dis_flush_fence = VK_NULL_HANDLE;
+    }
     r->framegen_real_frames = 0;
     r->framegen_made_frames = 0;
     r->framegen_draw_ns = 0;
     r->framegen_gap_ns = 0;
     r->framegen_last_end_ns = 0;
     r->framegen_timed_frames = 0;
+}
+
+// VkrDisFlushFn: DIS needs this frame's pixels on the CPU mid-frame for the hardware motion
+// estimator. What has been recorded by then is the scene pass into the composite target and
+// DIS's own copies - no swapchain image, no semaphore - so it is submitted on its own and the
+// same buffer is begun again; acquire waits and present signals all stay on the frame's submit.
+static VkCommandBuffer dis_flush_frame(void* user, VkCommandBuffer cmd) {
+    VkRenderer* r = (VkRenderer*)user;
+    if (!r->dis_flush_fence) {
+        VkFenceCreateInfo fci = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        if (vkCreateFence(r->device, &fci, NULL, &r->dis_flush_fence) != VK_SUCCESS) {
+            r->dis_flush_fence = VK_NULL_HANDLE;
+        }
+    }
+    vkEndCommandBuffer(cmd);
+    VkSubmitInfo si = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cmd;
+    if (r->dis_flush_fence) vkResetFences(r->device, 1, &r->dis_flush_fence);
+    pthread_mutex_lock(&r->queue_mutex);
+    VkResult sr = vkQueueSubmit(r->graphics_queue, 1, &si, r->dis_flush_fence);
+    if (sr != VK_SUCCESS || !r->dis_flush_fence) vkQueueWaitIdle(r->graphics_queue);
+    pthread_mutex_unlock(&r->queue_mutex);
+    if (sr == VK_SUCCESS && r->dis_flush_fence) {
+        vkWaitForFences(r->device, 1, &r->dis_flush_fence, VK_TRUE, UINT64_MAX);
+    } else if (sr != VK_SUCCESS) {
+        VK_LOGW("DIS mid-frame submit -> %d", (int)sr);
+    }
+    vkResetCommandBuffer(cmd, 0);
+    VkCommandBufferBeginInfo bi = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cmd, &bi);
+    return cmd;
 }
 
 static void create_dis(VkRenderer* r) {
@@ -2885,8 +2922,9 @@ static bool record_and_submit_frame(VkRenderer* r) {
     if (composite) {
         if ((use_dis || r->lsfg) && framegen_capacity > 0) {
             if (use_dis) {
-                vkr_dis_process(r->dis, f->cmd, composite->image,
-                                composite->width, composite->height, gen_count);
+                vkr_dis_process_ex(r->dis, f->cmd, composite->image,
+                                   composite->width, composite->height, gen_count,
+                                   dis_flush_frame, r);
             } else {
                 vkr_lsfg_process(r->lsfg, f->cmd, composite->image,
                                  r->swapchain_extent.width, r->swapchain_extent.height, gen_count);

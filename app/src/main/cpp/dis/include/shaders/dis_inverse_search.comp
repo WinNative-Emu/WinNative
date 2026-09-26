@@ -61,13 +61,19 @@ layout(set = 0, binding = 0) uniform sampler2D lastLumaMap;
 layout(set = 0, binding = 1) uniform sampler2D nextLumaMap;
 layout(set = 0, binding = 2) uniform sampler2D lastGradientMap;
 layout(set = 0, binding = 3) uniform sampler2D flowMap;
-layout(set = 0, binding = 4) uniform sampler2D lastFlowMap;
+// Motion hint from a hardware estimator (GL_QCOM_motion_estimation), one vector per block, in
+// normalised uv units; read only on the level named by hintLevel. A component beyond HINT_INVALID
+// marks a block the estimator had nothing for.
+layout(set = 0, binding = 4) uniform sampler2D hintFlowMap;
 layout(set = 0, binding = 5, rgba32f) uniform image2D sparseFlowMap;
 
 layout(push_constant) uniform PC {
     int level;
     int coarseLevel;
+    int hintLevel;
 } pc;
+
+#define HINT_INVALID 1.0e6
 
 float uluminance(vec3 c) {
     return (0.299 * c.x + 0.587 * c.y + 0.114 * c.z) * 255.0;
@@ -154,10 +160,43 @@ void main() {
         flow = cf.xy * vec2(denseSize);
         if (any(isnan(flow)) || any(isinf(flow))) flow = vec2(0.0);
     }
-    vec2 initialFlow = flow;
-
     vec2 invImageSize = 1.0 / vec2(denseSize);
     const float N = 64.0;
+
+    // A second starting point from the hardware estimator. Both candidates are scored on the
+    // patch with the same mean-normalised SSD the search minimises, and the search starts from
+    // the better one. The coarse level still covers what the estimator cannot: its search range
+    // is a few dozen pixels, and past that its vector is garbage that simply loses here.
+    if (pc.level == pc.hintLevel) {
+        vec2 hintSize = vec2(textureSize(hintFlowMap, 0));
+        ivec2 hp = clamp(ivec2((vec2(pix) + 4.0) * hintSize / vec2(denseSize)),
+                         ivec2(0), ivec2(hintSize) - 1);
+        vec2 hint = texelFetch(hintFlowMap, hp, 0).xy;
+        if (all(lessThan(abs(hint), vec2(HINT_INVALID * 0.5)))) {
+            hint *= vec2(denseSize);
+            vec2 cand[2] = vec2[2](flow, hint);
+            float best = 1e30;
+            for (int c = 0; c < 2; c++) {
+                vec2 o = clamp(vec2(pix) + cand[c], vec2(0.0), vec2(denseSize) - patchSize);
+                float s = 0.0;
+                float s2 = 0.0;
+                for (int i = 0; i < 8; i++) {
+                    for (int j = 0; j < 8; j++) {
+                        vec2 tc = (o + vec2(i, j) + 0.5) * invImageSize;
+                        float diff = textureLod(nextLumaMap, tc, 0.0).x - lastImageData[i * 8 + j];
+                        s += diff;
+                        s2 += diff * diff;
+                    }
+                }
+                float ssd = s2 - s * s / N;
+                if (ssd < best) {
+                    best = ssd;
+                    flow = cand[c];
+                }
+            }
+        }
+    }
+    vec2 initialFlow = flow;
 
     const float N_INV = 1.0 / N;
     float prevSSD = 1e10;

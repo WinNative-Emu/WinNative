@@ -81,6 +81,7 @@ bool vkd_load_instance(VkInstance instance) {
     LOAD(MapMemory);
     LOAD(UnmapMemory);
     LOAD(FlushMappedMemoryRanges);
+    LOAD(InvalidateMappedMemoryRanges);
     LOAD(GetAndroidHardwareBufferPropertiesANDROID);
 
     // Buffer

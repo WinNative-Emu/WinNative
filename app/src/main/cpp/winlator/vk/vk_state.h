@@ -15,7 +15,7 @@
 // this translation unit (do not include <vulkan/vulkan.h> directly).
 #include "vk_dispatch.h"
 #include "lsfg/vkr_lsfg.h"
-#include "dis/vkr_dis.h"
+#include "vkr_dis.h"
 
 #define VK_LOG_TAG "VkRenderer"
 #define VK_LOGI(...) __android_log_print(ANDROID_LOG_INFO,  VK_LOG_TAG, __VA_ARGS__)
@@ -426,6 +426,7 @@ typedef struct VkRenderer {
     struct VkrDis*    dis;
     bool              dis_requested;
     uint32_t          dis_scale;
+    VkFence           dis_flush_fence;  // mid-frame submit for DIS's hardware motion hint
     uint32_t          dis_target_fps;
     bool              dis_debug_flow;
     uint64_t          sgsr1_dbg_sig;

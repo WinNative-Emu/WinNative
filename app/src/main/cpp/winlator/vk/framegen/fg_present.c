@@ -15,7 +15,7 @@
 
 #include "../vk_dispatch.h"
 #include "../vk_driver.h"
-#include "../dis/vkr_dis.h"
+#include "vkr_dis.h"
 #include "../lsfg/vkr_lsfg.h"
 
 #define LOG_TAG "FgPresent"
@@ -87,6 +87,7 @@ struct FgPresenter {
 
     VkCommandPool command_pool;
     FgFrame frames[FG_FRAMES_IN_FLIGHT];
+    VkFence flush_fence;
     uint32_t frame_index;
 
     FgTarget targets[FG_MAX_TARGETS];
@@ -540,6 +541,9 @@ static bool fg_create_frames(FgPresenter* fg) {
     cpi.queueFamilyIndex = fg->queue_family;
     if (vkCreateCommandPool(fg->device, &cpi, NULL, &fg->command_pool) != VK_SUCCESS) return false;
 
+    VkFenceCreateInfo ffi = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    if (vkCreateFence(fg->device, &ffi, NULL, &fg->flush_fence) != VK_SUCCESS) return false;
+
     for (uint32_t i = 0; i < FG_FRAMES_IN_FLIGHT; i++) {
         FgFrame* f = &fg->frames[i];
 
@@ -804,6 +808,30 @@ static void fg_renew_semaphore(FgPresenter* fg, VkSemaphore* handle) {
     *handle = fresh;
 }
 
+// VkrDisFlushFn: DIS needs this frame's pixels on the CPU mid-frame for the hardware motion
+// estimator. Everything recorded so far - the source blit and DIS's copies - touches no
+// swapchain image and waits on no semaphore, so it goes out on its own; the same buffer is then
+// begun again for the rest of the frame, which keeps every semaphore on the final submit.
+static VkCommandBuffer fg_dis_flush(void* user, VkCommandBuffer cmd) {
+    FgPresenter* fg = (FgPresenter*)user;
+    vkEndCommandBuffer(cmd);
+    VkSubmitInfo si = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cmd;
+    vkResetFences(fg->device, 1, &fg->flush_fence);
+    if (vkQueueSubmit(fg->queue, 1, &si, fg->flush_fence) == VK_SUCCESS) {
+        vkWaitForFences(fg->device, 1, &fg->flush_fence, VK_TRUE, UINT64_MAX);
+    } else {
+        FG_LOGW("DIS mid-frame submit failed");
+        vkDeviceWaitIdle(fg->device);
+    }
+    vkResetCommandBuffer(cmd, 0);
+    VkCommandBufferBeginInfo bi = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cmd, &bi);
+    return cmd;
+}
+
 static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* image) {
     FgFrame* f = &fg->frames[fg->frame_index];
 
@@ -879,8 +907,8 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT);
 
     if (fg->active_engine == FG_ENGINE_DIS) {
-        vkr_dis_process(fg->dis, f->cmd, composite->image, fg->extent.width, fg->extent.height,
-                        gen_count);
+        vkr_dis_process_ex(fg->dis, f->cmd, composite->image, fg->extent.width,
+                           fg->extent.height, gen_count, fg_dis_flush, fg);
     } else if (fg->lsfg) {
         vkr_lsfg_process(fg->lsfg, f->cmd, composite->image, fg->extent.width, fg->extent.height,
                          gen_count);
@@ -1329,6 +1357,7 @@ void fg_destroy(FgPresenter* fg) {
             vkDestroySemaphore(fg->device, fg->retired[i], NULL);
         }
         fg->retired_count = 0;
+        if (fg->flush_fence) vkDestroyFence(fg->device, fg->flush_fence, NULL);
         if (fg->command_pool) vkDestroyCommandPool(fg->device, fg->command_pool, NULL);
         vkDestroyDevice(fg->device, NULL);
     }

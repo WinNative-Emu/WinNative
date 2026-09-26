@@ -3,7 +3,7 @@
 
 #include "framegen_engine.h"
 #include "framegen_bridge.h"
-#include "dis/vkr_dis.h"
+#include "vkr_dis.h"
 #include "lsfg/vkr_lsfg.h"
 
 #include <stdlib.h>

@@ -43,14 +43,14 @@ target_include_directories(wnwayland PRIVATE
 )
 
 # The X11 renderer's frame-generation engines run here too, on the compositor's own Turnip
-# device. Their sources are compiled in rather than linked from libwinlator: both libraries keep
-# a private VkDispatch, so the visibility below must stay for the two copies not to merge.
+# device. LSFG is compiled in and DIS comes from the wndis static library rather than being linked
+# from libwinlator: both libraries keep a private VkDispatch, so the visibility below must stay for
+# the two copies not to merge.
 set(FRAMEGEN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../winlator/vk)
-if (TARGET dxbc AND EXISTS ${FRAMEGEN_DIR}/dis/vkr_dis.c)
+if (TARGET dxbc AND TARGET wndis)
     target_sources(wnwayland PRIVATE
             src/framegen_engine.c
             ${FRAMEGEN_DIR}/vk_dispatch.c
-            ${FRAMEGEN_DIR}/dis/vkr_dis.c
             ${FRAMEGEN_DIR}/lsfg/lsfg_dll.c
             ${FRAMEGEN_DIR}/lsfg/lsfg_dxbc.cpp
             ${FRAMEGEN_DIR}/lsfg/lsfg_common.cpp
@@ -69,7 +69,7 @@ if (TARGET dxbc AND EXISTS ${FRAMEGEN_DIR}/dis/vkr_dis.c)
     target_compile_definitions(wnwayland PRIVATE VK_USE_PLATFORM_ANDROID_KHR)
     target_compile_options(wnwayland PRIVATE -fvisibility=hidden)
     target_compile_features(wnwayland PRIVATE cxx_std_17)
-    target_link_libraries(wnwayland dxbc)
+    target_link_libraries(wnwayland dxbc wndis)
     add_dependencies(wnwayland winlator_shaders)
 else()
     target_sources(wnwayland PRIVATE src/framegen_engine_stub.c)

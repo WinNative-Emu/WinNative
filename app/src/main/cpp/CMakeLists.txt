@@ -103,23 +103,6 @@ set(SHADER_LIST
     "effect_colorblind:frag:effect_colorblind_frag"
     "effect_pixelate:frag:effect_pixelate_frag"
     "sgsr1:frag:sgsr1_frag"
-    "dis_luma_r16:comp:dis_luma_r16_comp"
-    "dis_luma_r32:comp:dis_luma_r32_comp"
-    "dis_gradient:comp:dis_gradient_comp"
-    "dis_inverse_search:comp:dis_inverse_search_comp"
-    "dis_propagate:comp:dis_propagate_comp"
-    "dis_densify:comp:dis_densify_comp"
-    "dis_interpolate:comp:dis_interpolate_comp"
-    "dis_hist:comp:dis_hist_comp"
-    "dis_side:comp:dis_side_comp"
-    "dis_flow_pack:comp:dis_flow_pack_comp"
-    "dis_vr_prep:comp:dis_vr_prep_comp"
-    "dis_vr_d1:comp:dis_vr_d1_comp"
-    "dis_vr_d2:comp:dis_vr_d2_comp"
-    "dis_vr_w:comp:dis_vr_w_comp"
-    "dis_vr_coef:comp:dis_vr_coef_comp"
-    "dis_vr_sor:comp:dis_vr_sor_comp"
-    "dis_vr_add:comp:dis_vr_add_comp"
 )
 
 set(SHADER_HEADERS "")
@@ -148,6 +131,9 @@ foreach(entry ${SHADER_LIST})
 endforeach()
 
 add_custom_target(winlator_shaders DEPENDS ${SHADER_HEADERS})
+
+# DIS frame generator (optical flow + interpolation), linked by libwinlator and libwnwayland.
+add_subdirectory(dis)
 
 # ----------------------------------------------------------------------------
 # Winlator native library (X-server, AHB, Vulkan compositor, helpers)
@@ -183,7 +169,6 @@ add_library(winlator SHARED
         winlator/vk/lsfg/lsfg_jni.c
         winlator/vk/framegen/fg_present.c
         winlator/vk/framegen/fg_jni.c
-        winlator/vk/dis/vkr_dis.c
 )
 
 add_dependencies(winlator winlator_shaders)
@@ -201,6 +186,7 @@ target_include_directories(winlator PRIVATE
 target_compile_features(winlator PRIVATE cxx_std_17)
 
 target_link_libraries(winlator
+        wndis
         log
         android
         mediandk
