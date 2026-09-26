@@ -121,6 +121,8 @@ int translate_syscall_enter(Tracee *tracee) {
   case PR_wait4:
   case PR_waitpid:
     status = translate_wait_enter(tracee);
+    tracee->sysexit_unneeded =
+        status >= 0 && tracee->as_ptracer.waits_in == WAITS_IN_KERNEL;
     break;
 
   case PR_brk:
@@ -263,6 +265,7 @@ int translate_syscall_enter(Tracee *tracee) {
   case PR_accept4:
     /* Nothing special to do if no sockaddr was specified.  */
     if (peek_reg(tracee, ORIGINAL, SYSARG_2) == 0) {
+      tracee->sysexit_unneeded = true;
       status = 0;
       break;
     }
@@ -359,6 +362,27 @@ int translate_syscall_enter(Tracee *tracee) {
       break;
 
     status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
+    break;
+
+  case PR_fchmodat2:
+    dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
+    flags = peek_reg(tracee, CURRENT, SYSARG_4);
+
+    status = get_sysarg_path(tracee, path, SYSARG_2);
+    if (status < 0)
+      break;
+
+    if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
+      status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
+    else
+      status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
+    break;
+
+  case PR_openat2:
+    /* Its RESOLVE_* flags confine the lookup to a host directory
+     * tree, which the translated path no longer describes.  Callers
+     * fall back to openat(2), which is translated.  */
+    status = -ENOSYS;
     break;
 
   case PR_inotify_add_watch:

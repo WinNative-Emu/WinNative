@@ -105,12 +105,18 @@ static int remove_tracee(Tracee *tracee) {
   talloc_report_depth_cb(tracee->life_context, 0, 100, clean_life_span_object,
                          tracee);
 
-  /* This could be optimize by using a dedicated list of
-   * children and ptracees.  */
+  if (tracee->parent != NULL)
+    tracee->parent->nb_children--;
+
+  /* Only a tracee with children or ptracees has relatives to
+   * update, and most are threads that have neither.  */
+  if (tracee->nb_children != 0 || tracee->as_ptracer.nb_ptracees != 0)
   LIST_FOREACH(relative, &tracees, link) {
     /* Its children are now orphan.  */
-    if (relative->parent == tracee)
+    if (relative->parent == tracee) {
       relative->parent = NULL;
+      tracee->nb_children--;
+    }
 
     /* Its tracees are now free.  */
     if (relative->as_ptracee.ptracer == tracee) {
@@ -229,6 +235,7 @@ static Tracee *new_tracee(pid_t pid) {
   talloc_set_destructor(tracee, remove_tracee);
 
   tracee->pid = pid;
+  tracee->tgid = pid;
 
   LIST_INSERT_HEAD(&tracees, tracee, link);
   LIST_INSERT_HEAD(bucket_of(pid), tracee, bucket_link);
@@ -331,9 +338,8 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create) {
 
   LIST_FOREACH(tracee, bucket_of(pid), bucket_link) {
     if (tracee->pid == pid) {
-      /* Flush then allocate a new memory collector.  */
-      TALLOC_FREE(tracee->ctx);
-      tracee->ctx = talloc_new(tracee);
+      /* Flush the memory collector.  */
+      talloc_free_children(tracee->ctx);
 
       return tracee;
     }
@@ -347,6 +353,7 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create) {
  */
 void set_tracee_pid(Tracee *tracee, pid_t pid) {
   tracee->pid = pid;
+  tracee->tgid = pid;
   LIST_REMOVE(tracee, bucket_link);
   LIST_INSERT_HEAD(bucket_of(pid), tracee, bucket_link);
 }
@@ -414,11 +421,16 @@ int new_child(Tracee *parent, word_t clone_flags) {
     clone_flags = peek_reg(parent, CURRENT, SYSARG_1);
   else if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone3) {
     /* clone3(2) passes the usual flags as the first word of
-     * its struct clone_args.  glibc 2.34 and later create
-     * every thread with it.  */
-    word_t flags = peek_word(parent, peek_reg(parent, CURRENT, SYSARG_1));
-    if (errno == 0)
-      clone_flags = flags;
+     * its struct clone_args and the exit signal, which clone(2)
+     * keeps in their low byte, as the fifth.  glibc 2.34 and
+     * later create every thread with it.  */
+    word_t args = peek_reg(parent, CURRENT, SYSARG_1);
+    word_t flags = peek_uint64(parent, args);
+    if (errno == 0) {
+      word_t exit_signal = peek_uint64(parent, args + 4 * sizeof(uint64_t));
+      if (errno == 0)
+        clone_flags = (flags & ~(word_t)0xFF) | (exit_signal & 0xFF);
+    }
   }
 
   /* Get the pid of the parent's new child.  */
@@ -484,6 +496,8 @@ int new_child(Tracee *parent, word_t clone_flags) {
     child->parent = parent->parent;
   else
     child->parent = parent;
+  if (child->parent != NULL)
+    child->parent->nb_children++;
 
   /* Remember if this child belongs to the same thread group as
    * its parent.  This is currently useful for ptrace emulation
@@ -491,6 +505,7 @@ int new_child(Tracee *parent, word_t clone_flags) {
    * specificity (ie. when a thread calls execve(2), its pid
    * gets replaced by the pid of its thread group leader).  */
   child->clone = ((clone_flags & CLONE_THREAD) != 0);
+  child->tgid = child->clone ? parent->tgid : child->pid;
 
   /* Depending on how the new process is created, it may be
    * automatically traced by the parent's tracer.  */

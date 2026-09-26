@@ -1510,8 +1510,11 @@ static bool create_process_game(const char* gameExe, const char* exeName) {
     char* slash = strrchr(cwd, '\\');
     if (slash) *slash = '\0'; else cwd[0] = '\0';
 
-    char cmd[MAX_PATH + 8];
-    snprintf(cmd, sizeof(cmd), "\"%s\"", gameExe);
+    // The same arguments LaunchApp would have handed Steam, so a +connect join survives the fallback.
+    const char* userArgs = getenv("WN_STEAM_USER_ARGS");
+    char cmd[MAX_PATH + 4096];
+    snprintf(cmd, sizeof(cmd), "\"%s\"%s%s", gameExe,
+             (userArgs && *userArgs) ? " " : "", (userArgs && *userArgs) ? userArgs : "");
 
     STARTUPINFOA si;
     memset(&si, 0, sizeof(si));

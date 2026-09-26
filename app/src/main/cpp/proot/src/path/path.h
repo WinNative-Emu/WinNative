@@ -48,9 +48,9 @@ typedef enum {
 
 /* Path with cached attributes.  */
 typedef struct {
-  char path[PATH_MAX];
   size_t length;
   Side side;
+  char path[PATH_MAX];
 } Path;
 
 /* Path ending type.  */

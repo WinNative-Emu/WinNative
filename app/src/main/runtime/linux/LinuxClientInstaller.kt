@@ -26,6 +26,7 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.coroutines.coroutineContext
@@ -76,7 +77,8 @@ object LinuxClientInstaller {
      * and its sign-in, the library the app maps in with its prefixes and saves, Proton, and the
      * machine id the client ties its sign-in to.
      */
-    private val KEPT_PATHS = listOf("root", "mnt/winnative", PROTON_DIR.substring(1), "etc/machine-id")
+    private const val MACHINE_ID = "etc/machine-id"
+    private val KEPT_PATHS = listOf("root", "mnt/winnative", PROTON_DIR.substring(1), MACHINE_ID)
     private const val PREFERENCES = "linux_client"
     private const val DISMISSED_UPDATE = "dismissed_update"
     private const val STEAM_CDN = "https://client-update.fastly.steamstatic.com"
@@ -449,6 +451,7 @@ object LinuxClientInstaller {
     ) {
         val root = LinuxRuntime.rootDir(context)
         if (!root.exists()) {
+            writeMachineId(staging)
             if (!staging.renameTo(root)) throw IOException("Could not move the runtime into place")
             return
         }
@@ -456,6 +459,21 @@ object LinuxClientInstaller {
         FileUtils.delete(retired)
         synchronized(swapLock) { swap(root, staging, retired) }
         FileUtils.delete(retired)
+    }
+
+    /**
+     * A first install gets a machine id of its own: the archive's is the same for everyone who
+     * unpacks it, and Steam and the anti-cheats it hosts read it as this device's. A runtime being
+     * replaced hands its own on instead, as the client's sign-in is tied to it.
+     */
+    private fun writeMachineId(staging: File) {
+        val bytes = ByteArray(16).also(SecureRandom()::nextBytes)
+        val id = bytes.joinToString("") { "%02x".format(it) }
+        val file = File(staging, MACHINE_ID)
+        val parent = file.parentFile
+        if (parent != null && !parent.isDirectory && !parent.mkdirs()) throw IOException("Could not create $parent")
+        FileUtils.delete(file)
+        file.writeText("$id\n")
     }
 
     private fun swap(

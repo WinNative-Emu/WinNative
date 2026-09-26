@@ -61,12 +61,39 @@ class LinuxNetworkLinkComponent(
                     file.delete()
                     return
                 }
-                val staged = File(file.path + ".staged")
-                staged.writeText(describe(properties))
-                if (!staged.renameTo(file)) throw IOException("Could not replace $file")
+                replace(file, describe(properties))
+                replace(File(rootDir, RESOLV_FILE), resolver(properties))
             } catch (e: IOException) {
                 Log.w(TAG, "Could not publish the network link", e)
             }
+        }
+    }
+
+    private fun replace(
+        file: File,
+        contents: String,
+    ) {
+        val staged = File(file.path + ".staged")
+        staged.writeText(contents)
+        if (!staged.renameTo(file)) throw IOException("Could not replace $file")
+    }
+
+    /**
+     * The runtime's resolver asks the servers Android uses on this link, so lookups work where
+     * public servers are blocked and follow a VPN's own. Link-local servers need an interface
+     * scope the runtime cannot name, and glibc reads only the first three.
+     */
+    private fun resolver(properties: LinkProperties?): String {
+        val servers = properties?.dnsServers.orEmpty()
+            .filterNot { it.isLinkLocalAddress || it.isAnyLocalAddress }
+            .sortedBy { if (it is Inet4Address) 0 else 1 }
+            .mapNotNull { it.hostAddress?.substringBefore('%') }
+            .distinct()
+            .ifEmpty { FALLBACK_DNS }
+            .take(MAX_DNS)
+        return buildString {
+            for (server in servers) append("nameserver $server\n")
+            append("options edns0 timeout:2 attempts:2\n")
         }
     }
 
@@ -99,6 +126,9 @@ class LinuxNetworkLinkComponent(
     companion object {
         private const val TAG = "LinuxNetworkLink"
         private const val LINK_FILE = "etc/winnative-net"
+        private const val RESOLV_FILE = "etc/resolv.conf"
+        private const val MAX_DNS = 3
+        private val FALLBACK_DNS = listOf("8.8.8.8", "1.1.1.1")
         private const val LINK_INDEX = 2
         private const val DEFAULT_MTU = 1500
         private const val OFFLINE_NAME = "eth0"

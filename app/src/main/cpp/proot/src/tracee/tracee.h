@@ -85,6 +85,9 @@ typedef struct tracee {
   /* Process identifier. */
   pid_t pid;
 
+  /* Process id of its thread group, what /proc/self names.  */
+  pid_t tgid;
+
   /* Is it currently running or not?  */
   bool running;
 
@@ -98,6 +101,9 @@ typedef struct tracee {
 
   /* Parent of this tracee, NULL if none.  */
   struct tracee *parent;
+
+  /* Number of tracees whose @parent this is.  */
+  size_t nb_children;
 
   /* Is it a "clone", i.e has the same parent as its creator.  */
   bool clone;
@@ -154,6 +160,12 @@ typedef struct tracee {
   bool _regs_were_changed;
   bool restore_original_regs;
   bool restore_original_regs_after_seccomp_event;
+
+  /* The registers were fetched at this stop already.  */
+  bool regs_fresh;
+
+  /* The enter stage left nothing for the exit stage to do.  */
+  bool sysexit_unneeded;
 
   /* State for the special handling of SIGSTOP.  */
   enum {

@@ -9012,6 +9012,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         File linuxLog = new File(logDir, "linux-session-" + java.time.LocalDateTime.now().format(
                 java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss", java.util.Locale.US)) + ".log");
         guest.add("WN_LOG=" + linuxLog.getPath());
+        if (preferences.getBoolean("enable_wine_debug", false)) guest.add("WN_PROTON_LOG=1");
         guest.add(LinuxRuntime.SESSION_SCRIPT);
         guest.addAll(session);
 

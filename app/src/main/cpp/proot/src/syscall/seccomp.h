@@ -44,5 +44,6 @@ typedef struct {
 #define FILTER_SYSEXIT 0x1
 
 extern int enable_syscall_filtering(const Tracee *tracee);
+extern word_t filtered_sysnum_flags(Sysnum sysnum);
 
 #endif /* SECCOMP_H */

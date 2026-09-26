@@ -5,6 +5,7 @@ project(Winlator)
 include(FetchContent)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wno-unused-function -Wimplicit-function-declaration")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 # Zstandard is used by winlator/native_content_io.cpp. Keep this dependency in
 # the parent build instead of relying on the Steam client subproject to create it.

@@ -43,8 +43,10 @@
 #include "ptrace/wait.h"
 #include "syscall/seccomp.h"
 #include "syscall/syscall.h"
+#include "syscall/sysnum.h"
 #include "tracee/event.h"
 #include "tracee/mem.h"
+#include "tracee/reg.h"
 #include "tracee/seccomp.h"
 
 #include "attribute.h"
@@ -513,9 +515,14 @@ int handle_tracee_event(Tracee *tracee, int tracee_status) {
       if (tracee->seccomp != ENABLED)
         break;
 
-      status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
+      /* The flags the filter reported follow from the syscall,
+       * which the registers fetched here for the translation
+       * give without another request to the kernel.  */
+      status = fetch_regs(tracee);
       if (status < 0)
         break;
+      tracee->regs_fresh = true;
+      flags = filtered_sysnum_flags(get_sysnum(tracee, CURRENT));
 
       /* Use the common ptrace flow when
        * sysexit has to be handled.  */
@@ -523,8 +530,10 @@ int handle_tracee_event(Tracee *tracee, int tracee_status) {
         if (seccomp_after_ptrace_enter) {
           tracee->restart_how = PTRACE_SYSCALL;
           translate_syscall(tracee);
+        } else {
+          tracee->regs_fresh = false;
+          tracee->restart_how = PTRACE_SYSCALL;
         }
-        tracee->restart_how = PTRACE_SYSCALL;
         break;
       }
 
@@ -658,6 +667,7 @@ bool restart_tracee(Tracee *tracee, int signal) {
 
   tracee->last_restart_how = tracee->restart_how;
   tracee->restart_how = 0;
+  tracee->regs_fresh = false;
   tracee->running = true;
 
   return true;
