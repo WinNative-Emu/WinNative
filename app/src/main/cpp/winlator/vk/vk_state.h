@@ -17,17 +17,20 @@
 #include "lsfg/vkr_lsfg.h"
 #include "vkr_dis.h"
 
+#define VK_FRAMEGEN_MAX_GENERATIONS \
+    (VKR_DIS_MAX_GENERATIONS > VKR_LSFG_MAX_GENERATIONS ? VKR_DIS_MAX_GENERATIONS : VKR_LSFG_MAX_GENERATIONS)
+
 #define VK_LOG_TAG "VkRenderer"
 #define VK_LOGI(...) __android_log_print(ANDROID_LOG_INFO,  VK_LOG_TAG, __VA_ARGS__)
 #define VK_LOGW(...) __android_log_print(ANDROID_LOG_WARN,  VK_LOG_TAG, __VA_ARGS__)
 #define VK_LOGE(...) __android_log_print(ANDROID_LOG_ERROR, VK_LOG_TAG, __VA_ARGS__)
 
 #define VK_FRAMES_IN_FLIGHT 2
-#define VK_MAX_SWAPCHAIN_IMAGES 8
+#define VK_MAX_SWAPCHAIN_IMAGES 12
 // Encoder input-surface swapchains can expose many more images than a display swapchain.
 #define VK_MAX_RECORD_IMAGES 32
 #define VK_MAX_EFFECTS 8
-#define VK_MAX_COMPOSITE_TARGETS 8
+#define VK_MAX_COMPOSITE_TARGETS 10
 #define VK_FRAMEGEN_ACQUIRE_TIMEOUT_NS 3000000ULL
 #define VK_FRAMEGEN_ACQUIRE_TIMEOUT_MAX_NS 12000000ULL
 #define VK_MAX_RENDERABLE_WINDOWS 64
@@ -202,7 +205,7 @@ typedef struct VkPipelineSet {
 
 typedef struct VkFrame {
     VkSemaphore image_available;
-    VkSemaphore image_available_gen[VKR_LSFG_MAX_GENERATIONS];
+    VkSemaphore image_available_gen[VK_FRAMEGEN_MAX_GENERATIONS];
     VkFence     in_flight;
     VkCommandBuffer cmd;
 } VkFrame;

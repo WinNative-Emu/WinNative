@@ -98,7 +98,7 @@ void vkp_framegen_set_engine(int kind) {
 
 void vkp_framegen_set_armed(int armed, int multiplier) {
     if (multiplier < 2) multiplier = 2;
-    if (multiplier > VKP_FG_MAX_GENERATIONS + 1) multiplier = VKP_FG_MAX_GENERATIONS + 1;
+    if (multiplier > VKP_FG_LSFG_MAX_GENERATIONS + 1) multiplier = VKP_FG_LSFG_MAX_GENERATIONS + 1;
     if (atomic_exchange(&g_mult, multiplier) != multiplier) atomic_store(&g_cfg_dirty, 1);
     atomic_store(&g_armed, armed ? 1 : 0);
     LOGD("framegen: set_armed(%d, x%d)", armed, multiplier);
@@ -285,10 +285,18 @@ int vkp_framegen_active(void) {
     return atomic_load(&g_armed) && engine_usable();
 }
 
+/* DIS fills the gap to the refresh rate itself; LSFG takes the multiplier's share, or with a
+ * target rate lets its pacer pick the count. Either way, up to the engine's most. */
+static uint32_t generation_slots(void) {
+    if (atomic_load(&g_kind) == VKP_FG_ENGINE_DIS) return VKP_FG_MAX_GENERATIONS;
+    if (atomic_load(&g_target_fps) > 0) return VKP_FG_LSFG_MAX_GENERATIONS;
+    uint32_t m = (uint32_t)atomic_load(&g_mult);
+    return m - 1 > VKP_FG_LSFG_MAX_GENERATIONS ? VKP_FG_LSFG_MAX_GENERATIONS : m - 1;
+}
+
 int vkp_framegen_extra_images(void) {
     if (!vkp_framegen_active()) return 0;
-    int m = atomic_load(&g_mult);
-    return m - 1 > VKP_FG_MAX_GENERATIONS ? VKP_FG_MAX_GENERATIONS : m - 1;
+    return (int)generation_slots();
 }
 
 static int ensure_engine(int kind) {
@@ -373,11 +381,7 @@ int vkp_framegen_run(VkCommandBuffer cmd, VkImage scene, VkImageView scene_view,
         g_built_w = (uint32_t)w; g_built_h = (uint32_t)h; g_built_fmt = fmt;
         g_generating_logged = 0;
     }
-    /* With a target rate the pacer picks the generation count itself (it may exceed the
-     * multiplier to reach the target, as on X11), so the ring has to hold the engine's maximum
-     * rather than the multiplier's share. */
-    uint32_t want = atomic_load(&g_target_fps) > 0 ? (uint32_t)VKP_FG_MAX_GENERATIONS
-                                                   : (uint32_t)(mult - 1);
+    uint32_t want = generation_slots();
     if (!ensure_ring((uint32_t)w, (uint32_t)h, fmt, want)) {
         if (fmt != VK_FORMAT_R8G8B8A8_UNORM) { refuse_format(fmt, kind, w, h, "make its generation ring"); return 0; }
         FGLOG("no memory for the generation ring (%dx%d x%u); frame generation stays off", w, h, want);

@@ -1601,6 +1601,15 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
                 frameGenRefreshRate = refreshRate;
                 if (renderer != null) renderer.setFrameGenerationRefreshRate(refreshRate);
+                applyWaylandFrameGeneration();
+                return;
+            }
+            if (disFrameGenEnabled) {
+                float refreshRate = applyDisFrameGenerationDisplayMode();
+                VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
+                frameGenRefreshRate = refreshRate;
+                if (renderer != null) renderer.setFrameGenerationRefreshRate(refreshRate);
+                applyWaylandFrameGeneration();
                 return;
             }
             int pacedFpsLimit = systemFrameGenHudEnabled ? 0 : runtimeFpsLimit;
@@ -1682,20 +1691,40 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     }
 
     private void syncFrameGenerationRefreshRate() {
-        boolean lsfg = frameGenEnabled && frameGenCachePath != null;
-        if (!lsfg && !disFrameGenEnabled) return;
-
         android.view.Display display = getDisplayCompat();
         if (display == null) return;
 
         float active = display.getMode().getRefreshRate();
-        if (active <= 0f || Math.abs(active - frameGenRefreshRate) < 0.5f) return;
+        if (active <= 0f) return;
+        if (waylandMode) WaylandCompositor.nativeSetOutputRefreshRate(active);
+
+        boolean lsfg = frameGenEnabled && frameGenCachePath != null;
+        if (!lsfg && !disFrameGenEnabled) return;
+        if (Math.abs(active - frameGenRefreshRate) < 0.5f) return;
 
         Log.i("XServerDisplayActivity", "Frame generation panel changed: "
                 + Math.round(frameGenRefreshRate) + "Hz -> " + Math.round(active) + "Hz");
         frameGenRefreshRate = active;
         VulkanRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
         if (renderer != null) renderer.setFrameGenerationRefreshRate(active);
+        applyWaylandFrameGeneration();
+    }
+
+    /** The rate the panel is being moved to: a mode switch lands a moment after it is asked for. */
+    private float requestedPanelRefreshRate() {
+        android.view.Display display = getDisplayCompat();
+        if (display == null) return 0f;
+        android.view.Window window = getWindow();
+        if (window != null) {
+            android.view.WindowManager.LayoutParams params = window.getAttributes();
+            if (params.preferredDisplayModeId != 0) {
+                for (android.view.Display.Mode mode : display.getSupportedModes()) {
+                    if (mode.getModeId() == params.preferredDisplayModeId) return mode.getRefreshRate();
+                }
+            }
+            if (params.preferredRefreshRate > 0f) return params.preferredRefreshRate;
+        }
+        return display.getRefreshRate();
     }
 
     @Override
@@ -9005,8 +9034,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("WN_FPS=" + Math.max(0, runtimeFpsLimit));
         // What gamescope advertises when no limit is set, and what a game reads as the display's:
         // left out, gamescope says 60 and titles cap themselves there on a faster panel.
-        android.view.Display panel = getDisplayCompat();
-        int panelHz = panel != null ? Math.round(panel.getRefreshRate()) : 0;
+        int panelHz = Math.round(requestedPanelRefreshRate());
         if (panelHz > 1) guest.add("WN_REFRESH=" + panelHz);
         File logDir = com.winlator.cmod.runtime.system.LogManager.getSessionLogsDir(this);
         File linuxLog = new File(logDir, "linux-session-" + java.time.LocalDateTime.now().format(
@@ -9205,9 +9233,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (!hasDriver && gamescopeMode) return;
         cfg.hideShell = shortcut != null || (bootExePath != null && !bootExePath.isEmpty());
         try {
-            android.view.Display display = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                    ? getDisplay() : getWindowManager().getDefaultDisplay();
-            cfg.refreshHz = display != null ? display.getRefreshRate() : 60f;
+            float requested = requestedPanelRefreshRate();
+            cfg.refreshHz = requested > 1f ? requested : 60f;
         } catch (Exception e) {
             cfg.refreshHz = 60f;
         }

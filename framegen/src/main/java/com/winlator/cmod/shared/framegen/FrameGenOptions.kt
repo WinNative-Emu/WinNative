@@ -46,7 +46,7 @@ data class FrameGenOptions(
         const val MAX_FLOW_SCALE = 100
 
         val MULTIPLIER_OPTIONS = listOf(2, 3, 4)
-        val TARGET_OPTIONS = listOf(0, 60, 90, 120, 144)
+        val TARGET_OPTIONS = listOf(0, 60, 90, 120, 144, 165, 185)
 
         fun clampMultiplier(value: Int): Int = value.coerceIn(MIN_MULTIPLIER, MAX_MULTIPLIER)
 

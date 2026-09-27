@@ -762,7 +762,7 @@ const val FRAMEGEN_SHADERS_UPDATED = 5
 const val FRAMEGEN_SHADERS_NOT_OWNED = 6
 
 val FrameGenMultiplierOptions = listOf(2, 3, 4)
-val FrameGenTargetOptions = listOf(0, 60, 90, 120, 144)
+val FrameGenTargetOptions = listOf(0, 60, 90, 120, 144, 165, 185)
 
 private const val SEC_GENERAL = 0
 private const val SEC_STEAM = 1

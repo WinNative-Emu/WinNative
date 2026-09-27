@@ -17,7 +17,7 @@
 extern "C" {
 #endif
 
-#define VKR_DIS_MAX_GENERATIONS 3u
+#define VKR_DIS_MAX_GENERATIONS 7u
 
 typedef struct VkrDis VkrDis;
 

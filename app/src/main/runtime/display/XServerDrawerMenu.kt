@@ -570,10 +570,10 @@ private const val ActionCardRevealStaggerMs = 28
 private const val ActionCardRevealDurationMs = 220
 
 internal val FrameGenMultipliers = listOf(2, 3, 4)
-internal val FrameGenTargetRates = listOf(60, 90, 120, 144, 165)
+internal val FrameGenTargetRates = listOf(60, 90, 120, 144, 165, 185)
 internal const val FrameGenFlowScaleMin = 25
 internal const val FrameGenFlowScaleMax = 100
-internal val DisFrameGenTargetRates = listOf(60, 90, 120, 144, 165)
+internal val DisFrameGenTargetRates = listOf(60, 90, 120, 144, 165, 185)
 internal const val DisFrameGenScaleMin = 64
 internal const val DisFrameGenScaleMax = 1080
 

@@ -614,7 +614,7 @@ static bool create_command_pool(VkRenderer* r) {
         VkFrame* f = &r->frames[i];
         if (vkAllocateCommandBuffers(r->device, &ai, &f->cmd) != VK_SUCCESS) return false;
         if (vkCreateSemaphore(r->device, &si, NULL, &f->image_available) != VK_SUCCESS) return false;
-        for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+        for (uint32_t g = 0; g < VK_FRAMEGEN_MAX_GENERATIONS; g++) {
             if (vkCreateSemaphore(r->device, &si, NULL, &f->image_available_gen[g]) != VK_SUCCESS) {
                 return false;
             }
@@ -1235,7 +1235,8 @@ static bool create_swapchain(VkRenderer* r, uint32_t fallback_width, uint32_t fa
     // nativeCreate, so a value-equality check is safe (no zero-sentinel ambiguity with
     // VK_PRESENT_MODE_IMMEDIATE_KHR which is enum value 0).
     VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
-    VkPresentModeKHR want = r->target_present_mode;
+    // Generated frames are presented back to back; only FIFO gives each its own vblank.
+    VkPresentModeKHR want = framegen_extra_images(r) ? VK_PRESENT_MODE_FIFO_KHR : r->target_present_mode;
     if (want != VK_PRESENT_MODE_FIFO_KHR) {
         uint32_t pm_count = 0;
         vkGetPhysicalDeviceSurfacePresentModesKHR(r->physical_device, r->surface, &pm_count, NULL);
@@ -2672,9 +2673,8 @@ static bool record_and_submit_frame(VkRenderer* r) {
     uint32_t framegen_capacity = 0;
     if (via_composite && (r->lsfg || r->dis) && r->swapchain_image_count > 2) {
         framegen_capacity = r->swapchain_image_count - 2;
-        if (framegen_capacity > VKR_LSFG_MAX_GENERATIONS) {
-            framegen_capacity = VKR_LSFG_MAX_GENERATIONS;
-        }
+        const uint32_t engine_max = r->dis ? VKR_DIS_MAX_GENERATIONS : VKR_LSFG_MAX_GENERATIONS;
+        if (framegen_capacity > engine_max) framegen_capacity = engine_max;
         if (VK_FRAMES_IN_FLIGHT + framegen_capacity > VK_MAX_COMPOSITE_TARGETS) {
             framegen_capacity = VK_MAX_COMPOSITE_TARGETS - VK_FRAMES_IN_FLIGHT;
         }
@@ -2779,7 +2779,7 @@ static bool record_and_submit_frame(VkRenderer* r) {
     }
 
     uint32_t gen_count = 0;
-    uint32_t gen_image_index[VKR_LSFG_MAX_GENERATIONS] = {0};
+    uint32_t gen_image_index[VK_FRAMEGEN_MAX_GENERATIONS] = {0};
     for (uint32_t g = 0; g < framegen_planned; g++) {
         uint32_t idx = 0;
         VkResult ga = vkAcquireNextImageKHR(r->device, r->swapchain, gen_acquire_timeout,
@@ -3074,7 +3074,7 @@ static bool record_and_submit_frame(VkRenderer* r) {
 
     vkEndCommandBuffer(f->cmd);
 
-    #define VK_MAX_FRAME_SEMAPHORES (2 + VKR_LSFG_MAX_GENERATIONS)
+    #define VK_MAX_FRAME_SEMAPHORES (2 + VK_FRAMEGEN_MAX_GENERATIONS)
     VkSemaphore wait_sems[VK_MAX_FRAME_SEMAPHORES];
     VkPipelineStageFlags wait_stages[VK_MAX_FRAME_SEMAPHORES];
     VkSemaphore signal_sems[VK_MAX_FRAME_SEMAPHORES];
@@ -3134,7 +3134,7 @@ static bool record_and_submit_frame(VkRenderer* r) {
             f->image_available = VK_NULL_HANDLE;
             vkCreateSemaphore(r->device, &asi, NULL, &f->image_available);
         }
-        for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+        for (uint32_t g = 0; g < VK_FRAMEGEN_MAX_GENERATIONS; g++) {
             if (!f->image_available_gen[g]) continue;
             vkDestroySemaphore(r->device, f->image_available_gen[g], NULL);
             f->image_available_gen[g] = VK_NULL_HANDLE;
@@ -3365,7 +3365,7 @@ JNIEXPORT void JNICALL JNI_FN(nativeDestroy)(JNIEnv* env, jclass clazz, jlong ha
     for (uint32_t i = 0; i < VK_FRAMES_IN_FLIGHT; i++) {
         VkFrame* f = &r->frames[i];
         if (f->image_available) vkDestroySemaphore(r->device, f->image_available, NULL);
-        for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+        for (uint32_t g = 0; g < VK_FRAMEGEN_MAX_GENERATIONS; g++) {
             if (f->image_available_gen[g]) {
                 vkDestroySemaphore(r->device, f->image_available_gen[g], NULL);
             }
