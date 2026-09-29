@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// DIS frame generation: a Vulkan compute realisation of Dense Inverse Search
+// OpenFlow frame generation: a Vulkan compute realisation of Dense Inverse Search
 // optical flow. The algorithm and its reference implementation come from
 // OpenCV's DISOpticalFlow, which adopted Till Kroeger's original OF_DIS.
 // See CREDITS.md for the full attribution.
@@ -40,8 +40,8 @@
 #include <sys/system_properties.h>
 #endif
 
-#define DIS_LOGI(...) __android_log_print(ANDROID_LOG_INFO, "VkrDis", __VA_ARGS__)
-#define DIS_LOGW(...) __android_log_print(ANDROID_LOG_WARN, "VkrDis", __VA_ARGS__)
+#define DIS_LOGI(...) __android_log_print(ANDROID_LOG_INFO, "OpenFlow", __VA_ARGS__)
+#define DIS_LOGW(...) __android_log_print(ANDROID_LOG_WARN, "OpenFlow", __VA_ARGS__)
 
 #define DIS_LOCAL_SIZE 8u
 #define DIS_PATCH_STRIDE 3u
@@ -97,7 +97,7 @@
 #define DIS_VR_LEVELS 8u
 
 
-#define DIS_SET_SAMPLERS 5u
+#define DIS_SET_SAMPLERS 6u
 #define DIS_SET_STORAGE 1u
 #define DIS_SHARED_SETS_PER_LEVEL 6u
 #define DIS_VR_SHARED_SETS 7u
@@ -258,6 +258,9 @@ struct VkrDis {
 
     uint32_t hist_parity;
     bool hist_valid;
+    // flow_out holds the flow of the pair just before the one being computed, so the search can
+    // start from it; false after a reset, a rebuild or a frame whose flow was not computed.
+    bool prior_valid;
 
     // Hardware motion hint (GL_QCOM_motion_estimation). me is NULL whenever the hint is off:
     // disabled, unsupported, or the pyramid too shallow for the level it seeds.
@@ -295,6 +298,7 @@ typedef struct {
     int level;
     int coarseLevel;
     int hintLevel;
+    int priorLevels;
 } DisInversePC;
 
 typedef struct {
@@ -642,23 +646,21 @@ static VkPipeline dis_create_compute_pipeline(VkrDis* d, const uint32_t* code, s
 }
 
 static bool dis_create_pipelines(VkrDis* d) {
-    VkDescriptorSetLayoutBinding bindings[6];
+    // Samplers at 0-4 and 6 (6 is only the search's previous-pair flow), the storage image at 5.
+    VkDescriptorSetLayoutBinding bindings[7];
     memset(bindings, 0, sizeof(bindings));
-    for (uint32_t i = 0; i < 5; i++) {
+    for (uint32_t i = 0; i < 7; i++) {
         bindings[i].binding = i;
-        bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        bindings[i].descriptorType = i == 5 ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+                                            : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         bindings[i].descriptorCount = 1;
         bindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
     }
-    bindings[5].binding = 5;
-    bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    bindings[5].descriptorCount = 1;
-    bindings[5].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkDescriptorSetLayoutCreateInfo li;
     memset(&li, 0, sizeof(li));
     li.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    li.bindingCount = 6;
+    li.bindingCount = 7;
     li.pBindings = bindings;
     if (vkd.CreateDescriptorSetLayout(d->device, &li, NULL, &d->set_layout) != VK_SUCCESS) {
         return false;
@@ -992,6 +994,7 @@ static void dis_write_all_descriptors(VkrDis* d) {
             dis_batch_sampled(d, &b, d->inverse_sets[s][l], 3, coarse_view, d->sampler);
             dis_batch_sampled(d, &b, d->inverse_sets[s][l], 4, d->view_me_field, d->sampler);
             dis_batch_storage(d, &b, d->inverse_sets[s][l], 5, d->view_sparse[l]);
+            dis_batch_sampled(d, &b, d->inverse_sets[s][l], 6, d->view_flow_out, d->sampler);
 
             dis_batch_sampled(d, &b, d->prop_ab_sets[s][l], 0, d->view_flow_luma[prev][l], d->sampler);
             dis_batch_sampled(d, &b, d->prop_ab_sets[s][l], 1, d->view_flow_luma[next][l], d->sampler);
@@ -1219,7 +1222,7 @@ static void dis_create_me(VkrDis* d, uint32_t w, uint32_t h) {
         !dis_create_host_buffer(d, field_bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false,
                                 &d->me_field_buf, &d->me_field_mem, &d->me_field_map,
                                 &d->me_field_coherent)) {
-        DIS_LOGW("DIS hardware motion: host buffers unavailable; using DIS alone");
+        DIS_LOGW("OpenFlow hardware motion: host buffers unavailable; using OpenFlow alone");
         dis_destroy_me(d);
         return;
     }
@@ -1256,7 +1259,7 @@ static void dis_create_me(VkrDis* d, uint32_t w, uint32_t h) {
         w2[1].pBufferInfo = &bi;
         vkd.UpdateDescriptorSets(d->device, 2, w2, 0, NULL);
     }
-    DIS_LOGI("DIS hardware motion hint: GL_QCOM_motion_estimation on %ux%u seeds level %u (%ux%u)",
+    DIS_LOGI("OpenFlow hardware motion hint: GL_QCOM_motion_estimation on %ux%u seeds level %u (%ux%u)",
              d->me_w, d->me_h, d->me_level, d->me_field_w, d->me_field_h);
 }
 
@@ -1383,7 +1386,7 @@ static bool dis_alloc(VkrDis* d, VkDescriptorSetLayout layout, uint32_t count,
     ai.pSetLayouts = layouts;
     const VkResult res = vkd.AllocateDescriptorSets(d->device, &ai, out);
     if (res != VK_SUCCESS) {
-        DIS_LOGW("DIS descriptor allocation failed (%d) asking for %u sets", (int)res, count);
+        DIS_LOGW("OpenFlow descriptor allocation failed (%d) asking for %u sets", (int)res, count);
         return false;
     }
     return true;
@@ -1526,7 +1529,7 @@ static bool dis_audit_formats(VkrDis* d) {
     const VkFormatFeatureFlags FILTER = VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
 
     if (d->luma_format == VK_FORMAT_UNDEFINED) {
-        DIS_LOGW("DIS needs a single-channel float plane it can both write and filter; "
+        DIS_LOGW("OpenFlow needs a single-channel float plane it can both write and filter; "
                  "neither R16_SFLOAT nor R32_SFLOAT qualifies on this device");
         return false;
     }
@@ -1563,7 +1566,7 @@ static bool dis_audit_formats(VkrDis* d) {
         if (missing) {
             char names[256];
             dis_missing_features(missing, names, sizeof(names));
-            DIS_LOGW("DIS needs %s on %s for %s, and this device does not report it",
+            DIS_LOGW("OpenFlow needs %s on %s for %s, and this device does not report it",
                      names, dis_format_name(reqs[i].format), reqs[i].purpose);
             ok = false;
         }
@@ -1574,7 +1577,7 @@ static bool dis_audit_formats(VkrDis* d) {
     vkd.GetPhysicalDeviceFormatProperties(d->physical_device, VK_FORMAT_R16G16_SFLOAT, &flow_fp);
     d->manual_flow_filter = (flow_fp.optimalTilingFeatures & FILTER) == 0;
 
-    DIS_LOGI("DIS format support: %s | flow filtering: %s", line,
+    DIS_LOGI("OpenFlow format support: %s | flow filtering: %s", line,
              d->manual_flow_filter ? "in shader (driver cannot filter R16G16_SFLOAT)"
                                    : "sampler");
     return ok;
@@ -1598,29 +1601,29 @@ VkrDis* vkr_dis_create(VkDevice device, VkPhysicalDevice physical_device) {
     char prop[PROP_VALUE_MAX] = {0};
     if (__system_property_get("debug.winnative.dis.hwme", prop) > 0 && prop[0] == '1') {
         d->hw_motion = true;
-        DIS_LOGI("DIS hardware motion hint enabled by debug.winnative.dis.hwme");
+        DIS_LOGI("OpenFlow hardware motion hint enabled by debug.winnative.dis.hwme");
     }
 #endif
     d->hint_level = -1;
     vkd.GetPhysicalDeviceMemoryProperties(physical_device, &d->mem_props);
     d->luma_format = dis_pick_luma_format(d);
     if (!dis_audit_formats(d)) {
-        DIS_LOGW("DIS cannot run on this device's format support; frame generation stays off");
+        DIS_LOGW("OpenFlow cannot run on this device's format support; frame generation stays off");
         vkr_dis_destroy(d);
         return NULL;
     }
 
     if (!dis_create_sampler(d) || !dis_create_pipelines(d)) {
-        DIS_LOGW("DIS shaders could not be built; frame generation stays off");
+        DIS_LOGW("OpenFlow shaders could not be built; frame generation stays off");
         vkr_dis_destroy(d);
         return NULL;
     }
     if (!dis_allocate_sets(d)) {
-        DIS_LOGW("DIS descriptor sets could not be allocated; frame generation stays off");
+        DIS_LOGW("OpenFlow descriptor sets could not be allocated; frame generation stays off");
         vkr_dis_destroy(d);
         return NULL;
     }
-    DIS_LOGI("DIS frame generation ready");
+    DIS_LOGI("OpenFlow frame generation ready");
     return d;
 }
 
@@ -1725,7 +1728,7 @@ bool vkr_dis_prepare(VkrDis* d, uint32_t width, uint32_t height, VkFormat format
         if (missing) {
             char names[256];
             dis_missing_features(missing, names, sizeof(names));
-            DIS_LOGW("DIS needs %s on the guest frame format (%d) and this device does not "
+            DIS_LOGW("OpenFlow needs %s on the guest frame format (%d) and this device does not "
                      "report it; frame generation stays off", names, (int)format);
             d->unavailable = true;
             return false;
@@ -1735,7 +1738,7 @@ bool vkr_dis_prepare(VkrDis* d, uint32_t width, uint32_t height, VkFormat format
     d->levels = levels;
 
     if (!dis_create_resources(d, w, h, content.width, content.height, format)) {
-        DIS_LOGW("DIS resource build failed at %ux%u; frame generation unavailable", w, h);
+        DIS_LOGW("OpenFlow resource build failed at %ux%u; frame generation unavailable", w, h);
         dis_destroy_images(d);
         d->unavailable = true;
         return false;
@@ -1749,11 +1752,12 @@ bool vkr_dis_prepare(VkrDis* d, uint32_t width, uint32_t height, VkFormat format
     d->built_min_side = d->flow_min_side;
     d->built = true;
     d->frame_count = 0;
+    d->prior_valid = false;
     d->prev_idx = 0;
     d->next_idx = 0;
     d->active_slot = 0;
     d->last_generations = 0;
-    DIS_LOGI("DIS resources built at %ux%u (flow min side %u, %u levels); content rect "
+    DIS_LOGI("OpenFlow resources built at %ux%u (flow min side %u, %u levels); content rect "
              "%dx%d+%d+%d inside a %ux%u composite",
              w, h, d->flow_min_side, levels, (int)content.width, (int)content.height,
              (int)content.x, (int)content.y, width, height);
@@ -1810,7 +1814,7 @@ static void dis_log_plan(VkrDis* d, uint64_t now, float source_rate, float desir
     if (d->planned_gen == d->plan_log_gen && now - d->plan_log_ns < DIS_PLAN_LOG_NS) return;
     d->plan_log_gen = d->planned_gen;
     d->plan_log_ns = now;
-    DIS_LOGI("DIS plan: source %.1f fps, target %.1f fps, ratio %.2f -> %d generated "
+    DIS_LOGI("OpenFlow plan: source %.1f fps, target %.1f fps, ratio %.2f -> %d generated "
              "(capacity %u, output %.1f fps)",
              (double)source_rate, (double)desired, (double)ratio, d->planned_gen, capacity,
              (double)(source_rate * (float)(d->planned_gen + 1)));
@@ -2133,7 +2137,7 @@ static VkCommandBuffer dis_hardware_motion(VkrDis* d, VkCommandBuffer cmd, uint3
     }
     d->me_hinted++;
     if ((d->me_hinted % 600u) == 1u) {
-        DIS_LOGI("DIS hardware motion hint: %llu of %llu pairs seeded",
+        DIS_LOGI("OpenFlow hardware motion hint: %llu of %llu pairs seeded",
                  (unsigned long long)d->me_hinted, (unsigned long long)d->me_pairs);
     }
     return cmd;
@@ -2216,7 +2220,10 @@ VkCommandBuffer vkr_dis_process_ex(VkrDis* d, VkCommandBuffer cmd, VkImage sourc
     dis_compute_barrier(cmd);
     DIS_PROF(cmd, "copy+luma");
 
-    if (!wants_flow) return cmd;
+    if (!wants_flow) {
+        d->prior_valid = false;
+        return cmd;
+    }
     DisGradientPC gpc;
     gpc.lesser = 3.0f;
     gpc.upper = 10.0f;
@@ -2254,6 +2261,7 @@ VkCommandBuffer vkr_dis_process_ex(VkrDis* d, VkCommandBuffer cmd, VkImage sourc
         ipc.level = (int)l;
         ipc.coarseLevel = (int)coarse;
         ipc.hintLevel = d->hint_level;
+        ipc.priorLevels = d->prior_valid ? (int)((1u << L) - 1u) : 0;
         vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_inverse.pipeline);
         vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pipeline_layout, 0, 1,
                                   &d->inverse_sets[slot][l], 0, NULL);
@@ -2306,6 +2314,7 @@ VkCommandBuffer vkr_dis_process_ex(VkrDis* d, VkCommandBuffer cmd, VkImage sourc
         // other - the packed field and the side map read the refined field, the overlay
         // history reads the colour pair - so they share one barrier.
         dis_dispatch(d, cmd, d->pass_pack.pipeline, d->pack_set, w, h);
+        d->prior_valid = true;
 
         vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_hist.pipeline);
         vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
@@ -2457,6 +2466,7 @@ void vkr_dis_reset(VkrDis* d) {
     d->plan_log_ns = 0;
     d->hist_parity = 0;
     d->hist_valid = false;
+    d->prior_valid = false;
     d->hint_level = -1;
     if (d->me) dis_qcom_me_invalidate(d->me);
 }

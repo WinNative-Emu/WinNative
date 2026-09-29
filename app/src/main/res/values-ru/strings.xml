@@ -2624,7 +2624,7 @@
     <string name="session_drawer_frame_generation_enable">Генерировать кадры</string>
     <string name="session_drawer_frame_generation_engine_off">Выкл.</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">Множитель</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Адаптивная цель</string>
@@ -2632,7 +2632,7 @@
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Интерполирует между отрисованными кадрами с помощью Lossless Scaling. Движение плавнее, но задержка ввода увеличивается на один кадр.</string>
     <string name="session_drawer_frame_generation_target_note">Повышается к цели только пока это даёт измеримый выигрыш, вместо удержания фиксированного множителя.</string>
-    <string name="session_drawer_frame_generation_missing">Установите Lossless Scaling в настройках контейнера, чтобы использовать движок LSFG. Для DIS ничего дополнительно не нужно.</string>
+    <string name="session_drawer_frame_generation_missing">Установите Lossless Scaling в настройках контейнера, чтобы использовать движок LSFG. Для OpenFlow ничего дополнительно не нужно.</string>
     <string name="session_drawer_dis_frame_generation_note">Интерполирует между отрендеренными кадрами методом Dense Inverse Search. Встроено; внешние шейдеры не требуются.</string>
     <string name="session_drawer_dis_resolution_scale">Масштаб разрешения</string>
     <string name="session_drawer_dis_preset_fast">Быстро</string>
@@ -2643,7 +2643,7 @@
     <string name="session_drawer_dis_target_fps_max">Макс. частота обновления</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">Показать поток</string>
-    <string name="session_drawer_dis_debug_flow_note">Рисует векторы движения, вычисленные DIS, вместо сгенерированного кадра. Только для диагностики.</string>
+    <string name="session_drawer_dis_debug_flow_note">Рисует векторы движения, вычисленные OpenFlow, вместо сгенерированного кадра. Только для диагностики.</string>
     <string name="frame_generation_preset">Пресет качества</string>
     <string name="frame_generation_preset_ultra_performance">Ультрапроизводительность</string>
     <string name="frame_generation_preset_performance">Производительность</string>

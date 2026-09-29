@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// DIS frame generation: a Vulkan compute realisation of Dense Inverse Search
+// OpenFlow frame generation: a Vulkan compute realisation of Dense Inverse Search
 // optical flow. The algorithm and its reference implementation come from
 // OpenCV's DISOpticalFlow, which adopted Till Kroeger's original OF_DIS.
 // See CREDITS.md for the full attribution.
@@ -55,6 +55,21 @@ precision highp int;
 // there is nothing for the test to change; skip its 64 samples.
 #define DIS_ZERO_TEST_MIN_PX 0.5
 
+// Gauss-Newton only converges within a few texels of where it starts, and a move of more than a
+// patch is thrown out, so starting the coarsest level from zero caps the motion the whole
+// pyramid can follow - at 180p flow, somewhere between 100 and 190 px per frame at 1280x720,
+// which a fast camera turn exceeds. The coarsest level is tiny (40x22 texels at 180p), so there
+// the displacements within the radius are block-matched first, every second one and on every
+// second texel of the patch, and Gauss-Newton refines the best from there. The bias, per sample
+// and squared texel of displacement, makes a flat block that matches anywhere keep the smallest
+// move.
+#define DIS_COARSE_SEARCH_RADIUS 12
+#define DIS_COARSE_SEARCH_BIAS 1.0
+
+// Below this distance, in texels, from the vector a level would start from, the previous pair's
+// vector is the same start and is not scored again.
+#define DIS_PRIOR_MIN_PX 0.5
+
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform sampler2D lastLumaMap;
@@ -66,11 +81,15 @@ layout(set = 0, binding = 3) uniform sampler2D flowMap;
 // marks a block the estimator had nothing for.
 layout(set = 0, binding = 4) uniform sampler2D hintFlowMap;
 layout(set = 0, binding = 5, rgba32f) uniform image2D sparseFlowMap;
+// The previous pair's final flow, in normalised uv units, indexed by position in its first frame;
+// read on the levels whose bit is set in priorLevels.
+layout(set = 0, binding = 6) uniform sampler2D priorFlowMap;
 
 layout(push_constant) uniform PC {
     int level;
     int coarseLevel;
     int hintLevel;
+    int priorLevels;
 } pc;
 
 #define HINT_INVALID 1.0e6
@@ -101,6 +120,23 @@ shared vec2 sGrad[TILE * TILE];
 
 #define REF(i, j) sLuma[(lp.y + (j)) * TILE + lp.x + (i)]
 #define GRAD(i, j) sGrad[(lp.y + (j)) * TILE + lp.x + (i)]
+
+// Mean-normalised SSD of the patch at pix displaced by f (texels), the metric the search minimises.
+float patchSSD(vec2 f, ivec2 pix, ivec2 lp, ivec2 denseSize) {
+    vec2 invImageSize = 1.0 / vec2(denseSize);
+    vec2 o = clamp(vec2(pix) + f, vec2(0.0), vec2(denseSize) - 8.0);
+    float s = 0.0;
+    float s2 = 0.0;
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            vec2 tc = (o + vec2(i, j) + 0.5) * invImageSize;
+            float diff = textureLod(nextLumaMap, tc, 0.0).x - REF(i, j);
+            s += diff;
+            s2 += diff * diff;
+        }
+    }
+    return s2 - s * s / 64.0;
+}
 
 void main() {
     const float patchSize = 8.0;
@@ -146,6 +182,28 @@ void main() {
     vec2 flow;
     if (pc.level == pc.coarseLevel) {
         flow = vec2(0.0);
+        float bestCost = 1e30;
+        ivec2 maxOrigin = denseSize - ivec2(8);
+        for (int dy = -DIS_COARSE_SEARCH_RADIUS; dy <= DIS_COARSE_SEARCH_RADIUS; dy += 2) {
+            for (int dx = -DIS_COARSE_SEARCH_RADIUS; dx <= DIS_COARSE_SEARCH_RADIUS; dx += 2) {
+                ivec2 o = pix + ivec2(dx, dy);
+                if (any(lessThan(o, ivec2(0))) || any(greaterThan(o, maxOrigin))) continue;
+                float s = 0.0;
+                float s2 = 0.0;
+                for (int i = 0; i < 8; i += 2) {
+                    for (int j = 0; j < 8; j += 2) {
+                        float diff = texelFetch(nextLumaMap, o + ivec2(i, j), 0).x - REF(i, j);
+                        s += diff;
+                        s2 += diff * diff;
+                    }
+                }
+                float cost = s2 - s * s / 16.0 + DIS_COARSE_SEARCH_BIAS * 16.0 * float(dx * dx + dy * dy);
+                if (cost < bestCost) {
+                    bestCost = cost;
+                    flow = vec2(dx, dy);
+                }
+            }
+        }
     } else {
         ivec2 fmMax = textureSize(flowMap, 0) - 1;
         vec4 cf = texelFetch(flowMap, clamp(ivec2(pix / 2) + 2, ivec2(0), fmMax), 0);
@@ -155,10 +213,12 @@ void main() {
     vec2 invImageSize = 1.0 / vec2(denseSize);
     const float N = 64.0;
 
-    // A second starting point from the hardware estimator. Both candidates are scored on the
-    // patch with the same mean-normalised SSD the search minimises, and the search starts from
-    // the better one. The coarse level still covers what the estimator cannot: its search range
-    // is a few dozen pixels, and past that its vector is garbage that simply loses here.
+    // Further starting points, each scored on the patch with the same mean-normalised SSD the
+    // search minimises; the search starts from the best. A wrong candidate simply loses here.
+    float startSSD = -1.0;
+
+    // The hardware estimator's vector. The coarse level still covers what the estimator cannot:
+    // its search range is a few dozen pixels, and past that its vector is garbage.
     if (pc.level == pc.hintLevel) {
         vec2 hintSize = vec2(textureSize(hintFlowMap, 0));
         ivec2 hp = clamp(ivec2((vec2(pix) + 4.0) * hintSize / vec2(denseSize)),
@@ -166,25 +226,30 @@ void main() {
         vec2 hint = texelFetch(hintFlowMap, hp, 0).xy;
         if (all(lessThan(abs(hint), vec2(HINT_INVALID * 0.5)))) {
             hint *= vec2(denseSize);
-            vec2 cand[2] = vec2[2](flow, hint);
-            float best = 1e30;
-            for (int c = 0; c < 2; c++) {
-                vec2 o = clamp(vec2(pix) + cand[c], vec2(0.0), vec2(denseSize) - patchSize);
-                float s = 0.0;
-                float s2 = 0.0;
-                for (int i = 0; i < 8; i++) {
-                    for (int j = 0; j < 8; j++) {
-                        vec2 tc = (o + vec2(i, j) + 0.5) * invImageSize;
-                        float diff = textureLod(nextLumaMap, tc, 0.0).x - REF(i, j);
-                        s += diff;
-                        s2 += diff * diff;
-                    }
-                }
-                float ssd = s2 - s * s / N;
-                if (ssd < best) {
-                    best = ssd;
-                    flow = cand[c];
-                }
+            startSSD = patchSSD(flow, pix, lp, denseSize);
+            float hintSSD = patchSSD(hint, pix, lp, denseSize);
+            if (hintSSD < startSSD) {
+                startSSD = hintSSD;
+                flow = hint;
+            }
+        }
+    }
+
+    // The previous pair's vector: motion goes on. It is what follows an object too small or too
+    // fast for the coarse levels to see - there it is lost in the background - and a periodic
+    // texture that the refinement from the coarse vector would lock onto a period off. The field
+    // is indexed by position in the previous pair's first frame, where this patch's content was
+    // one vector ago, so it is looked up there (one fixed-point step from the patch centre).
+    if ((pc.priorLevels & (1 << pc.level)) != 0) {
+        vec2 c = (vec2(pix) + 4.0) * invImageSize;
+        vec2 p = textureLod(priorFlowMap, c, 0.0).xy;
+        p = textureLod(priorFlowMap, c - p, 0.0).xy * vec2(denseSize);
+        if (!any(isnan(p)) && !any(isinf(p)) && distance(p, flow) > DIS_PRIOR_MIN_PX) {
+            if (startSSD < 0.0) startSSD = patchSSD(flow, pix, lp, denseSize);
+            float priorSSD = patchSSD(p, pix, lp, denseSize);
+            if (priorSSD < startSSD) {
+                startSSD = priorSSD;
+                flow = p;
             }
         }
     }

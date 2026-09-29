@@ -2717,7 +2717,7 @@
     <string name="session_drawer_frame_generation_enable">สร้างเฟรม</string>
     <string name="session_drawer_frame_generation_engine_off">ปิด</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">ตัวคูณ</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">เป้าหมายแบบปรับอัตโนมัติ</string>
@@ -2725,7 +2725,7 @@
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">แทรกเฟรมระหว่างเฟรมที่เรนเดอร์ด้วย Lossless Scaling การเคลื่อนไหวลื่นขึ้น แต่มีความหน่วงของอินพุตเพิ่มขึ้นหนึ่งเฟรม</string>
     <string name="session_drawer_frame_generation_target_note">จะไต่ขึ้นสู่เป้าหมายเฉพาะเมื่อวัดผลได้ว่าช่วยจริง แทนที่จะคงตัวคูณไว้คงที่</string>
-    <string name="session_drawer_frame_generation_missing">ติดตั้ง Lossless Scaling ในการตั้งค่าคอนเทนเนอร์เพื่อใช้เอนจิน LSFG ส่วน DIS ไม่ต้องใช้อะไรเพิ่ม</string>
+    <string name="session_drawer_frame_generation_missing">ติดตั้ง Lossless Scaling ในการตั้งค่าคอนเทนเนอร์เพื่อใช้เอนจิน LSFG ส่วน OpenFlow ไม่ต้องใช้อะไรเพิ่ม</string>
     <string name="session_drawer_dis_frame_generation_note">แทรกเฟรมระหว่างเฟรมที่เรนเดอร์ด้วย Dense Inverse Search มีในตัว ไม่ต้องใช้เชเดอร์ภายนอก</string>
     <string name="session_drawer_dis_resolution_scale">สเกลความละเอียด</string>
     <string name="session_drawer_dis_preset_fast">เร็ว</string>
@@ -2736,7 +2736,7 @@
     <string name="session_drawer_dis_target_fps_max">อัตรารีเฟรชสูงสุด</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">แสดงโฟลว์</string>
-    <string name="session_drawer_dis_debug_flow_note">วาดเวกเตอร์การเคลื่อนไหวที่ DIS ประมาณไว้แทนเฟรมที่สร้างขึ้น ใช้เพื่อวินิจฉัยเท่านั้น</string>
+    <string name="session_drawer_dis_debug_flow_note">วาดเวกเตอร์การเคลื่อนไหวที่ OpenFlow ประมาณไว้แทนเฟรมที่สร้างขึ้น ใช้เพื่อวินิจฉัยเท่านั้น</string>
     <string name="frame_generation_preset">ค่าที่ตั้งไว้ของคุณภาพ</string>
     <string name="frame_generation_preset_ultra_performance">ประสิทธิภาพสูงสุด</string>
     <string name="frame_generation_preset_performance">ประสิทธิภาพ</string>

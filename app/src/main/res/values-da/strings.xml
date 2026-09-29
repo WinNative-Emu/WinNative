@@ -2729,7 +2729,7 @@ Installeret sti:
     <string name="session_drawer_frame_generation_enable">Generér billeder</string>
     <string name="session_drawer_frame_generation_engine_off">Fra</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplikator</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Adaptivt mål</string>
@@ -2737,7 +2737,7 @@ Installeret sti:
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Interpolerer mellem gengivne billeder med Lossless Scaling. Blødere bevægelse, men ét ekstra billede med inputforsinkelse.</string>
     <string name="session_drawer_frame_generation_target_note">Stiger mod målet, kun mens det målbart hjælper, i stedet for at fastholde en fast multiplikator.</string>
-    <string name="session_drawer_frame_generation_missing">Installér Lossless Scaling i containerindstillingerne for at bruge LSFG-motoren. DIS kræver ikke noget ekstra.</string>
+    <string name="session_drawer_frame_generation_missing">Installér Lossless Scaling i containerindstillingerne for at bruge LSFG-motoren. OpenFlow kræver ikke noget ekstra.</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolerer mellem gengivne billeder med Dense Inverse Search. Indbygget; ingen eksterne shaders kræves.</string>
     <string name="session_drawer_dis_resolution_scale">Opløsningsskala</string>
     <string name="session_drawer_dis_preset_fast">Hurtig</string>
@@ -2748,7 +2748,7 @@ Installeret sti:
     <string name="session_drawer_dis_target_fps_max">Maks. opdateringshastighed</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">Vis flow</string>
-    <string name="session_drawer_dis_debug_flow_note">Tegner de bevægelsesvektorer, DIS beregner, i stedet for det genererede billede. Kun til diagnostik.</string>
+    <string name="session_drawer_dis_debug_flow_note">Tegner de bevægelsesvektorer, OpenFlow beregner, i stedet for det genererede billede. Kun til diagnostik.</string>
     <string name="frame_generation_preset">Kvalitetsforudindstilling</string>
     <string name="frame_generation_preset_ultra_performance">Ultra ydeevne</string>
     <string name="frame_generation_preset_performance">Ydeevne</string>

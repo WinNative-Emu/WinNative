@@ -2717,7 +2717,7 @@
     <string name="session_drawer_frame_generation_enable">生成影格</string>
     <string name="session_drawer_frame_generation_engine_off">關閉</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">倍數</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">自適應目標</string>
@@ -2725,7 +2725,7 @@
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">使用 Lossless Scaling 在已算繪的影格之間插補。畫面更流暢，但輸入延遲會增加一個影格。</string>
     <string name="session_drawer_frame_generation_target_note">僅在能帶來可測量的提升時才朝目標提升，而不是維持固定倍數。</string>
-    <string name="session_drawer_frame_generation_missing">請在容器設定中安裝 Lossless Scaling 以使用 LSFG 引擎。DIS 則不需要額外安裝任何東西。</string>
+    <string name="session_drawer_frame_generation_missing">請在容器設定中安裝 Lossless Scaling 以使用 LSFG 引擎。OpenFlow 則不需要額外安裝任何東西。</string>
     <string name="session_drawer_dis_frame_generation_note">使用 Dense Inverse Search 在已算繪的影格之間插補。內建功能，無需外部著色器。</string>
     <string name="session_drawer_dis_resolution_scale">解析度縮放</string>
     <string name="session_drawer_dis_preset_fast">快速</string>
@@ -2736,7 +2736,7 @@
     <string name="session_drawer_dis_target_fps_max">最高更新率</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">顯示光流</string>
-    <string name="session_drawer_dis_debug_flow_note">繪製 DIS 估算的動態向量，而非生成的影格。僅供診斷使用。</string>
+    <string name="session_drawer_dis_debug_flow_note">繪製 OpenFlow 估算的動態向量，而非生成的影格。僅供診斷使用。</string>
     <string name="frame_generation_preset">畫質預設</string>
     <string name="frame_generation_preset_ultra_performance">極致效能</string>
     <string name="frame_generation_preset_performance">效能</string>

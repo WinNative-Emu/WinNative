@@ -2614,7 +2614,7 @@
     <string name="session_drawer_frame_generation_enable">फ़्रेम जनरेट करें</string>
     <string name="session_drawer_frame_generation_engine_off">बंद</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">गुणक</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">अनुकूली लक्ष्य</string>
@@ -2622,7 +2622,7 @@
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Lossless Scaling से रेंडर किए गए फ़्रेमों के बीच इंटरपोलेट करता है। गति अधिक सहज, लेकिन इनपुट में एक अतिरिक्त फ़्रेम की देरी।</string>
     <string name="session_drawer_frame_generation_target_note">स्थिर गुणक बनाए रखने के बजाय, केवल तभी लक्ष्य की ओर बढ़ता है जब इससे मापने योग्य लाभ हो।</string>
-    <string name="session_drawer_frame_generation_missing">LSFG इंजन उपयोग करने के लिए कंटेनर सेटिंग्स में Lossless Scaling इंस्टॉल करें। DIS को कुछ अतिरिक्त नहीं चाहिए।</string>
+    <string name="session_drawer_frame_generation_missing">LSFG इंजन उपयोग करने के लिए कंटेनर सेटिंग्स में Lossless Scaling इंस्टॉल करें। OpenFlow को कुछ अतिरिक्त नहीं चाहिए।</string>
     <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search से रेंडर किए गए फ़्रेम के बीच इंटरपोलेट करता है। ऐप में बिल्ट-इन; बाहरी शेडर की ज़रूरत नहीं।</string>
     <string name="session_drawer_dis_resolution_scale">रिज़ॉल्यूशन स्केल</string>
     <string name="session_drawer_dis_preset_fast">तेज़</string>
@@ -2633,7 +2633,7 @@
     <string name="session_drawer_dis_target_fps_max">अधिकतम रिफ्रेश दर</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">फ़्लो दिखाएँ</string>
-    <string name="session_drawer_dis_debug_flow_note">जनरेट किए गए फ़्रेम के बजाय DIS द्वारा अनुमानित मोशन वेक्टर दिखाता है। केवल निदान के लिए।</string>
+    <string name="session_drawer_dis_debug_flow_note">जनरेट किए गए फ़्रेम के बजाय OpenFlow द्वारा अनुमानित मोशन वेक्टर दिखाता है। केवल निदान के लिए।</string>
     <string name="frame_generation_preset">गुणवत्ता प्रीसेट</string>
     <string name="frame_generation_preset_ultra_performance">अल्ट्रा प्रदर्शन</string>
     <string name="frame_generation_preset_performance">प्रदर्शन</string>

@@ -1960,7 +1960,7 @@ static VkCommandBuffer dis_flush_frame(void* user, VkCommandBuffer cmd) {
     if (sr == VK_SUCCESS && r->dis_flush_fence) {
         vkWaitForFences(r->device, 1, &r->dis_flush_fence, VK_TRUE, UINT64_MAX);
     } else if (sr != VK_SUCCESS) {
-        VK_LOGW("DIS mid-frame submit -> %d", (int)sr);
+        VK_LOGW("OpenFlow mid-frame submit -> %d", (int)sr);
     }
     vkResetCommandBuffer(cmd, 0);
     VkCommandBufferBeginInfo bi = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -1974,7 +1974,7 @@ static void create_dis(VkRenderer* r) {
 
     r->dis = vkr_dis_create(r->device, r->physical_device);
     if (!r->dis) {
-        VK_LOGW("DIS shaders unavailable; frame generation stays off");
+        VK_LOGW("OpenFlow shaders unavailable; frame generation stays off");
         return;
     }
     vkr_dis_configure(r->dis, r->dis_scale ? r->dis_scale : 180u, r->dis_target_fps,
@@ -3979,7 +3979,7 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetDisFrameGenerationEnabled)(JNIEnv* env, j
     }
     framegen_rebuild_swapchain(r);
     pthread_mutex_unlock(&r->render_mutex);
-    VK_LOGI("DIS frame generation composite path %s (supported=%d)",
+    VK_LOGI("OpenFlow frame generation composite path %s (supported=%d)",
             want ? "enabled" : "disabled", (int)r->framegen_supported);
 }
 

@@ -192,7 +192,7 @@ void vkp_framegen_device_ready(VkDevice dev, VkQueue queue, uint32_t qfam, int f
     g_vk.GetPhysicalDeviceMemoryProperties(g_pd, &g_memprops);
     fge_device_ready(g_gipa, g_inst, g_pd, dev, queue, qfam, features_enabled);
     g_dev_ready = vk.CreateImage && vk.CreateImageView && vk.CmdPipelineBarrier;
-    FGLOG("engines ready on the compositor's device: LSFG Native %s (%s), DIS Native %s",
+    FGLOG("engines ready on the compositor's device: LSFG Native %s (%s), OpenFlow Native %s",
           fge_caps_ok(VKP_FG_ENGINE_LSFG) ? "available" : "unavailable", fge_caps_reason(),
           fge_caps_ok(VKP_FG_ENGINE_DIS) ? "available" : "unavailable");
 }

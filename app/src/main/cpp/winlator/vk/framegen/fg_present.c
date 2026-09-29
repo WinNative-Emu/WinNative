@@ -737,7 +737,7 @@ static bool fg_engine_acquire(FgPresenter* fg) {
         if (fg->dis) return true;
         fg->dis = vkr_dis_create(fg->device, fg->physical_device);
         if (!fg->dis) {
-            FG_LOGW("DIS optical flow is unavailable on this device");
+            FG_LOGW("OpenFlow optical flow is unavailable on this device");
             return false;
         }
         return true;
@@ -756,7 +756,7 @@ static bool fg_engine_ready(const FgPresenter* fg) {
 }
 
 static const char* fg_engine_name(uint32_t engine) {
-    return engine == FG_ENGINE_DIS ? "DIS" : "LSFG";
+    return engine == FG_ENGINE_DIS ? "OpenFlow" : "LSFG";
 }
 
 static void fg_apply_config(FgPresenter* fg) {
@@ -822,7 +822,7 @@ static VkCommandBuffer fg_dis_flush(void* user, VkCommandBuffer cmd) {
     if (vkQueueSubmit(fg->queue, 1, &si, fg->flush_fence) == VK_SUCCESS) {
         vkWaitForFences(fg->device, 1, &fg->flush_fence, VK_TRUE, UINT64_MAX);
     } else {
-        FG_LOGW("DIS mid-frame submit failed");
+        FG_LOGW("OpenFlow mid-frame submit failed");
         vkDeviceWaitIdle(fg->device);
     }
     vkResetCommandBuffer(cmd, 0);

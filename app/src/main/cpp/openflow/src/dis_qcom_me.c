@@ -24,8 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ME_LOGI(...) __android_log_print(ANDROID_LOG_INFO, "VkrDis", __VA_ARGS__)
-#define ME_LOGW(...) __android_log_print(ANDROID_LOG_WARN, "VkrDis", __VA_ARGS__)
+#define ME_LOGI(...) __android_log_print(ANDROID_LOG_INFO, "OpenFlow", __VA_ARGS__)
+#define ME_LOGW(...) __android_log_print(ANDROID_LOG_WARN, "OpenFlow", __VA_ARGS__)
 
 #define GL_MOTION_ESTIMATION_SEARCH_BLOCK_X_QCOM 0x8C90
 #define GL_MOTION_ESTIMATION_SEARCH_BLOCK_Y_QCOM 0x8C91

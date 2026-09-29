@@ -2717,7 +2717,7 @@ Cale instalata:
     <string name="session_drawer_frame_generation_enable">Generează cadre</string>
     <string name="session_drawer_frame_generation_engine_off">Oprit</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplicator</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Țintă adaptivă</string>
@@ -2725,7 +2725,7 @@ Cale instalata:
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Interpolează între cadrele randate cu Lossless Scaling. Mișcare mai fluidă, dar un cadru suplimentar de latență la intrare.</string>
     <string name="session_drawer_frame_generation_target_note">Urcă spre țintă doar cât timp ajută în mod măsurabil, în loc să păstreze un multiplicator fix.</string>
-    <string name="session_drawer_frame_generation_missing">Instalează Lossless Scaling din setările containerului pentru a folosi motorul LSFG. DIS nu necesită nimic în plus.</string>
+    <string name="session_drawer_frame_generation_missing">Instalează Lossless Scaling din setările containerului pentru a folosi motorul LSFG. OpenFlow nu necesită nimic în plus.</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolează între cadrele randate cu Dense Inverse Search. Încorporat; fără shadere externe.</string>
     <string name="session_drawer_dis_resolution_scale">Scală rezoluție</string>
     <string name="session_drawer_dis_preset_fast">Rapid</string>
@@ -2736,7 +2736,7 @@ Cale instalata:
     <string name="session_drawer_dis_target_fps_max">Rată de reîmprospătare max.</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">Arată fluxul</string>
-    <string name="session_drawer_dis_debug_flow_note">Desenează vectorii de mișcare estimați de DIS în locul cadrului generat. Doar pentru diagnosticare.</string>
+    <string name="session_drawer_dis_debug_flow_note">Desenează vectorii de mișcare estimați de OpenFlow în locul cadrului generat. Doar pentru diagnosticare.</string>
     <string name="frame_generation_preset">Presetare de calitate</string>
     <string name="frame_generation_preset_ultra_performance">Ultra performanță</string>
     <string name="frame_generation_preset_performance">Performanță</string>

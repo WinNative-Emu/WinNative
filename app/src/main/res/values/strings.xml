@@ -917,7 +917,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_frame_generation_enable">Generate Frames</string>
     <string name="session_drawer_frame_generation_engine_off">Off</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplier</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Adaptive Target</string>
@@ -938,7 +938,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="frame_generation_preset_quality_note" formatted="false">Motion estimated at full resolution. Highest cost; use it only when the game has GPU headroom to spare.</string>
     <string name="session_drawer_frame_generation_note">Interpolates between rendered frames with Lossless Scaling. Smoother motion, but one extra frame of input latency.</string>
     <string name="session_drawer_frame_generation_target_note">Climbs toward the target only while it measurably helps, instead of holding a fixed multiplier.</string>
-    <string name="session_drawer_frame_generation_missing">Install Lossless Scaling in container settings to use the LSFG engine. DIS needs nothing extra.</string>
+    <string name="session_drawer_frame_generation_missing">Install Lossless Scaling in container settings to use the LSFG engine. OpenFlow needs nothing extra.</string>
     <string name="session_drawer_dis_frame_generation_note">Interpolates between rendered frames with Dense Inverse Search. Built into the app; no external shaders required.</string>
     <string name="session_drawer_dis_resolution_scale">Resolution Scale</string>
     <string name="session_drawer_dis_preset_fast">Fast</string>
@@ -949,7 +949,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_dis_target_fps_max">Max refresh rate</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">Show flow</string>
-    <string name="session_drawer_dis_debug_flow_note">Draws the motion vectors DIS estimates instead of the generated frame. Diagnostic only.</string>
+    <string name="session_drawer_dis_debug_flow_note">Draws the motion vectors OpenFlow estimates instead of the generated frame. Diagnostic only.</string>
     <string name="settings_frame_generation_title">Frame Generation</string>
     <string name="settings_frame_generation_importing">Looking for Lossless Scaling…</string>
     <string name="settings_frame_generation_ready">Lossless Scaling shaders ready.</string>

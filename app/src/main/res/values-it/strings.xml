@@ -2720,7 +2720,7 @@ Percorso installato:
     <string name="session_drawer_frame_generation_enable">Genera fotogrammi</string>
     <string name="session_drawer_frame_generation_engine_off">Disattivo</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">Moltiplicatore</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Obiettivo adattivo</string>
@@ -2728,7 +2728,7 @@ Percorso installato:
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Interpola tra i fotogrammi renderizzati con Lossless Scaling. Movimento più fluido, ma un fotogramma in più di latenza di input.</string>
     <string name="session_drawer_frame_generation_target_note">Sale verso l\'obiettivo solo finché aiuta in modo misurabile, invece di mantenere un moltiplicatore fisso.</string>
-    <string name="session_drawer_frame_generation_missing">Installa Lossless Scaling nelle impostazioni del contenitore per usare il motore LSFG. DIS non richiede nulla di aggiuntivo.</string>
+    <string name="session_drawer_frame_generation_missing">Installa Lossless Scaling nelle impostazioni del contenitore per usare il motore LSFG. OpenFlow non richiede nulla di aggiuntivo.</string>
     <string name="session_drawer_dis_frame_generation_note">Interpola tra i fotogrammi renderizzati con Dense Inverse Search. Integrato; nessuno shader esterno richiesto.</string>
     <string name="session_drawer_dis_resolution_scale">Scala risoluzione</string>
     <string name="session_drawer_dis_preset_fast">Veloce</string>
@@ -2739,7 +2739,7 @@ Percorso installato:
     <string name="session_drawer_dis_target_fps_max">Freq. max</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">Mostra flusso</string>
-    <string name="session_drawer_dis_debug_flow_note">Disegna i vettori di movimento stimati da DIS al posto del fotogramma generato. Solo a scopo diagnostico.</string>
+    <string name="session_drawer_dis_debug_flow_note">Disegna i vettori di movimento stimati da OpenFlow al posto del fotogramma generato. Solo a scopo diagnostico.</string>
     <string name="frame_generation_preset">Preset qualità</string>
     <string name="frame_generation_preset_ultra_performance">Ultra prestazioni</string>
     <string name="frame_generation_preset_performance">Prestazioni</string>

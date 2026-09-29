@@ -2724,7 +2724,7 @@ Zainstalowana ścieżka:
     <string name="session_drawer_frame_generation_enable">Generuj klatki</string>
     <string name="session_drawer_frame_generation_engine_off">Wył.</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">Mnożnik</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Cel adaptacyjny</string>
@@ -2732,7 +2732,7 @@ Zainstalowana ścieżka:
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Interpoluje między wyrenderowanymi klatkami przy użyciu Lossless Scaling. Płynniejszy ruch, ale jedna dodatkowa klatka opóźnienia sterowania.</string>
     <string name="session_drawer_frame_generation_target_note">Zwiększa się w kierunku celu tylko wtedy, gdy przynosi to mierzalną korzyść, zamiast utrzymywać stały mnożnik.</string>
-    <string name="session_drawer_frame_generation_missing">Zainstaluj Lossless Scaling w ustawieniach kontenera, aby korzystać z silnika LSFG. DIS nie wymaga niczego dodatkowego.</string>
+    <string name="session_drawer_frame_generation_missing">Zainstaluj Lossless Scaling w ustawieniach kontenera, aby korzystać z silnika LSFG. OpenFlow nie wymaga niczego dodatkowego.</string>
     <string name="session_drawer_dis_frame_generation_note">Interpoluje między wyrenderowanymi klatkami przy użyciu Dense Inverse Search. Wbudowane; nie wymaga zewnętrznych shaderów.</string>
     <string name="session_drawer_dis_resolution_scale">Skala rozdzielczości</string>
     <string name="session_drawer_dis_preset_fast">Szybko</string>
@@ -2743,7 +2743,7 @@ Zainstalowana ścieżka:
     <string name="session_drawer_dis_target_fps_max">Maks. częstotliwość odświeżania</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">Pokaż przepływ</string>
-    <string name="session_drawer_dis_debug_flow_note">Rysuje wektory ruchu szacowane przez DIS zamiast wygenerowanej klatki. Tylko do diagnostyki.</string>
+    <string name="session_drawer_dis_debug_flow_note">Rysuje wektory ruchu szacowane przez OpenFlow zamiast wygenerowanej klatki. Tylko do diagnostyki.</string>
     <string name="frame_generation_preset">Ustawienie jakości</string>
     <string name="frame_generation_preset_ultra_performance">Ultra wydajność</string>
     <string name="frame_generation_preset_performance">Wydajność</string>

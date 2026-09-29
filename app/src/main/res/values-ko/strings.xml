@@ -2719,7 +2719,7 @@
     <string name="session_drawer_frame_generation_enable">프레임 생성 사용</string>
     <string name="session_drawer_frame_generation_engine_off">끄기</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">배수</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">적응형 목표</string>
@@ -2727,7 +2727,7 @@
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Lossless Scaling으로 렌더링된 프레임 사이를 보간합니다. 움직임은 부드러워지지만 입력 지연이 한 프레임 늘어납니다.</string>
     <string name="session_drawer_frame_generation_target_note">고정 배수를 유지하는 대신, 측정 가능한 이득이 있을 때만 목표를 향해 올립니다.</string>
-    <string name="session_drawer_frame_generation_missing">LSFG 엔진을 사용하려면 컨테이너 설정에서 Lossless Scaling을 설치하세요. DIS는 추가 설치가 필요 없습니다.</string>
+    <string name="session_drawer_frame_generation_missing">LSFG 엔진을 사용하려면 컨테이너 설정에서 Lossless Scaling을 설치하세요. OpenFlow는 추가 설치가 필요 없습니다.</string>
     <string name="session_drawer_dis_frame_generation_note">Dense Inverse Search로 렌더링된 프레임 사이를 보간합니다. 내장 기능이며 외부 셰이더가 필요 없습니다.</string>
     <string name="session_drawer_dis_resolution_scale">해상도 배율</string>
     <string name="session_drawer_dis_preset_fast">빠름</string>
@@ -2738,7 +2738,7 @@
     <string name="session_drawer_dis_target_fps_max">최대 새로고침 빈도</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">흐름 표시</string>
-    <string name="session_drawer_dis_debug_flow_note">생성된 프레임 대신 DIS가 추정한 모션 벡터를 그립니다. 진단용입니다.</string>
+    <string name="session_drawer_dis_debug_flow_note">생성된 프레임 대신 OpenFlow가 추정한 모션 벡터를 그립니다. 진단용입니다.</string>
     <string name="frame_generation_preset">품질 프리셋</string>
     <string name="frame_generation_preset_ultra_performance">울트라 성능</string>
     <string name="frame_generation_preset_performance">성능</string>

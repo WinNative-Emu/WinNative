@@ -2724,7 +2724,7 @@
     <string name="session_drawer_frame_generation_enable">Генерувати кадри</string>
     <string name="session_drawer_frame_generation_engine_off">Вимк.</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">Множник</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Адаптивна ціль</string>
@@ -2732,7 +2732,7 @@
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Інтерполює між відрендереними кадрами за допомогою Lossless Scaling. Рух плавніший, але затримка вводу зростає на один кадр.</string>
     <string name="session_drawer_frame_generation_target_note">Підвищується до цілі лише доки це дає вимірний виграш, замість утримання фіксованого множника.</string>
-    <string name="session_drawer_frame_generation_missing">Установіть Lossless Scaling у налаштуваннях контейнера, щоб використовувати рушій LSFG. DIS не потребує нічого додатково.</string>
+    <string name="session_drawer_frame_generation_missing">Установіть Lossless Scaling у налаштуваннях контейнера, щоб використовувати рушій LSFG. OpenFlow не потребує нічого додатково.</string>
     <string name="session_drawer_dis_frame_generation_note">Інтерполює між відрендереними кадрами методом Dense Inverse Search. Вбудовано; зовнішні шейдери не потрібні.</string>
     <string name="session_drawer_dis_resolution_scale">Масштаб роздільної здатності</string>
     <string name="session_drawer_dis_preset_fast">Швидко</string>
@@ -2743,7 +2743,7 @@
     <string name="session_drawer_dis_target_fps_max">Макс. частота оновлення</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">Показати потік</string>
-    <string name="session_drawer_dis_debug_flow_note">Малює вектори руху, які оцінює DIS, замість згенерованого кадру. Лише для діагностики.</string>
+    <string name="session_drawer_dis_debug_flow_note">Малює вектори руху, які оцінює OpenFlow, замість згенерованого кадру. Лише для діагностики.</string>
     <string name="frame_generation_preset">Пресет якості</string>
     <string name="frame_generation_preset_ultra_performance">Ультрапродуктивність</string>
     <string name="frame_generation_preset_performance">Продуктивність</string>

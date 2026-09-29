@@ -2717,7 +2717,7 @@ Asennuspolku:
     <string name="session_drawer_frame_generation_enable">Generoi ruutuja</string>
     <string name="session_drawer_frame_generation_engine_off">Pois</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">DIS</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
     <string name="session_drawer_frame_generation_multiplier">Kerroin</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Mukautuva tavoite</string>
@@ -2725,7 +2725,7 @@ Asennuspolku:
     <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="session_drawer_frame_generation_note">Interpoloi renderöityjen ruutujen välillä Lossless Scalingilla. Sulavampi liike, mutta yhden ruudun lisäviive syötteessä.</string>
     <string name="session_drawer_frame_generation_target_note">Nousee kohti tavoitetta vain, kun siitä on mitattavaa hyötyä, sen sijaan että pitäisi kiinteän kertoimen.</string>
-    <string name="session_drawer_frame_generation_missing">Asenna Lossless Scaling säiliön asetuksista käyttääksesi LSFG-moottoria. DIS ei tarvitse mitään lisäksi.</string>
+    <string name="session_drawer_frame_generation_missing">Asenna Lossless Scaling säiliön asetuksista käyttääksesi LSFG-moottoria. OpenFlow ei tarvitse mitään lisäksi.</string>
     <string name="session_drawer_dis_frame_generation_note">Interpoloi renderöityjen ruutujen välillä Dense Inverse Searchilla. Sisäänrakennettu; ulkoisia varjostimia ei tarvita.</string>
     <string name="session_drawer_dis_resolution_scale">Resoluutioskaala</string>
     <string name="session_drawer_dis_preset_fast">Nopea</string>
@@ -2736,7 +2736,7 @@ Asennuspolku:
     <string name="session_drawer_dis_target_fps_max">Maks. virkistystaajuus</string>
     <string name="session_drawer_dis_target_fps_value">%1$d fps</string>
     <string name="session_drawer_dis_debug_flow">Näytä liikevuo</string>
-    <string name="session_drawer_dis_debug_flow_note">Piirtää DIS:n arvioimat liikevektorit generoidun ruudun sijaan. Vain diagnostiikkaan.</string>
+    <string name="session_drawer_dis_debug_flow_note">Piirtää OpenFlow:n arvioimat liikevektorit generoidun ruudun sijaan. Vain diagnostiikkaan.</string>
     <string name="frame_generation_preset">Laatuesiasetus</string>
     <string name="frame_generation_preset_ultra_performance">Ultra-suorituskyky</string>
     <string name="frame_generation_preset_performance">Suorituskyky</string>
