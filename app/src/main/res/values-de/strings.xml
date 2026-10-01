@@ -270,6 +270,9 @@
     <string name="linux_client_busy">Der Linux-Steam-Client wird noch installiert. Versuche es nach Abschluss erneut.</string>
     <string name="linux_client_update_message">Eine neuere Linux-Laufzeitumgebung ist verfügbar. Beim Aktualisieren bleiben Steam-Anmeldung, installierte Spiele, Spielstände und Container erhalten.</string>
     <string name="linux_client_update_session_running">Eine Linux-Sitzung läuft. Beende sie und aktualisiere dann.</string>
+    <string name="linux_client_uninstall_message">Die Deinstallation entfernt die Linux-Laufzeit samt Steam-Client, Anmeldung und Proton sowie die darin gespeicherten Spiele und Spielstände. Spiele in deinen anderen Steam-Bibliotheken bleiben installiert.</string>
+    <string name="linux_client_uninstall_session_running">Eine Linux-Sitzung läuft. Beende sie und deinstalliere dann.</string>
+    <string name="linux_client_stage_uninstall">Linux-Client wird deinstalliert</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
     <string name="linux_session_failed">Die Linux-Sitzung wurde sofort nach dem Start beendet. Ihr Protokoll liegt unter Einstellungen > Debug > Protokollverwaltung öffnen; teile es, damit die Ursache gefunden werden kann.</string>

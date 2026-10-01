@@ -413,9 +413,8 @@ internal fun UnifiedActivity.bootstrapStartupState() {
         // The Steam entry's artwork is redrawn here as well as at container creation, so an
         // install made by an earlier build picks up the current one.
         runCatching {
-            val manager = ContainerManager(appContext)
-            LinuxApps.gamescopeContainer(manager)?.let { LinuxApps.ensureSteamShortcut(appContext, it) }
             if (LinuxRuntime.isInstalled(appContext)) {
+                LinuxApps.gamescopeContainer(ContainerManager(appContext))?.let { LinuxApps.ensureSteamShortcut(appContext, it) }
                 LinuxSteamLibrary.adoptClientInstalls(appContext, LinuxRuntime.rootDir(appContext))
             }
         }.onFailure { Log.w("UnifiedActivity", "Could not refresh the Steam entries", it) }
