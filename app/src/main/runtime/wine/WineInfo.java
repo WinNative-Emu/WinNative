@@ -9,6 +9,7 @@ import com.winlator.cmod.R;
 import com.winlator.cmod.runtime.content.ContentProfile;
 import com.winlator.cmod.runtime.content.ContentsManager;
 import com.winlator.cmod.runtime.display.environment.ImageFs;
+import com.winlator.cmod.shared.android.HostPlatform;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,6 +69,24 @@ public class WineInfo implements Parcelable {
 
   public boolean isArm64EC() {
     return arch.equals("arm64ec");
+  }
+
+  /**
+   * True when this Wine's binaries are built for the CPU we are running on, so it is exec'd
+   * directly with no CPU translator: an x86_64 Wine on an x86_64 Android (Android-x86/BlissOS,
+   * Windows Subsystem for Android, ChromeOS, the Android Emulator). On arm64 an x86_64 Wine still
+   * needs Box64, and an ARM64EC Wine has always been exec'd directly, so both keep their paths.
+   */
+  public boolean runsNatively() {
+    return arch.equals("x86_64") && HostPlatform.isX86_64();
+  }
+
+  /**
+   * True when the guest is exec'd directly rather than being wrapped in {@code box64}: either an
+   * ARM64EC Wine (native ARM64) or an x86_64 Wine on an x86_64 host.
+   */
+  public boolean isDirectExec() {
+    return isArm64EC() || runsNatively();
   }
 
   public String identifier() {

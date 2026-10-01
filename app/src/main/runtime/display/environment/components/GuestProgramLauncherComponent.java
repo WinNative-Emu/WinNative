@@ -406,10 +406,11 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
     // For arm64ec Wine builds the wine binary is native ARM64 — call it directly
     // with a fully-qualified path. Wrapping with box64 causes it to fail ELF
-    // header detection and adds overhead.
-    // For non-arm64ec, box64 translates the x86_64 Wine binary.
+    // header detection and adds overhead. The same holds for an x86_64 Wine on an
+    // x86_64 host (see WineInfo.runsNatively()).
+    // Otherwise box64 translates the x86_64 Wine binary.
     String finalCommand;
-    if (wineInfo != null && wineInfo.isArm64EC()) {
+    if (wineInfo != null && wineInfo.isDirectExec()) {
       // Resolve bare "wine" or "wineserver" to full path under the Wine bin directory
       if (command.startsWith("wine ") || command.equals("wine")) {
         finalCommand = winePath + "/wine" + command.substring(4);
@@ -686,7 +687,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
       long startTime = System.currentTimeMillis();
       if (wineInfo.isArm64EC()) {
         extractEmulatorsDlls();
-      } else extractBox64Files();
+      } else if (!wineInfo.runsNatively()) {
+        // A native x86_64 Wine has no translator to install.
+        extractBox64Files();
+      }
       copyDefaultBox64RCFile();
       scheduleDependencyCheck();
 
@@ -1353,6 +1357,9 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
           }
           envVars.put("HODLL", "libwow64fex.dll");
         }
+      } else if (wineInfo.runsNatively()) {
+        // x86_64 Wine on an x86_64 host: nothing to translate, exec it directly.
+        command = winePath + "/" + guestExecutable;
       } else {
         command = imageFs.getBinDir() + "/box64 " + guestExecutable;
       }
@@ -1390,7 +1397,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             + "MESA_VK_WSI_DEBUG="
             + envVars.get("MESA_VK_WSI_DEBUG"));
 
-    String wineLauncher = wineInfo != null && wineInfo.isArm64EC()
+    String wineLauncher = wineInfo != null && wineInfo.isDirectExec()
         ? imageFs.getWinePath() + "/bin/wine"
         : imageFs.getBinDir() + "/box64 wine";
     updatePrefixBeforeSession(envVars, wineLauncher, rootDir, imageFs);
