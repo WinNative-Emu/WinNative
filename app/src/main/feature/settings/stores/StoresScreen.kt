@@ -178,6 +178,7 @@ fun StoresScreen(
                 LinuxClientInstaller.cancel()
                 linuxClientDialog = false
             },
+            onUninstall = { LinuxClientInstaller.uninstall(context) },
             onDismiss = { linuxClientDialog = false },
         )
     }

@@ -274,6 +274,9 @@
     <string name="linux_client_busy">Клієнт Steam для Linux ще встановлюється. Спробуйте ще раз після завершення.</string>
     <string name="linux_client_update_message">Доступне новіше середовище Linux. Під час оновлення зберігаються вхід у Steam, встановлені ігри, збереження та контейнери.</string>
     <string name="linux_client_update_session_running">Запущено сеанс Linux. Завершіть його, а потім оновіть.</string>
+    <string name="linux_client_uninstall_message">Видалення стирає середовище Linux разом із клієнтом Steam, його входом в обліковий запис і Proton, а також ігри та збереження в ньому. Ігри в інших бібліотеках Steam залишаться встановленими.</string>
+    <string name="linux_client_uninstall_session_running">Запущено сеанс Linux. Завершіть його, а потім видаліть.</string>
+    <string name="linux_client_stage_uninstall">Видалення клієнта Linux</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
     <string name="linux_session_failed">Сеанс Linux зупинився одразу після запуску. Його журнал розташований у Налаштування > Налагодження > Відкрити менеджер журналів; поділіться ним, щоб можна було знайти причину.</string>

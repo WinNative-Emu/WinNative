@@ -28,6 +28,19 @@ import androidx.compose.ui.unit.dp
 
 private val AccentBorder = Color(0xFF00D7F5)
 
+/**
+ * A gamepad button no control claims comes back as its Generic.kcm fallback key: Y as SPACE, Start/L3/R3 as
+ * DPAD_CENTER, which click whatever has focus. A (confirm), B (back) and the guide button keep theirs.
+ */
+internal fun isUnclaimedGamepadButton(keyCode: Int): Boolean =
+    android.view.KeyEvent.isGamepadButton(keyCode) &&
+        keyCode != android.view.KeyEvent.KEYCODE_BUTTON_A &&
+        keyCode != android.view.KeyEvent.KEYCODE_BUTTON_B &&
+        keyCode != android.view.KeyEvent.KEYCODE_BUTTON_MODE
+
+/** For focus-navigated screens: only A presses the focused control. */
+fun Modifier.controllerConfirmOnA(): Modifier = onKeyEvent { isUnclaimedGamepadButton(it.nativeKeyEvent.keyCode) }
+
 fun Modifier.controllerFocusBorder(
     cornerRadius: Dp = 10.dp,
     borderWidth: Dp = 2.dp,
@@ -246,12 +259,7 @@ fun Modifier.controllerMenuInput(
                     true
                 }
 
-                android.view.KeyEvent.KEYCODE_BUTTON_Y,
-                android.view.KeyEvent.KEYCODE_BUTTON_L1,
-                android.view.KeyEvent.KEYCODE_BUTTON_R1,
-                -> true
-
-                else -> false
+                else -> isUnclaimedGamepadButton(e.nativeKeyEvent.keyCode)
             }
         }
     }

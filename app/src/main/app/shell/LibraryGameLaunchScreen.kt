@@ -118,6 +118,7 @@ import com.winlator.cmod.feature.library.LibraryStorageMove
 import com.winlator.cmod.shared.ui.layout.isPortraitLayout
 import com.winlator.cmod.shared.ui.layout.screenWidthDp
 import androidx.compose.runtime.CompositionLocalProvider
+import com.winlator.cmod.shared.ui.focus.controllerConfirmOnA
 import com.winlator.cmod.shared.ui.focus.controllerFocusGlow
 import com.winlator.cmod.shared.ui.outlinedSwitchColors
 import com.winlator.cmod.shared.ui.nav.DialogPaneNav
@@ -1275,6 +1276,7 @@ private fun LaunchSourceActionPopup(
                     ),
         ) {
             Surface(
+                modifier = Modifier.controllerConfirmOnA(),
                 color = LaunchBlack.copy(alpha = 0.78f),
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),

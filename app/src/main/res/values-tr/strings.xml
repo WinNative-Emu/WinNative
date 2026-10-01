@@ -271,6 +271,9 @@
     <string name="linux_client_busy">Linux Steam İstemcisi hâlâ kuruluyor. Bittiğinde yeniden deneyin.</string>
     <string name="linux_client_update_message">Daha yeni bir Linux çalışma ortamı var. Güncelleme; Steam oturumunuzu, yüklü oyunları, kayıtları ve kapsayıcıları korur.</string>
     <string name="linux_client_update_session_running">Bir Linux oturumu çalışıyor. Oturumdan çıkın, sonra güncelleyin.</string>
+    <string name="linux_client_uninstall_message">Kaldırma işlemi Linux ortamını Steam istemcisi, oturumu ve Proton ile birlikte, içinde tutulan oyunlar ve kayıtlarla beraber siler. Diğer Steam kitaplıklarınızdaki oyunlar yüklü kalır.</string>
+    <string name="linux_client_uninstall_session_running">Bir Linux oturumu çalışıyor. Oturumdan çıkın, sonra kaldırın.</string>
+    <string name="linux_client_stage_uninstall">Linux istemcisi kaldırılıyor</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
     <string name="linux_session_failed">Linux oturumu başlar başlamaz durdu. Günlüğü Ayarlar > Hata Ayıklama > Günlük Yöneticisini Aç altındadır; nedeni bulunabilsin diye paylaş.</string>

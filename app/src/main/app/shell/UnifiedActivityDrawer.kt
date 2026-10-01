@@ -166,6 +166,7 @@ import com.winlator.cmod.feature.setup.SetupWizardActivity
 import com.winlator.cmod.feature.library.LibraryItemType
 import com.winlator.cmod.feature.library.LinuxApps
 import com.winlator.cmod.runtime.linux.LinuxClientInstaller
+import com.winlator.cmod.runtime.linux.LinuxRuntime
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutUtils
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutArtwork
 import com.winlator.cmod.feature.artwork.SteamArtworkScraper
@@ -816,7 +817,7 @@ internal fun UnifiedActivity.AddCustomGameDialog(
         isAdding = true
         scope.launch(Dispatchers.IO) {
             val container = LinuxApps.gamescopeContainer(ContainerManager(context))
-            if (container == null) {
+            if (container == null || !LinuxRuntime.isInstalled(context)) {
                 // The entry lives in the GameScope container, which the Linux Client install creates.
                 withContext(Dispatchers.Main) {
                     isAdding = false

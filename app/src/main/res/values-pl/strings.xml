@@ -274,6 +274,9 @@
     <string name="linux_client_busy">Klient Steam dla Linuksa wciąż się instaluje. Spróbuj ponownie po zakończeniu.</string>
     <string name="linux_client_update_message">Dostępne jest nowsze środowisko Linux. Aktualizacja zachowuje logowanie do Steam, zainstalowane gry, zapisy i kontenery.</string>
     <string name="linux_client_update_session_running">Trwa sesja Linux. Zakończ ją, a następnie zaktualizuj.</string>
+    <string name="linux_client_uninstall_message">Odinstalowanie usuwa środowisko Linux wraz z klientem Steam, jego logowaniem i Protonem oraz przechowywane w nim gry i zapisy. Gry w pozostałych bibliotekach Steam pozostaną zainstalowane.</string>
+    <string name="linux_client_uninstall_session_running">Trwa sesja Linux. Zakończ ją, a następnie odinstaluj.</string>
+    <string name="linux_client_stage_uninstall">Odinstalowywanie klienta Linux</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
     <string name="linux_session_failed">Sesja Linux zatrzymała się zaraz po uruchomieniu. Jej log znajdziesz w Ustawienia > Debugowanie > Otwórz menedżer logów; udostępnij go, aby można było znaleźć przyczynę.</string>

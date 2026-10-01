@@ -268,6 +268,9 @@
     <string name="linux_client_busy">Linux Steam क्लाइंट अभी इंस्टॉल हो रहा है। पूरा होने पर फिर से प्रयास करें।</string>
     <string name="linux_client_update_message">नया Linux रनटाइम उपलब्ध है। अपडेट करने पर आपका Steam साइन-इन, इंस्टॉल किए गए गेम, सेव और कंटेनर बने रहते हैं।</string>
     <string name="linux_client_update_session_running">एक Linux सत्र चल रहा है। उसे बंद करें, फिर अपडेट करें।</string>
+    <string name="linux_client_uninstall_message">अनइंस्टॉल करने से Steam क्लाइंट, उसका साइन-इन और Proton सहित Linux रनटाइम, और उसमें रखे गेम और सेव हट जाते हैं। आपकी अन्य Steam लाइब्रेरी के गेम इंस्टॉल रहते हैं।</string>
+    <string name="linux_client_uninstall_session_running">एक Linux सत्र चल रहा है। उसे बंद करें, फिर अनइंस्टॉल करें।</string>
+    <string name="linux_client_stage_uninstall">Linux क्लाइंट अनइंस्टॉल हो रहा है</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
     <string name="linux_session_failed">Linux सत्र शुरू होते ही रुक गया। इसका लॉग सेटिंग्स > डीबग > लॉग मैनेजर खोलें में है; कारण पता करने के लिए इसे साझा करें।</string>
