@@ -50,7 +50,8 @@ if [ -z "${WN_INSIDE:-}" ]; then
   elif [ "${WN_REFRESH:-0}" -gt 0 ]; then
     args+=(-r "$WN_REFRESH")
   fi
-  [ "$mode" = steam ] && args+=(-e)
+  # Keep game windows at the session size when Steam returns focus on Resume.
+  [ "$mode" = steam ] && args+=(-e --force-windows-fullscreen)
   export WN_INSIDE=1
   exec gamescope "${args[@]}" -- "$0" "$mode" "$@"
 fi
