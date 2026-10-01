@@ -270,6 +270,9 @@
     <string name="linux_client_busy">Linux Steam 클라이언트를 아직 설치하고 있습니다. 완료된 후 다시 시도하세요.</string>
     <string name="linux_client_update_message">새 Linux 런타임을 사용할 수 있습니다. 업데이트해도 Steam 로그인, 설치된 게임, 세이브 및 컨테이너는 유지됩니다.</string>
     <string name="linux_client_update_session_running">Linux 세션이 실행 중입니다. 종료한 후 업데이트하세요.</string>
+    <string name="linux_client_uninstall_message">제거하면 Steam 클라이언트, 로그인 정보, Proton이 포함된 Linux 런타임과 그 안에 저장된 게임 및 세이브가 삭제됩니다. 다른 Steam 라이브러리의 게임은 설치된 상태로 유지됩니다.</string>
+    <string name="linux_client_uninstall_session_running">Linux 세션이 실행 중입니다. 종료한 후 제거하세요.</string>
+    <string name="linux_client_stage_uninstall">Linux 클라이언트 제거 중</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
     <string name="linux_session_failed">Linux 세션이 시작하자마자 중지되었습니다. 로그는 설정 > 디버그 > 로그 관리자 열기에 있습니다. 원인을 찾을 수 있도록 공유해 주세요.</string>

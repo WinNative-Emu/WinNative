@@ -270,6 +270,9 @@
     <string name="linux_client_busy">Linux Steam 客户端仍在安装。请在完成后重试。</string>
     <string name="linux_client_update_message">有更新的 Linux 运行环境可用。更新会保留 Steam 登录、已安装的游戏、存档和容器。</string>
     <string name="linux_client_update_session_running">Linux 会话正在运行。请先退出，然后再更新。</string>
+    <string name="linux_client_uninstall_message">卸载会删除 Linux 运行时及其中的 Steam 客户端、登录信息和 Proton，以及保存在其中的游戏和存档。其他 Steam 库中的游戏仍会保留安装。</string>
+    <string name="linux_client_uninstall_session_running">Linux 会话正在运行。请先退出，然后再卸载。</string>
+    <string name="linux_client_stage_uninstall">正在卸载 Linux 客户端</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
     <string name="linux_session_failed">Linux 会话刚启动就停止了。日志位于 设置 > 调试 > 打开日志管理器；请分享日志以便查明原因。</string>

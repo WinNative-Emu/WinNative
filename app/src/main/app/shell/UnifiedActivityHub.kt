@@ -351,10 +351,13 @@ internal fun UnifiedActivity.UnifiedHub() {
     val context = LocalContext.current
     var showLinuxClient by rememberSaveable { mutableStateOf(false) }
     val linuxClient by LinuxClientInstaller.state.collectAsState()
-    // An install finishing adds the Steam entry, which the Library has to read again to show.
+    val linuxClientWasWorking = remember { booleanArrayOf(false) }
+    // An install finishing adds the Steam entry, and an uninstall removes it; the Library reads it again.
     LaunchedEffect(linuxClient) {
         val found = linuxClient
-        if (found is LinuxClientInstaller.State.Installed) localLibraryRefreshKey++
+        val removed = linuxClientWasWorking[0] && found is LinuxClientInstaller.State.Missing
+        linuxClientWasWorking[0] = found is LinuxClientInstaller.State.Working
+        if (found is LinuxClientInstaller.State.Installed || removed) localLibraryRefreshKey++
         // A newer runtime is put in front of the user once; after that it waits in Stores.
         if (found is LinuxClientInstaller.State.UpdateAvailable && found.isNews) {
             LinuxClientInstaller.dismissUpdate(context, found)
@@ -1244,6 +1247,7 @@ internal fun UnifiedActivity.UnifiedHub() {
             state = linuxClient,
             onStart = { LinuxClientInstaller.start(context) },
             onCancelInstall = { LinuxClientInstaller.cancel() },
+            onUninstall = { LinuxClientInstaller.uninstall(context) },
             onDismiss = { showLinuxClient = false },
         )
     }

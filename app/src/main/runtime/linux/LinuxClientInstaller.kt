@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.annotation.StringRes
 import com.winlator.cmod.R
 import com.winlator.cmod.feature.library.LinuxApps
+import com.winlator.cmod.feature.library.LinuxSteamLibrary
 import com.winlator.cmod.runtime.container.Container
 import com.winlator.cmod.runtime.container.ContainerCreation
 import com.winlator.cmod.runtime.container.ContainerManager
@@ -97,7 +98,7 @@ object LinuxClientInstaller {
     private const val CLIENT_ZONE_SECONDS = 8 * 3600L
     private const val PROGRESS_INTERVAL_MS = 100L
 
-    enum class Stage { CONNECT, DOWNLOAD_RUNTIME, INSTALL_RUNTIME, DOWNLOAD_PROTON, INSTALL_PROTON, DOWNLOAD_STEAM, INSTALL_STEAM, LIBRARY }
+    enum class Stage { CONNECT, DOWNLOAD_RUNTIME, INSTALL_RUNTIME, DOWNLOAD_PROTON, INSTALL_PROTON, DOWNLOAD_STEAM, INSTALL_STEAM, LIBRARY, UNINSTALL }
 
     sealed interface State {
         data object Checking : State
@@ -222,6 +223,38 @@ object LinuxClientInstaller {
 
     fun cancel() {
         synchronized(lock) { job?.cancel() }
+    }
+
+    /**
+     * Removes the runtime, and with it the client, its sign-in, Proton and what the client keeps
+     * inside it, then the driver it downloaded and the Library's Steam entry. False while a
+     * session has the runtime open.
+     */
+    fun uninstall(context: Context): Boolean {
+        val appContext = context.applicationContext
+        synchronized(lock) {
+            if (isWorking || SessionKeepAliveService.isLinuxSessionActive()) return false
+            generation++
+            mutableState.value = State.Working(Stage.UNINSTALL, 0, 0)
+            job = scope.launch { remove(appContext) }
+        }
+        return true
+    }
+
+    private fun remove(context: Context) {
+        try {
+            recoverSwap(context)
+            discard(context, File(context.filesDir, WORK_DIR))
+            val root = LinuxRuntime.rootDir(context)
+            FileUtils.delete(root)
+            FileUtils.delete(LinuxRuntime.driverDir(context))
+            preferences(context).edit().remove(DISMISSED_UPDATE).apply()
+            gamescopeContainer(context)?.let { File(it.desktopDir, "${LinuxApps.STEAM_SHORTCUT_NAME}.desktop").delete() }
+            LinuxSteamLibrary.adoptClientInstalls(context, root)
+        } catch (e: Exception) {
+            Log.w(TAG, "Linux client uninstall failed", e)
+        }
+        publishSettled(if (isInstalled(context)) State.Installed else State.Missing)
     }
 
     private suspend fun install(

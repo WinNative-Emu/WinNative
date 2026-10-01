@@ -271,6 +271,9 @@
     <string name="linux_client_busy">Linux Steam -asiakasta asennetaan yhä. Yritä uudelleen, kun asennus on valmis.</string>
     <string name="linux_client_update_message">Uudempi Linux-ympäristö on saatavilla. Päivitys säilyttää Steam-kirjautumisen, asennetut pelit, tallennukset ja säiliöt.</string>
     <string name="linux_client_update_session_running">Linux-istunto on käynnissä. Sulje se ja päivitä sitten.</string>
+    <string name="linux_client_uninstall_message">Asennuksen poisto poistaa Linux-ympäristön Steam-asiakkaineen, kirjautumisineen ja Protoneineen sekä sen sisällä olevat pelit ja tallennukset. Muiden Steam-kirjastojesi pelit pysyvät asennettuina.</string>
+    <string name="linux_client_uninstall_session_running">Linux-istunto on käynnissä. Sulje se ja poista asennus sitten.</string>
+    <string name="linux_client_stage_uninstall">Poistetaan Linux-asiakasta</string>
     <string name="linux_client_gpu_unsupported">The Linux client draws with the Turnip Vulkan driver, which needs an Adreno GPU. This device has a different GPU.</string>
     <string name="linux_client_driver_missing">The display driver of the Linux client is not installed, so the screen would stay black. Install it with Linux Client in Settings > Stores.</string>
     <string name="linux_session_failed">Linux-istunto pysähtyi heti käynnistyttyään. Sen loki on kohdassa Asetukset > Virheenkorjaus > Avaa lokien hallinta; jaa se, jotta syy löytyy.</string>

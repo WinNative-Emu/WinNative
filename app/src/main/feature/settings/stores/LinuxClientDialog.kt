@@ -10,10 +10,15 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +41,7 @@ import com.winlator.cmod.shared.ui.nav.PaneNavRegistry
 
 private val InstallBlue = Color(0xFF1A9FFF)
 private val InstalledGreen = Color(0xFF3FB950)
+private val UninstallRed = Color(0xFFFF7A88)
 private val DialogTextPrimary = Color(0xFFF0F4FF)
 private val DialogTextSecondary = Color(0xFF93A6BC)
 
@@ -49,32 +55,65 @@ internal fun LinuxClientDialog(
     state: State,
     onStart: () -> Unit,
     onCancelInstall: () -> Unit,
+    onUninstall: () -> Boolean,
     onDismiss: () -> Unit,
 ) {
     val nav = remember { PaneNavRegistry() }
     val installed = state is State.Installed
-    val accent = if (installed) InstalledGreen else InstallBlue
+    var confirming by rememberSaveable { mutableStateOf(false) }
+    var sessionRunning by rememberSaveable { mutableStateOf(false) }
+    val confirm = confirming && installed
+    val accent =
+        when {
+            confirm -> UninstallRed
+            installed -> InstalledGreen
+            else -> InstallBlue
+        }
 
     Dialog(onDismissRequest = onDismiss) {
         DialogPaneNav(nav, onDismiss = onDismiss)
         CompositionLocalProvider(LocalPaneNav provides nav) {
             PopupDialog(
                 title = stringResource(R.string.linux_client_title),
-                message = linuxClientMessage(state),
-                icon = if (installed) Icons.Outlined.CheckCircle else Icons.Outlined.ArrowDownward,
+                message =
+                    when {
+                        confirm && sessionRunning -> stringResource(R.string.linux_client_uninstall_session_running)
+                        confirm -> stringResource(R.string.linux_client_uninstall_message)
+                        else -> linuxClientMessage(state)
+                    },
+                icon =
+                    when {
+                        confirm -> Icons.Outlined.Delete
+                        installed -> Icons.Outlined.CheckCircle
+                        else -> Icons.Outlined.ArrowDownward
+                    },
                 accentColor = accent,
                 modifier = Modifier.widthIn(min = 300.dp, max = 420.dp),
                 content = {
                     if (state is State.Working) WorkingBody(state)
                 },
                 footer = {
-                    LinuxClientFooter(
-                        state = state,
-                        accent = accent,
-                        onStart = onStart,
-                        onCancelInstall = onCancelInstall,
-                        onDismiss = onDismiss,
-                    )
+                    if (confirm) {
+                        UninstallFooter(
+                            onCancel = {
+                                confirming = false
+                                sessionRunning = false
+                            },
+                            onUninstall = {
+                                sessionRunning = !onUninstall()
+                                if (!sessionRunning) confirming = false
+                            },
+                        )
+                    } else {
+                        LinuxClientFooter(
+                            state = state,
+                            accent = accent,
+                            onStart = onStart,
+                            onCancelInstall = onCancelInstall,
+                            onUninstall = { confirming = true },
+                            onDismiss = onDismiss,
+                        )
+                    }
                 },
             )
         }
@@ -111,6 +150,7 @@ internal fun linuxClientStageLabel(stage: Stage): Int =
         Stage.DOWNLOAD_STEAM -> R.string.linux_client_stage_download_steam
         Stage.INSTALL_STEAM -> R.string.linux_client_stage_install_steam
         Stage.LIBRARY -> R.string.linux_client_stage_library
+        Stage.UNINSTALL -> R.string.linux_client_stage_uninstall
     }
 
 @Composable
@@ -154,18 +194,21 @@ private fun LinuxClientFooter(
     accent: Color,
     onStart: () -> Unit,
     onCancelInstall: () -> Unit,
+    onUninstall: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // The last step writes the container in one go and cannot be stopped part way.
-    val single = state is State.Installed || (state is State.Working && state.stage == Stage.LIBRARY)
+    // The last step writes the container in one go, and an uninstall deletes; neither stops part way.
+    val single = state is State.Working && (state.stage == Stage.LIBRARY || state.stage == Stage.UNINSTALL)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (single) Arrangement.End else Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when (state) {
-            State.Installed ->
+            State.Installed -> {
+                PopupTextAction(stringResource(R.string.common_ui_uninstall), UninstallRed, onUninstall)
                 PopupTextAction(stringResource(R.string.common_ui_ok), accent, onDismiss, isEntry = true)
+            }
             is State.Working -> {
                 if (!single) {
                     PopupTextAction(stringResource(R.string.common_ui_cancel), DialogTextSecondary, onCancelInstall)
@@ -185,5 +228,20 @@ private fun LinuxClientFooter(
                 PopupTextAction(stringResource(R.string.update_action_update), accent, onStart, isEntry = true)
             }
         }
+    }
+}
+
+@Composable
+private fun UninstallFooter(
+    onCancel: () -> Unit,
+    onUninstall: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PopupTextAction(stringResource(R.string.common_ui_cancel), DialogTextSecondary, onCancel, isEntry = true)
+        PopupTextAction(stringResource(R.string.common_ui_uninstall), UninstallRed, onUninstall)
     }
 }
