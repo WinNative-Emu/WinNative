@@ -2170,7 +2170,13 @@ uint32_t vkr_dis_plan(VkrDis* d, uint32_t capacity, uint64_t source_frames) {
     if (raw > d->planned_gen) {
         d->gen_low_streak = 0;
         d->gen_high_streak++;
-        if (d->gen_high_streak >= 2) {
+        // Once generating, a step up waits for half a second of the slower rate: a game that
+        // hitches for a few frames reads as 25 fps from 30, and a step to 4 and back is two
+        // changes of cadence plus a frame the display cannot take. A step down stays quick,
+        // since too many frames is what overflows the swapchain.
+        int up_streak = d->planned_gen > 0 ? (int)(source_rate * 0.5f) : 2;
+        if (up_streak < 2) up_streak = 2;
+        if (d->gen_high_streak >= up_streak) {
             d->planned_gen = raw;
             d->gen_high_streak = 0;
         }
