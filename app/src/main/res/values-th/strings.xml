@@ -2723,7 +2723,7 @@
     <string name="session_drawer_frame_generation_enable">สร้างเฟรม</string>
     <string name="session_drawer_frame_generation_engine_off">ปิด</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">ตัวคูณ</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">เป้าหมายแบบปรับอัตโนมัติ</string>

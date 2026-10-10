@@ -37,10 +37,11 @@ void main() {
     // The old guard was `abs(f) < 4 * width` per component: four frame widths is no limit
     // at all, and worse, when it did trip it fell back to W, which by then is itself the
     // huge value. Measured: input +-400 px came out at 1624 px and the guard never fired
-    // once. Clamp the magnitude instead. The fastest real motion measured on this content
-    // is about 0.1 of the frame per source frame, so a quarter of the frame leaves four
-    // times the headroom anything legitimate needs.
-    const float FLOW_LIMIT_FRACTION = 0.25;
+    // once. Clamp the magnitude instead, at half the frame: a hard camera turn at 30 fps moves
+    // the picture by over a quarter of the frame per source frame (the bench's fastest flick,
+    // 0.28), which the earlier quarter-frame limit cut short - the whole field came out short
+    // and the generated frames lagged behind the motion.
+    const float FLOW_LIMIT_FRACTION = 0.5;
     float lim = FLOW_LIMIT_FRACTION * max(uSize.x, uSize.y);
     float mag = length(f);
     vec2 fr = mag > lim ? f * (lim / mag) : f;

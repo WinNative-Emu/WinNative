@@ -2725,7 +2725,7 @@ Caminho instalado:
     <string name="session_drawer_frame_generation_enable">Gerar quadros</string>
     <string name="session_drawer_frame_generation_engine_off">Desligado</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplicador</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Alvo adaptativo</string>

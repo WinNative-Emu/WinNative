@@ -2723,7 +2723,7 @@ Asennuspolku:
     <string name="session_drawer_frame_generation_enable">Generoi ruutuja</string>
     <string name="session_drawer_frame_generation_engine_off">Pois</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">Kerroin</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Mukautuva tavoite</string>

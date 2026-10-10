@@ -2727,7 +2727,7 @@ Chemin installé :
     <string name="session_drawer_frame_generation_enable">Générer des images</string>
     <string name="session_drawer_frame_generation_engine_off">Désactivé</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplicateur</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Cible adaptative</string>

@@ -2724,7 +2724,7 @@ Cale instalata:
     <string name="session_drawer_frame_generation_enable">Generează cadre</string>
     <string name="session_drawer_frame_generation_engine_off">Oprit</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplicator</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Țintă adaptivă</string>

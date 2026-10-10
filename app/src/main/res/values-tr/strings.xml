@@ -2723,7 +2723,7 @@ Yüklü konum:
     <string name="session_drawer_frame_generation_enable">Kare üret</string>
     <string name="session_drawer_frame_generation_engine_off">Kapalı</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">Çarpan</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Uyarlanabilir hedef</string>

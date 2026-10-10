@@ -2631,7 +2631,7 @@
     <string name="session_drawer_frame_generation_enable">Генерировать кадры</string>
     <string name="session_drawer_frame_generation_engine_off">Выкл.</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">Множитель</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Адаптивная цель</string>

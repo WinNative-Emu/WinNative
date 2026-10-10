@@ -84,12 +84,16 @@ layout(set = 0, binding = 5, rgba32f) uniform image2D sparseFlowMap;
 // The previous pair's final flow, in normalised uv units, indexed by position in its first frame;
 // read on the levels whose bit is set in priorLevels.
 layout(set = 0, binding = 6) uniform sampler2D priorFlowMap;
+// The hybrid's Farneback field at the level above this one, in normalised uv units; read on the
+// levels whose bit is set in fbLevels.
+layout(set = 0, binding = 7) uniform sampler2D fbFlowMap;
 
 layout(push_constant) uniform PC {
     int level;
     int coarseLevel;
     int hintLevel;
     int priorLevels;
+    int fbLevels;
 } pc;
 
 #define HINT_INVALID 1.0e6
@@ -250,6 +254,21 @@ void main() {
             if (priorSSD < startSSD) {
                 startSSD = priorSSD;
                 flow = p;
+            }
+        }
+    }
+
+    // In the hybrid the level above was searched by DIS, which finds small objects but follows
+    // smooth and fast motion worse than Farneback's windowed solve; Farneback's field for that
+    // level is the other start, and the patch decides between them.
+    if ((pc.fbLevels & (1 << pc.level)) != 0) {
+        vec2 f = textureLod(fbFlowMap, (vec2(pix) + 4.0) * invImageSize, 0.0).xy * vec2(denseSize);
+        if (!any(isnan(f)) && !any(isinf(f)) && distance(f, flow) > DIS_PRIOR_MIN_PX) {
+            if (startSSD < 0.0) startSSD = patchSSD(flow, pix, lp, denseSize);
+            float fbSSD = patchSSD(f, pix, lp, denseSize);
+            if (fbSSD < startSSD) {
+                startSSD = fbSSD;
+                flow = f;
             }
         }
     }

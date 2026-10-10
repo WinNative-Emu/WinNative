@@ -2726,7 +2726,7 @@
     <string name="session_drawer_frame_generation_enable">프레임 생성 사용</string>
     <string name="session_drawer_frame_generation_engine_off">끄기</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">배수</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">적응형 목표</string>

@@ -2725,7 +2725,7 @@
     <string name="session_drawer_frame_generation_enable">生成帧</string>
     <string name="session_drawer_frame_generation_engine_off">关闭</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">倍数</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">自适应目标</string>

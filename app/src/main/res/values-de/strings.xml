@@ -2727,7 +2727,7 @@ Installierter Pfad:
     <string name="session_drawer_frame_generation_enable">Frames generieren</string>
     <string name="session_drawer_frame_generation_engine_off">Aus</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplikator</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Adaptives Ziel</string>

@@ -2725,7 +2725,7 @@ Percorso installato:
     <string name="session_drawer_frame_generation_enable">Genera fotogrammi</string>
     <string name="session_drawer_frame_generation_engine_off">Disattivo</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">Moltiplicatore</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Obiettivo adattivo</string>

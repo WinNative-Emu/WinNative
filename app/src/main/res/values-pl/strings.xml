@@ -2731,7 +2731,7 @@ Zainstalowana ścieżka:
     <string name="session_drawer_frame_generation_enable">Generuj klatki</string>
     <string name="session_drawer_frame_generation_engine_off">Wył.</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">Mnożnik</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Cel adaptacyjny</string>

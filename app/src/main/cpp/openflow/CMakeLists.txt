@@ -33,6 +33,9 @@ set(DIS_SHADERS
     dis_vr_sor
     dis_vr_add
     dis_me_luma
+    dis_fb_poly
+    dis_fb_hsum
+    dis_fb_vsolve
 )
 
 set(DIS_SHADER_HEADERS "")

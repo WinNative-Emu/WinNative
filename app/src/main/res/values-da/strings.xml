@@ -2736,7 +2736,7 @@ Installeret sti:
     <string name="session_drawer_frame_generation_enable">Generér billeder</string>
     <string name="session_drawer_frame_generation_engine_off">Fra</string>
     <string name="session_drawer_frame_generation_engine_lsfg">LSFG</string>
-    <string name="session_drawer_frame_generation_engine_dis">OpenFlow</string>
+    <string name="session_drawer_frame_generation_engine_dis">OpenFG</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplikator</string>
     <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Adaptivt mål</string>
