@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// OpenFlow frame generation: a Vulkan compute realisation of Dense Inverse Search
+// WFG frame generation: a Vulkan compute realisation of Dense Inverse Search
 // optical flow. The algorithm and its reference implementation come from
 // OpenCV's DISOpticalFlow, which adopted Till Kroeger's original OF_DIS.
 // See CREDITS.md for the full attribution.
@@ -43,8 +43,8 @@
 #include <sys/system_properties.h>
 #endif
 
-#define DIS_LOGI(...) __android_log_print(ANDROID_LOG_INFO, "OpenFlow", __VA_ARGS__)
-#define DIS_LOGW(...) __android_log_print(ANDROID_LOG_WARN, "OpenFlow", __VA_ARGS__)
+#define DIS_LOGI(...) __android_log_print(ANDROID_LOG_INFO, "WFG", __VA_ARGS__)
+#define DIS_LOGW(...) __android_log_print(ANDROID_LOG_WARN, "WFG", __VA_ARGS__)
 
 #define DIS_LOCAL_SIZE 8u
 #define DIS_PATCH_STRIDE 3u
@@ -1419,7 +1419,7 @@ static void dis_create_me(VkrDis* d, uint32_t w, uint32_t h) {
         !dis_create_host_buffer(d, field_bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false,
                                 &d->me_field_buf, &d->me_field_mem, &d->me_field_map,
                                 &d->me_field_coherent)) {
-        DIS_LOGW("OpenFlow hardware motion: host buffers unavailable; using OpenFlow alone");
+        DIS_LOGW("WFG hardware motion: host buffers unavailable; using WFG alone");
         dis_destroy_me(d);
         return;
     }
@@ -1456,7 +1456,7 @@ static void dis_create_me(VkrDis* d, uint32_t w, uint32_t h) {
         w2[1].pBufferInfo = &bi;
         vkd.UpdateDescriptorSets(d->device, 2, w2, 0, NULL);
     }
-    DIS_LOGI("OpenFlow hardware motion hint: GL_QCOM_motion_estimation on %ux%u seeds level %u (%ux%u)",
+    DIS_LOGI("WFG hardware motion hint: GL_QCOM_motion_estimation on %ux%u seeds level %u (%ux%u)",
              d->me_w, d->me_h, d->me_level, d->me_field_w, d->me_field_h);
 }
 
@@ -1603,7 +1603,7 @@ static bool dis_alloc(VkrDis* d, VkDescriptorSetLayout layout, uint32_t count,
     ai.pSetLayouts = layouts;
     const VkResult res = vkd.AllocateDescriptorSets(d->device, &ai, out);
     if (res != VK_SUCCESS) {
-        DIS_LOGW("OpenFlow descriptor allocation failed (%d) asking for %u sets", (int)res, count);
+        DIS_LOGW("WFG descriptor allocation failed (%d) asking for %u sets", (int)res, count);
         return false;
     }
     return true;
@@ -1761,7 +1761,7 @@ static bool dis_audit_formats(VkrDis* d) {
     const VkFormatFeatureFlags FILTER = VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
 
     if (d->luma_format == VK_FORMAT_UNDEFINED) {
-        DIS_LOGW("OpenFlow needs a single-channel float plane it can both write and filter; "
+        DIS_LOGW("WFG needs a single-channel float plane it can both write and filter; "
                  "neither R16_SFLOAT nor R32_SFLOAT qualifies on this device");
         return false;
     }
@@ -1798,7 +1798,7 @@ static bool dis_audit_formats(VkrDis* d) {
         if (missing) {
             char names[256];
             dis_missing_features(missing, names, sizeof(names));
-            DIS_LOGW("OpenFlow needs %s on %s for %s, and this device does not report it",
+            DIS_LOGW("WFG needs %s on %s for %s, and this device does not report it",
                      names, dis_format_name(reqs[i].format), reqs[i].purpose);
             ok = false;
         }
@@ -1809,7 +1809,7 @@ static bool dis_audit_formats(VkrDis* d) {
     vkd.GetPhysicalDeviceFormatProperties(d->physical_device, VK_FORMAT_R16G16_SFLOAT, &flow_fp);
     d->manual_flow_filter = (flow_fp.optimalTilingFeatures & FILTER) == 0;
 
-    DIS_LOGI("OpenFlow format support: %s | flow filtering: %s", line,
+    DIS_LOGI("WFG format support: %s | flow filtering: %s", line,
              d->manual_flow_filter ? "in shader (driver cannot filter R16G16_SFLOAT)"
                                    : "sampler");
     return ok;
@@ -1833,22 +1833,22 @@ VkrDis* vkr_dis_create(VkDevice device, VkPhysicalDevice physical_device) {
     char prop[PROP_VALUE_MAX] = {0};
     if (__system_property_get("debug.winnative.dis.hwme", prop) > 0 && prop[0] == '1') {
         d->hw_motion = true;
-        DIS_LOGI("OpenFlow hardware motion hint enabled by debug.winnative.dis.hwme");
+        DIS_LOGI("WFG hardware motion hint enabled by debug.winnative.dis.hwme");
     }
 #endif
     d->hint_level = -1;
 
-    // Flow estimator: DIS unless asked for Farneback, by OPENFLOW_ENGINE=farneback in the
+    // Flow estimator: DIS unless asked for Farneback, by WFG_ENGINE=farneback in the
     // environment (the desktop bench) or, on a device,
-    //   adb shell setprop debug.winnative.openflow.engine farneback
+    //   adb shell setprop debug.winnative.wfg.engine farneback
     // The hybrid is the default: on the bench it matches DIS overall (better on fast camera
     // motion, worse on small fast objects with a periodic texture) at 2.3x less flow time on
     // Adreno 750, nearly all of DIS's time there being the level-0 SOR sweeps.
     d->flow_engine = DIS_ENGINE_HYBRID;
-    const char* engine = getenv("OPENFLOW_ENGINE");
+    const char* engine = getenv("WFG_ENGINE");
 #ifdef __ANDROID__
     char engine_prop[PROP_VALUE_MAX] = {0};
-    if (__system_property_get("debug.winnative.openflow.engine", engine_prop) > 0) engine = engine_prop;
+    if (__system_property_get("debug.winnative.wfg.engine", engine_prop) > 0) engine = engine_prop;
 #endif
     if (engine && strcmp(engine, "dis") == 0) d->flow_engine = DIS_ENGINE_DIS;
     if (engine && strcmp(engine, "farneback") == 0) d->flow_engine = DIS_ENGINE_FARNEBACK;
@@ -1865,41 +1865,41 @@ VkrDis* vkr_dis_create(VkDevice device, VkPhysicalDevice physical_device) {
     d->fb_hybrid_sor = DIS_HYB_SOR;
     {
         const char* v;
-        if ((v = getenv("OPENFLOW_FB_ROBUST")) != NULL) d->fb_robust = (float)atof(v);
-        if ((v = getenv("OPENFLOW_HYB_VR")) != NULL) d->fb_hybrid_vr = atoi(v) != 0;
-        if ((v = getenv("OPENFLOW_HYB_LEVEL")) != NULL) d->fb_hybrid_level = (uint32_t)atoi(v);
-        if ((v = getenv("OPENFLOW_HYB_FP")) != NULL) d->fb_hybrid_fp = (uint32_t)atoi(v);
-        if ((v = getenv("OPENFLOW_HYB_SOR")) != NULL) d->fb_hybrid_sor = (uint32_t)atoi(v);
-        if ((v = getenv("OPENFLOW_HYB_L1START")) != NULL) d->fb_hybrid_l1_start = atoi(v) != 0;
-        if ((v = getenv("OPENFLOW_HYB_VR1")) != NULL) d->fb_hybrid_vr_upper = atoi(v) != 0;
-        if ((v = getenv("OPENFLOW_FB_ITERS")) != NULL) d->fb_iterations = atoi(v);
-        if ((v = getenv("OPENFLOW_FB_RADIUS")) != NULL) d->fb_radius = atoi(v);
-        if ((v = getenv("OPENFLOW_FB_WSIGMA")) != NULL) d->fb_window_sigma = (float)atof(v);
-        if ((v = getenv("OPENFLOW_FB_PSIGMA")) != NULL) d->fb_poly_sigma = (float)atof(v);
+        if ((v = getenv("WFG_FB_ROBUST")) != NULL) d->fb_robust = (float)atof(v);
+        if ((v = getenv("WFG_HYB_VR")) != NULL) d->fb_hybrid_vr = atoi(v) != 0;
+        if ((v = getenv("WFG_HYB_LEVEL")) != NULL) d->fb_hybrid_level = (uint32_t)atoi(v);
+        if ((v = getenv("WFG_HYB_FP")) != NULL) d->fb_hybrid_fp = (uint32_t)atoi(v);
+        if ((v = getenv("WFG_HYB_SOR")) != NULL) d->fb_hybrid_sor = (uint32_t)atoi(v);
+        if ((v = getenv("WFG_HYB_L1START")) != NULL) d->fb_hybrid_l1_start = atoi(v) != 0;
+        if ((v = getenv("WFG_HYB_VR1")) != NULL) d->fb_hybrid_vr_upper = atoi(v) != 0;
+        if ((v = getenv("WFG_FB_ITERS")) != NULL) d->fb_iterations = atoi(v);
+        if ((v = getenv("WFG_FB_RADIUS")) != NULL) d->fb_radius = atoi(v);
+        if ((v = getenv("WFG_FB_WSIGMA")) != NULL) d->fb_window_sigma = (float)atof(v);
+        if ((v = getenv("WFG_FB_PSIGMA")) != NULL) d->fb_poly_sigma = (float)atof(v);
     }
     dis_fb_moments(DIS_FB_POLY_N, d->fb_poly_sigma, d->fb_ig);
-    DIS_LOGI("OpenFlow flow estimator: %s",
+    DIS_LOGI("WFG flow estimator: %s",
              d->flow_engine == DIS_ENGINE_DIS ? "DIS"
              : d->flow_engine == DIS_ENGINE_FARNEBACK ? "Farneback" : "Farneback + DIS levels 1-0");
     vkd.GetPhysicalDeviceMemoryProperties(physical_device, &d->mem_props);
     d->luma_format = dis_pick_luma_format(d);
     if (!dis_audit_formats(d)) {
-        DIS_LOGW("OpenFlow cannot run on this device's format support; frame generation stays off");
+        DIS_LOGW("WFG cannot run on this device's format support; frame generation stays off");
         vkr_dis_destroy(d);
         return NULL;
     }
 
     if (!dis_create_sampler(d) || !dis_create_pipelines(d)) {
-        DIS_LOGW("OpenFlow shaders could not be built; frame generation stays off");
+        DIS_LOGW("WFG shaders could not be built; frame generation stays off");
         vkr_dis_destroy(d);
         return NULL;
     }
     if (!dis_allocate_sets(d)) {
-        DIS_LOGW("OpenFlow descriptor sets could not be allocated; frame generation stays off");
+        DIS_LOGW("WFG descriptor sets could not be allocated; frame generation stays off");
         vkr_dis_destroy(d);
         return NULL;
     }
-    DIS_LOGI("OpenFlow frame generation ready");
+    DIS_LOGI("WFG frame generation ready");
     return d;
 }
 
@@ -2007,7 +2007,7 @@ bool vkr_dis_prepare(VkrDis* d, uint32_t width, uint32_t height, VkFormat format
         if (missing) {
             char names[256];
             dis_missing_features(missing, names, sizeof(names));
-            DIS_LOGW("OpenFlow needs %s on the guest frame format (%d) and this device does not "
+            DIS_LOGW("WFG needs %s on the guest frame format (%d) and this device does not "
                      "report it; frame generation stays off", names, (int)format);
             d->unavailable = true;
             return false;
@@ -2017,7 +2017,7 @@ bool vkr_dis_prepare(VkrDis* d, uint32_t width, uint32_t height, VkFormat format
     d->levels = levels;
 
     if (!dis_create_resources(d, w, h, content.width, content.height, format)) {
-        DIS_LOGW("OpenFlow resource build failed at %ux%u; frame generation unavailable", w, h);
+        DIS_LOGW("WFG resource build failed at %ux%u; frame generation unavailable", w, h);
         dis_destroy_images(d);
         d->unavailable = true;
         return false;
@@ -2036,7 +2036,7 @@ bool vkr_dis_prepare(VkrDis* d, uint32_t width, uint32_t height, VkFormat format
     d->next_idx = 0;
     d->active_slot = 0;
     d->last_generations = 0;
-    DIS_LOGI("OpenFlow resources built at %ux%u (flow min side %u, %u levels); content rect "
+    DIS_LOGI("WFG resources built at %ux%u (flow min side %u, %u levels); content rect "
              "%dx%d+%d+%d inside a %ux%u composite",
              w, h, d->flow_min_side, levels, (int)content.width, (int)content.height,
              (int)content.x, (int)content.y, width, height);
@@ -2093,7 +2093,7 @@ static void dis_log_plan(VkrDis* d, uint64_t now, float source_rate, float desir
     if (d->planned_gen == d->plan_log_gen && now - d->plan_log_ns < DIS_PLAN_LOG_NS) return;
     d->plan_log_gen = d->planned_gen;
     d->plan_log_ns = now;
-    DIS_LOGI("OpenFlow plan: source %.1f fps, target %.1f fps, ratio %.2f -> %d generated "
+    DIS_LOGI("WFG plan: source %.1f fps, target %.1f fps, ratio %.2f -> %d generated "
              "(capacity %u, output %.1f fps)",
              (double)source_rate, (double)desired, (double)ratio, d->planned_gen, capacity,
              (double)(source_rate * (float)(d->planned_gen + 1)));
@@ -2432,7 +2432,7 @@ static VkCommandBuffer dis_hardware_motion(VkrDis* d, VkCommandBuffer cmd, uint3
     }
     d->me_hinted++;
     if ((d->me_hinted % 600u) == 1u) {
-        DIS_LOGI("OpenFlow hardware motion hint: %llu of %llu pairs seeded",
+        DIS_LOGI("WFG hardware motion hint: %llu of %llu pairs seeded",
                  (unsigned long long)d->me_hinted, (unsigned long long)d->me_pairs);
     }
     return cmd;

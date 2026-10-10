@@ -1,4 +1,4 @@
-# OpenFlow frame generator: Dense Inverse Search (DIS) optical flow and the frame interpolator
+# WFG frame generator: Dense Inverse Search (DIS) optical flow and the frame interpolator
 # built on it, as one static library. libwinlator (X11 compositor, standalone presenter) and
 # libwnwayland (Wayland compositor) both link it; each keeps its own VkDispatch, which the objects
 # here resolve against at link time.
@@ -53,24 +53,24 @@ foreach(base ${DIS_SHADERS})
             -DVAR_NAME=${var}
             -P "${BIN2C_SCRIPT}"
         DEPENDS "${input}" "${BIN2C_SCRIPT}"
-        COMMENT "Compiling OpenFlow shader ${base}.comp -> ${var}.spv.h"
+        COMMENT "Compiling WFG shader ${base}.comp -> ${var}.spv.h"
         VERBATIM
     )
     list(APPEND DIS_SHADER_HEADERS "${hdr}")
 endforeach()
 
-add_custom_target(openflow_shaders DEPENDS ${DIS_SHADER_HEADERS})
+add_custom_target(wfg_shaders DEPENDS ${DIS_SHADER_HEADERS})
 
-add_library(openflow STATIC
+add_library(wfg STATIC
         src/vkr_dis.c
         src/dis_qcom_me.c
 )
-add_dependencies(openflow openflow_shaders)
+add_dependencies(wfg wfg_shaders)
 
-set_target_properties(openflow PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_options(openflow PRIVATE -Wall -Wextra -fvisibility=hidden)
-target_compile_definitions(openflow PUBLIC VK_USE_PLATFORM_ANDROID_KHR)
-target_include_directories(openflow
+set_target_properties(wfg PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_options(wfg PRIVATE -Wall -Wextra -fvisibility=hidden)
+target_compile_definitions(wfg PUBLIC VK_USE_PLATFORM_ANDROID_KHR)
+target_include_directories(wfg
         PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/include
             # vk_dispatch.h: the public header takes its Vulkan types from there.
@@ -79,4 +79,4 @@ target_include_directories(openflow
             ${CMAKE_CURRENT_BINARY_DIR}
 )
 # EGL/GLES are opened with dlopen by dis_qcom_me.c, so nothing links them here.
-target_link_libraries(openflow PRIVATE log dl)
+target_link_libraries(wfg PRIVATE log dl)

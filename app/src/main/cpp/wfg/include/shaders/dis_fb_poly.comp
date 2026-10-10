@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// OpenFlow, Farneback flow: polynomial expansion of one pyramid level of a frame.
+// WFG, Farneback flow: polynomial expansion of one pyramid level of a frame.
 //
 // Gunnar Farneback, "Two-Frame Motion Estimation Based on Polynomial Expansion" (SCIA 2003);
 // the formulation follows OpenCV's calcOpticalFlowFarneback (FarnebackPolyExp). Around every

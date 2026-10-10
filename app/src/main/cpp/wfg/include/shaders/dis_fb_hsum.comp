@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// OpenFlow, Farneback flow: the per-texel displacement equations of one iteration, summed
+// WFG, Farneback flow: the per-texel displacement equations of one iteration, summed
 // across the window horizontally (dis_fb_vsolve sums them vertically and solves).
 //
 // With the first frame's expansion (A0, b0) at x and the second's (A1, b1) at x + d, Farneback's
