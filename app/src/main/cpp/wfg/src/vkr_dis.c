@@ -2156,10 +2156,13 @@ uint32_t vkr_dis_plan(VkrDis* d, uint32_t capacity, uint64_t source_frames) {
         // itself that overshoots it: 28.4 fps at 120 Hz is a ratio of 4.22, rounded to 5 outputs
         // - 142 fps. The swapchain then runs out of free images, generated frames time out on
         // acquire and are dropped, and the pair shows one frame fewer than its neighbours: a
-        // visible jerk. Capped at the display rate, with 5% for the rate estimate's noise: at 2% a
-        // 30 fps game reading 30.7 for a few frames already dropped to 2 generated frames.
+        // visible jerk. Capped at the display rate, with room for the rate estimate's noise: a
+        // steady 30 fps game reads anywhere from 27.6 to 31.6 on a Snapdragon 8 Gen 3, and each
+        // flip of the count is a hitch of its own. 5% to step up to a count, 10% to step down
+        // from the one in use.
         if (d->refresh_rate > 0.0f) {
-            const int max_gen = (int)floorf(d->refresh_rate * 1.05f / source_rate) - 1;
+            const float slack = raw > d->planned_gen ? 1.05f : 1.10f;
+            const int max_gen = (int)floorf(d->refresh_rate * slack / source_rate) - 1;
             if (max_gen >= 1 && raw > max_gen) raw = max_gen;
         }
     }
