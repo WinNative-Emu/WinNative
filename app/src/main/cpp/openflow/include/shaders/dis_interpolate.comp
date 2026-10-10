@@ -55,6 +55,11 @@ layout(constant_id = 0) const int manualFlowFilter = 0;
 #define DIS_USE_HIST 1
 #endif
 
+// Hand a pixel that a warped sample fetches from a static overlay to the other frame.
+#ifndef DIS_OVERLAY_OCCL
+#define DIS_OVERLAY_OCCL 1
+#endif
+
 #ifndef SIDE_LO
 #define SIDE_LO 4.0
 #endif
@@ -235,6 +240,16 @@ void main() {
         float div = textureLod(sideTex, uv, 0.0).r;
         float sure = smoothstep(SIDE_LO, SIDE_HI, abs(div));
         single = mix(single, div > 0.0 ? c1 : c0, sure);
+#endif
+#if DIS_OVERLAY_OCCL
+        // Scenery that moves out from under a HUD panel was hidden in one frame of the pair, and
+        // the warp fetches the panel there. Where one sample sits on an overlay and the other and
+        // the pixel do not, the other one is the scenery.
+        float hp = textureLod(histTex, uv, 0.0).r;
+        float h0 = textureLod(histTex, uv0, 0.0).r;
+        float h1 = textureLod(histTex, uv1, 0.0).r;
+        single = mix(single, c1, smoothstep(0.3, 0.7, (1.0 - hp) * h0 * (1.0 - h1)));
+        single = mix(single, c0, smoothstep(0.3, 0.7, (1.0 - hp) * h1 * (1.0 - h0)));
 #endif
         result = mix(result, single, occl);
     }

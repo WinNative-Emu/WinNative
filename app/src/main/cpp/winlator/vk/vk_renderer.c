@@ -2951,19 +2951,27 @@ static bool record_and_submit_frame(VkRenderer* r) {
                                       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                                       VK_ACCESS_SHADER_WRITE_BIT, 0);
+                } else if (use_dis) {
+                    // DIS scales its interpolated content rect into whatever target it is given
+                    // and fills the strips around it from the composite, so it goes straight
+                    // into the swapchain image: no composite target and second full-frame blit.
+                    vkr_dis_generate_into(r->dis, f->cmd, g, idx,
+                                          r->swapchain_images[idx], VK_NULL_HANDLE,
+                                          r->swapchain_extent.width,
+                                          r->swapchain_extent.height,
+                                          composite->image);
+                    vkr_image_barrier(f->cmd, r->swapchain_images[idx],
+                                      VK_IMAGE_LAYOUT_GENERAL,
+                                      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                      VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                      VK_ACCESS_TRANSFER_WRITE_BIT, 0);
                 } else {
                     VkCompositeTarget* gt = &r->composite[VK_FRAMES_IN_FLIGHT + g];
-                    if (use_dis) {
-                        vkr_dis_generate_into(r->dis, f->cmd, g, VK_FRAMES_IN_FLIGHT + g,
-                                              gt->image, gt->view,
-                                              gt->width, gt->height,
-                                              composite->image);
-                    } else {
-                        vkr_lsfg_generate_into(r->lsfg, f->cmd, g, VK_FRAMES_IN_FLIGHT + g,
-                                               gt->image, gt->view,
-                                               r->swapchain_extent.width,
-                                               r->swapchain_extent.height);
-                    }
+                    vkr_lsfg_generate_into(r->lsfg, f->cmd, g, VK_FRAMES_IN_FLIGHT + g,
+                                           gt->image, gt->view,
+                                           r->swapchain_extent.width,
+                                           r->swapchain_extent.height);
                     blit_composite_to_swapchain(r, f->cmd, gt, r->swapchain_images[idx]);
                 }
             }

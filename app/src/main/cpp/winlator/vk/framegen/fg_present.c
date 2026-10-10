@@ -917,17 +917,18 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
     for (uint32_t g = 0; g < gen_count; g++) {
         FgTarget* generated = &fg->targets[FG_FRAMES_IN_FLIGHT + g];
         if (fg->active_engine == FG_ENGINE_DIS) {
-            vkr_dis_generate_into(fg->dis, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
-                                  generated->view, fg->extent.width, fg->extent.height,
+            // DIS blits its interpolated frame into whatever target it is given, so it goes
+            // straight into the swapchain image, without a generated target and second blit.
+            vkr_dis_generate_into(fg->dis, f->cmd, g, gen_index[g], fg->swapchain_images[gen_index[g]],
+                                  VK_NULL_HANDLE, fg->extent.width, fg->extent.height,
                                   VK_NULL_HANDLE);
-            fg_barrier(f->cmd, generated->image, VK_IMAGE_LAYOUT_GENERAL,
-                       VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                       VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-                       VK_ACCESS_TRANSFER_READ_BIT);
-        } else {
-            vkr_lsfg_generate_into(fg->lsfg, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
-                                   generated->view, fg->extent.width, fg->extent.height);
+            fg_barrier(f->cmd, fg->swapchain_images[gen_index[g]], VK_IMAGE_LAYOUT_GENERAL,
+                       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+            continue;
         }
+        vkr_lsfg_generate_into(fg->lsfg, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
+                               generated->view, fg->extent.width, fg->extent.height);
         fg_barrier(f->cmd, fg->swapchain_images[gen_index[g]], VK_IMAGE_LAYOUT_UNDEFINED,
                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT);
