@@ -66,6 +66,7 @@ import com.winlator.cmod.feature.setup.SetupWizardActivity;
 import com.winlator.cmod.runtime.container.Container;
 import com.winlator.cmod.runtime.display.environment.components.LinuxProgramLauncherComponent;
 import com.winlator.cmod.runtime.linux.LinuxRuntime;
+import com.winlator.cmod.runtime.linux.ProotFastPath;
 import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings;
 import com.winlator.cmod.runtime.container.ContainerManager;
 import com.winlator.cmod.runtime.container.Shortcut;
@@ -8954,9 +8955,21 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         if (!com.winlator.cmod.runtime.linux.LinuxClientInstaller.hasCompositorDriver(this)) {
             throw new LinuxSessionUnavailable(getString(R.string.linux_client_driver_missing));
         }
+        // A container made before it was a Linux one still carries the Android side's variables,
+        // so it is read here as a Linux session reads it rather than as it was saved.
+        EnvVars userEnv = new EnvVars(EnvVarsView.forGamescope(effectiveUserEnv().toString()));
+        // The games the client starts run under FEX, which a Wine session configures from the
+        // container's preset. Nothing did so here, so anything the client launched ran on FEX's
+        // bare defaults - single-block translation, no store ordering - and a multithreaded x86
+        // title can sit at its loading screen for good waiting on a store it never sees. The
+        // user's own variables are merged over the preset, so an explicit one still wins.
+        EnvVars sessionEnv = FEXCorePresetManager.getEnvVars(this, effectiveFEXCorePreset());
+        FEXCorePresetManager.normalizeSmcChecksEnvVars(sessionEnv, userEnv);
+        sessionEnv.putAll(userEnv);
+        boolean fastPath = ProotFastPath.enabled(sessionEnv);
         try {
             LinuxRuntime.writeAccounts(this);
-            LinuxRuntime.syncSessionFiles(this);
+            LinuxRuntime.syncSessionFiles(this, fastPath);
             // A session that is being rejoined has its client running, and the files are the client's then.
             if (!reusingSession) com.winlator.cmod.runtime.linux.LinuxSteamLogin.seed(this);
             if (!reusingSession) LinuxRuntime.clearSharedMemory(this);
@@ -8982,6 +8995,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("XDG_RUNTIME_DIR=" + runtimeDir.getPath());
         guest.add("XDG_SESSION_TYPE=wayland");
         guest.add("WAYLAND_DISPLAY=wayland-0");
+        int fastPathAt = guest.size();
         guest.add("GAMESCOPE_FORCE_GENERAL_QUEUE=1");
         // The session's own preloads are named by /etc/ld.so.preload in the runtime, not here:
         // the Steam client rebuilds LD_PRELOAD for every process it starts and appends its overlay
@@ -9004,9 +9018,6 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         guest.add("LIBGL_KOPPER_DRI2=true");
         File icd = LinuxRuntime.vulkanIcd(this, graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null);
         if (icd != null) guest.add("VK_ICD_FILENAMES=" + icd.getPath());
-        // A container made before it was a Linux one still carries the Android side's variables,
-        // so it is read here as a Linux session reads it rather than as it was saved.
-        EnvVars userEnv = new EnvVars(EnvVarsView.forGamescope(effectiveUserEnv().toString()));
         // The client, its web helper and native games only know PulseAudio, so it runs whatever
         // the entry chose; DirectAudio takes the Windows games off it. The server is built from the
         // entry's own variables: the activity's hold only the few a Wine session starts with.
@@ -9018,14 +9029,20 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                         UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH),
                         pulseOptions));
         if (DirectAudioDriver.INSTANCE.isSelected(audioDriver)) addLinuxDirectAudio(rootPath, guest);
-        // The games the client starts run under FEX, which a Wine session configures from the
-        // container's preset. Nothing did so here, so anything the client launched ran on FEX's
-        // bare defaults - single-block translation, no store ordering - and a multithreaded x86
-        // title can sit at its loading screen for good waiting on a store it never sees. The
-        // user's own variables are merged over the preset, so an explicit one still wins.
-        EnvVars sessionEnv = FEXCorePresetManager.getEnvVars(this, effectiveFEXCorePreset());
-        FEXCorePresetManager.normalizeSmcChecksEnvVars(sessionEnv, userEnv);
-        sessionEnv.putAll(userEnv);
+        // Mesa's shader cache as one database instead of a file per entry. Every lookup in the
+        // file cache is an open and every store an open and a rename, each a proot stop, for every
+        // pipeline DXVK, vkd3d-proton and Zink compile or find; the database is opened once and
+        // read and written with pread/pwrite, which proot never sees.
+        guest.add("MESA_DISK_CACHE_DATABASE=1");
+        // glibc's per-thread rseq registration is refused by Android's app seccomp policy, so
+        // every thread start paid a SIGSYS that proot answers; the malloc top pad grows the heap
+        // 16 MB at a time instead of 128 KB, and every brk(2) is a proot stop too.
+        guest.add("GLIBC_TUNABLES=glibc.pthread.rseq=0:glibc.malloc.top_pad=16777216");
+        // Proton's gamepad-navigation helper. Under FEX it cannot load the session's aarch64
+        // preloads, so its socket and memfd calls reach Android's seccomp filter raw, and sessions
+        // died seconds later on a broken Wayland pipe. The session navigates with pads itself.
+        guest.add("PROTON_USE_XALIA=0");
+        // The container's own variables come after the session's, so an explicit one still wins.
         for (String entry : sessionEnv.toStringArray()) {
             if (!entry.startsWith("PROOT_NO_SECCOMP=")) guest.add(entry);
         }
@@ -9061,8 +9078,22 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             binds.addAll(com.winlator.cmod.runtime.linux.LinuxSteamShortcuts.sync(this));
         }
         com.winlator.cmod.runtime.linux.LinuxEpicTokens.start(this);
-        List<String> command = LinuxRuntime.command(this, imageFs, runtimeDir,
-                android.os.Environment.getExternalStorageDirectory(), devInputDir, binds, guest);
+        List<String> prootBinds = LinuxRuntime.binds(this, imageFs, runtimeDir,
+                android.os.Environment.getExternalStorageDirectory(), devInputDir, binds);
+        // The fast path is told exactly the rootfs and binds proot is given (ProotFastPath).
+        if (fastPath) {
+            File linuxRoot = LinuxRuntime.rootDir(this);
+            String key = ProotFastPath.key(linuxRoot, prootBinds);
+            if (key != null) {
+                guest.addAll(fastPathAt, ProotFastPath.guestEnv(linuxRoot, prootBinds, key));
+                hostEnv.put("PROOT_FASTPATH", key);
+                Log.i(TAG, "proot: fast path on (" + prootBinds.size() + " binds)");
+            } else {
+                Log.w(TAG, "proot: fast path off - " + prootBinds.size() + " binds (it holds "
+                        + ProotFastPath.MAX_BINDS + ") or a path it cannot be told");
+            }
+        }
+        List<String> command = LinuxRuntime.command(this, prootBinds, guest);
         final long startedAt = android.os.SystemClock.elapsedRealtime();
         LinuxProgramLauncherComponent launcher = new LinuxProgramLauncherComponent(
                 command, hostEnv, LinuxRuntime.rootDir(this), linuxLog, (status) -> {

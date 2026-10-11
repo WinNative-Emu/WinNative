@@ -2,6 +2,7 @@ package com.winlator.cmod.runtime.display.environment.components;
 
 import android.util.Log;
 import com.winlator.cmod.runtime.display.environment.EnvironmentComponent;
+import com.winlator.cmod.runtime.display.wayland.WaylandCompositor;
 import com.winlator.cmod.runtime.wine.EnvVars;
 import com.winlator.cmod.shared.util.Callback;
 import java.io.File;
@@ -15,6 +16,9 @@ public class LinuxProgramLauncherComponent extends EnvironmentComponent {
   private static final String TAG = "LinuxLauncher";
   /** What every session runs under proot, and so where its options stop. */
   private static final String GUEST_COMMAND_HEAD = "/usr/bin/env";
+  /** Below the compositor thread's -8; see {@link #raiseTracer}. */
+  private static final int TRACER_NICE = -6;
+  private static final long TRACER_RAISE_DELAY_MS = 2000;
   private final List<String> command;
   private final EnvVars envVars;
   private final File workingDir;
@@ -53,6 +57,7 @@ public class LinuxProgramLauncherComponent extends EnvironmentComponent {
         builder.redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.appendTo(logFile));
         Process started = builder.start();
         process = started;
+        raiseTracer(started);
         new Thread(() -> {
           try {
             int status = started.waitFor();
@@ -74,6 +79,45 @@ public class LinuxProgramLauncherComponent extends EnvironmentComponent {
         }
       }
     }
+  }
+
+  /**
+   * proot is one thread, and every syscall it traps anywhere in the session - a path lookup in
+   * Proton's python, Wine's file opens, the Steam client's /proc scans - waits for that thread to
+   * be scheduled, at nice 0 beside a game that keeps the big cores busy. It is raised to nice -6,
+   * under the compositor's -8. After a moment, not at once: the first guest process is forked by
+   * proot itself and would inherit the value, and with it everything the session starts.
+   */
+  private void raiseTracer(Process started) {
+    int pid;
+    try {
+      java.lang.reflect.Field field = started.getClass().getDeclaredField("pid");
+      field.setAccessible(true);
+      pid = field.getInt(started);
+    } catch (ReflectiveOperationException | RuntimeException e) {
+      Log.w(TAG, "proot tracer pid unknown", e);
+      return;
+    }
+    Thread raise = new Thread(() -> {
+      try {
+        Thread.sleep(TRACER_RAISE_DELAY_MS);
+      } catch (InterruptedException e) {
+        return;
+      }
+      synchronized (lock) {
+        if (process != started) return;
+      }
+      int nice;
+      try {
+        nice = WaylandCompositor.nativeRaisePriority(pid, TRACER_NICE);
+      } catch (Throwable t) {
+        Log.w(TAG, "proot tracer priority", t);
+        return;
+      }
+      record("proot tracer " + pid + ": nice " + nice + " (asked for " + TRACER_NICE + ")");
+    }, "LinuxTracerPriority");
+    raise.setDaemon(true);
+    raise.start();
   }
 
   /**
