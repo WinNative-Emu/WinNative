@@ -4,6 +4,8 @@ import android.content.Context
 import com.winlator.cmod.app.PluviaApp
 import com.winlator.cmod.app.db.download.DownloadRecord
 import com.winlator.cmod.app.service.download.DownloadCoordinator
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.gog.api.DepotFile
 import com.winlator.cmod.feature.stores.gog.api.GOGApiClient
 import com.winlator.cmod.feature.stores.gog.api.GOGBuild
@@ -265,6 +267,7 @@ class GOGUpdateManager
         private fun restoreInstalledMarker(installPath: String) {
             MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
             MarkerUtils.addMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            InstallOwnership.claim(installPath, InstallStore.GOG)
         }
 
         private fun syncCoordinatorProgress(

@@ -16,6 +16,8 @@ import com.winlator.cmod.app.service.DownloadService
 import com.winlator.cmod.app.service.NetworkMonitor
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.feature.shortcuts.LibraryShortcutUtils
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.steam.data.AppInfo
 import com.winlator.cmod.feature.stores.steam.data.CachedLicense
 import com.winlator.cmod.feature.stores.steam.data.DepotInfo
@@ -552,6 +554,7 @@ internal fun SteamService.Companion.downloadApp(
 
             MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
             MarkerUtils.addMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            InstallOwnership.claim(appDirPath, InstallStore.STEAM)
 
             if (selectedContentlessDlc) {
                 // Record content-less DLC(s) as installed so the picker shows "Installed" — owned but with nothing to download.
@@ -771,6 +774,7 @@ internal fun SteamService.Companion.downloadApp(
         if (downloadTaskType == DownloadRecord.TASK_UPDATE) {
             MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
             MarkerUtils.addMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            InstallOwnership.claim(appDirPath, InstallStore.STEAM)
         }
         val info =
             DownloadInfo(selectedDepots.size, appId, downloadingAppIds).also { di ->

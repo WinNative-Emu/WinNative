@@ -3,6 +3,31 @@ package com.winlator.cmod.shared.framegen
 import com.winlator.cmod.R
 import kotlin.math.abs
 
+enum class DisFlowPreset(val minSide: Int, val labelRes: Int) {
+    FAST(180, R.string.session_drawer_dis_preset_fast),
+    BALANCE(252, R.string.session_drawer_dis_preset_balance),
+    QUALITY(360, R.string.session_drawer_dis_preset_quality),
+    ;
+
+    companion object {
+        val DEFAULT = FAST
+
+        fun fromStored(value: Int): DisFlowPreset {
+            val minSide = if (value in 1..100) value * 720 / 100 else value
+            var best = DEFAULT
+            var bestDelta = Int.MAX_VALUE
+            for (preset in values()) {
+                val delta = abs(preset.minSide - minSide)
+                if (delta < bestDelta) {
+                    bestDelta = delta
+                    best = preset
+                }
+            }
+            return best
+        }
+    }
+}
+
 enum class FrameGenPreset(
     val flowScale: Int,
     val labelRes: Int,

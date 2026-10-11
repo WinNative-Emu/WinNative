@@ -93,6 +93,7 @@ import com.winlator.cmod.shared.ui.FourByTwoGridView
 import com.winlator.cmod.shared.ui.JoystickGridScroll
 import com.winlator.cmod.shared.ui.widget.chasingBorder
 import com.winlator.cmod.shared.ui.toast.WinToast
+import com.winlator.cmod.shared.ui.layout.byOrientation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -379,7 +380,12 @@ private fun UnifiedActivity.ItchHeader(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(end = DrawerHotZoneClearance),
+                // The 44 dp reserved for the drawer's edge-swipe zone is a fifth of the row
+                // on a phone; a narrower gutter still clears the hot zone there.
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(end = byOrientation(portrait = 16.dp, landscape = DrawerHotZoneClearance)),
             ) {
                 Text(
                     text =
@@ -426,6 +432,11 @@ private fun UnifiedActivity.ItchHeader(
                     stringResource(R.string.itch_store_windows_only),
                     color = TextSecondary,
                     fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    // Unweighted it took its full intrinsic width before the weighted title
+                    // beside it, which then had nothing left on a narrow screen.
+                    modifier = Modifier.weight(1f, fill = false),
                 )
                 Spacer(Modifier.width(4.dp))
                 Switch(
@@ -450,7 +461,10 @@ private fun UnifiedActivity.ItchHeader(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = DrawerHotZoneStart, end = DrawerHotZoneClearance)
+                        .padding(
+                            start = byOrientation(portrait = 12.dp, landscape = DrawerHotZoneStart),
+                            end = byOrientation(portrait = 16.dp, landscape = DrawerHotZoneClearance),
+                        )
                         .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -637,6 +651,7 @@ internal fun UnifiedActivity.ItchGameDialog(
     var checkingUpdate by remember(game.id) { mutableStateOf(false) }
     var updateInfo by remember(game.id) { mutableStateOf<ItchUpdateInfo?>(null) }
     var updateStatus by remember(game.id) { mutableStateOf<String?>(null) }
+    var showDownloadTarget by remember(game.id) { mutableStateOf(false) }
 
     LaunchedEffect(game.id) {
         try {
@@ -668,6 +683,62 @@ internal fun UnifiedActivity.ItchGameDialog(
                 0L
             }
         }
+    val externalStorageState by com.winlator.cmod.feature.storage.ExternalStorage.state.collectAsState()
+    val externalDrive = externalStorageState.preferredDrive()
+    val externalInstallRoot =
+        externalDrive?.let {
+            com.winlator.cmod.feature.storage.ExternalStorage
+                .storeInstallRoot(
+                    it.drive.downloadPath,
+                    com.winlator.cmod.feature.stores.common.InstallStore.ITCH,
+                )
+        }
+    val downloadStartedText = stringResource(R.string.itch_store_download_started, game.title)
+    val startItchInstall: (com.winlator.cmod.feature.storage.DownloadTarget) -> Unit = { target ->
+        val upload = uploads?.firstOrNull { it.id == selectedUploadId }
+        if (upload != null) {
+            val externalRoot =
+                externalInstallRoot.takeIf {
+                    target == com.winlator.cmod.feature.storage.DownloadTarget.EXTERNAL
+                }
+            val overridePath =
+                externalRoot?.let {
+                    java.io.File(
+                        it,
+                        com.winlator.cmod.feature.stores.itch.service.ItchConstants
+                            .sanitizeFolderName(game.title),
+                    ).absolutePath
+                }
+            busy = true
+            context.runIfOnlineOrToast {
+                scope.launch {
+                    ItchService.download(context, game, upload, overridePath)
+                    WinToast.show(
+                        context,
+                        downloadStartedText,
+                        android.widget.Toast.LENGTH_SHORT,
+                    )
+                    busy = false
+                    onInstalledChanged()
+                    onDismiss()
+                }
+            }
+        }
+    }
+
+    if (showDownloadTarget) {
+        com.winlator.cmod.feature.storage.DownloadTargetDialog(
+            internalPath = installPath,
+            externalPath = externalInstallRoot,
+            externalLabel = externalDrive?.drive?.label.orEmpty(),
+            onDismiss = { showDownloadTarget = false },
+            onConfirm = { target ->
+                showDownloadTarget = false
+                startItchInstall(target)
+            },
+        )
+    }
+
     val updateCheckFailed = stringResource(R.string.store_game_update_check_failed)
     val updateUpToDate = stringResource(R.string.itch_store_update_none)
     val updateAvailableTemplate = stringResource(R.string.itch_store_update_available)
@@ -804,20 +875,11 @@ internal fun UnifiedActivity.ItchGameDialog(
                     }
                 },
                 onInstall = {
-                    val upload = selectedUpload ?: return@StoreGameDetailScreen
-                    busy = true
-                    context.runIfOnlineOrToast {
-                        scope.launch {
-                            ItchService.download(context, game, upload)
-                            WinToast.show(
-                                context,
-                                getString(R.string.itch_store_download_started, game.title),
-                                android.widget.Toast.LENGTH_SHORT,
-                            )
-                            busy = false
-                            onInstalledChanged()
-                            onDismiss()
-                        }
+                    if (selectedUpload == null) return@StoreGameDetailScreen
+                    if (installed) {
+                        startItchInstall(com.winlator.cmod.feature.storage.DownloadTarget.INTERNAL)
+                    } else {
+                        showDownloadTarget = true
                     }
                 },
                 onUninstall = {

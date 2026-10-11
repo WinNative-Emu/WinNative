@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -132,6 +133,7 @@ import com.winlator.cmod.shared.ui.nav.PaneNavRegistry
 import com.winlator.cmod.shared.ui.nav.bindPaneNav
 import com.winlator.cmod.shared.ui.nav.paneNavHandlers
 import com.winlator.cmod.shared.ui.nav.paneNavItem
+import com.winlator.cmod.shared.ui.layout.isCompactWidth
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
@@ -296,6 +298,11 @@ object DirectoryPickerDialog {
         if (!ensureAllFilesAccess(activity)) return
 
         val roots = buildRootDirectories(activity)
+        // Offered first, because it is the only root a game library can be installed to intact.
+        val selectableRoots =
+            StoragePathUtils.appPrivateGamesRoot(activity)?.let { appRoot ->
+                listOf(ManagedRoot(activity.getString(R.string.common_ui_app_storage), appRoot.path)) + extraRoots
+            } ?: extraRoots
         val initialDir = resolveInitialDirectory(initialPath, roots)
 
         val dialog =
@@ -363,7 +370,7 @@ object DirectoryPickerDialog {
                                     mode = mode,
                                     allowedExtensions = allowedExtensions,
                                     managedRoots = managedRoots,
-                                    extraRoots = extraRoots,
+                                    extraRoots = selectableRoots,
                                     containers = containers,
                                     onRunFile = onRunFile,
                                     onCreateShortcut = onCreateShortcut,
@@ -1035,17 +1042,13 @@ object DirectoryPickerDialog {
                     Spacer(Modifier.height(10.dp))
 
                     if (manage) {
-                        CompositionLocalProvider(LocalPaneNav provides footerRegistry) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            FooterInfo(
-                                title = title,
-                                subtitle = selectedFile?.absolutePath ?: currentDir.absolutePath,
-                                modifier = Modifier.weight(1f),
-                            )
+                        // The path label plus three fixed chips, the root selector and Close need
+                        // about 505 dp of minimum width. In one row at phone width the selector and
+                        // Close are pushed off the right edge and the path collapses to nothing, so
+                        // below the compact threshold the label goes on its own line and the controls
+                        // wrap. None of the controls uses a Row weight, so the same lambda serves both.
+                        val compactFooter = isCompactWidth()
+                        val manageFooterControls: @Composable () -> Unit = {
                             clipboard?.let { cb ->
                                 val extracting = cb.mode == ClipMode.EXTRACT
                                 SecondaryActionChip(
@@ -1098,6 +1101,39 @@ object DirectoryPickerDialog {
                                 onClick = onDismiss,
                             )
                         }
+                        CompositionLocalProvider(LocalPaneNav provides footerRegistry) {
+                            if (compactFooter) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    FooterInfo(
+                                        title = title,
+                                        subtitle = selectedFile?.absolutePath ?: currentDir.absolutePath,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        manageFooterControls()
+                                    }
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    FooterInfo(
+                                        title = title,
+                                        subtitle = selectedFile?.absolutePath ?: currentDir.absolutePath,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    manageFooterControls()
+                                }
+                            }
                         }
                         return@Column
                     }
@@ -1143,18 +1179,41 @@ object DirectoryPickerDialog {
                     }
 
                     CompositionLocalProvider(LocalPaneNav provides footerRegistry) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        FooterInfo(
-                            title = footerTitle,
-                            subtitle = footerSubtitle,
-                            modifier = Modifier.weight(1f),
-                        )
-                        rootSelector(Modifier.widthIn(min = 158.dp, max = 182.dp))
-                        footerActions()
+                    // Same problem as the manage footer: the root selector's 158 dp minimum plus
+                    // the two action buttons leave the title and path nothing to occupy.
+                    if (isCompactWidth()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            FooterInfo(
+                                title = footerTitle,
+                                subtitle = footerSubtitle,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                rootSelector(Modifier.weight(1f))
+                                footerActions()
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            FooterInfo(
+                                title = footerTitle,
+                                subtitle = footerSubtitle,
+                                modifier = Modifier.weight(1f),
+                            )
+                            rootSelector(Modifier.widthIn(min = 158.dp, max = 182.dp))
+                            footerActions()
+                        }
                     }
                     }
                 }

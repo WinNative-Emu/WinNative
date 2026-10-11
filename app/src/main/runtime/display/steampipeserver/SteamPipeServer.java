@@ -7,6 +7,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -41,7 +42,8 @@ public class SteamPipeServer {
               try {
                 serverSocket = new ServerSocket();
                 serverSocket.setReuseAddress(true);
-                serverSocket.bind(new InetSocketAddress(PORT));
+                // Its clients run on this device; nothing on the network may reach it.
+                serverSocket.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), PORT));
                 Log.d(TAG, "Server started on port " + PORT);
 
                 while (running) {

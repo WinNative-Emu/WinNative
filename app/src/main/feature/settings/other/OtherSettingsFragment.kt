@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -13,7 +14,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,12 +27,12 @@ import androidx.preference.PreferenceManager
 import com.winlator.cmod.R
 import com.winlator.cmod.app.config.SettingsConfig
 import com.winlator.cmod.app.shell.UnifiedActivity
-import com.winlator.cmod.app.update.UpdateChannel
 import com.winlator.cmod.app.update.UpdateService
 import com.winlator.cmod.feature.shortcuts.FrontendExporter
 import com.winlator.cmod.feature.setup.SetupWizardActivity
 import com.winlator.cmod.runtime.audio.midi.MidiManager
 import com.winlator.cmod.runtime.display.environment.ImageFsInstaller
+import com.winlator.cmod.runtime.system.ProcessHelper
 import com.winlator.cmod.shared.ui.toast.WinToast
 import com.winlator.cmod.shared.android.DirectoryPickerDialog
 import com.winlator.cmod.shared.android.LocaleHelper
@@ -111,10 +111,6 @@ class OtherSettingsFragment : Fragment() {
                                 )
                             }
                         },
-                        onUpdateChannelSelected = { index ->
-                            UpdateService.setChannel(ctx, UpdateChannel.entries[index])
-                            refresh()
-                        },
                         onLanguageSelected = { index ->
                             val currentIndex =
                                 LocaleHelper.indexForTag(
@@ -178,6 +174,25 @@ class OtherSettingsFragment : Fragment() {
                         },
                         onEnableBackgroundSessionChanged = { checked ->
                             preferences.edit { putBoolean("enable_background_session", checked) }
+                            // This is true if Store services are already running, but it isn't when is auto-enabled on wizard.
+                            WinToast.show(ctx, R.string.settings_general_take_effect_next_startup)
+                            refresh()
+                        },
+                        onEnableAutoPauseChanged = { checked ->
+                            preferences.edit { putBoolean("enable_auto_pause_when_background", checked) }
+                            refresh()
+                        },
+                        onUseBackgroundWakelockChanged = { checked ->
+                            preferences.edit { putBoolean("enable_background_wakelock", checked) }
+                            refresh()
+                        },
+                        onHeartbeatFrequencyChanged = { seconds ->
+                            preferences.edit { putInt("background_heartbeat_frequency", seconds) }
+                            refresh()
+                        },
+                        onBackgroundPauseModeChanged = { mode ->
+                            preferences.edit { putString("background_pause_mode", mode.prefValue) }
+                            ProcessHelper.setBackgroundPauseMode(mode)
                             refresh()
                         },
                         onExternalDisplayOutputChanged = { checked ->
@@ -232,7 +247,7 @@ class OtherSettingsFragment : Fragment() {
         uiState =
             OtherSettingsState(
                 checkForUpdates = preferences.getBoolean("check_for_updates", true),
-                updateChannelIndex = UpdateChannel.entries.indexOf(UpdateService.channel(ctx)),
+                updateSource = updateSourceLabel(ctx),
                 languageLabels = languageLabels,
                 languageIndex = languageIndex,
                 soundFontFiles = soundFontFiles,
@@ -251,9 +266,21 @@ class OtherSettingsFragment : Fragment() {
                 openInBrowser = preferences.getBoolean("open_with_android_browser", false),
                 shareClipboard = preferences.getBoolean("share_android_clipboard", false),
                 enableBackgroundSession = preferences.getBoolean("enable_background_session", false),
+                enableAutoPause = preferences.getBoolean("enable_auto_pause_when_background", false),
+                useBackgroundWakelock = preferences.getBoolean("enable_background_wakelock", false),
+                heartbeatFrequency = preferences.getInt("background_heartbeat_frequency", 0),
+                backgroundPauseMode = ProcessHelper.BackgroundPauseMode.fromPrefValue(
+                    preferences.getString("background_pause_mode", ProcessHelper.BackgroundPauseMode.GAME_ONLY.prefValue)
+                ),
                 externalDisplayOutput = preferences.getBoolean("external_display_output", false),
                 imagefsInstallProgress = uiState.imagefsInstallProgress,
             )
+    }
+
+    /** The pull request a CI build follows, or the official releases. Blank when neither applies. */
+    private fun updateSourceLabel(ctx: Context): String {
+        if (!UpdateService.isSupported(ctx)) return ""
+        return UpdateService.updateSourceName().ifEmpty { getString(R.string.update_channel_official) }
     }
 
     private fun loadSoundFontFiles(ctx: Context): List<String> {

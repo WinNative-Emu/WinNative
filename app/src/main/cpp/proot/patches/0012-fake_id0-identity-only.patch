@@ -1,0 +1,103 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: DroidDeck <droiddeck@users.noreply.github.com>
+Date: Tue, 29 Sep 2026 00:00:00 +0000
+Subject: [PATCH] fake_id0: only trace the set*id and xattr calls when the ids
+ are PRoot's own
+
+---
+ src/extension/fake_id0/config.h   |  5 ++++
+ src/extension/fake_id0/fake_id0.c | 44 ++++++++++++++++++++++++++++++-
+ 2 files changed, 48 insertions(+), 1 deletion(-)
+
+diff --git a/src/extension/fake_id0/config.h b/src/extension/fake_id0/config.h
+index 2e78783..5227ced 100644
+--- a/src/extension/fake_id0/config.h
++++ b/src/extension/fake_id0/config.h
+@@ -2,6 +2,7 @@
+ #define FAKE_ID0_CONFIG_H
+ 
+ #include <sys/types.h>   /* uid_t, gid_t */
++#include <stdbool.h>     /* bool, */
+ 
+ typedef struct {
+ 	uid_t ruid;
+@@ -15,6 +16,10 @@ typedef struct {
+ 	gid_t fsgid;
+ 
+ 	mode_t umask;
++
++	/* The emulated ids are the ones PRoot really has: see
++	 * identity_sysnums in fake_id0.c.  */
++	bool identity;
+ } Config;
+ 
+ #endif /* FAKE_ID0_CONFIG_H */
+diff --git a/src/extension/fake_id0/fake_id0.c b/src/extension/fake_id0/fake_id0.c
+index 9477f1c..fe08372 100644
+--- a/src/extension/fake_id0/fake_id0.c
++++ b/src/extension/fake_id0/fake_id0.c
+@@ -352,6 +352,40 @@ static FilteredSysnum filtered_sysnums[] = {
+ 	FILTERED_SYSNUM_END,
+ };
+ 
++/* When the emulated ids are the ones PRoot really has, and the tracee
++ * is not root, every handler for the syscalls above but these is a
++ * no-op: stat and get*id report the real ids already, SCM_CREDENTIALS
++ * and SO_PEERCRED carry them, chown swaps an id for itself, and the
++ * permission and chroot fixups only apply to euid 0.  The set*id
++ * family is still emulated (Android's app seccomp policy traps it) and
++ * so are the xattr permission fixups, which apply to any euid.  An
++ * unprivileged set*id can only take an id the tracee already holds,
++ * and set-user-ID bits are not honoured in this mode (Android mounts
++ * the app's data nosuid, so the kernel would not honour them either),
++ * so the ids never change and the list stays sufficient.  */
++static FilteredSysnum identity_sysnums[] = {
++	{ PR_fsetxattr,		FILTER_SYSEXIT },
++	{ PR_lsetxattr,		FILTER_SYSEXIT },
++	{ PR_setfsgid,		FILTER_SYSEXIT },
++	{ PR_setfsgid32,	FILTER_SYSEXIT },
++	{ PR_setfsuid,		FILTER_SYSEXIT },
++	{ PR_setfsuid32,	FILTER_SYSEXIT },
++	{ PR_setgid,		FILTER_SYSEXIT },
++	{ PR_setgid32,		FILTER_SYSEXIT },
++	{ PR_setregid,		FILTER_SYSEXIT },
++	{ PR_setregid32,	FILTER_SYSEXIT },
++	{ PR_setresgid,		FILTER_SYSEXIT },
++	{ PR_setresgid32,	FILTER_SYSEXIT },
++	{ PR_setresuid,		FILTER_SYSEXIT },
++	{ PR_setresuid32,	FILTER_SYSEXIT },
++	{ PR_setreuid,		FILTER_SYSEXIT },
++	{ PR_setreuid32,	FILTER_SYSEXIT },
++	{ PR_setuid,		FILTER_SYSEXIT },
++	{ PR_setuid32,		FILTER_SYSEXIT },
++	{ PR_setxattr,		FILTER_SYSEXIT },
++	FILTERED_SYSNUM_END,
++};
++
+ /**
+  * Restore the @node->mode for the given @node->path.
+  *
+@@ -1051,6 +1085,11 @@ static int handle_sysexit_start(Tracee *tracee, Config *config) {
+ 	if ((int) result < 0 || tracee->status < 0 || sysnum != PR_execve)
+ 		return 0;
+ 
++	/* The auxv already carries the real ids, and set-user-ID bits
++	 * are not honoured in this mode: see identity_sysnums.  */
++	if (config->identity)
++		return 0;
++
+ 	/* This has to be done before PRoot pushes the load
+ 	 * script into tracee's stack.  */
+ 	if (!tracee->skip_proot_loader)
+@@ -1119,7 +1158,10 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
+ 			/* Set the umask to the typical linux value. */
+ 			config->umask = 022;
+ 
+-		extension->filtered_sysnums = filtered_sysnums;
++		config->identity = (uid != 0 && uid == (int) getuid() && gid == (int) getgid());
++		extension->filtered_sysnums = config->identity
++			? identity_sysnums
++			: filtered_sysnums;
+ 		return 0;
+ 	}
+ 

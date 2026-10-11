@@ -1,0 +1,159 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: WinNative <maxjivi05@users.noreply.github.com>
+Date: Sat, 10 Oct 2026 00:00:00 +0000
+Subject: [PATCH] execveat relative to a descriptor, and exec of
+ /proc/self/fd/N
+
+---
+ src/execve/enter.c  | 52 +++++++++++++++++++++++++++++++++++++++++++++
+ src/syscall/enter.c | 50 ++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 99 insertions(+), 3 deletions(-)
+
+diff --git a/src/execve/enter.c b/src/execve/enter.c
+index c562d14..4cfd09a 100644
+--- a/src/execve/enter.c
++++ b/src/execve/enter.c
+@@ -128,6 +128,54 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
+  * executable and is a regular file.  This function returns -errno if
+  * an error occured, 0 otherwise.
+  */
++/**
++ * A tracee executing "/proc/self/fd/N" (fexecve(3), or execveat(2) relative to
++ * a descriptor) expects the kernel to open the file before the exec closes the
++ * descriptor; the loader opens the program after, when a close-on-exec
++ * descriptor is gone, so hand it the file the descriptor names instead.  A
++ * target that cannot be reached that way (a memfd, a deleted file) is left as
++ * it was.  Returns -errno on error, 0 otherwise.
++ */
++static int resolve_proc_fd(const Tracee *tracee, char host_path[PATH_MAX])
++{
++	const pid_t pids[] = { tracee->tgid, tracee->pid };
++	char target[PATH_MAX];
++	char prefix[32];
++	const char *rest;
++	char *end;
++	size_t i;
++	long fd;
++	int length;
++	int status;
++
++	for (i = 0; i < sizeof(pids) / sizeof(pids[0]); i++) {
++		length = snprintf(prefix, sizeof(prefix), "/proc/%d/fd/", pids[i]);
++		if (length > 0 && (size_t) length < sizeof(prefix)
++		    && strncmp(host_path, prefix, length) == 0)
++			break;
++	}
++	if (i == sizeof(pids) / sizeof(pids[0]))
++		return 0;
++
++	errno = 0;
++	fd = strtol(host_path + length, &end, 10);
++	if (errno != 0 || end == host_path + length || fd < 0 || (*end != '\0' && *end != '/'))
++		return 0;
++	rest = end;
++
++	status = readlink_proc_pid_fd(pids[i], fd, target);
++	if (status < 0 || target[0] != '/')
++		return 0;
++	if (strlen(target) + strlen(rest) >= PATH_MAX)
++		return -ENAMETOOLONG;
++	strcat(target, rest);
++	if (access(target, F_OK) < 0)
++		return 0;
++
++	strcpy(host_path, target);
++	return 0;
++}
++
+ int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX], const char *user_path)
+ {
+ 	struct stat statl;
+@@ -140,6 +188,10 @@ int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX], const cha
+ 	if (status < 0)
+ 		return status;
+ 
++	status = resolve_proc_fd(tracee, host_path);
++	if (status < 0)
++		return status;
++
+ 	status = access(host_path, F_OK);
+ 	if (status < 0)
+ 		return -ENOENT;
+diff --git a/src/syscall/enter.c b/src/syscall/enter.c
+index bb2c8df..abc2b83 100644
+--- a/src/syscall/enter.c
++++ b/src/syscall/enter.c
+@@ -28,6 +28,7 @@
+ #include <fcntl.h>       /* AT_FDCWD, */
+ #include <limits.h>      /* PATH_MAX, */
+ #include <string.h>      /* strcpy */
++#include <stdio.h>       /* snprintf(3), */
+ #include <sys/prctl.h>   /* PR_SET_DUMPABLE */
+ #include <termios.h>     /* TCSETS, TCSANOW */
+ 
+@@ -88,6 +89,49 @@ static int translate_sysarg(Tracee *tracee, Reg reg, Type type)
+ 	return translate_path2(tracee, AT_FDCWD, old_path, reg, type);
+ }
+ 
++/**
++ * Rewrite an fd-relative execveat(2) into the execve(2) the rest of PRoot
++ * understands.  The target becomes SYSARG_1, named through /proc/self/fd for a
++ * call relative to a descriptor (fexecve(3) is execveat(fd, "", AT_EMPTY_PATH)),
++ * which translate_and_check_exec() then resolves to the file itself; argv and
++ * envp shift down from SYSARG_3/4 to SYSARG_2/3.  FEX starts every emulated
++ * child this way.  Returns -errno on error.
++ */
++static int normalize_execveat_enter(Tracee *tracee)
++{
++	char path[PATH_MAX];
++	char rewritten[PATH_MAX];
++	word_t flags;
++	int dirfd;
++	int status;
++
++	dirfd = (int) peek_reg(tracee, CURRENT, SYSARG_1);
++	flags = peek_reg(tracee, CURRENT, SYSARG_5);
++
++	status = get_sysarg_path(tracee, path, SYSARG_2);
++	if (status < 0)
++		return status;
++
++	if (path[0] == '/')
++		status = snprintf(rewritten, sizeof(rewritten), "%s", path);
++	else if (path[0] == '\0' && (flags & AT_EMPTY_PATH) != 0)
++		status = snprintf(rewritten, sizeof(rewritten), "/proc/self/fd/%d", dirfd);
++	else if (path[0] == '\0')
++		return -ENOENT;
++	else
++		status = snprintf(rewritten, sizeof(rewritten), "/proc/self/fd/%d/%s", dirfd, path);
++	if (status < 0 || (size_t) status >= sizeof(rewritten))
++		return -ENAMETOOLONG;
++
++	status = set_sysarg_path(tracee, rewritten, SYSARG_1);
++	if (status < 0)
++		return status;
++	poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_3));
++	poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_4));
++	set_sysnum(tracee, PR_execve);
++	return 0;
++}
++
+ /**
+  * Translate the input arguments of the current @tracee's syscall in the
+  * @tracee->pid process area. This function sets @tracee->status to
+@@ -136,9 +180,9 @@ int translate_syscall_enter(Tracee *tracee)
+ 			poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_3));
+ 			poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_4));
+ 		} else {
+-			note(tracee, ERROR, SYSTEM, "execveat() with non-AT_FDCWD fd is not currently supported");
+-			status = -ENOSYS;
+-			break;
++			status = normalize_execveat_enter(tracee);
++			if (status < 0)
++				break;
+ 		}
+ 		status = translate_execve_enter(tracee);
+ 		break;
+-- 
+2.43.0
+

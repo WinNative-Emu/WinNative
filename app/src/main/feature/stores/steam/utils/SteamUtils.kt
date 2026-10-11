@@ -1662,6 +1662,22 @@ object SteamUtils {
      * off Steam's own AutoCloud for the launched app — the server state isn't touched, we
      * just keep Steam from asking about it at launch.
      */
+    private fun resolveOrCreateSection(
+        root: KeyValue,
+        vararg path: String,
+    ): KeyValue {
+        var node = root
+        for (key in path) {
+            var child = node.children.firstOrNull { it.name.equals(key, ignoreCase = true) }
+            if (child == null) {
+                child = KeyValue(key).also { it.isSection = true }
+                node.children.add(child)
+            }
+            node = child
+        }
+        return node
+    }
+
     private fun disableSteamCloudForApp(app: KeyValue) {
         val existingEnabled = app.children.firstOrNull { it.name == "cloudenabled" }
         if (existingEnabled != null) {
@@ -1725,7 +1741,8 @@ object SteamUtils {
                 if (vdfContent != null) {
                     val vdfData = KeyValue.loadFromString(vdfContent)
                     if (vdfData != null) {
-                        val app = vdfData["Software"]["Valve"]["Steam"]["apps"][appId]
+                        val app =
+                            resolveOrCreateSection(vdfData, "Software", "Valve", "Steam", "apps", appId)
                         val option = app.children.firstOrNull { it.name == "LaunchOptions" }
                         if (option != null) {
                             option.value = exeCommandLine.orEmpty()

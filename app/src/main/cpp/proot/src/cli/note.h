@@ -23,32 +23,30 @@
 #ifndef NOTE_H
 #define NOTE_H
 
-#include "attribute.h"
 #include "tracee/tracee.h"
+#include "attribute.h"
 
 /* Specify where a notice is coming from. */
 typedef enum {
-  SYSTEM,
-  INTERNAL,
-  USER,
-  TALLOC,
+	SYSTEM,
+	INTERNAL,
+	USER,
+	TALLOC,
 } Origin;
 
 /* Specify the severity of a notice. */
 typedef enum {
-  ERROR,
-  WARNING,
-  INFO,
+	ERROR,
+	WARNING,
+	INFO,
 } Severity;
 
-#define VERBOSE(tracee, level, message, args...)                               \
-  do {                                                                         \
-    if (tracee == NULL || tracee->verbose >= (level))                          \
-      note(tracee, INFO, INTERNAL, (message), ##args);                         \
-  } while (0)
+#define VERBOSE(tracee, level, message, args...) do {			\
+		if (tracee == NULL || tracee->verbose >= (level))	\
+			note(tracee, INFO, INTERNAL, (message), ## args); \
+	} while (0)
 
-extern void note(const Tracee *tracee, Severity severity, Origin origin,
-                 const char *message, ...) FORMAT(printf, 4, 5);
+extern void note(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...) FORMAT(printf, 4, 5);
 
 extern int global_verbose_level;
 extern const char *global_tool_name;

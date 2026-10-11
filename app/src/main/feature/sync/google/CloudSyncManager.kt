@@ -21,6 +21,8 @@ import com.winlator.cmod.feature.stores.epic.service.EpicAuthManager
 import com.winlator.cmod.feature.stores.epic.service.EpicService
 import com.winlator.cmod.feature.stores.gog.service.GOGAuthManager
 import com.winlator.cmod.feature.stores.gog.service.GOGService
+import com.winlator.cmod.feature.stores.itch.service.ItchAuthManager
+import com.winlator.cmod.feature.stores.itch.service.ItchService
 import com.winlator.cmod.feature.stores.steam.service.SteamService
 import com.winlator.cmod.feature.stores.steam.utils.PrefManager
 import kotlinx.coroutines.CoroutineScope
@@ -61,10 +63,12 @@ object CloudSyncManager {
     private const val ZIP_STEAM = "stores/steam.json"
     private const val ZIP_EPIC = "stores/epic_credentials.json"
     private const val ZIP_GOG = "stores/gog_auth.json"
+    private const val ZIP_ITCH = "stores/itch.json"
 
     private const val STORE_STEAM = "Steam"
     private const val STORE_EPIC = "Epic"
     private const val STORE_GOG = "GOG"
+    private const val STORE_ITCH = "Itch.io"
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val syncMutex = Mutex()
@@ -410,6 +414,9 @@ object CloudSyncManager {
         if (STORE_GOG in restoredStores) {
             rehydrateGogSession(context)
         }
+        if (STORE_ITCH in restoredStores) {
+            rehydrateItchSession(context)
+        }
     }
 
     private suspend fun rehydrateSteamSession(context: Context) {
@@ -453,6 +460,12 @@ object CloudSyncManager {
         waitForCondition(timeoutMillis = 6000L) { GOGService.isRunning }
         runCatching { GOGService.refreshLibrary(context) }
             .onFailure { Timber.tag(TAG).w(it, "GOG library refresh failed after restore") }
+    }
+
+    private suspend fun rehydrateItchSession(context: Context) {
+        Timber.tag(TAG).i("Rehydrating restored Itch session for live UI and store state")
+        ItchService.start(context)
+        ItchService.refreshProfile(context)
     }
 
     private suspend fun waitForCondition(
@@ -773,6 +786,7 @@ object CloudSyncManager {
         exportSteam(context)?.let { stores[STORE_STEAM] = it }
         exportEpic(context)?.let { stores[STORE_EPIC] = it }
         exportGog(context)?.let { stores[STORE_GOG] = it }
+        exportItch(context)?.let { stores[STORE_ITCH] = it }
 
         val createdAt = System.currentTimeMillis()
         val fingerprint = computeFingerprint(stores)
@@ -816,6 +830,20 @@ object CloudSyncManager {
         return if (file.exists()) file.readBytes() else null
     }
 
+    private fun exportItch(context: Context): ByteArray? {
+        if (!ItchAuthManager.isLoggedIn(context)) return null
+        val prefs = context.applicationContext.getSharedPreferences("itch_store", Context.MODE_PRIVATE)
+        val user = prefs.getString("signed_in_user", "")
+        val cookies = prefs.getStringSet("cookies", emptySet())
+        if (user.isNullOrEmpty() && cookies.isNullOrEmpty()) return null
+
+        val json = JSONObject().apply {
+            put("signed_in_user", user)
+            put("cookies", JSONArray(cookies))
+        }
+        return json.toString().toByteArray(StandardCharsets.UTF_8)
+    }
+
     private fun restoreMissingStores(
         context: Context,
         payload: StorePayload,
@@ -839,6 +867,12 @@ object CloudSyncManager {
                 STORE_GOG -> {
                     if (!GOGAuthManager.hasStoredCredentials(context) && restoreGog(context, bytes)) {
                         restored += STORE_GOG
+                    }
+                }
+
+                STORE_ITCH -> {
+                    if (!ItchAuthManager.isLoggedIn(context) && restoreItch(context, bytes)) {
+                        restored += STORE_ITCH
                     }
                 }
             }
@@ -909,6 +943,32 @@ object CloudSyncManager {
             false
         }
 
+    private fun restoreItch(context: Context, bytes: ByteArray): Boolean =
+        runCatching {
+            Timber.tag(TAG).i("Restoring Itch.io login tokens from cloud payload")
+            val json = JSONObject(String(bytes, StandardCharsets.UTF_8))
+            val prefs = context.applicationContext.getSharedPreferences("itch_store", Context.MODE_PRIVATE)
+            val user = json.optString("signed_in_user", "")
+            val cookiesJson = json.optJSONArray("cookies")
+            val cookies = mutableSetOf<String>()
+            if (cookiesJson != null) {
+                for (i in 0 until cookiesJson.length()) cookies.add(cookiesJson.getString(i))
+            }
+
+            prefs.edit().apply {
+                if (user.isNotEmpty()) putString("signed_in_user", user)
+                if (cookies.isNotEmpty()) putStringSet("cookies", cookies)
+                apply()
+            }
+            // Reset the WebClient so it recreates the CookieJar and reads the newly restored cookies from disk.
+            com.winlator.cmod.feature.stores.itch.service.ItchWebClient.reset()
+            StoreSessionBus.emit(StoreSessionEvent.SessionRestored(Store.ITCH))
+            true
+        }.getOrElse { error ->
+            Timber.tag(TAG).e(error, "Failed to restore Itch.io login tokens")
+            false
+        }
+
     private fun payloadToZip(payload: StorePayload): ByteArray {
         val output = ByteArrayOutputStream()
         ZipOutputStream(output).use { zip ->
@@ -927,6 +987,7 @@ object CloudSyncManager {
                         STORE_STEAM -> ZIP_STEAM
                         STORE_EPIC -> ZIP_EPIC
                         STORE_GOG -> ZIP_GOG
+                        STORE_ITCH -> ZIP_ITCH
                         else -> null
                     }
                 if (entryName != null) {
@@ -963,6 +1024,10 @@ object CloudSyncManager {
 
                     ZIP_GOG -> {
                         stores[STORE_GOG] = entryBytes
+                    }
+
+                    ZIP_ITCH -> {
+                        stores[STORE_ITCH] = entryBytes
                     }
                 }
                 zip.closeEntry()

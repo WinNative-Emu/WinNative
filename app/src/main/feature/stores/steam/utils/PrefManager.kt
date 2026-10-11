@@ -354,6 +354,12 @@ object PrefManager {
             setString("itch_download_folder", value)
         }
 
+    var externalDrivesJson: String
+        get() = getString("external_drives_json", "")
+        set(value) {
+            setString("external_drives_json", value)
+        }
+
     var chatServiceEnabled: Boolean
         get() = getBoolean("chat_service_enabled", true)
         set(value) {

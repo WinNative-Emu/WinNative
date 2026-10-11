@@ -49,7 +49,11 @@ public class VulkanRenderer
     public final XServerSurfaceView xServerView;
     private final XServer xServer;
 
-    private long nativeHandle = 0;
+    private volatile long nativeHandle = 0;
+
+    private final java.util.concurrent.locks.ReentrantLock nativeLock =
+            new java.util.concurrent.locks.ReentrantLock();
+
     private boolean supportProbed = false;
     private boolean loggedAhbSceneUse = false;
     // Must be set before attachSurface — nativeCreate reads it once at instance creation.
@@ -152,25 +156,24 @@ public class VulkanRenderer
             if (nativeHandle != 0) {
                 // On the UI thread, run nativeDestroy off-thread — it may block on vkDeviceWaitIdle.
                 if (Looper.myLooper() == Looper.getMainLooper()) {
-                    new Thread(() -> {
-                        synchronized (this) {
-                            if (nativeHandle != 0) {
-                                nativeDestroy(nativeHandle);
-                                nativeHandle = 0;
-                                Texture.setRendererHandle(0);
-                            }
-                        }
-                    }, "Vulkan-Cleanup").start();
+                    new Thread(this::destroyNativeRenderer, "Vulkan-Cleanup").start();
                 } else {
-                    synchronized (this) {
-                        if (nativeHandle != 0) {
-                            nativeDestroy(nativeHandle);
-                            nativeHandle = 0;
-                            Texture.setRendererHandle(0);
-                        }
-                    }
+                    destroyNativeRenderer();
                 }
             }
+        }
+    }
+
+    private void destroyNativeRenderer() {
+        nativeLock.lock();
+        try {
+            if (nativeHandle != 0) {
+                Texture.setRendererHandle(0);
+                nativeDestroy(nativeHandle);
+                nativeHandle = 0;
+            }
+        } finally {
+            nativeLock.unlock();
         }
     }
 
@@ -182,8 +185,30 @@ public class VulkanRenderer
         lastGuestPresentNs = System.nanoTime();
     }
 
+    // A guest present used to wake the render thread straight away. That ran composition on
+    // the guest's clock while the swapchain still presents on vsync, so the two rates beat
+    // against each other: two guest presents inside one vsync interval collapsed into a single
+    // composite (a dropped guest frame) and an interval without one repeated the previous frame.
+    // Arming the Choreographer callback instead composites at most once per vsync and in phase
+    // with it, at the cost of up to one vsync of latency before the composite starts.
     public void requestRenderImmediate() {
+        wakeSources.incrementAndGet(WAKE_GUEST_PRESENT);
+        if (!renderRequested.compareAndSet(false, true)) return;
+
+        // Posting directly is thread-safe: Choreographer forwards to its looper itself, and a
+        // handler hop here would arm past the next doFrame.
+        Choreographer choreographer = mainChoreographer;
+        if (choreographer != null) {
+            choreographer.postFrameCallback(coalescedRenderCallback);
+            return;
+        }
+        // Before the Choreographer has been bound on the main thread, fall back to the old
+        // unsynchronised wake so the first frames still reach the screen.
+        renderRequested.set(false);
         xServerView.requestRender();
+        mainHandler.post(() -> {
+            if (mainChoreographer == null) mainChoreographer = Choreographer.getInstance();
+        });
     }
 
     public long takeGuestPresentDelta() {
@@ -209,14 +234,15 @@ public class VulkanRenderer
     public static final int WAKE_WINHANDLER = 8;
     public static final int WAKE_INPUTVIEW = 9;
     public static final int WAKE_SETTING = 10;
+    public static final int WAKE_GUEST_PRESENT = 11;
     private final java.util.concurrent.atomic.AtomicLongArray wakeSources =
-            new java.util.concurrent.atomic.AtomicLongArray(11);
+            new java.util.concurrent.atomic.AtomicLongArray(12);
 
     public String takeWakeBreakdown() {
         StringBuilder sb = new StringBuilder();
         String[] names =
                 {"other", "content", "geometry", "window", "cursor", "frame", "suppressed",
-                 "pointer", "winhandler", "inputview", "setting"};
+                 "pointer", "winhandler", "inputview", "setting", "guest"};
         for (int i = 0; i < names.length; i++) {
             sb.append(' ').append(names[i]).append('=').append(wakeSources.getAndSet(i, 0));
         }
@@ -267,8 +293,8 @@ public class VulkanRenderer
     }
 
     public void attachSurface(Surface surface) {
-        // Serialize with detachSurface()/destroy() so a re-attach can't overlap a native teardown.
-        synchronized (this) {
+        nativeLock.lock();
+        try {
             if (nativeHandle == 0) {
                 nativeHandle = nativeCreate(shouldEnableValidationLayers(),
                         graphicsDriverName, xServerView.getContext().getApplicationContext());
@@ -293,11 +319,19 @@ public class VulkanRenderer
                 if (frameGenerationRequested) {
                     nativeSetFrameGenerationEnabled(nativeHandle, true);
                 }
+                nativeSetDisFrameGenerationScale(nativeHandle, disFrameGenerationScale);
+                nativeSetDisFrameGenerationTargetFps(nativeHandle, disFrameGenerationTargetFps);
+                nativeSetDisDebugFlow(nativeHandle, disFrameGenerationDebugFlow);
+                if (disFrameGenerationRequested) {
+                    nativeSetDisFrameGenerationEnabled(nativeHandle, true);
+                }
                 destroyed.set(false);
                 xServer.windowManager.addOnWindowModificationListener(this);
                 xServer.pointer.addOnPointerMotionListener(this);
             }
             nativeSurfaceCreated(nativeHandle, surface);
+        } finally {
+            nativeLock.unlock();
         }
     }
 
@@ -318,17 +352,22 @@ public class VulkanRenderer
     }
 
     public void detachSurface() {
-        // Same monitor as destroy()/attachSurface; re-check the handle under the lock.
-        synchronized (this) {
+        nativeLock.lock();
+        try {
             if (nativeHandle != 0) nativeSurfaceDestroyed(nativeHandle);
+        } finally {
+            nativeLock.unlock();
         }
     }
 
     /** Start mirroring the composited output into {@code encoderSurface}; false if the native setup failed. */
     public boolean startRecording(Surface encoderSurface, int fps, boolean recordUI) {
-        synchronized (this) {
+        nativeLock.lock();
+        try {
             if (nativeHandle == 0 || encoderSurface == null) return false;
             return nativeStartRecording(nativeHandle, encoderSurface, fps, recordUI);
+        } finally {
+            nativeLock.unlock();
         }
     }
 
@@ -341,28 +380,40 @@ public class VulkanRenderer
     }
 
     public void stopRecording() {
-        synchronized (this) {
+        nativeLock.lock();
+        try {
             if (nativeHandle != 0) nativeStopRecording(nativeHandle);
+        } finally {
+            nativeLock.unlock();
         }
     }
 
     /** Width of the actual composited image (may differ from the SurfaceView size under rotation). */
     public int getRecordWidth() {
-        synchronized (this) {
+        nativeLock.lock();
+        try {
             return nativeHandle != 0 ? nativeGetRecordWidth(nativeHandle) : 0;
+        } finally {
+            nativeLock.unlock();
         }
     }
 
     public int getRecordHeight() {
-        synchronized (this) {
+        nativeLock.lock();
+        try {
             return nativeHandle != 0 ? nativeGetRecordHeight(nativeHandle) : 0;
+        } finally {
+            nativeLock.unlock();
         }
     }
 
     /** Clockwise degrees to rotate captured frames to appear upright (undoes the display rotation). */
     public int getRecordOrientationHint() {
-        synchronized (this) {
+        nativeLock.lock();
+        try {
             return nativeHandle != 0 ? nativeGetRecordOrientationHint(nativeHandle) : 0;
+        } finally {
+            nativeLock.unlock();
         }
     }
 
@@ -1011,6 +1062,36 @@ public class VulkanRenderer
         }
     }
 
+    private boolean disFrameGenerationRequested = false;
+    private int disFrameGenerationScale = 180;
+    private int disFrameGenerationTargetFps = 0;
+
+    public void setDisFrameGenerationEnabled(boolean enabled) {
+        disFrameGenerationRequested = enabled;
+        if (nativeHandle != 0) nativeSetDisFrameGenerationEnabled(nativeHandle, enabled);
+    }
+
+    public void setDisFrameGenerationScale(int scalePercent) {
+        int want = Math.max(25, Math.min(1080, scalePercent));
+        if (want == disFrameGenerationScale) return;
+        disFrameGenerationScale = want;
+        if (nativeHandle != 0) nativeSetDisFrameGenerationScale(nativeHandle, want);
+    }
+
+    public void setDisFrameGenerationTargetFps(int targetFps) {
+        int want = Math.max(0, targetFps);
+        if (want == disFrameGenerationTargetFps) return;
+        disFrameGenerationTargetFps = want;
+        if (nativeHandle != 0) nativeSetDisFrameGenerationTargetFps(nativeHandle, want);
+    }
+
+    private boolean disFrameGenerationDebugFlow = false;
+
+    public void setDisDebugFlow(boolean debugFlow) {
+        disFrameGenerationDebugFlow = debugFlow;
+        if (nativeHandle != 0) nativeSetDisDebugFlow(nativeHandle, debugFlow);
+    }
+
     public boolean isFrameGenerationRequested() {
         return frameGenerationRequested;
     }
@@ -1088,6 +1169,10 @@ public class VulkanRenderer
     private static native void nativeSetFrameGenerationMode(long handle, int multiplier,
                                                             int targetRate,
                                                             int flowScalePercent);
+    private static native void nativeSetDisFrameGenerationEnabled(long handle, boolean enabled);
+    private static native void nativeSetDisFrameGenerationScale(long handle, int scalePercent);
+    private static native void nativeSetDisFrameGenerationTargetFps(long handle, int targetFps);
+    private static native void nativeSetDisDebugFlow(long handle, boolean debugFlow);
     private static native long nativeGetGeneratedFrameCount(long handle);
     private static native long nativeGetPresentedFrameCount(long handle);
 }

@@ -125,7 +125,7 @@ fun PopupDialog(
                 footer()
 
             progress != null ->
-                ProgressBarFooter(
+                PopupProgressBar(
                     progress = progress,
                     progressLabel = progressLabel,
                     accentColor = accentColor,
@@ -155,13 +155,14 @@ fun PopupDialog(
     }
 }
 
+/** The popup's progress bar: [progress] in 0f..1f shows a percentage, `Float.NaN` or negative an indeterminate bar. */
 @Composable
-private fun ProgressBarFooter(
+fun PopupProgressBar(
     progress: Float,
     progressLabel: String?,
-    accentColor: Color,
-    trackColor: Color,
-    textSecondaryColor: Color,
+    accentColor: Color = DefaultAccent,
+    trackColor: Color = DefaultTrack,
+    textSecondaryColor: Color = DefaultTextSecondary,
 ) {
     val barHeight = 5.dp
     val barShape = RoundedCornerShape(3.dp)
@@ -272,11 +273,12 @@ fun PopupTextAction(
     label: String,
     textColor: Color,
     onClick: () -> Unit,
+    isEntry: Boolean = false,
 ) {
     val nav = LocalPaneNav.current
     val clickModifier =
         if (nav != null) {
-            Modifier.paneNavItem(cornerRadius = 8.dp, onActivate = onClick, tapToSelect = true)
+            Modifier.paneNavItem(cornerRadius = 8.dp, onActivate = onClick, tapToSelect = true, isEntry = isEntry)
         } else {
             Modifier.clickable(onClick = onClick)
         }

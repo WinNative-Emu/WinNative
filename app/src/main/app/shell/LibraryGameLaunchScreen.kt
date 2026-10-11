@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -54,6 +55,7 @@ import androidx.compose.material.icons.outlined.SaveAlt
 import androidx.compose.material.icons.outlined.Construction
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DesktopWindows
+import androidx.compose.material.icons.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Refresh
@@ -64,6 +66,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
@@ -111,8 +114,11 @@ import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.winlator.cmod.R
+import com.winlator.cmod.feature.library.LibraryStorageMove
 import com.winlator.cmod.shared.ui.layout.isPortraitLayout
+import com.winlator.cmod.shared.ui.layout.screenWidthDp
 import androidx.compose.runtime.CompositionLocalProvider
+import com.winlator.cmod.shared.ui.focus.controllerConfirmOnA
 import com.winlator.cmod.shared.ui.focus.controllerFocusGlow
 import com.winlator.cmod.shared.ui.outlinedSwitchColors
 import com.winlator.cmod.shared.ui.nav.DialogPaneNav
@@ -125,11 +131,16 @@ import java.util.Locale
 
 private val LaunchBlack = Color.Black
 private val LaunchCard = Color(0xFF12121B)
-private val LaunchAccent = Color(0xFF1A9FFF)
+internal val LaunchAccent = Color(0xFF1A9FFF)
 private val LaunchAccentGlow = Color(0xFF58A6FF)
 private val LaunchTextPrimary = Color(0xFFF0F4FF)
 private val LaunchTextSecondary = Color(0xFF93A6BC)
 private val LaunchDanger = Color(0xFFFF6B6B)
+
+internal data class LaunchStoreOption(
+    val id: String,
+    val label: String,
+)
 
 @Composable
 internal fun LibraryGameLaunchScreen(
@@ -178,10 +189,19 @@ internal fun LibraryGameLaunchScreen(
     onVerifyFiles: () -> Unit = {},
     onCheckForUpdate: () -> Unit = {},
     onWorkshop: () -> Unit = {},
+    /**
+     * Where this game would go if moved, or null when there is nowhere to move it. Drives the one
+     * move entry, which only ever offers the other location.
+     */
+    moveTarget: LibraryStorageMove.Target? = null,
+    onMoveGame: () -> Unit = {},
     branches: List<StoreBranchOption> = emptyList(),
     selectedBranchId: String = "",
     isBranchSelectionEnabled: Boolean = true,
     onSelectBranch: (String) -> Unit = {},
+    storeOptions: List<LaunchStoreOption> = emptyList(),
+    selectedStoreId: String = "",
+    onSelectStore: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     var uninstallMenuOpen by remember { mutableStateOf(false) }
@@ -200,9 +220,19 @@ internal fun LibraryGameLaunchScreen(
     Box(Modifier.fillMaxSize()) {
         val edgePadding = 22.dp
         val bottomPadding = 20.dp
-        val actionIconSize = 46.dp
         val actionIconSpacing = 8.dp
-        val actionWidth = actionIconSize * actionIconCount + actionIconSpacing * (actionIconCount - 1).coerceAtLeast(0)
+        // Six icons at 46 dp plus their gaps come to 316 dp, which is exactly the room left
+        // on a 360 dp phone after the edge padding and none at all once the navigation-bar
+        // insets apply. Shrink the icons to whatever fits instead of overflowing the row.
+        val actionIconGaps = actionIconSpacing * (actionIconCount - 1).coerceAtLeast(0)
+        val actionRowMaxWidth = (screenWidthDp() - edgePadding * 2).coerceAtLeast(120.dp)
+        val actionIconSize =
+            if (actionIconCount > 0) {
+                minOf(46.dp, (actionRowMaxWidth - actionIconGaps) / actionIconCount)
+            } else {
+                46.dp
+            }
+        val actionWidth = actionIconSize * actionIconCount + actionIconGaps
         val playHeight = 56.dp
         val contentGap = 18.dp
         val horizontalNavInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)
@@ -251,19 +281,32 @@ internal fun LibraryGameLaunchScreen(
             }
         }
 
+        // The horizontal scrim is tuned for the landscape left-hand content column. In
+        // portrait the content spans the full width, so its right-hand text would sit over
+        // the transparent band and lose contrast; darken from the bottom there instead.
+        val heroScrimStops =
+            arrayOf(
+                0.0f to LaunchBlack.copy(alpha = 0.9f),
+                0.36f to LaunchBlack.copy(alpha = 0.58f),
+                0.72f to LaunchBlack.copy(alpha = 0.18f),
+                1.0f to LaunchBlack.copy(alpha = 0.62f),
+            )
         Box(
             Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.horizontalGradient(
-                        colorStops =
-                            arrayOf(
-                                0.0f to LaunchBlack.copy(alpha = 0.9f),
-                                0.36f to LaunchBlack.copy(alpha = 0.58f),
-                                0.72f to LaunchBlack.copy(alpha = 0.18f),
-                                1.0f to LaunchBlack.copy(alpha = 0.62f),
-                            ),
-                    ),
+                    if (isPortraitLayout()) {
+                        Brush.verticalGradient(
+                            colorStops =
+                                arrayOf(
+                                    0.0f to LaunchBlack.copy(alpha = 0.18f),
+                                    0.45f to LaunchBlack.copy(alpha = 0.58f),
+                                    1.0f to LaunchBlack.copy(alpha = 0.9f),
+                                ),
+                        )
+                    } else {
+                        Brush.horizontalGradient(colorStops = heroScrimStops)
+                    },
                 ),
         )
         Box(
@@ -318,6 +361,9 @@ internal fun LibraryGameLaunchScreen(
             }
             SourceTag(
                 sourceLabel = sourceLabel,
+                storeOptions = storeOptions,
+                selectedStoreId = selectedStoreId,
+                onSelectStore = onSelectStore,
                 menuEnabled = steamMenuEnabled,
                 showVerifyFiles = showVerifyFiles,
                 showCheckForUpdate = showCheckForUpdate,
@@ -326,6 +372,8 @@ internal fun LibraryGameLaunchScreen(
                 showCheats = onCheats != null,
                 cheatsEnabled = cheatsEnabled,
                 areSteamActionsEnabled = areSteamActionsEnabled,
+                moveTarget = moveTarget,
+                onMoveGame = onMoveGame,
                 onVerifyFiles = onVerifyFiles,
                 onCheckForUpdate = onCheckForUpdate,
                 onWorkshop = onWorkshop,
@@ -425,7 +473,10 @@ internal fun LibraryGameLaunchScreen(
                         LaunchAltEngineToggle(
                             label = altEngineLabel,
                             checked = altEngineEnabled,
-                            width = actionWidth,
+                            // In portrait the action block already fills the width; pinning the
+                            // toggle to actionWidth clipped it on narrow phones.
+                            modifier =
+                                if (portraitHero) Modifier.fillMaxWidth() else Modifier.width(actionWidth),
                             onCheckedChange = onAltEngineChange,
                         )
                     }
@@ -653,7 +704,7 @@ internal fun LaunchDangerConfirmMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         offset = DpOffset(x = 0.dp, y = (-56).dp),
-        modifier = Modifier.width(286.dp),
+        modifier = Modifier.width(minOf(286.dp, screenWidthDp() - 32.dp)),
         shape = RoundedCornerShape(12.dp),
         containerColor = LaunchCard,
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
@@ -750,7 +801,7 @@ internal fun LaunchDangerConfirmDialog(
                 Surface(
                     modifier =
                         Modifier
-                            .width(286.dp)
+                            .width(minOf(286.dp, screenWidthDp() - 32.dp))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -915,6 +966,11 @@ private fun SourceTag(
     showCheats: Boolean = false,
     cheatsEnabled: Boolean = true,
     areSteamActionsEnabled: Boolean = true,
+    moveTarget: LibraryStorageMove.Target? = null,
+    onMoveGame: () -> Unit = {},
+    storeOptions: List<LaunchStoreOption> = emptyList(),
+    selectedStoreId: String = "",
+    onSelectStore: (String) -> Unit = {},
     onVerifyFiles: () -> Unit = {},
     onCheckForUpdate: () -> Unit = {},
     onWorkshop: () -> Unit = {},
@@ -922,8 +978,8 @@ private fun SourceTag(
     onCheats: () -> Unit = {},
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var storeMenuOpen by remember { mutableStateOf(false) }
     var anchorHeightPx by remember { mutableStateOf(0) }
-    val menuInteractive = menuEnabled || showAchievements || showCheats
     Box {
         Surface(
             color = Color.White.copy(alpha = 0.1f),
@@ -932,7 +988,7 @@ private fun SourceTag(
             modifier =
                 Modifier
                     .onSizeChanged { anchorHeightPx = it.height }
-                    .then(if (menuInteractive) Modifier.clickable { menuOpen = true } else Modifier),
+                    .clickable { menuOpen = true },
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -953,56 +1009,102 @@ private fun SourceTag(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (menuInteractive) {
-                    Icon(
-                        Icons.Outlined.ArrowDropDown,
-                        contentDescription = stringResource(R.string.store_game_steam_options),
-                        tint = LaunchTextPrimary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+                Icon(
+                    Icons.Outlined.ArrowDropDown,
+                    contentDescription = stringResource(R.string.store_game_steam_options),
+                    tint = LaunchTextPrimary,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
-        if (menuInteractive) {
-            val gapPx = with(LocalDensity.current) { 6.dp.roundToPx() }
-            LaunchSourceActionPopup(
-                expanded = menuOpen,
-                onDismissRequest = { menuOpen = false },
-                offset = IntOffset(0, anchorHeightPx + gapPx),
-            ) {
-                if (menuEnabled && showVerifyFiles) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.AutoMirrored.Outlined.FactCheck,
-                        label = stringResource(R.string.store_game_verify_files),
-                        enabled = areSteamActionsEnabled,
-                    ) { menuOpen = false; onVerifyFiles() }
-                }
-                if (menuEnabled && showCheckForUpdate) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.Outlined.Refresh,
-                        label = stringResource(R.string.store_game_check_for_update),
-                        enabled = areSteamActionsEnabled,
-                    ) { menuOpen = false; onCheckForUpdate() }
-                }
-                if (menuEnabled && showWorkshop) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.Outlined.Construction,
-                        label = stringResource(R.string.store_game_workshop),
-                        enabled = areSteamActionsEnabled,
-                    ) { menuOpen = false; onWorkshop() }
-                }
-                if (showAchievements) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.Outlined.EmojiEvents,
-                        label = stringResource(R.string.steam_achievements_title),
-                    ) { menuOpen = false; onAchievements() }
-                }
-                if (showCheats) {
-                    LaunchSourceMenuItem(
-                        icon = Icons.Outlined.Bolt,
-                        label = stringResource(R.string.retro_cheats_title),
-                        enabled = cheatsEnabled,
-                    ) { menuOpen = false; onCheats() }
+        val gapPx = with(LocalDensity.current) { 6.dp.roundToPx() }
+        LaunchSourceActionPopup(
+            expanded = menuOpen,
+            onDismissRequest = { menuOpen = false },
+            offset = IntOffset(0, anchorHeightPx + gapPx),
+        ) {
+            LaunchSourceMenuItem(
+                icon = Icons.Outlined.Storefront,
+                label = stringResource(R.string.library_games_store_change),
+            ) { menuOpen = false; storeMenuOpen = true }
+            if (moveTarget != null) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.DriveFileMove,
+                    label =
+                        stringResource(
+                            if (moveTarget == LibraryStorageMove.Target.APP_STORAGE) {
+                                R.string.library_games_move_to_app_storage_title
+                            } else {
+                                R.string.library_games_move_to_download_folder_title
+                            },
+                        ),
+                    enabled = areSteamActionsEnabled,
+                ) { menuOpen = false; onMoveGame() }
+            }
+            if (menuEnabled || showAchievements || showCheats) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(Color.White.copy(alpha = 0.14f)),
+                )
+            }
+            if (menuEnabled && showVerifyFiles) {
+                LaunchSourceMenuItem(
+                    icon = Icons.AutoMirrored.Outlined.FactCheck,
+                    label = stringResource(R.string.store_game_verify_files),
+                    enabled = areSteamActionsEnabled,
+                ) { menuOpen = false; onVerifyFiles() }
+            }
+            if (menuEnabled && showCheckForUpdate) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.Refresh,
+                    label = stringResource(R.string.store_game_check_for_update),
+                    enabled = areSteamActionsEnabled,
+                ) { menuOpen = false; onCheckForUpdate() }
+            }
+            if (menuEnabled && showWorkshop) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.Construction,
+                    label = stringResource(R.string.store_game_workshop),
+                    enabled = areSteamActionsEnabled,
+                ) { menuOpen = false; onWorkshop() }
+            }
+            if (showAchievements) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.EmojiEvents,
+                    label = stringResource(R.string.steam_achievements_title),
+                ) { menuOpen = false; onAchievements() }
+            }
+            if (showCheats) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.Bolt,
+                    label = stringResource(R.string.retro_cheats_title),
+                    enabled = cheatsEnabled,
+                ) { menuOpen = false; onCheats() }
+            }
+        }
+
+        LaunchSourceActionPopup(
+            expanded = storeMenuOpen,
+            onDismissRequest = { storeMenuOpen = false },
+            offset = IntOffset(0, anchorHeightPx + gapPx),
+        ) {
+            LaunchSourceMenuHeader(stringResource(R.string.library_games_store_switch_label))
+            if (storeOptions.isEmpty()) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.Storefront,
+                    label = stringResource(R.string.library_games_store_none_owned),
+                    enabled = false,
+                ) {}
+            }
+            storeOptions.forEach { option ->
+                LaunchStoreMenuItem(
+                    label = option.label,
+                    selected = option.id == selectedStoreId,
+                ) {
+                    storeMenuOpen = false
+                    if (option.id != selectedStoreId) onSelectStore(option.id)
                 }
             }
         }
@@ -1174,15 +1276,57 @@ private fun LaunchSourceActionPopup(
                     ),
         ) {
             Surface(
+                modifier = Modifier.controllerConfirmOnA(),
                 color = LaunchBlack.copy(alpha = 0.78f),
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
                 tonalElevation = 0.dp,
                 shadowElevation = 16.dp,
             ) {
-                Column { content() }
+                Column(Modifier.width(IntrinsicSize.Max)) { content() }
             }
         }
+    }
+}
+
+@Composable
+private fun LaunchSourceMenuHeader(label: String) {
+    Text(
+        label.uppercase(),
+        color = LaunchTextSecondary,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 4.dp),
+    )
+}
+
+@Composable
+private fun LaunchStoreMenuItem(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val contentColor = if (selected) LaunchAccentGlow else Color.White
+    Row(
+        modifier =
+            Modifier
+                .clickable(onClick = onClick)
+                .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            if (selected) Icons.Outlined.CheckCircle else Icons.Outlined.Storefront,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            label,
+            color = contentColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
@@ -1274,12 +1418,11 @@ private fun GameStatChip(
 private fun LaunchAltEngineToggle(
     label: String,
     checked: Boolean,
-    width: Dp,
+    modifier: Modifier,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .width(width)
+        modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White.copy(alpha = 0.06f))
             .clickable { onCheckedChange(!checked) }

@@ -9,6 +9,7 @@ import com.winlator.cmod.feature.stores.steam.events.SteamEvent
 import com.winlator.cmod.feature.stores.steam.service.SteamService
 import com.winlator.cmod.feature.stores.steam.ui.data.UserLoginState
 import com.winlator.cmod.feature.stores.steam.wnsteam.WnAuthenticator
+import com.winlator.cmod.runtime.system.SessionKeepAliveService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -281,9 +282,13 @@ class SteamLoginViewModel : ViewModel() {
             context.stopService(intent)
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 try {
-                    context.startForegroundService(intent)
+//                    context.startForegroundService(intent)
+                    context.startService(intent)
+                    SessionKeepAliveService.startComponent(context, SessionKeepAliveService.COMPONENT_STEAM, "Restarting SteamService in retryConnection")
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to restart SteamService in retryConnection")
+                    // Safety: unregister if the service failed to even attempt starting
+                    SessionKeepAliveService.stopComponent(context, SessionKeepAliveService.COMPONENT_STEAM)
                 }
             }, 1000)
         } catch (e: Exception) {

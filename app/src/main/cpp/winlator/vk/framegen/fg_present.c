@@ -15,6 +15,7 @@
 
 #include "../vk_dispatch.h"
 #include "../vk_driver.h"
+#include "vkr_dis.h"
 #include "../lsfg/vkr_lsfg.h"
 
 #define LOG_TAG "FgPresent"
@@ -23,7 +24,14 @@
 #define FG_LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 #define FG_FRAMES_IN_FLIGHT 2u
-#define FG_MAX_TARGETS (FG_FRAMES_IN_FLIGHT + VKR_LSFG_MAX_GENERATIONS)
+
+#if VKR_DIS_MAX_GENERATIONS > VKR_LSFG_MAX_GENERATIONS
+#define FG_MAX_GENERATIONS VKR_DIS_MAX_GENERATIONS
+#else
+#define FG_MAX_GENERATIONS VKR_LSFG_MAX_GENERATIONS
+#endif
+
+#define FG_MAX_TARGETS (FG_FRAMES_IN_FLIGHT + FG_MAX_GENERATIONS)
 #define FG_MAX_SWAPCHAIN_IMAGES 8u
 #define FG_READER_IMAGES 4
 #define FG_IMPORT_CACHE 8u
@@ -53,7 +61,7 @@ typedef struct {
     VkCommandBuffer cmd;
     VkFence fence;
     VkSemaphore acquire;
-    VkSemaphore acquire_gen[VKR_LSFG_MAX_GENERATIONS];
+    VkSemaphore acquire_gen[FG_MAX_GENERATIONS];
     AImage* held;
     bool submitted;
 } FgFrame;
@@ -79,6 +87,7 @@ struct FgPresenter {
 
     VkCommandPool command_pool;
     FgFrame frames[FG_FRAMES_IN_FLIGHT];
+    VkFence flush_fence;
     uint32_t frame_index;
 
     FgTarget targets[FG_MAX_TARGETS];
@@ -92,6 +101,8 @@ struct FgPresenter {
     ANativeWindow* producer;
 
     VkrLsfg* lsfg;
+    VkrDis* dis;
+    uint32_t active_engine;
     char* cache_path;
 
     pthread_t thread;
@@ -103,6 +114,8 @@ struct FgPresenter {
     uint32_t multiplier;
     uint32_t target_rate;
     float flow_scale;
+    uint32_t engine;
+    uint32_t dis_min_side;
     float refresh_rate;
     float source_rate;
     bool config_dirty;
@@ -358,9 +371,9 @@ static void fg_destroy_swapchain(FgPresenter* fg) {
 }
 
 static uint32_t fg_wanted_images(const FgPresenter* fg) {
-    uint32_t generations = fg->target_rate != 0 ? VKR_LSFG_MAX_GENERATIONS
+    uint32_t generations = fg->target_rate != 0 ? FG_MAX_GENERATIONS
                                                 : (fg->multiplier > 1 ? fg->multiplier - 1 : 1);
-    if (generations > VKR_LSFG_MAX_GENERATIONS) generations = VKR_LSFG_MAX_GENERATIONS;
+    if (generations > FG_MAX_GENERATIONS) generations = FG_MAX_GENERATIONS;
     return (generations + 1) * 2;
 }
 
@@ -528,6 +541,9 @@ static bool fg_create_frames(FgPresenter* fg) {
     cpi.queueFamilyIndex = fg->queue_family;
     if (vkCreateCommandPool(fg->device, &cpi, NULL, &fg->command_pool) != VK_SUCCESS) return false;
 
+    VkFenceCreateInfo ffi = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    if (vkCreateFence(fg->device, &ffi, NULL, &fg->flush_fence) != VK_SUCCESS) return false;
+
     for (uint32_t i = 0; i < FG_FRAMES_IN_FLIGHT; i++) {
         FgFrame* f = &fg->frames[i];
 
@@ -543,7 +559,7 @@ static bool fg_create_frames(FgPresenter* fg) {
 
         VkSemaphoreCreateInfo sci = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
         if (vkCreateSemaphore(fg->device, &sci, NULL, &f->acquire) != VK_SUCCESS) return false;
-        for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+        for (uint32_t g = 0; g < FG_MAX_GENERATIONS; g++) {
             if (vkCreateSemaphore(fg->device, &sci, NULL, &f->acquire_gen[g]) != VK_SUCCESS) {
                 return false;
             }
@@ -683,6 +699,66 @@ static void fg_image_available(void* context, AImageReader* reader) {
     pthread_mutex_unlock(&fg->lock);
 }
 
+static uint32_t fg_dis_target(uint32_t multiplier, uint32_t target_rate, float source_rate) {
+    if (target_rate != 0) return target_rate;
+    if (multiplier > 1 && source_rate > 1.0f) {
+        return (uint32_t)(source_rate * (float)multiplier + 0.5f);
+    }
+    return 0;
+}
+
+static void fg_engine_configure(FgPresenter* fg, uint32_t multiplier, uint32_t target_rate,
+                                float flow_scale, float refresh_rate, float source_rate,
+                                uint32_t dis_min_side) {
+    if (fg->active_engine == FG_ENGINE_DIS) {
+        if (!fg->dis) return;
+        vkr_dis_configure(fg->dis, dis_min_side ? dis_min_side : FG_DIS_MIN_SIDE_DEFAULT,
+                          fg_dis_target(multiplier, target_rate, source_rate), refresh_rate);
+        return;
+    }
+    if (!fg->lsfg) return;
+    vkr_lsfg_configure(fg->lsfg, multiplier ? multiplier : 2u, target_rate,
+                       flow_scale > 0.0f ? flow_scale : 0.7f, refresh_rate, source_rate);
+}
+
+static void fg_engine_release(FgPresenter* fg) {
+    if (fg->lsfg) {
+        vkr_lsfg_destroy(fg->lsfg);
+        fg->lsfg = NULL;
+    }
+    if (fg->dis) {
+        vkr_dis_destroy(fg->dis);
+        fg->dis = NULL;
+    }
+}
+
+static bool fg_engine_acquire(FgPresenter* fg) {
+    if (fg->active_engine == FG_ENGINE_DIS) {
+        if (fg->dis) return true;
+        fg->dis = vkr_dis_create(fg->device, fg->physical_device);
+        if (!fg->dis) {
+            FG_LOGW("OpenFlow optical flow is unavailable on this device");
+            return false;
+        }
+        return true;
+    }
+    if (fg->lsfg) return true;
+    fg->lsfg = vkr_lsfg_create(fg->device, fg->physical_device, fg->cache_path);
+    if (!fg->lsfg) {
+        FG_LOGW("Lossless Scaling shaders unavailable at %s", fg->cache_path);
+        return false;
+    }
+    return true;
+}
+
+static bool fg_engine_ready(const FgPresenter* fg) {
+    return fg->active_engine == FG_ENGINE_DIS ? fg->dis != NULL : fg->lsfg != NULL;
+}
+
+static const char* fg_engine_name(uint32_t engine) {
+    return engine == FG_ENGINE_DIS ? "OpenFlow" : "LSFG";
+}
+
 static void fg_apply_config(FgPresenter* fg) {
     pthread_mutex_lock(&fg->lock);
     bool dirty = fg->config_dirty;
@@ -691,13 +767,36 @@ static void fg_apply_config(FgPresenter* fg) {
     float source_rate = fg->source_rate;
     float flow_scale = fg->flow_scale;
     float refresh_rate = fg->refresh_rate;
+    uint32_t engine = fg->engine;
+    uint32_t dis_min_side = fg->dis_min_side;
     fg->config_dirty = false;
     pthread_mutex_unlock(&fg->lock);
 
-    if (dirty && fg->lsfg) {
-        vkr_lsfg_configure(fg->lsfg, multiplier, target_rate, flow_scale, refresh_rate,
-                           source_rate);
+    if (!dirty) return;
+
+    if (engine != fg->active_engine) {
+        const uint32_t previous = fg->active_engine;
+        vkDeviceWaitIdle(fg->device);
+        fg_engine_release(fg);
+        fg->active_engine = engine;
+        if (!fg_engine_acquire(fg)) {
+            fg->active_engine = previous;
+            if (!fg_engine_acquire(fg)) {
+                FG_LOGE("no frame generation engine could be started");
+                return;
+            }
+            FG_LOGW("%s could not start; staying on %s", fg_engine_name(engine),
+                    fg_engine_name(previous));
+            pthread_mutex_lock(&fg->lock);
+            fg->engine = previous;
+            pthread_mutex_unlock(&fg->lock);
+        } else {
+            FG_LOGI("frame generation engine -> %s", fg_engine_name(fg->active_engine));
+        }
     }
+
+    fg_engine_configure(fg, multiplier, target_rate, flow_scale, refresh_rate, source_rate,
+                        dis_min_side);
 }
 
 static void fg_renew_semaphore(FgPresenter* fg, VkSemaphore* handle) {
@@ -709,17 +808,46 @@ static void fg_renew_semaphore(FgPresenter* fg, VkSemaphore* handle) {
     *handle = fresh;
 }
 
+// VkrDisFlushFn: DIS needs this frame's pixels on the CPU mid-frame for the hardware motion
+// estimator. Everything recorded so far - the source blit and DIS's copies - touches no
+// swapchain image and waits on no semaphore, so it goes out on its own; the same buffer is then
+// begun again for the rest of the frame, which keeps every semaphore on the final submit.
+static VkCommandBuffer fg_dis_flush(void* user, VkCommandBuffer cmd) {
+    FgPresenter* fg = (FgPresenter*)user;
+    vkEndCommandBuffer(cmd);
+    VkSubmitInfo si = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cmd;
+    vkResetFences(fg->device, 1, &fg->flush_fence);
+    if (vkQueueSubmit(fg->queue, 1, &si, fg->flush_fence) == VK_SUCCESS) {
+        vkWaitForFences(fg->device, 1, &fg->flush_fence, VK_TRUE, UINT64_MAX);
+    } else {
+        FG_LOGW("OpenFlow mid-frame submit failed");
+        vkDeviceWaitIdle(fg->device);
+    }
+    vkResetCommandBuffer(cmd, 0);
+    VkCommandBufferBeginInfo bi = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cmd, &bi);
+    return cmd;
+}
+
 static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* image) {
     FgFrame* f = &fg->frames[fg->frame_index];
 
     uint32_t capacity = 0;
-    if (fg->lsfg && fg->swapchain_image_count > 2) {
+    if (fg_engine_ready(fg) && fg->swapchain_image_count > 2) {
         capacity = fg->swapchain_image_count - 2;
-        if (capacity > VKR_LSFG_MAX_GENERATIONS) capacity = VKR_LSFG_MAX_GENERATIONS;
+        if (capacity > FG_MAX_GENERATIONS) capacity = FG_MAX_GENERATIONS;
     }
 
-    vkr_lsfg_set_guest_extent(fg->lsfg, source->width, source->height);
-    uint32_t planned = vkr_lsfg_plan(fg->lsfg, capacity, fg->source_frames);
+    uint32_t planned = 0;
+    if (fg->active_engine == FG_ENGINE_DIS) {
+        planned = vkr_dis_plan(fg->dis, capacity, fg->source_frames);
+    } else if (fg->lsfg) {
+        vkr_lsfg_set_guest_extent(fg->lsfg, source->width, source->height);
+        planned = vkr_lsfg_plan(fg->lsfg, capacity, fg->source_frames);
+    }
 
     uint32_t image_index = 0;
     VkResult acq = vkAcquireNextImageKHR(fg->device, fg->swapchain, UINT64_MAX, f->acquire,
@@ -738,7 +866,7 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
     }
 
     uint32_t gen_count = 0;
-    uint32_t gen_index[VKR_LSFG_MAX_GENERATIONS] = {0};
+    uint32_t gen_index[FG_MAX_GENERATIONS] = {0};
     for (uint32_t g = 0; g < planned; g++) {
         uint32_t index = 0;
         VkResult ga = vkAcquireNextImageKHR(fg->device, fg->swapchain, gen_timeout,
@@ -773,16 +901,33 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
             fg->extent.width, fg->extent.height);
     fg_barrier(f->cmd, composite->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
-               VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-               VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+               VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+                   | VK_PIPELINE_STAGE_TRANSFER_BIT,
+               VK_ACCESS_TRANSFER_WRITE_BIT,
+               VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT);
 
-    vkr_lsfg_process(fg->lsfg, f->cmd, composite->image, fg->extent.width, fg->extent.height,
-                     gen_count);
+    if (fg->active_engine == FG_ENGINE_DIS) {
+        vkr_dis_process_ex(fg->dis, f->cmd, composite->image, fg->extent.width,
+                           fg->extent.height, gen_count, fg_dis_flush, fg);
+    } else if (fg->lsfg) {
+        vkr_lsfg_process(fg->lsfg, f->cmd, composite->image, fg->extent.width, fg->extent.height,
+                         gen_count);
+    }
 
     for (uint32_t g = 0; g < gen_count; g++) {
         FgTarget* generated = &fg->targets[FG_FRAMES_IN_FLIGHT + g];
-        vkr_lsfg_generate_into(fg->lsfg, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
-                               generated->view, fg->extent.width, fg->extent.height);
+        if (fg->active_engine == FG_ENGINE_DIS) {
+            vkr_dis_generate_into(fg->dis, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
+                                  generated->view, fg->extent.width, fg->extent.height,
+                                  VK_NULL_HANDLE);
+            fg_barrier(f->cmd, generated->image, VK_IMAGE_LAYOUT_GENERAL,
+                       VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+                       VK_ACCESS_TRANSFER_READ_BIT);
+        } else {
+            vkr_lsfg_generate_into(fg->lsfg, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
+                                   generated->view, fg->extent.width, fg->extent.height);
+        }
         fg_barrier(f->cmd, fg->swapchain_images[gen_index[g]], VK_IMAGE_LAYOUT_UNDEFINED,
                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -811,9 +956,9 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
 
     vkEndCommandBuffer(f->cmd);
 
-    VkSemaphore wait[1 + VKR_LSFG_MAX_GENERATIONS];
-    VkPipelineStageFlags stages[1 + VKR_LSFG_MAX_GENERATIONS];
-    VkSemaphore signal[1 + VKR_LSFG_MAX_GENERATIONS];
+    VkSemaphore wait[1 + FG_MAX_GENERATIONS];
+    VkPipelineStageFlags stages[1 + FG_MAX_GENERATIONS];
+    VkSemaphore signal[1 + FG_MAX_GENERATIONS];
     uint32_t wait_count = 0;
     uint32_t signal_count = 0;
 
@@ -872,7 +1017,8 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
         const uint64_t d_gen = fg->generated_frames - fg->log_generated;
         fg->log_real = fg->real_frames;
         fg->log_generated = fg->generated_frames;
-        FG_LOGI("framegen real=%llu made=%llu ratio=%.2f planned=%u got=%u images=%u div=%u misses=%llu",
+        FG_LOGI("framegen[%s] real=%llu made=%llu ratio=%.2f planned=%u got=%u images=%u div=%u misses=%llu",
+                fg_engine_name(fg->active_engine),
                 (unsigned long long)fg->real_frames, (unsigned long long)fg->generated_frames,
                 d_real ? (double)(d_real + d_gen) / (double)d_real : 0.0, planned, gen_count,
                 fg->swapchain_image_count, fg->source_divisor,
@@ -895,6 +1041,19 @@ static void fg_reset_swapchain(FgPresenter* fg) {
 }
 
 static bool fg_prepare_chain(FgPresenter* fg) {
+    if (fg->active_engine == FG_ENGINE_DIS) {
+        if (!fg->dis) return false;
+        const VkrDisContentRect content = {0, 0, fg->extent.width, fg->extent.height};
+        if (!vkr_dis_needs_rebuild(fg->dis, fg->extent.width, fg->extent.height, fg->target_format,
+                                   content)) {
+            return true;
+        }
+        vkDeviceWaitIdle(fg->device);
+        vkr_dis_forget_targets(fg->dis);
+        return vkr_dis_prepare(fg->dis, fg->extent.width, fg->extent.height, fg->target_format,
+                               content);
+    }
+
     if (!fg->lsfg) return false;
     if (!vkr_lsfg_needs_rebuild(fg->lsfg, fg->extent.width, fg->extent.height, fg->target_format)) {
         return true;
@@ -927,7 +1086,7 @@ static void fg_track_arrivals(FgPresenter* fg) {
     const float guest = fg->source_rate;
     if (guest > 1.0f && fg->raw_rate > guest) {
         const long ratio = lroundf(fg->raw_rate / guest);
-        if (ratio > 1 && ratio <= (long)VKR_LSFG_MAX_GENERATIONS + 1) {
+        if (ratio > 1 && ratio <= (long)FG_MAX_GENERATIONS + 1) {
             const float folded = fg->raw_rate / (float)ratio;
             if (fabsf(folded - guest) <= guest * FG_ARRIVAL_TOLERANCE) divisor = (uint32_t)ratio;
         }
@@ -1023,7 +1182,8 @@ static void* fg_thread(void* arg) {
 FgPresenter* fg_create(JNIEnv* env, jobject context, const char* driver_name,
                        ANativeWindow* output, uint32_t width, uint32_t height,
                        const char* cache_path, uint32_t multiplier, uint32_t target_rate,
-                       float flow_scale, float refresh_rate, float source_rate) {
+                       float flow_scale, float refresh_rate, float source_rate,
+                       uint32_t engine, uint32_t dis_min_side) {
     if (!output || width == 0 || height == 0 || !cache_path) return NULL;
 
     FgPresenter* fg = calloc(1, sizeof(FgPresenter));
@@ -1037,6 +1197,9 @@ FgPresenter* fg_create(JNIEnv* env, jobject context, const char* driver_name,
     fg->multiplier = multiplier;
     fg->target_rate = target_rate;
     fg->flow_scale = flow_scale;
+    fg->engine = engine == FG_ENGINE_DIS ? FG_ENGINE_DIS : FG_ENGINE_LSFG;
+    fg->active_engine = fg->engine;
+    fg->dis_min_side = dis_min_side ? dis_min_side : FG_DIS_MIN_SIDE_DEFAULT;
     fg->refresh_rate = refresh_rate;
     fg->source_rate = source_rate;
     fg->cache_path = strdup(cache_path);
@@ -1070,13 +1233,17 @@ FgPresenter* fg_create(JNIEnv* env, jobject context, const char* driver_name,
     if (!fg_create_swapchain(fg)) goto fail;
     if (!fg_create_targets(fg)) goto fail;
 
-    fg->lsfg = vkr_lsfg_create(fg->device, fg->physical_device, fg->cache_path);
-    if (!fg->lsfg) {
-        FG_LOGW("Lossless Scaling shaders unavailable at %s", fg->cache_path);
-        goto fail;
+    if (!fg_engine_acquire(fg)) {
+        const uint32_t fallback =
+            fg->active_engine == FG_ENGINE_DIS ? FG_ENGINE_LSFG : FG_ENGINE_DIS;
+        FG_LOGW("%s unavailable; trying %s", fg_engine_name(fg->active_engine),
+                fg_engine_name(fallback));
+        fg->active_engine = fallback;
+        fg->engine = fallback;
+        if (!fg_engine_acquire(fg)) goto fail;
     }
-    vkr_lsfg_configure(fg->lsfg, multiplier ? multiplier : 2u, target_rate,
-                       flow_scale > 0.0f ? flow_scale : 0.7f, refresh_rate, source_rate);
+    fg_engine_configure(fg, multiplier, target_rate, flow_scale, refresh_rate, source_rate,
+                        fg->dis_min_side);
 
     const uint64_t reader_usage =
         AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
@@ -1103,8 +1270,10 @@ FgPresenter* fg_create(JNIEnv* env, jobject context, const char* driver_name,
         goto fail;
     }
 
-    FG_LOGI("frame generation presenter ready %ux%u multiplier=%u target=%u flow=%.2f",
-            fg->extent.width, fg->extent.height, multiplier, target_rate, (double)flow_scale);
+    FG_LOGI("frame generation presenter ready %ux%u engine=%s multiplier=%u target=%u flow=%.2f "
+            "dis_min_side=%u",
+            fg->extent.width, fg->extent.height, fg_engine_name(fg->active_engine), multiplier,
+            target_rate, (double)flow_scale, fg->dis_min_side);
     return fg;
 
 fail:
@@ -1117,12 +1286,14 @@ ANativeWindow* fg_producer_window(FgPresenter* fg) {
 }
 
 void fg_configure(FgPresenter* fg, uint32_t multiplier, uint32_t target_rate, float flow_scale,
-                  float refresh_rate, float source_rate) {
+                  float refresh_rate, float source_rate, uint32_t engine, uint32_t dis_min_side) {
     if (!fg) return;
     pthread_mutex_lock(&fg->lock);
     fg->multiplier = multiplier;
     fg->target_rate = target_rate;
     fg->flow_scale = flow_scale;
+    fg->engine = engine == FG_ENGINE_DIS ? FG_ENGINE_DIS : FG_ENGINE_LSFG;
+    fg->dis_min_side = dis_min_side ? dis_min_side : FG_DIS_MIN_SIDE_DEFAULT;
     fg->refresh_rate = refresh_rate;
     fg->source_rate = source_rate;
     fg->config_dirty = true;
@@ -1163,10 +1334,7 @@ void fg_destroy(FgPresenter* fg) {
         }
     }
 
-    if (fg->lsfg) {
-        vkr_lsfg_destroy(fg->lsfg);
-        fg->lsfg = NULL;
-    }
+    fg_engine_release(fg);
     if (fg->reader) {
         AImageReader_delete(fg->reader);
         fg->reader = NULL;
@@ -1181,7 +1349,7 @@ void fg_destroy(FgPresenter* fg) {
             FgFrame* f = &fg->frames[i];
             if (f->fence) vkDestroyFence(fg->device, f->fence, NULL);
             if (f->acquire) vkDestroySemaphore(fg->device, f->acquire, NULL);
-            for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+            for (uint32_t g = 0; g < FG_MAX_GENERATIONS; g++) {
                 if (f->acquire_gen[g]) vkDestroySemaphore(fg->device, f->acquire_gen[g], NULL);
             }
         }
@@ -1189,6 +1357,7 @@ void fg_destroy(FgPresenter* fg) {
             vkDestroySemaphore(fg->device, fg->retired[i], NULL);
         }
         fg->retired_count = 0;
+        if (fg->flush_fence) vkDestroyFence(fg->device, fg->flush_fence, NULL);
         if (fg->command_pool) vkDestroyCommandPool(fg->device, fg->command_pool, NULL);
         vkDestroyDevice(fg->device, NULL);
     }

@@ -1,13 +1,17 @@
 package com.winlator.cmod.feature.settings
+import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
@@ -131,6 +135,24 @@ import com.winlator.cmod.shared.ui.toast.WinToast
 import com.winlator.cmod.shared.ui.outlinedSwitchColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+
+import com.winlator.cmod.runtime.system.LogManager
 
 // Palette (mirrors StoresScreen)
 private val BgDark = Color(0xFF11111C)
@@ -144,10 +166,24 @@ private val Warning = Color(0xFFFF4444)
 private val Success = Color(0xFF7CC142)
 private val TextPrimary = Color(0xFFF0F4FF)
 private val TextSecondary = Color(0xFF7A8FA8)
+private val SystemTagColor = Color(0xFFFFCC00)
 
 // State
 data class DebugState(
+    val loggingEnabled: Boolean = false,
     val appDebug: Boolean = false,
+    val filteredLogs: Boolean = false,
+    val exitReasonLog: Boolean = false,
+    val crashLog: Boolean = false,
+    val eventWatchLog: Boolean = false,
+    val tagFilterMode: LogManager.TagFilterMode = LogManager.TagFilterMode.ALL,
+    val selectedTags: List<String> = emptyList(),
+    val customTags: List<String> = emptyList(),
+
+    val logcatGroupExpanded: Boolean = false,
+    val exitGroupExpanded: Boolean = false,
+    val filterGroupExpanded: Boolean = false,
+
     val wineDebug: Boolean = false,
     val wineChannels: List<String> = emptyList(),
     val wineClasses: List<String> = emptyList(),
@@ -175,7 +211,21 @@ fun DebugScreen(
     state: DebugState,
     wineChannelOptions: List<String>,
     wineClassOptions: List<String>,
+    allLogTagOptions: List<String>,           // LogManager.getAllKnownTags()
+    onLoggingEnabledChanged: (Boolean) -> Unit,
     onAppDebugChanged: (Boolean) -> Unit,
+    onFilteredLogsChanged: (Boolean) -> Unit,
+    onExitReasonLogChanged: (Boolean) -> Unit,
+    onCrashLogChanged: (Boolean) -> Unit,
+    onEventWatchLogChanged: (Boolean) -> Unit,
+    onTagFilterModeChanged: (LogManager.TagFilterMode) -> Unit,
+    onSelectedTagsChanged: (List<String>) -> Unit,
+    onAddCustomTag: (String) -> Unit,
+    onRemoveCustomTag: (String) -> Unit,
+    onManualTextFilterChanged: (String) -> Unit,   // not persisted — live field only
+    onLogcatGroupExpandedChanged: (Boolean) -> Unit,
+    onExitGroupExpandedChanged: (Boolean) -> Unit,
+    onFilterGroupExpandedChanged: (Boolean) -> Unit,
     onWineDebugChanged: (Boolean) -> Unit,
     onWineChannelsChanged: (List<String>) -> Unit,
     onWineClassesChanged: (List<String>) -> Unit,
@@ -199,6 +249,7 @@ fun DebugScreen(
     bridge: SettingsNavBridge? = null,
 ) {
     var showChannelsDialog by remember { mutableStateOf(false) }
+    var showTagFilterDialog by remember { mutableStateOf(false) }
     var showLogsBrowser by remember { mutableStateOf(false) }
     val layoutDirection = LocalLayoutDirection.current
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
@@ -215,6 +266,23 @@ fun DebugScreen(
                 onWineChannelsChanged(selected)
                 showChannelsDialog = false
             },
+        )
+    }
+
+    if (showTagFilterDialog) {
+        LogTagFilterDialog(
+            options = allLogTagOptions,
+            initiallySelected = state.selectedTags,
+            initialMode = state.tagFilterMode,
+            customTags = state.customTags,
+            onDismiss = { showTagFilterDialog = false },
+            onConfirm = { mode, selected ->
+                onTagFilterModeChanged(mode)
+                onSelectedTagsChanged(selected)
+                showTagFilterDialog = false
+            },
+            onAddCustomTag = onAddCustomTag,
+            onRemoveCustomTag = onRemoveCustomTag,
         )
     }
 
@@ -236,6 +304,11 @@ fun DebugScreen(
 
     val contentNav = rememberSettingsContentNav(bridge)
 
+    // Enable stable cursor to prevent focus jumping during layout shifts (like collapsing groups)
+    androidx.compose.runtime.SideEffect {
+        contentNav.stableCursor = true
+    }
+
     CompositionLocalProvider(LocalPaneNav provides contentNav) {
         Column(
             modifier =
@@ -254,13 +327,155 @@ fun DebugScreen(
             SectionLabel(stringResource(R.string.common_ui_application))
 
             SettingsToggleCard(
-                title = stringResource(R.string.common_ui_application),
-                subtitle = stringResource(R.string.settings_debug_log_to_file_desc),
+                title = stringResource(R.string.settings_debug_application_logging_title),
+                subtitle = stringResource(R.string.settings_debug_application_logging_subtitle),
                 icon = Icons.Outlined.BugReport,
                 accentColor = Warning,
-                checked = state.appDebug,
-                onCheckedChange = onAppDebugChanged,
+                checked = state.loggingEnabled,
+                onCheckedChange = onLoggingEnabledChanged,
             )
+
+            AnimatedVisibility(
+                visible = state.loggingEnabled,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                // Logcat group
+                CollapsibleGroup(
+                    title = stringResource(R.string.settings_debug_logcat_title),
+                    accentColor = TextSecondary,
+                    expanded = state.logcatGroupExpanded,
+                    onExpandedChange = onLogcatGroupExpandedChanged,
+                ) {
+                    SettingsToggleCard(
+                        title = stringResource(R.string.settings_debug_application_logging_title),
+                        subtitle = stringResource(R.string.settings_debug_log_to_file_desc),
+                        icon = Icons.Outlined.BugReport,
+                        accentColor = Warning,
+                        checked = state.appDebug,
+                        onCheckedChange = onAppDebugChanged,
+                    )
+
+                    SettingsToggleCard(
+                        title = stringResource(R.string.settings_debug_steam_logs_title),
+                        subtitle = stringResource(R.string.settings_debug_steam_logs_subtitle),
+                        icon = Icons.Outlined.SportsEsports,
+                        checked = state.steamLogs,
+                        onCheckedChange = onSteamLogsChanged,
+                    )
+
+                    SettingsToggleCard(
+                        title = stringResource(R.string.settings_debug_input_logs),
+                        subtitle = stringResource(R.string.settings_debug_input_logs_description),
+                        icon = Icons.Outlined.Gamepad,
+                        checked = state.inputLogs,
+                        onCheckedChange = onInputLogsChanged,
+                    )
+
+                    SettingsToggleCard(
+                        title = stringResource(R.string.settings_debug_download_logs),
+                        subtitle = stringResource(R.string.settings_debug_download_logs_description),
+                        icon = Icons.Outlined.CloudDownload,
+                        checked = state.downloadLogs,
+                        onCheckedChange = onDownloadLogsChanged,
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = state.loggingEnabled,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                // Exit group
+                CollapsibleGroup(
+                    title = stringResource(R.string.common_ui_exit),
+                    accentColor = TextSecondary,
+                    expanded = state.exitGroupExpanded,
+                    onExpandedChange = onExitGroupExpandedChanged,
+                ) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {   // This log only works on API 30+ (Android 11+)
+                        SettingsToggleCard(
+                            title = stringResource(R.string.settings_debug_exit_reason_log_title),
+                            subtitle = stringResource(R.string.settings_debug_exit_reason_log_subtitle),
+                            icon = Icons.Outlined.BugReport,
+                            accentColor = SystemTagColor,
+                            checked = state.exitReasonLog,
+                            onCheckedChange = onExitReasonLogChanged,
+                        )
+                    }
+
+                    SettingsToggleCard(
+                        title = stringResource(R.string.settings_debug_crash_log_title),
+                        subtitle = stringResource(R.string.settings_debug_crash_log_subtitle),
+                        icon = Icons.Outlined.BugReport,
+                        accentColor = SystemTagColor,
+                        checked = state.crashLog,
+                        onCheckedChange = onCrashLogChanged,
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = state.loggingEnabled,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                // Filter group
+                CollapsibleGroup(
+                    title = stringResource(R.string.session_gyroscope_filtering),
+                    accentColor = TextSecondary,
+                    expanded = state.filterGroupExpanded,
+                    onExpandedChange = onFilterGroupExpandedChanged,
+                ) {
+                    SettingsToggleCard(
+                        title = stringResource(R.string.settings_filtered_logs_to_file_title),
+                        subtitle = stringResource(R.string.settings_filtered_logs_to_file_desc),
+                        icon = Icons.Outlined.BugReport,
+                        accentColor = Warning,
+                        checked = state.filteredLogs,
+                        onCheckedChange = onFilteredLogsChanged,
+                    )
+
+                    SettingsToggleCard(
+                        title = stringResource(R.string.settings_debug_event_watch_log_title),
+                        subtitle = stringResource(R.string.settings_debug_event_watch_log_subtitle),
+                        icon = Icons.Outlined.BugReport,
+                        accentColor = SystemTagColor,
+                        checked = state.eventWatchLog,
+                        onCheckedChange = onEventWatchLogChanged,
+                    )
+
+                    AnimatedVisibility(
+                        visible = state.filteredLogs || state.eventWatchLog,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        LogTagFilterCard(
+                            mode = state.tagFilterMode,
+                            selectedTags = state.selectedTags,
+                            enabled = state.filteredLogs || state.eventWatchLog,
+                            onEdit = { showTagFilterDialog = true },
+                            onModeChanged = onTagFilterModeChanged,
+                            onRemoveSelectedTag = { tag ->
+                                onSelectedTagsChanged(state.selectedTags - tag)
+                            },
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = state.filteredLogs || state.eventWatchLog,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        ManualTextFilterField(
+                            enabled = state.filteredLogs || state.eventWatchLog,
+                            resetKey = state.filteredLogs to state.eventWatchLog,
+                            onTextChanged = onManualTextFilterChanged,
+                        )
+                    }
+                }
+            }
 
             SectionLabel(stringResource(R.string.settings_debug_section_emulation), modifier = Modifier.padding(top = 8.dp))
 
@@ -317,30 +532,6 @@ fun DebugScreen(
 */
 
             SettingsToggleCard(
-                title = stringResource(R.string.settings_debug_steam_logs_title),
-                subtitle = stringResource(R.string.settings_debug_steam_logs_subtitle),
-                icon = Icons.Outlined.SportsEsports,
-                checked = state.steamLogs,
-                onCheckedChange = onSteamLogsChanged,
-            )
-
-            SettingsToggleCard(
-                title = stringResource(R.string.settings_debug_input_logs),
-                subtitle = stringResource(R.string.settings_debug_input_logs_description),
-                icon = Icons.Outlined.Gamepad,
-                checked = state.inputLogs,
-                onCheckedChange = onInputLogsChanged,
-            )
-
-            SettingsToggleCard(
-                title = stringResource(R.string.settings_debug_download_logs),
-                subtitle = stringResource(R.string.settings_debug_download_logs_description),
-                icon = Icons.Outlined.CloudDownload,
-                checked = state.downloadLogs,
-                onCheckedChange = onDownloadLogsChanged,
-            )
-
-            SettingsToggleCard(
                 title = stringResource(R.string.settings_hud_record_to_file_title),
                 subtitle = stringResource(R.string.settings_hud_record_to_file_summary),
                 icon = Icons.Outlined.Speed,
@@ -349,7 +540,10 @@ fun DebugScreen(
             )
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(IntrinsicSize.Min),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .height(IntrinsicSize.Min),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 LogActionButton(
@@ -381,6 +575,64 @@ private fun SectionLabel(
     )
 }
 
+@Composable
+private fun ManualTextFilterField(
+    enabled: Boolean,
+    resetKey: Any,
+    onTextChanged: (String) -> Unit,
+) {
+    var text by remember { mutableStateOf(LogManager.getManualTextFilter()) }
+    LaunchedEffect(resetKey) { text = LogManager.getManualTextFilter() }
+    var focused by remember { mutableStateOf(false) }
+    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .height(38.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .border(
+                    width = 1.dp,
+                    color = if (focused) Accent else CardBorder,
+                    shape = RoundedCornerShape(8.dp),
+                ).paneNavItem(
+                    cornerRadius = 8.dp,
+                    onActivate = { if (enabled) runCatching { focusRequester.requestFocus() } },
+                    highlightColor = NavHighlight,
+                    tapToSelect = true,
+                ).padding(horizontal = 12.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        if (text.isEmpty()) {
+            Text(
+                text = stringResource(R.string.settings_debug_manual_text_filter_hint),
+                fontSize = 12.sp,
+                color = TextSecondary,
+            )
+        }
+        androidx.compose.foundation.text.BasicTextField(
+            value = text,
+            onValueChange = {
+                text = it
+                onTextChanged(it)
+            },
+            enabled = enabled,
+            singleLine = true,
+            textStyle = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 13.sp),
+            cursorBrush = SolidColor(Accent),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { focused = it.isFocused },
+        )
+    }
+}
+
 // Settings toggle card
 @Composable
 private fun SettingsToggleCard(
@@ -408,7 +660,8 @@ private fun SettingsToggleCard(
                         onActivate = { onCheckedChange(!checked) },
                         highlightColor = NavHighlight,
                         tapToSelect = true,
-                    ).padding(horizontal = 14.dp, vertical = 11.dp),
+                    )
+                    .padding(horizontal = 14.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -435,7 +688,9 @@ private fun SettingsToggleCard(
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                modifier = Modifier.scale(0.78f).focusProperties { canFocus = false },
+                modifier = Modifier
+                    .scale(0.78f)
+                    .focusProperties { canFocus = false },
                 colors =
                     outlinedSwitchColors(
                         accentColor = accentColor,
@@ -563,7 +818,7 @@ private fun WineChannelsCard(
     }
 }
 
-// Wine debug message-class card (err / warn / fixme / trace)
+// Wine debug message-class card (err / warn / fix-me / trace)
 @Composable
 private fun WineClassesCard(
     options: List<String>,
@@ -672,6 +927,131 @@ private fun RowScope.ClassChip(
     }
 }
 
+// Log tag/filter channels card (shown when Application Log is enabled)
+@Composable
+private fun LogTagFilterCard(
+    mode: LogManager.TagFilterMode,
+    selectedTags: List<String>,
+    enabled: Boolean,
+    onEdit: () -> Unit,
+    onModeChanged: (LogManager.TagFilterMode) -> Unit,
+    onRemoveSelectedTag: (String) -> Unit,
+) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .alpha(if (enabled) 1f else 0.48f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(CardDark)
+                .border(1.dp, CardBorder, RoundedCornerShape(12.dp)),
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(IconBoxBg),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Tune,
+                        contentDescription = null,
+                        tint = Accent,
+                        modifier = Modifier.size(17.dp),
+                    )
+                }
+                Spacer(Modifier.width(13.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.settings_debug_log_tag_filter_channel),
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    val modeLabel = when (mode) {
+                        LogManager.TagFilterMode.ALL -> stringResource(R.string.settings_debug_tag_filter_all)
+                        LogManager.TagFilterMode.INCLUDE -> stringResource(R.string.settings_debug_tag_filter_include)
+                        LogManager.TagFilterMode.EXCLUDE -> stringResource(R.string.settings_debug_tag_filter_exclude)
+                    }
+                    Text(
+                        text = modeLabel,
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                SmallActionButton(
+                    label = stringResource(R.string.common_ui_select),
+                    textColor = Accent,
+                    onClick = { if (enabled) onEdit() },
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(text = stringResource(R.string.settings_debug_tag_filter_mode), color = TextSecondary, fontSize = 11.sp)
+                SegmentedControl(
+                    options = listOf(
+                        stringResource(R.string.settings_debug_tag_filter_all),
+                        stringResource(R.string.settings_debug_tag_filter_include),
+                        stringResource(R.string.settings_debug_tag_filter_exclude),
+                    ),
+                    selectedIndex = when (mode) {
+                        LogManager.TagFilterMode.ALL -> 0
+                        LogManager.TagFilterMode.INCLUDE -> 1
+                        LogManager.TagFilterMode.EXCLUDE -> 2
+                    },
+                    onSelectedIndex = { idx ->
+                        onModeChanged(
+                            when (idx) {
+                                0 -> LogManager.TagFilterMode.ALL
+                                1 -> LogManager.TagFilterMode.INCLUDE
+                                else -> LogManager.TagFilterMode.EXCLUDE
+                            },
+                        )
+                    },
+                )
+            }
+            if (mode != LogManager.TagFilterMode.ALL) {
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (selectedTags.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.settings_debug_no_tags_selected),
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                        )
+                    } else {
+                        selectedTags.forEach { tag ->
+                            ChannelChip(
+                                label = tag,
+                                onRemove = { if (enabled) onRemoveSelectedTag(tag) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ChannelChip(
     label: String,
@@ -746,7 +1126,8 @@ private fun SmallActionButton(
                         },
                         onTap = { onClick() },
                     )
-                }.padding(horizontal = 11.dp, vertical = 6.dp),
+                }
+                .padding(horizontal = 11.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -758,16 +1139,21 @@ private fun SmallActionButton(
     }
 }
 
-// Wine debug channel selector dialog
+// Generic MultiSelectDialog
 @Composable
-private fun WineChannelsDialog(
+private fun MultiSelectDialog(
+    title: String,
     options: List<String>,
     initiallySelected: List<String>,
     onDismiss: () -> Unit,
     onConfirm: (List<String>) -> Unit,
+    headerContent: (@Composable () -> Unit)? = null,
+    extraContent: (@Composable (selected: Set<String>, onToggle: (String) -> Unit) -> Unit)? = null,
+    systemTags: Set<String> = emptySet(),
+    maxWidth: Dp = 460.dp,
 ) {
     val selected =
-        remember(initiallySelected) {
+        remember {
             mutableStateOf(initiallySelected.toSet())
         }
     val contentRegistry = remember { PaneNavRegistry().apply { stableCursor = true } }
@@ -778,6 +1164,10 @@ private fun WineChannelsDialog(
     val density = LocalDensity.current
     var viewportTop by remember { mutableStateOf(0f) }
     var viewportHeight by remember { mutableIntStateOf(0) }
+    // Capture latest options and callbacks to avoid stale data in remembered handlers
+    val currentOptions by rememberUpdatedState(options)
+    val currentOnConfirm by rememberUpdatedState(onConfirm)
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
 
     LaunchedEffect(contentRegistry.activeRow, contentRegistry.activeCol, viewportHeight, footerZone) {
         if (footerZone || !contentRegistry.controllerActive || contentRegistry.manualSelection) return@LaunchedEffect
@@ -818,10 +1208,10 @@ private fun WineChannelsDialog(
     val handlers =
         remember {
             paneNavHandlers(
-                onDismiss = onDismiss,
+                onDismiss = { currentOnDismiss() },
                 onStart = {
-                    val ordered = options.filter { it in selected.value }
-                    onConfirm(ordered)
+                    val ordered = currentOptions.filter { it in selected.value }
+                    currentOnConfirm(ordered)
                 },
                 registry = { if (footerZone) footerRegistry else contentRegistry },
             )
@@ -849,7 +1239,7 @@ private fun WineChannelsDialog(
             Box(
                 modifier =
                     Modifier
-                        .widthIn(max = 460.dp)
+                        .widthIn(max = maxWidth)
                         .fillMaxWidth()
                         .heightIn(max = availableHeight)
                         .clip(RoundedCornerShape(18.dp))
@@ -859,21 +1249,21 @@ private fun WineChannelsDialog(
             ) {
                 Column(modifier = Modifier.fillMaxHeight()) {
                     Text(
-                        text = stringResource(R.string.settings_debug_wine_debug_channel),
+                        text = title,
                         color = TextPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.settings_debug_channel_toggle_hint),
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                    )
+
+                    headerContent?.invoke()
+
+                    // Optional hint area can be provided by caller via extraContent or you can keep a default hint
                     Spacer(Modifier.height(12.dp))
 
                     ChannelGrid(
                         options = options,
+                        systemTags = systemTags,
                         selected = selected.value,
                         gridState = gridState,
                         onViewport = { top, h ->
@@ -889,6 +1279,16 @@ private fun WineChannelsDialog(
                                 }
                         },
                     )
+
+                    // If caller wants to render extra UI (mode switch, add tag field), call it here.
+                    extraContent?.invoke(selected.value) { channel ->
+                        selected.value =
+                            if (channel in selected.value) {
+                                selected.value - channel
+                            } else {
+                                selected.value + channel
+                            }
+                    }
 
                     Spacer(Modifier.height(14.dp))
                     CompositionLocalProvider(LocalPaneNav provides footerRegistry) {
@@ -917,6 +1317,258 @@ private fun WineChannelsDialog(
     }
 }
 
+
+// Wine debug channel selector dialog
+@Composable
+private fun WineChannelsDialog(
+    options: List<String>,
+    initiallySelected: List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (List<String>) -> Unit,
+) {
+    MultiSelectDialog(
+        title = stringResource(R.string.settings_debug_wine_debug_channel),
+        options = options,
+        initiallySelected = initiallySelected,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm,
+        extraContent = null // no extra UI needed for wine channels
+    )
+}
+
+@Composable
+private fun LogTagFilterDialog(
+    options: List<String>,
+    initiallySelected: List<String>,
+    initialMode: LogManager.TagFilterMode,
+    customTags: List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (LogManager.TagFilterMode, List<String>) -> Unit,
+    onAddCustomTag: (String) -> Unit,
+    onRemoveCustomTag: (String) -> Unit,
+) {
+    var mode by remember { mutableStateOf(initialMode) }
+    var newTagText by remember { mutableStateOf("") }
+    // Custom tags are just as selectable as the build-discovered ones — merge
+    // them into the grid instead of only listing them in the management row below.
+    val allOptions = remember(options, customTags) { (options + customTags).distinct().sorted() }
+
+    MultiSelectDialog(
+        title = stringResource(R.string.settings_debug_log_tag_filter_channel),
+        options = allOptions,
+        systemTags = remember { LogManager.getSystemTags() },
+        initiallySelected = initiallySelected,
+        onDismiss = onDismiss,
+        onConfirm = { selected -> onConfirm(mode, selected) },
+        maxWidth = 680.dp,
+        headerContent = {
+            Column(modifier = Modifier.padding(top = 16.dp)) {
+                // Top Row: Mode Switch and Add Field side-by-side
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    // Mode Section
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_debug_tag_filter_mode).uppercase(),
+                            color = TextSecondary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        SegmentedControl(
+                            options = listOf(
+                                stringResource(R.string.settings_debug_tag_filter_all),
+                                stringResource(R.string.settings_debug_tag_filter_include),
+                                stringResource(R.string.settings_debug_tag_filter_exclude),
+                            ),
+                            selectedIndex = when (mode) {
+                                LogManager.TagFilterMode.ALL -> 0
+                                LogManager.TagFilterMode.INCLUDE -> 1
+                                LogManager.TagFilterMode.EXCLUDE -> 2
+                            },
+                            onSelectedIndex = { idx ->
+                                mode = when (idx) {
+                                    0 -> LogManager.TagFilterMode.ALL
+                                    1 -> LogManager.TagFilterMode.INCLUDE
+                                    else -> LogManager.TagFilterMode.EXCLUDE
+                                }
+                            }
+                        )
+                    }
+
+                    // Add Custom Tag Section
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_debug_add_custom_tag_hint).uppercase(),
+                            color = TextSecondary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Simple state to track focus for the border color
+                            var isTextFieldFocused by remember { mutableStateOf(false) }
+
+                            // Use BasicTextField for full control over vertical padding
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = newTagText,
+                                onValueChange = { newTagText = it },
+                                singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    color = TextPrimary,
+                                    fontSize = 13.sp
+                                ),
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(Accent),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(38.dp)
+                                    .onFocusChanged { isTextFieldFocused = it.isFocused },
+                                decorationBox = { innerTextField ->
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color.Transparent, RoundedCornerShape(8.dp))
+                                            .border(
+                                                width = 1.dp,
+                                                color = if (isTextFieldFocused) Accent else CardBorder,
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(horizontal = 12.dp),
+                                        contentAlignment = Alignment.CenterStart
+                                    ) {
+                                        if (newTagText.isEmpty()) {
+                                            Text(
+                                                text = stringResource(R.string.settings_debug_add_custom_tag_hint),
+                                                fontSize = 12.sp,
+                                                color = TextSecondary
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            SmallActionButton(
+                                label = stringResource(R.string.common_ui_add),
+                                textColor = Accent,
+                                onClick = {
+                                    val tag = newTagText.trim()
+                                    if (tag.isNotEmpty()) {
+                                        onAddCustomTag(tag)
+                                        newTagText = ""
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Custom Tags row
+                if (customTags.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    HorizontalDivider(color = Color(0xFF2A2A3A), thickness = 0.5.dp)
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("CUSTOM:", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        customTags.forEach { tag ->
+                            RemovableTagChip(tag = tag, onRemove = { onRemoveCustomTag(tag) })
+                        }
+                    }
+                    Spacer(Modifier.height(3.dp))
+                    HorizontalDivider(color = Color(0xFF2A2A3A), thickness = 0.5.dp)
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun SegmentedControl(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelectedIndex: (Int) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(SurfaceDark)
+            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+            .padding(2.dp),
+    ) {
+        options.forEachIndexed { index, label ->
+            val isSelected = index == selectedIndex
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isSelected) Accent else Color.Transparent)
+                    // Add paneNavItem so the controller can focus this option
+                    .paneNavItem(
+                        cornerRadius = 8.dp,
+                        onActivate = { onSelectedIndex(index) },
+                        highlightColor = NavHighlight,
+                        tapToSelect = true
+                    )
+                    .clickable { onSelectedIndex(index) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    color = if (isSelected) Color.White else TextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RemovableTagChip(tag: String, onRemove: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(SurfaceDark)
+            .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
+            .padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+    ) {
+        Text(text = tag, color = TextPrimary, fontSize = 12.sp)
+        Spacer(Modifier.width(4.dp))
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .clip(RoundedCornerShape(10.dp))
+                // Add paneNavItem to the 'X' button container
+                .paneNavItem(
+                    cornerRadius = 10.dp,
+                    onActivate = { onRemove() },
+                    highlightColor = NavHighlight,
+                    tapToSelect = true
+                )
+                .clickable { onRemove() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Close,
+                contentDescription = null,
+                tint = TextSecondary,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun ColumnScope.ChannelGrid(
     options: List<String>,
@@ -924,6 +1576,7 @@ private fun ColumnScope.ChannelGrid(
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     onViewport: (Float, Int) -> Unit,
     onToggle: (String) -> Unit,
+    systemTags: Set<String> = emptySet(),   // new — tags that render in a distinct color
 ) {
     if (options.isEmpty()) {
         Text(
@@ -948,11 +1601,14 @@ private fun ColumnScope.ChannelGrid(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         itemsIndexed(options) { index, channel ->
+            val isSystem = channel in systemTags
+            val chipAccent = if (isSystem) SystemTagColor else Accent
             SelectableChannelChip(
                 label = channel,
                 isSelected = channel in selected,
                 isEntry = index == 0,
                 onToggle = { onToggle(channel) },
+                tint = chipAccent,
             )
         }
     }
@@ -964,10 +1620,22 @@ private fun SelectableChannelChip(
     isSelected: Boolean,
     isEntry: Boolean,
     onToggle: () -> Unit,
+    tint: Color = Accent,
 ) {
-    val bg = if (isSelected) Accent.copy(alpha = 0.18f) else IconBoxBg
-    val borderColor = if (isSelected) Accent.copy(alpha = 0.55f) else CardBorder
-    val textColor = if (isSelected) Accent else TextPrimary
+    val isSystemTag = tint == SystemTagColor
+
+    val bg = if (isSelected) tint.copy(alpha = 0.18f) else IconBoxBg
+    // If it's a system tag, show a subtle tinted border and text even when unselected
+    val borderColor = when {
+        isSelected -> tint.copy(alpha = 0.55f)
+        isSystemTag -> tint.copy(alpha = 0.35f) // Subtle yellow border for system tags
+        else -> CardBorder
+    }
+    val textColor = when {
+        isSelected -> tint
+        isSystemTag -> tint.copy(alpha = 0.85f) // Dimmed yellow text for system tags
+        else -> TextPrimary
+    }
     Box(
         modifier =
             Modifier
@@ -1015,7 +1683,11 @@ private fun RowScope.LogActionButton(
                 .clip(RoundedCornerShape(12.dp))
                 .background(CardDark)
                 .border(1.dp, accentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp))
-                .paneNavItem(cornerRadius = 12.dp, onActivate = { onClick() }, highlightColor = NavHighlight)
+                .paneNavItem(
+                    cornerRadius = 12.dp,
+                    onActivate = { onClick() },
+                    highlightColor = NavHighlight
+                )
                 .pointerInput(onClick) {
                     detectTapGestures(
                         onPress = {
@@ -1025,7 +1697,8 @@ private fun RowScope.LogActionButton(
                         },
                         onTap = { onClick() },
                     )
-                }.padding(horizontal = 10.dp, vertical = 7.dp),
+                }
+                .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
@@ -1232,7 +1905,8 @@ private fun LogsHeaderShareAll(onClick: () -> Unit) {
                         },
                         onTap = { onClick() },
                     )
-                }.padding(horizontal = 10.dp, vertical = 6.dp),
+                }
+                .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -1277,7 +1951,8 @@ private fun LogsHeaderDownloadAll(onClick: () -> Unit) {
                         },
                         onTap = { onClick() },
                     )
-                }.padding(horizontal = 10.dp, vertical = 6.dp),
+                }
+                .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -1322,7 +1997,8 @@ private fun LogsHeaderDeleteAll(onClick: () -> Unit) {
                         },
                         onTap = { onClick() },
                     )
-                }.padding(horizontal = 10.dp, vertical = 6.dp),
+                }
+                .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -1473,7 +2149,8 @@ private fun LogFileRow(
                     .paneNavItem(cornerRadius = 8.dp, onActivate = { onOpen() })
                     .pointerInput(entry.absolutePath) {
                         detectTapGestures(onTap = { onOpen() })
-                    }.padding(horizontal = 4.dp, vertical = 2.dp),
+                    }
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
         ) {
             Text(
                 text = entry.name,
@@ -1718,7 +2395,10 @@ private fun LogContentBody(
                             .clip(RoundedCornerShape(10.dp))
                             .background(SurfaceDark)
                             .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
-                            .verticalScrollbar(logScrollState, TextSecondary.copy(alpha = 0.6f)) { scrollbarAlpha }
+                            .verticalScrollbar(
+                                logScrollState,
+                                TextSecondary.copy(alpha = 0.6f)
+                            ) { scrollbarAlpha }
                             .padding(10.dp)
                             .verticalScroll(logScrollState),
                 ) {
@@ -1767,3 +2447,77 @@ private fun Modifier.verticalScrollbar(
             alpha = thumbAlpha,
         )
     }
+
+@Composable
+private fun CollapsibleGroup(
+    title: String,
+    subtitle: String? = null,
+    accentColor: Color = Accent,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, CardBorder, RoundedCornerShape(12.dp)),
+        colors = CardDefaults.cardColors(containerColor = CardDark),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .paneNavItem(
+                        cornerRadius = 10.dp,
+                        onActivate = { onExpandedChange(!expanded) },
+                        highlightColor = NavHighlight,
+                        tapToSelect = true
+                    )
+                    .padding(vertical = 4.dp, horizontal = 4.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title.uppercase(),
+                        color = accentColor,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    content()
+                }
+            }
+        }
+    }
+}

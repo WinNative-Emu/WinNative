@@ -1,6 +1,8 @@
 package com.winlator.cmod.feature.stores.itch.service
 
 import android.content.Context
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.steam.enums.Marker
 import com.winlator.cmod.feature.stores.steam.utils.MarkerUtils
 import com.winlator.cmod.shared.io.ArchiveExtractor
@@ -58,6 +60,7 @@ object ItchInstaller {
         val executable = ItchExecutablePicker.pick(installDir, title)
         MarkerUtils.removeMarker(installDir.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
         MarkerUtils.addMarker(installDir.absolutePath, Marker.DOWNLOAD_COMPLETE_MARKER)
+        InstallOwnership.claim(installDir.absolutePath, InstallStore.ITCH)
         Timber.i("[Itch] installed '$title' to ${installDir.absolutePath}, executable=${executable?.name ?: "none"}")
         return Result(installDir, executable)
     }

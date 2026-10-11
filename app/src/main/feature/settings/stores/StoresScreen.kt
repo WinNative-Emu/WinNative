@@ -40,6 +40,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderShared
 import androidx.compose.material.icons.outlined.Gamepad
@@ -47,6 +50,7 @@ import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,9 +62,12 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +77,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +86,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.winlator.cmod.R
+import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.shared.ui.focus.rememberSettingsContentNav
 import com.winlator.cmod.shared.ui.nav.LocalPaneNav
 import com.winlator.cmod.shared.ui.nav.paneNavItem
@@ -115,6 +124,15 @@ data class StoreState(
     val itchFolder: String = "",
     val containerLanguageLabels: List<String> = emptyList(),
     val containerLanguageIndex: Int = 0,
+    val externalDrives: List<ExternalDriveRow> = emptyList(),
+)
+
+data class ExternalDriveRow(
+    val id: String,
+    val label: String,
+    val path: String,
+    val connected: Boolean,
+    val freeLabel: String,
 )
 
 @Composable
@@ -137,6 +155,8 @@ fun StoresScreen(
     onPickEpicFolder: () -> Unit,
     onPickGogFolder: () -> Unit,
     onPickItchFolder: () -> Unit,
+    onAddExternalStorage: () -> Unit,
+    onRemoveExternalStorage: (String) -> Unit,
     onContainerLanguageSelected: (Int) -> Unit,
     bridge: SettingsNavBridge? = null,
 ) {
@@ -146,6 +166,22 @@ fun StoresScreen(
     val navBarEndPadding = navBarPadding.calculateEndPadding(layoutDirection)
     val navBarBottomPadding = navBarPadding.calculateBottomPadding()
     val contentNav = rememberSettingsContentNav(bridge)
+    val context = LocalContext.current
+    val linuxClient by LinuxClientInstaller.state.collectAsState()
+    var linuxClientDialog by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) { LinuxClientInstaller.refresh(context) }
+    if (linuxClientDialog) {
+        LinuxClientDialog(
+            state = linuxClient,
+            onStart = { LinuxClientInstaller.start(context) },
+            onCancelInstall = {
+                LinuxClientInstaller.cancel()
+                linuxClientDialog = false
+            },
+            onUninstall = { LinuxClientInstaller.uninstall(context) },
+            onDismiss = { linuxClientDialog = false },
+        )
+    }
     val downloadSpeedOptions =
         listOf(
             8 to stringResource(R.string.stores_accounts_download_speed_conservative),
@@ -177,6 +213,20 @@ fun StoresScreen(
                 isLoggedIn = state.isSteamLoggedIn,
                 onSignIn = onSteamSignIn,
                 onSignOut = onSteamSignOut,
+                extraAction = {
+                    val installed = linuxClient is LinuxClientInstaller.State.Installed
+                    // An update is offered in the window, not begun by opening it.
+                    val offered = linuxClient is LinuxClientInstaller.State.UpdateAvailable
+                    ActionButton(
+                        label = stringResource(R.string.linux_client_button),
+                        textColor = if (installed) StatusGreen else Accent,
+                        icon = if (installed) Icons.Outlined.Check else Icons.Outlined.ArrowDownward,
+                        onClick = {
+                            if (!installed && !offered) LinuxClientInstaller.start(context)
+                            linuxClientDialog = true
+                        },
+                    )
+                },
             )
             StoreCard(
                 name = stringResource(R.string.preloader_platform_epic),
@@ -252,6 +302,20 @@ fun StoresScreen(
                     }
                 }
             }
+
+            SectionLabel(
+                stringResource(R.string.external_storage_section_title),
+                modifier = Modifier.padding(top = 8.dp),
+            )
+
+            state.externalDrives.forEach { drive ->
+                ExternalDriveCard(
+                    drive = drive,
+                    onRemove = { onRemoveExternalStorage(drive.id) },
+                )
+            }
+
+            AddExternalStorageCard(onClick = onAddExternalStorage)
 
             SectionLabel(stringResource(R.string.steam_section_title), modifier = Modifier.padding(top = 8.dp))
 
@@ -377,6 +441,7 @@ private fun StoreCard(
     isLoggedIn: Boolean,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
+    extraAction: (@Composable () -> Unit)? = null,
 ) {
     var showSignOutDialog by remember { mutableStateOf(false) }
     if (showSignOutDialog) {
@@ -493,6 +558,10 @@ private fun StoreCard(
                 }
             }
 
+            if (extraAction != null) {
+                extraAction()
+                Spacer(Modifier.width(8.dp))
+            }
             ActionButton(
                 label = if (isLoggedIn) stringResource(R.string.common_ui_sign_out) else stringResource(R.string.common_ui_sign_in),
                 textColor = if (isLoggedIn) DangerRed else accentColor,
@@ -507,6 +576,7 @@ private fun ActionButton(
     label: String,
     textColor: Color,
     onClick: () -> Unit,
+    icon: ImageVector? = null,
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -538,12 +608,23 @@ private fun ActionButton(
                 }.padding(horizontal = 12.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            color = textColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+            }
+            Text(
+                text = label,
+                color = textColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }
 
@@ -809,6 +890,147 @@ private fun FolderPathCard(
             }
             Spacer(Modifier.width(10.dp))
             BrowseButton(onClick = onBrowse)
+        }
+    }
+}
+
+@Composable
+private fun ExternalDriveCard(
+    drive: ExternalDriveRow,
+    onRemove: () -> Unit,
+) {
+    val statusColor = if (drive.connected) StatusGreen else TextSecondary
+    Card(
+        modifier = Modifier.fillMaxWidth().border(1.dp, CardBorder, RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardDark),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(IconBoxBg),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Storage,
+                    contentDescription = null,
+                    tint = statusColor,
+                    modifier = Modifier.size(17.dp),
+                )
+            }
+            Spacer(Modifier.width(13.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = drive.label,
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = drive.path,
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(3.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (drive.connected) StatusGreen else TextSecondary.copy(alpha = 0.4f),
+                                ),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text =
+                            if (drive.connected) {
+                                stringResource(R.string.external_storage_status_connected, drive.freeLabel)
+                            } else {
+                                stringResource(R.string.external_storage_status_disconnected)
+                            },
+                        color = statusColor,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            ActionButton(
+                label = stringResource(R.string.common_ui_remove),
+                textColor = DangerRed,
+                onClick = onRemove,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddExternalStorageCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().border(1.dp, CardBorder, RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardDark),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .paneNavItem(
+                        cornerRadius = 12.dp,
+                        onActivate = onClick,
+                        highlightColor = NavHighlight,
+                        tapToSelect = true,
+                    )
+                    .padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(IconBoxBg),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = null,
+                    tint = Accent,
+                    modifier = Modifier.size(17.dp),
+                )
+            }
+            Spacer(Modifier.width(13.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.external_storage_add_title),
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = stringResource(R.string.external_storage_add_subtitle),
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                )
+            }
         }
     }
 }

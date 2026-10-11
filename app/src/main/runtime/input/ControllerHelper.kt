@@ -1,10 +1,20 @@
 package com.winlator.cmod.runtime.input
 import android.view.InputDevice
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 object ControllerHelper {
     private const val SONY_VENDOR_ID = 0x054C
+    private var steamConnected by mutableStateOf(false)
+
+    @JvmStatic
+    fun setSteamControllerConnected(connected: Boolean) {
+        steamConnected = connected
+    }
 
     fun isControllerConnected(): Boolean {
+        if (steamConnected) return true
         val deviceIds = InputDevice.getDeviceIds()
         for (deviceId in deviceIds) {
             val device = InputDevice.getDevice(deviceId) ?: continue

@@ -63,26 +63,34 @@ object UpdateService {
     private var hourlyRunnable: Runnable? = null
     private var postGameRunnable: Runnable? = null
 
-    fun isSupported(context: Context): Boolean =
-        UpdateRelease.isReleaseBuild() && UpdateApkInstaller.isOfficialInstall(context)
+    /**
+     * A pull request build follows its own pull request and an official install follows the
+     * official releases. It is the build that decides, not a setting: the two are signed with
+     * different keys, so an update from the other one could not be installed anyway.
+     */
+    fun channel(): UpdateChannel =
+        if (UpdateRelease.isPullRequestBuild()) UpdateChannel.PULL_REQUEST else UpdateChannel.OFFICIAL
 
-    fun installedVersionName(): String = com.winlator.cmod.BuildConfig.VERSION_NAME
+    fun isSupported(context: Context): Boolean =
+        when (channel()) {
+            // A CI build is signed with whatever key CI had, so the official certificate is not
+            // asked for; what it is replaced with still has to match it, which install checks.
+            UpdateChannel.PULL_REQUEST -> UpdateRelease.installedBuildRef().isNotEmpty()
+            UpdateChannel.OFFICIAL -> UpdateRelease.isReleaseBuild() && UpdateApkInstaller.isOfficialInstall(context)
+        }
+
+    fun installedVersionName(): String =
+        if (UpdateRelease.isPullRequestBuild()) {
+            "PR #${UpdateRelease.installedPullRequest()} · ${UpdateRelease.shortRef(UpdateRelease.installedBuildRef())}"
+        } else {
+            com.winlator.cmod.BuildConfig.VERSION_NAME
+        }
+
+    /** What this install follows, for the settings screen to show. */
+    fun updateSourceName(): String =
+        if (UpdateRelease.isPullRequestBuild()) "PR #${UpdateRelease.installedPullRequest()}" else ""
 
     fun isEnabled(context: Context): Boolean = isSupported(context) && UpdateStore.isEnabled(context)
-
-    fun channel(context: Context): UpdateChannel = UpdateStore.channel(context)
-
-    fun setChannel(
-        context: Context,
-        channel: UpdateChannel,
-    ) {
-        if (UpdateStore.channel(context) == channel) return
-        UpdateStore.setChannel(context, channel)
-        available = null
-        dialogVisible = false
-        UpdateStore.resetCheckTimer(context)
-        checkNow(context, manual = true)
-    }
 
     fun onAppStarted(context: Context) {
         val appContext = context.applicationContext
@@ -184,11 +192,32 @@ object UpdateService {
         return true
     }
 
-    private fun fetch(context: Context): UpdateRelease? {
+    private fun fetch(context: Context): UpdateRelease? =
+        when (channel()) {
+            UpdateChannel.PULL_REQUEST -> fetchPullRequest()
+            UpdateChannel.OFFICIAL -> fetchOfficial()
+        }
+
+    private fun fetchOfficial(): UpdateRelease? {
         val installed = UpdateRelease.installedVersion() ?: return null
         val json = UpdateDownloader.fetchText(UpdateRelease.RELEASES_URL)
-        val release = UpdateRelease.pick(json, UpdateStore.channel(context)) ?: return null
+        val release = UpdateRelease.pick(json) ?: return null
         if (release.version <= installed) return null
+        return release
+    }
+
+    /**
+     * A pull request keeps one release for its whole life and replaces the assets under it, so
+     * there is no version to compare: the build under the tag is newer when its commit is not the
+     * one installed. A pull request that has been merged or closed takes its release with it,
+     * which reads as nothing to install rather than as a failure.
+     */
+    private fun fetchPullRequest(): UpdateRelease? {
+        val pullRequest = UpdateRelease.installedPullRequest()
+        if (pullRequest <= 0) return null
+        val json = UpdateDownloader.fetchTextOrNull(UpdateRelease.ciReleaseUrl(pullRequest)) ?: return null
+        val release = UpdateRelease.pickPullRequest(json, pullRequest) ?: return null
+        if (UpdateRelease.isSameBuild(UpdateRelease.installedBuildRef(), release.buildRef)) return null
         return release
     }
 

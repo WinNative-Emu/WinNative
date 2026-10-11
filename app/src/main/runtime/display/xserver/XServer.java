@@ -11,6 +11,7 @@ import com.winlator.cmod.runtime.display.xserver.extensions.DRI3Extension;
 import com.winlator.cmod.runtime.display.xserver.extensions.Extension;
 import com.winlator.cmod.runtime.display.xserver.extensions.MITSHMExtension;
 import com.winlator.cmod.runtime.display.xserver.extensions.PresentExtension;
+import com.winlator.cmod.runtime.display.xserver.extensions.RenderExtension;
 import com.winlator.cmod.runtime.display.xserver.extensions.SyncExtension;
 import com.winlator.cmod.runtime.display.xserver.extensions.XInput2Extension;
 import com.winlator.cmod.shared.android.CursorLocker;
@@ -86,8 +87,54 @@ public class XServer {
     return dri3Enabled;
   }
 
+  /** Delta mouse delivery: the user's relative-mouse toggle, or a Wayland pointer lock. */
   public boolean isRelativeMouseMovement() {
-    return relativeMouseMovement;
+    return relativeMouseMovement || externalRelativeMode;
+  }
+
+  private volatile boolean externalRelativeMode;
+
+  /** Wayland mode: a program holds a pointer lock, so input must arrive as deltas. */
+  public void setExternalRelativeMode(boolean on) {
+    externalRelativeMode = on;
+  }
+
+  /**
+   * Wayland mode: no X client is connected, so the input the app injects (touchpad, on-screen
+   * controls, keyboard) is handed to the compositor as well. Coordinates are screen pixels, keys
+   * are evdev codes.
+   */
+  public interface InputSink {
+    void onPointerMove(int x, int y);
+
+    void onPointerButton(Pointer.Button button, boolean pressed);
+
+    void onKey(int evdev, boolean pressed);
+  }
+
+  private volatile InputSink inputSink;
+
+  public void setInputSink(InputSink sink) {
+    inputSink = sink;
+  }
+
+  public boolean hasInputSink() {
+    return inputSink != null;
+  }
+
+  private void sinkPointerMove() {
+    InputSink sink = inputSink;
+    if (sink != null) sink.onPointerMove(pointer.getX(), pointer.getY());
+  }
+
+  private void sinkPointerButton(Pointer.Button button, boolean pressed) {
+    InputSink sink = inputSink;
+    if (sink != null) sink.onPointerButton(button, pressed);
+  }
+
+  private void sinkKey(XKeycode xKeycode, boolean pressed) {
+    InputSink sink = inputSink;
+    if (sink != null) sink.onKey((xKeycode.id & 0xff) - 8, pressed);
   }
 
   public boolean isPointerCaptureActive() {
@@ -219,6 +266,7 @@ public class XServer {
     try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
       pointer.setPosition(x, y);
     }
+    sinkPointerMove();
   }
 
   public void injectPointerMoveDelta(int dx, int dy) {
@@ -259,6 +307,7 @@ public class XServer {
       XInput2Extension xi = getExtension(XInput2Extension.MAJOR_OPCODE);
       if (xi != null) xi.emitRawMotion(2, (double)dx, (double)dy);
     }
+    sinkPointerMove();
     if (renderer != null) renderer.requestCursorRender();
   }
 
@@ -298,6 +347,7 @@ public class XServer {
       XInput2Extension xInput2Extension = getExtension(XInput2Extension.MAJOR_OPCODE);
       if (xInput2Extension != null) xInput2Extension.emitRawButton(2, buttonCode.ordinal() + 1, true);
     }
+    sinkPointerButton(buttonCode, true);
   }
 
   public void injectPointerButtonRelease(Pointer.Button buttonCode) {
@@ -308,6 +358,7 @@ public class XServer {
       XInput2Extension xInput2Extension = getExtension(XInput2Extension.MAJOR_OPCODE);
       if (xInput2Extension != null) xInput2Extension.emitRawButton(2, buttonCode.ordinal() + 1, false);
     }
+    sinkPointerButton(buttonCode, false);
   }
 
   public void injectKeyPress(XKeycode xKeycode) {
@@ -319,6 +370,7 @@ public class XServer {
     try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
       keyboard.setKeyPress(xKeycode.id, keysym);
     }
+    sinkKey(xKeycode, true);
   }
 
   public void injectKeyRelease(XKeycode xKeycode) {
@@ -326,6 +378,7 @@ public class XServer {
     try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
       keyboard.setKeyRelease(xKeycode.id);
     }
+    sinkKey(xKeycode, false);
   }
 
   private void registerExtension(Extension ext, int[] nextEventId, int[] nextErrorId) {
@@ -338,6 +391,14 @@ public class XServer {
       nextErrorId[0] += ext.getNumErrors();
     }
     extensions.put(ext.getMajorOpcode(), ext);
+  }
+
+  public void enableRenderCursors() {
+    extensions.put(RenderExtension.MAJOR_OPCODE, new RenderExtension(this));
+  }
+
+  public boolean isRenderCursorsEnabled() {
+    return extensions.get(RenderExtension.MAJOR_OPCODE) != null;
   }
 
   private void setupExtensions() {

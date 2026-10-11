@@ -4,4 +4,8 @@
         <item quantity="one">%d 個の ZIP アセット</item>
         <item quantity="other">%d 個の ZIP アセット</item>
     </plurals>
+    <plurals name="retro_engine_badges">
+        <item quantity="one">%d 個のバッジ</item>
+        <item quantity="other">%d 個のバッジ</item>
+    </plurals>
 </resources>

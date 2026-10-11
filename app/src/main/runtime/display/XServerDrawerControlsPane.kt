@@ -217,6 +217,7 @@ internal fun InputControlsPaneContent(
                         onProfileSelected = listener::onInputControlsProfileSelected,
                         onEditClick = listener::onInputControlsEditClick,
                     )
+                    ControllerTestRow(onClick = listener::onControllerTestClick)
                 }
 
                 if (state.inputControlsStyleNames.isNotEmpty()) {
@@ -245,6 +246,13 @@ internal fun InputControlsPaneContent(
                     title = stringResource(R.string.session_drawer_show_touchscreen_controls),
                     checked = state.inputControlsShowOverlay,
                     onCheckedChange = listener::onInputControlsShowOverlayChanged,
+                )
+
+                NavBooleanRow(
+                    title = stringResource(R.string.input_controls_adaptive_joysticks),
+                    subtitle = stringResource(R.string.input_controls_adaptive_joysticks_summary),
+                    checked = state.inputControlsAdaptiveJoysticks,
+                    onCheckedChange = listener::onInputControlsAdaptiveJoysticksChanged,
                 )
 
                 if (state.inputControlsShowOverlay) {
@@ -545,6 +553,39 @@ internal fun InputControlsProfileSelector(
                 modifier = Modifier.size((20f * paneScale).dp),
             )
         }
+    }
+}
+
+@Composable
+private fun ControllerTestRow(onClick: () -> Unit) {
+    val paneScale = LocalPaneScale.current
+    val cornerRadius = (12f * paneScale).dp
+    val shape = RoundedCornerShape(cornerRadius)
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(PaneInnerResting)
+                .border(1.dp, RestingCardBorder, shape)
+                .paneNavItem(cornerRadius = cornerRadius, onActivate = onClick)
+                .clickable(onClick = onClick)
+                .padding(horizontal = (12f * paneScale).dp, vertical = (10f * paneScale).dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.SportsEsports,
+            contentDescription = null,
+            tint = DrawerTextPrimary,
+            modifier = Modifier.size((18f * paneScale).dp),
+        )
+        Spacer(Modifier.width((10f * paneScale).dp))
+        Text(
+            text = stringResource(R.string.controller_test_card_title),
+            color = DrawerTextPrimary,
+            fontSize = (13f * paneScale).sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

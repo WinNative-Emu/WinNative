@@ -21,6 +21,8 @@ import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
+import timber.log.Timber;
+
 public abstract class ProcessHelper {
   private static final String TAG = "ProcessHelper";
   private static final int MAX_PROCESS_DETAIL_LENGTH = 240;
@@ -46,6 +48,18 @@ public abstract class ProcessHelper {
     "gameoverlayui",
     ".exe"
   };
+  /* Matched against the process name when the filters above cannot see a process at all. A Chromium
+   * helper (Steam's web helper is one) clears its own argv, so /proc/<pid>/cmdline is empty and every
+   * filter above - all of them Windows executable names - misses it. Two such processes were found
+   * orphaned to init with three threads spinning at 100%, having survived every session teardown for
+   * the better part of seven hours. Only ever acted on for a process of this app's own uid. */
+  private static final String[] SESSION_COMM_FILTERS = {
+    "crbrowsermain",
+    "crrenderermain",
+    "crgpumain",
+    "crutilitymain",
+    "crashpad_handle"
+  };
   private static final byte SIGCONT = 18;
   private static final byte SIGSTOP = 19;
   private static final byte SIGTERM = 15;
@@ -61,6 +75,28 @@ public abstract class ProcessHelper {
           e);
     }
   }
+
+  public enum BackgroundPauseMode {
+    ALL("all"),
+    GAME_ONLY("game_only");
+
+    private final String prefValue;
+
+    BackgroundPauseMode(String prefValue) { this.prefValue = prefValue; }
+    public String getPrefValue() { return prefValue; }
+
+    public static BackgroundPauseMode fromPrefValue(String value) {
+      if (value == null) return GAME_ONLY;
+      for (BackgroundPauseMode m : values()) {
+        if (m.prefValue.equals(value)) return m;
+      }
+      return GAME_ONLY;
+    }
+  }
+
+  private static volatile BackgroundPauseMode backgroundPauseMode = BackgroundPauseMode.GAME_ONLY;
+  private static volatile boolean areProcessesPaused = false;
+  private static final String OOM_TAG = "OomProtectCheck";
 
   public static native int reapDeadChildrenNow();
 
@@ -216,20 +252,40 @@ public abstract class ProcessHelper {
     for (String filter : CORE_PROCESS_FILTERS) {
       if (normalizedData.contains(filter)) return true;
     }
+    // A Chromium helper is the web helper above under the name it reports; keeping it out of
+    // GAME_ONLY's SIGSTOP is the point of listing the web helper in the first place.
+    for (String filter : SESSION_COMM_FILTERS) {
+      if (normalizedData.contains(filter)) return true;
+    }
     return false;
   }
 
   public static void protectAllWineProcesses() {
-    ArrayList<String> processes = listRunningWineProcesses();
-    for (String process : processes) {
-      setOomScoreAdj(Integer.parseInt(process), OOM_SCORE_ADJ_PROTECT);
-    }
+      ArrayList<String> processes = listRunningWineProcesses();
+      boolean eventWatchActive = LogManager.isEventWatchEnabled();
+      for (String process : processes) {
+          if (eventWatchActive) {
+            String actualAdj = readProcFile("/proc/" + process + "/oom_score_adj");
+            LogManager.log(OOM_TAG, "pid=" + process +
+                    " beforeSet=" + (actualAdj != null ? actualAdj.trim() : "unreadable"));
+          }
+
+          setOomScoreAdj(Integer.parseInt(process), OOM_SCORE_ADJ_PROTECT);
+
+          // Check if the OOM Score is doing something, actually.
+          if (eventWatchActive) {
+            String actualAdj = readProcFile("/proc/" + process + "/oom_score_adj");
+            LogManager.log(OOM_TAG,
+                    "pid=" + process + " requested=" + OOM_SCORE_ADJ_PROTECT
+                            + " actual=" + (actualAdj != null ? actualAdj.trim() : "unreadable"));
+          }
+      }
   }
 
   public static void pauseAllWineProcesses() {
     File proc = new File("/proc");
     ArrayList<String> processes = listRunningWineProcesses();
-    if (!processes.isEmpty()) Log.d(TAG, "Pausing session processes: " + processes);
+    if (!processes.isEmpty()) LogManager.log(TAG, "Pausing session processes: " + processes);
     for (String process : processes) {
       int pid = Integer.parseInt(process);
 
@@ -238,16 +294,23 @@ public abstract class ProcessHelper {
       String cmdlineData = readProcCmdline(proc, process);
       String normalized = (statData + " " + cmdlineData).toLowerCase(Locale.ROOT);
 
-      // Make the OS never OOM-kill the paused process if possible.
-      setOomScoreAdj(pid, OOM_SCORE_ADJ_PROTECT);
-
-      if (isCoreProcess(normalized)) {
-        if (PRINT_DEBUG) Log.d(TAG, "Skipping SIGSTOP for core process: " + process + " (" + normalized + ")");
-        continue;
+      // Check which option the user has selected to pause processes
+      switch (backgroundPauseMode) {
+        case ALL:
+          suspendProcess(pid);
+          break;
+        case GAME_ONLY:
+          if (!isCoreProcess(normalized)) {
+            suspendProcess(pid);
+          } else if (PRINT_DEBUG) {
+            Timber.tag(TAG).d("Skipping SIGSTOP (mode=GAME_ONLY, not game): %s", process);
+          }
+          break;
+        default:
+          break;
       }
-
-      suspendProcess(pid);
     }
+    areProcessesPaused = true;
   }
 
   public static void resumeAllWineProcesses() {
@@ -258,6 +321,7 @@ public abstract class ProcessHelper {
       resumeProcess(pid);
       setOomScoreAdj(pid, OOM_SCORE_ADJ_DEFAULT);
     }
+    areProcessesPaused = false;
   }
 
   public static int exec(String command) {
@@ -581,6 +645,73 @@ public abstract class ProcessHelper {
     return affinityMask;
   }
 
+  private static final int EFFICIENCY_CORE_PERCENT = 70;
+  private static volatile int[] cpuCapacities = null;
+
+  private static int readCpuInt(String path) {
+    try (BufferedReader reader = new BufferedReader(new java.io.FileReader(path))) {
+      String line = reader.readLine();
+      return line != null ? Integer.parseInt(line.trim()) : 0;
+    } catch (Exception e) {
+      return 0;
+    }
+  }
+
+  private static int[] getCpuCapacities() {
+    int[] cached = cpuCapacities;
+    if (cached != null) return cached;
+    int count = Math.min(Runtime.getRuntime().availableProcessors(), Integer.SIZE);
+    int[] values = new int[count];
+    boolean any = false;
+    for (int i = 0; i < count; i++) {
+      int value = readCpuInt("/sys/devices/system/cpu/cpu" + i + "/cpufreq/cpuinfo_max_freq");
+      if (value <= 0) value = readCpuInt("/sys/devices/system/cpu/cpu" + i + "/cpu_capacity");
+      values[i] = value;
+      if (value > 0) any = true;
+    }
+    if (!any) values = new int[0];
+    cpuCapacities = values;
+    return values;
+  }
+
+  public static boolean[] getPerformanceCores() {
+    int count = Math.min(Runtime.getRuntime().availableProcessors(), Integer.SIZE);
+    boolean[] cores = new boolean[count];
+    Arrays.fill(cores, true);
+    int[] capacities = getCpuCapacities();
+    if (capacities.length != count) return cores;
+
+    int peak = 0;
+    for (int capacity : capacities) peak = Math.max(peak, capacity);
+    if (peak <= 0) return cores;
+
+    int kept = 0;
+    for (int i = 0; i < count; i++) {
+      cores[i] = capacities[i] <= 0 || capacities[i] * 100L >= (long) peak * EFFICIENCY_CORE_PERCENT;
+      if (cores[i]) kept++;
+    }
+    if (kept == 0) Arrays.fill(cores, true);
+    return cores;
+  }
+
+  public static String getPerformanceCPUList() {
+    boolean[] cores = getPerformanceCores();
+    StringBuilder cpuList = new StringBuilder();
+    for (int i = 0; i < cores.length; i++) {
+      if (!cores[i]) continue;
+      if (cpuList.length() > 0) cpuList.append(',');
+      cpuList.append(i);
+    }
+    return cpuList.toString();
+  }
+
+  public static int getEfficiencyCoreMask() {
+    boolean[] cores = getPerformanceCores();
+    int mask = 0;
+    for (int i = 0; i < cores.length; i++) if (!cores[i]) mask |= 1 << i;
+    return mask;
+  }
+
   public static ArrayList<String> listRunningWineProcesses() {
     File proc = new File("/proc");
     String[] allPids;
@@ -601,7 +732,7 @@ public abstract class ProcessHelper {
       String statData = readProcStat(proc, pid);
       String cmdlineData = readProcCmdline(proc, pid);
       String normalized = (statData + " " + cmdlineData).toLowerCase(Locale.ROOT);
-      if (isSessionProcess(normalized) && !filteredPids.contains(pid)) filteredPids.add(pid);
+      if (isSessionProcess(proc, pid, normalized) && !filteredPids.contains(pid)) filteredPids.add(pid);
     }
     return filteredPids;
   }
@@ -622,7 +753,7 @@ public abstract class ProcessHelper {
       String statData = readProcStat(proc, pid);
       String cmdlineData = readProcCmdline(proc, pid);
       String normalized = (statData + " " + cmdlineData).toLowerCase(Locale.ROOT);
-      if (!isSessionProcess(normalized)) continue;
+      if (!isSessionProcess(proc, pid, normalized)) continue;
 
       String name = getStatProcessName(statData);
       String command = cmdlineData.trim();
@@ -636,9 +767,34 @@ public abstract class ProcessHelper {
     return details;
   }
 
-  private static boolean isSessionProcess(String normalizedProcessData) {
+  private static boolean isSessionProcess(File proc, String pid, String normalizedProcessData) {
     for (String filter : SESSION_PROCESS_FILTERS) {
       if (normalizedProcessData.contains(filter)) return true;
+    }
+    for (String filter : SESSION_COMM_FILTERS) {
+      if (normalizedProcessData.contains(filter)) return isSessionHelper(proc, pid);
+    }
+    return false;
+  }
+
+  /**
+   * Whether {@code pid} is a helper of this app's own session: this app's uid, and not this process.
+   * A process name matched on its own says nothing about who owns it, and a match the session cannot
+   * signal would leave every teardown waiting out its timeout on a process that never goes away.
+   * WebView's renderers carry Chromium's names too, but they run under an isolated uid of their own.
+   */
+  private static boolean isSessionHelper(File proc, String pid) {
+    if (pid.equals(Integer.toString(Process.myPid()))) return false;
+    try (FileInputStream fr = new FileInputStream(proc + "/" + pid + "/status");
+        BufferedReader br = new BufferedReader(new InputStreamReader(fr))) {
+      String line;
+      while ((line = br.readLine()) != null) {
+        if (!line.startsWith("Uid:")) continue;
+        String[] fields = line.trim().split("\\s+");
+        return fields.length > 1 && Integer.parseInt(fields[1]) == Process.myUid();
+      }
+    } catch (IOException | RuntimeException e) {
+      // Another app's process, or one that exited while it was being read.
     }
     return false;
   }
@@ -659,11 +815,14 @@ public abstract class ProcessHelper {
       byte[] data = new byte[8192];
       int nRead;
       while ((nRead = fr.read(data)) != -1) buffer.write(data, 0, nRead);
-      byte[] bytes = buffer.toByteArray();
-      return new String(bytes, StandardCharsets.UTF_8).replace('\0', ' ');
+      return new String(buffer.toByteArray(), StandardCharsets.UTF_8).replace('\0', ' ');
     } catch (IOException e) {
       return "";
     }
+  }
+
+  public static String readProcCmdline(String pid) {
+    return readProcCmdline(new File("/proc"), pid);
   }
 
   private static String getStatProcessName(String statData) {
@@ -676,5 +835,23 @@ public abstract class ProcessHelper {
   private static String trimProcessDetail(String detail) {
     if (detail.length() <= MAX_PROCESS_DETAIL_LENGTH) return detail;
     return detail.substring(0, MAX_PROCESS_DETAIL_LENGTH - 3) + "...";
+  }
+
+  public static void setBackgroundPauseMode(BackgroundPauseMode mode) {
+    backgroundPauseMode = mode != null ? mode : BackgroundPauseMode.GAME_ONLY;
+  }
+
+  public static BackgroundPauseMode getBackgroundPauseMode() {
+    return backgroundPauseMode;
+  }
+
+  public static boolean areProcessesPaused() { return areProcessesPaused; }
+
+  private static String readProcFile(String path) {
+    try {
+      return new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(path)));
+    } catch (Exception e) {
+      return null;
+    }
   }
 }

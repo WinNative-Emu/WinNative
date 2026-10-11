@@ -4,4 +4,8 @@
         <item quantity="one">%d file ZIP</item>
         <item quantity="other">%d file ZIP</item>
     </plurals>
+    <plurals name="retro_engine_badges">
+        <item quantity="one">%d badge</item>
+        <item quantity="other">%d badge</item>
+    </plurals>
 </resources>

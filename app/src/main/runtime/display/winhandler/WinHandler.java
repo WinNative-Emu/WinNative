@@ -1,5 +1,7 @@
 package com.winlator.cmod.runtime.display.winhandler;
 
+import com.winlator.cmod.runtime.display.wayland.WaylandCompositor;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.input.InputManager;
@@ -25,6 +27,7 @@ import com.winlator.cmod.runtime.input.controls.ExternalController;
 import com.winlator.cmod.runtime.input.controls.FakeInputWriter;
 import com.winlator.cmod.runtime.input.controls.GamepadIdentityStore;
 import com.winlator.cmod.runtime.input.controls.GamepadState;
+import com.winlator.cmod.runtime.input.controls.SteamControllerBackend;
 import com.winlator.cmod.runtime.input.rumble.GamepadRumbleManager;
 import com.winlator.cmod.runtime.input.rumble.GcmRumbleMode;
 import com.winlator.cmod.shared.util.StringUtils;
@@ -102,6 +105,9 @@ public class WinHandler {
   // ConcurrentHashMap: input thread mutates while the vibration thread iterates (avoid CME).
   private Map<Integer, Integer> deviceToSlot = new java.util.concurrent.ConcurrentHashMap<>();
   private Map<String, Integer> descriptorToSlot = new HashMap<>(); // physical device → slot
+  private final Map<Integer, ExternalController> sdlPads =
+      new java.util.concurrent.ConcurrentHashMap<>();
+  private volatile SteamControllerBackend sdlBackend;
   private Map<Integer, String> deviceToDescriptor = new HashMap<>(); // deviceId → descriptor
   private Set<Integer> usedSlots = new HashSet();
   private boolean xinputDisabledInitialized = false;
@@ -114,6 +120,7 @@ public class WinHandler {
   private int fallbackSlot = -1;
   private ExternalController currentController;
   private final GamepadState outputGamepadState = new GamepadState();
+  private final GamepadState idleGamepadState = new GamepadState();
   private int lastGamepadSource = 0;
   private float smoothedGyroX = 0.0f;
   private float smoothedGyroY = 0.0f;
@@ -254,8 +261,7 @@ public class WinHandler {
       // Still allow a reconnecting / sub-device that will reuse an existing
       // physical controller's slot instead of consuming a new one. Without this,
       // a transient remove/add while all four slots are full would be dropped.
-      android.view.InputDevice probe = android.view.InputDevice.getDevice(deviceId);
-      String descriptor = probe != null ? probe.getDescriptor() : null;
+      String descriptor = descriptorOf(deviceId);
       if (descriptor == null || !this.descriptorToSlot.containsKey(descriptor)) {
         Log.d(
             "WinHandler",
@@ -264,9 +270,11 @@ public class WinHandler {
       }
     }
 
-    android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
-    if (!ExternalController.isGameController(device)) {
-      return false;
+    if (!this.sdlPads.containsKey(deviceId)) {
+      android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
+      if (!ExternalController.isGameController(device) || isShadowedBySdl(device)) {
+        return false;
+      }
     }
 
     ExternalController controller = getController(deviceId);
@@ -415,8 +423,33 @@ public class WinHandler {
         });
   }
 
+  private volatile boolean waylandMouseRouting;
+
+  /** Wayland mode: relative mouse input goes to the compositor instead of the guest-side bridge. */
+  public void setWaylandMouseRouting(boolean on) {
+    waylandMouseRouting = on;
+  }
+
+  private static void waylandMouseEvent(int flags, int dx, int dy, int wheelDelta) {
+    if ((flags & MouseEventFlags.MOVE) != 0) WaylandCompositor.sendPointerDelta(dx, dy);
+    if ((flags & MouseEventFlags.LEFTDOWN) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x110, 1);
+    if ((flags & MouseEventFlags.LEFTUP) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x110, 0);
+    if ((flags & MouseEventFlags.RIGHTDOWN) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x111, 1);
+    if ((flags & MouseEventFlags.RIGHTUP) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x111, 0);
+    if ((flags & MouseEventFlags.MIDDLEDOWN) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x112, 1);
+    if ((flags & MouseEventFlags.MIDDLEUP) != 0) WaylandCompositor.nativeSendSceneInput(3, 0x112, 0);
+    if ((flags & MouseEventFlags.WHEEL) != 0 && wheelDelta != 0) {
+      int steps = wheelDelta > 0 ? -Math.max(1, wheelDelta / 120) : Math.max(1, -wheelDelta / 120);
+      WaylandCompositor.nativeSendSceneInput(4, steps, 0);
+    }
+  }
+
   public void mouseEvent(final int flags, final int dx, final int dy, final int wheelDelta) {
     checkGyroActivatorMouseFlags(flags);
+    if (waylandMouseRouting) {
+      waylandMouseEvent(flags, dx, dy, wheelDelta);
+      return;
+    }
     if (!this.initReceived) {
       return;
     }
@@ -680,6 +713,52 @@ public class WinHandler {
     if (xServer != null && xServer.getRenderer() != null) xServer.getRenderer().requestRenderCoalesced(VulkanRenderer.WAKE_WINHANDLER);
   }
 
+  /**
+   * A GameScope guest learns of pads only as it starts (its udev monitor never reports one added
+   * later), so there no slot is ever removed: a disconnect or a move leaves it present and
+   * neutral, and whichever pad takes it next reaches the game through it.
+   */
+  private boolean slotsOutliveDevices() {
+    return this.activity.isGamescopeMode();
+  }
+
+  public void representVirtualGamepad() {
+    Integer slot = this.deviceToSlot.get(OSC_DEVICE_ID);
+    if (slot == null || slot < 0 || slot >= MAX_CONTROLLERS) {
+      return;
+    }
+    if (slotsOutliveDevices()) {
+      ensureWriterForSlot(slot);
+      if (this.writers[slot] != null) this.writers[slot].requestFullResend();
+      return;
+    }
+    if (this.writers[slot] != null) {
+      this.writers[slot].destroy();
+      this.writers[slot] = null;
+    }
+    ensureWriterForSlot(slot);
+    if (this.writers[slot] != null) {
+      this.writers[slot].requestFullResend();
+      Log.d("WinHandler", "Re-presented virtual gamepad on slot " + slot + ".");
+    }
+  }
+
+  public void resyncGamepadState() {
+    for (int i = 0; i < MAX_CONTROLLERS; i++) {
+      if (this.writers[i] != null) this.writers[i].requestFullResend();
+    }
+    if (this.lastGamepadSource == GAMEPAD_SOURCE_CONTROLLER && this.currentController != null) {
+      writeControllerGamepadState(
+          this.currentController,
+          shouldApplyGyroToTarget(GAMEPAD_SOURCE_CONTROLLER, this.currentController));
+    } else {
+      writeVirtualGamepadState(shouldApplyGyroToTarget(GAMEPAD_SOURCE_VIRTUAL, null));
+    }
+    XServer xServer = activity.getXServer();
+    if (xServer != null && xServer.getRenderer() != null)
+      xServer.getRenderer().requestRenderCoalesced(VulkanRenderer.WAKE_WINHANDLER);
+  }
+
   public boolean canUseScreenTouchStick() {
     ControlsProfile profile = this.activity.getInputControlsView().getProfile();
     return profile != null && profile.isVirtualGamepad();
@@ -729,7 +808,7 @@ public class WinHandler {
     if (binding == null || !binding.isGamepad()) return;
     ControlsProfile profile = this.activity.getInputControlsView().getProfile();
     if (profile == null || !profile.isVirtualGamepad()) return;
-    this.activity.getInputControlsView().handleInputEvent(null, binding, pressed, 0f, false);
+    this.activity.getInputControlsView().handleGestureInputEvent(binding, pressed);
     setLastGamepadSource(GAMEPAD_SOURCE_VIRTUAL, null);
     writeVirtualGamepadState(shouldApplyGyroToTarget(GAMEPAD_SOURCE_VIRTUAL, null), true);
     XServer xServer = activity.getXServer();
@@ -738,26 +817,62 @@ public class WinHandler {
 
   private void writeVirtualGamepadState(boolean applyGyroOverlay, boolean allowHiddenControls) {
     ControlsProfile profile = this.activity.getInputControlsView().getProfile();
-    if (profile == null) {
-      return;
-    }
-    GamepadState gamepadState = profile.getGamepadState();
     boolean useVirtualGamepad =
-        profile.isVirtualGamepad()
+        profile != null
+            && profile.isVirtualGamepad()
             && (allowHiddenControls || this.activity.getInputControlsView().isShowTouchscreenControls());
     if (useVirtualGamepad) {
       int slot = assignSlot(-1);
       if (slot >= 0 && this.writers[slot] != null) {
         try {
           this.writers[slot].writeGamepadState(
-              getOutputGamepadState(gamepadState, applyGyroOverlay));
+              getOutputGamepadState(profile.getGamepadState(), applyGyroOverlay));
         } catch (IOException ignored) {
         }
         return;
       }
+    }
+    Integer virtualSlot = this.deviceToSlot.get(OSC_DEVICE_ID);
+    if (virtualSlot == null || virtualSlot < 0 || this.writers[virtualSlot] == null) {
       return;
     }
-    releaseSlot(-1);
+    clearGamepadState(this.idleGamepadState);
+    try {
+      this.writers[virtualSlot].writeGamepadState(this.idleGamepadState);
+    } catch (IOException ignored) {
+    }
+  }
+
+  private static final long GUIDE_TAP_MS = 120;
+  private volatile Runnable pendingGuideRelease;
+
+  /** A guide press released before the hold opens the menu: the guest gets a tap (Steam opens its menu). */
+  public void tapGuide(int deviceId) {
+    if (Looper.myLooper() != Looper.getMainLooper()) {
+      this.inputHandler.post(() -> tapGuide(deviceId));
+      return;
+    }
+    ExternalController controller = getController(deviceId);
+    if (controller == null) return;
+    // A tap still in flight ends first, so two quick taps reach the guest as two presses.
+    Runnable inFlight = this.pendingGuideRelease;
+    if (inFlight != null) {
+      this.inputHandler.removeCallbacks(inFlight);
+      inFlight.run();
+    }
+    setGuidePressed(controller, true);
+    Runnable release = () -> {
+      pendingGuideRelease = null;
+      setGuidePressed(controller, false);
+    };
+    pendingGuideRelease = release;
+    this.inputHandler.postDelayed(release, GUIDE_TAP_MS);
+  }
+
+  private void setGuidePressed(ExternalController controller, boolean pressed) {
+    controller.state.setPressed(GamepadState.BUTTON_GUIDE, pressed);
+    controller.remappedState.setPressed(GamepadState.BUTTON_GUIDE, pressed);
+    sendGamepadState(controller);
   }
 
   public void sendGamepadState(ExternalController controller) {
@@ -774,6 +889,17 @@ public class WinHandler {
 
   // Menu owns the controller while open; zero tracked state and push it once so nothing stays held in the guest.
   public void neutralizeControllers() {
+    resetGyroRuntimeState();
+    steamGyroTimestamp = 0;
+    for (ExternalController pad : this.sdlPads.values()) {
+      Integer slot = this.deviceToSlot.get(pad.getDeviceId());
+      if (slot != null && this.writers[slot] != null) {
+        try {
+          this.writers[slot].writeGamepadState(new GamepadState());
+        } catch (IOException ignored) {
+        }
+      }
+    }
     for (ExternalController controller : this.controllers.values()) {
       if (controller == null) {
         continue;
@@ -808,9 +934,14 @@ public class WinHandler {
       return;
     }
     ControlsProfile profile = this.activity.getInputControlsView().getProfile();
-    if (profile != null
-        && (profileController = profile.getController(controller.getDeviceId())) != null
-        && profileController.getControllerBindingCount() > 0) {
+    boolean sdlPad = this.sdlPads.containsKey(controller.getDeviceId());
+    profileController =
+        profile == null
+            ? null
+            : (sdlPad
+                ? profile.getController(controller.getId())
+                : profile.getController(controller.getDeviceId()));
+    if (profileController != null && profileController.getControllerBindingCount() > 0) {
       int slot = assignSlot(controller.getDeviceId());
       if (slot >= 0 && this.writers[slot] != null) {
         try {
@@ -908,7 +1039,7 @@ public class WinHandler {
 
     ensureWriterForSlot(targetSlot);
     if (this.writers[currentSlot] != null) {
-      if (releaseVacatedSlot && !isPhysicalSlotOccupied(currentSlot)) {
+      if (releaseVacatedSlot && !isPhysicalSlotOccupied(currentSlot) && !slotsOutliveDevices()) {
         // The virtual pad is leaving this slot for good (consolidation, not a
         // hand-off to an incoming physical pad). Tear it down so winebus sees the
         // device disappear instead of a phantom stuck-at-neutral controller.
@@ -972,7 +1103,7 @@ public class WinHandler {
   }
 
   private int assignSlot(int deviceId) {
-    if (deviceId != OSC_DEVICE_ID) {
+    if (deviceId != OSC_DEVICE_ID && !this.sdlPads.containsKey(deviceId)) {
       cancelPendingVirtualGamepadRebalance();
       android.view.InputDevice physicalDevice = android.view.InputDevice.getDevice(deviceId);
       if (!ExternalController.isGameController(physicalDevice)) {
@@ -1002,11 +1133,7 @@ public class WinHandler {
 
     // Resolve the physical device descriptor to group sub-devices (e.g. DualSense
     // gamepad + touchpad + motion sensors all share one physical controller)
-    String descriptor = null;
-    android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
-    if (device != null) {
-      descriptor = device.getDescriptor();
-    }
+    String descriptor = descriptorOf(deviceId);
 
     // If another deviceId from the same physical controller already has a slot, reuse it
     if (descriptor != null) {
@@ -1089,7 +1216,10 @@ public class WinHandler {
         if (this.fallbackSlot == slot) {
           this.fallbackSlot = -1;
         }
-        if (this.writers[slot] != null) {
+        if (this.writers[slot] != null && slotsOutliveDevices()) {
+          // Released to neutral and kept for the next pad; the guest would never find a new one.
+          this.writers[slot].reset();
+        } else if (this.writers[slot] != null) {
           // Remove the discovery node so winebus sees a disconnect; event bytes live in
           // the slot ring and are not replayed by reopening this path.
           this.writers[slot].destroy();
@@ -1224,6 +1354,16 @@ public class WinHandler {
     }
     if (slot >= 0 && slot < MAX_CONTROLLERS && !this.vibrationEnabledSlots[slot]) {
       return;
+    }
+
+    SteamControllerBackend backend = this.sdlBackend;
+    if (backend != null && !this.sdlPads.isEmpty()) {
+      for (Map.Entry<Integer, Integer> entry : this.deviceToSlot.entrySet()) {
+        if (entry.getValue() == slot && this.sdlPads.containsKey(entry.getKey())) {
+          backend.rumble(entry.getKey(), strong, weak, durationMs);
+          return;
+        }
+      }
     }
 
     // GameSir GCM-mode pads expose no Android vibrator; route them through the GCM manager first.
@@ -1368,8 +1508,93 @@ public class WinHandler {
     return MAX_CONTROLLERS;
   }
 
+  public void setSteamControllerBackend(SteamControllerBackend backend) {
+    this.sdlBackend = backend;
+  }
+
+  public boolean hasSdlPads() {
+    return !this.sdlPads.isEmpty();
+  }
+
+  public void onSdlPadConnected(ExternalController pad) {
+    int deviceId = pad.getDeviceId();
+    cancelPendingDeviceRelease(deviceId);
+    this.sdlPads.put(deviceId, pad);
+    releaseShadowedValveSlots();
+    assignConnectedDeviceIfPossible(deviceId, "sdl");
+  }
+
+  public void onSdlPadDisconnected(ExternalController pad) {
+    int deviceId = pad.getDeviceId();
+    if (!this.sdlPads.containsKey(deviceId)) {
+      return;
+    }
+    pad.state.reset();
+    pad.remappedState.reset();
+    if (this.deviceToSlot.containsKey(deviceId)) {
+      sendGamepadState(pad);
+    }
+    this.sdlPads.remove(deviceId);
+    scheduleDeviceRelease(deviceId);
+  }
+
+  public void steamPadMouseMove(int dx, int dy) {
+    XServer xServer = this.activity != null ? this.activity.getXServer() : null;
+    if (xServer != null && !xServer.isRelativeMouseMovement()) {
+      xServer.injectPointerMoveDelta(dx, dy);
+      return;
+    }
+    mouseMoveDelta(dx, dy);
+  }
+
+  public void steamPadMouseButton(boolean secondary, boolean down) {
+    XServer xServer = this.activity != null ? this.activity.getXServer() : null;
+    if (xServer == null) {
+      return;
+    }
+    Pointer.Button button = secondary ? Pointer.Button.BUTTON_RIGHT : Pointer.Button.BUTTON_LEFT;
+    if (xServer.isRelativeMouseMovement()) {
+      mouseEvent(MouseEventFlags.getFlagFor(button, down), 0, 0, 0);
+    } else if (down) {
+      xServer.injectPointerButtonPress(button);
+    } else {
+      xServer.injectPointerButtonRelease(button);
+    }
+  }
+
+  private String descriptorOf(int deviceId) {
+    ExternalController sdlPad = this.sdlPads.get(deviceId);
+    if (sdlPad != null) {
+      return sdlPad.getId();
+    }
+    android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
+    return device != null ? device.getDescriptor() : null;
+  }
+
+  private boolean isShadowedBySdl(android.view.InputDevice device) {
+    return device != null
+        && !this.sdlPads.isEmpty()
+        && device.getVendorId() == SteamControllerBackend.VALVE_VENDOR_ID;
+  }
+
+  private void releaseShadowedValveSlots() {
+    for (Integer id : new ArrayList<>(this.deviceToSlot.keySet())) {
+      if (id == null || id < 0 || this.sdlPads.containsKey(id)) {
+        continue;
+      }
+      if (isShadowedBySdl(android.view.InputDevice.getDevice(id))) {
+        releaseSlot(id);
+      }
+    }
+  }
+
   public void closeFakeInputWriter() {
     cancelPendingVirtualGamepadRebalance();
+    Runnable guideRelease = this.pendingGuideRelease;
+    if (guideRelease != null) {
+      this.inputHandler.removeCallbacks(guideRelease);
+      this.pendingGuideRelease = null;
+    }
     cancelAllPendingDeviceReleases();
     if (this.inputManager != null && this.inputDeviceListener != null) {
       this.inputManager.unregisterInputDeviceListener(this.inputDeviceListener);
@@ -1387,6 +1612,8 @@ public class WinHandler {
     this.deviceToDescriptor.clear();
     this.usedSlots.clear();
     this.controllers.clear();
+    this.sdlPads.clear();
+    this.sdlBackend = null;
     this.fallbackSlot = -1;
     this.vibrationRunning = false;
     if (this.vibrationServer != null) {
@@ -1413,6 +1640,14 @@ public class WinHandler {
   }
 
   private ExternalController getController(int deviceId) {
+    ExternalController sdlPad = this.sdlPads.get(deviceId);
+    if (sdlPad != null) {
+      return sdlPad;
+    }
+    if (!this.sdlPads.isEmpty()
+        && isShadowedBySdl(android.view.InputDevice.getDevice(deviceId))) {
+      return null;
+    }
     if (this.controllers.containsKey(deviceId)) {
       return this.controllers.get(deviceId);
     }
@@ -1456,7 +1691,12 @@ public class WinHandler {
     boolean handled = false;
     int deviceId = event.getDeviceId();
     ExternalController controller = getController(deviceId);
-    if (controller != null && event.getRepeatCount() == 0) {
+    if (controller != null && event.getRepeatCount() > 0) {
+      // A held button repeats. Its state is already set; passed on, a repeat would move Android's
+      // focus (D-pad) or be treated as another key. Guide stays with the activity's hold timer.
+      return event.getKeyCode() != KeyEvent.KEYCODE_BUTTON_MODE;
+    }
+    if (controller != null) {
       int action = event.getAction();
       if (action == 0 || action == 1) {
         handled = controller.updateStateFromKeyEvent(event);
@@ -1485,7 +1725,42 @@ public class WinHandler {
     currentController = getController(0);
   }
 
+  private long steamGyroTimestamp;
+  private int steamGyroDevice = Integer.MIN_VALUE;
+  private float steamYaw, steamPitch;
+
+  private boolean usesSteamGyro() {
+    return this.currentController != null && this.currentController.steamHasGyro
+        && this.sdlPads.containsKey(this.currentController.getDeviceId());
+  }
+
+  public void updateSteamGyroData(ExternalController pad, float x, float y, long timestampNanos) {
+    if (this.currentController == null || this.currentController.getDeviceId() != pad.getDeviceId()) return;
+    float seconds = steamGyroDevice == pad.getDeviceId() && steamGyroTimestamp != 0
+        ? (timestampNanos - steamGyroTimestamp) / 1_000_000_000f : 0f;
+    if (seconds < 0 || seconds > 0.1f) seconds = 0;
+    if (steamGyroDevice != pad.getDeviceId()) {
+      steamYaw = steamPitch = 0;
+      recenterGyroOrientation();
+    }
+    steamGyroDevice = pad.getDeviceId();
+    steamGyroTimestamp = timestampNanos;
+    if (this.preferences.getBoolean("gyro_orientation_enabled", false)
+        && !this.preferences.getBoolean("mouse_gyro_enabled", false)) {
+      steamYaw += y * seconds;
+      steamPitch += x * seconds;
+      applyGyroOrientation(steamYaw, steamPitch);
+    } else {
+      applyGyroData(x, y);
+    }
+  }
+
   public void updateGyroData(float rawGyroX, float rawGyroY) {
+    if (usesSteamGyro()) return;
+    applyGyroData(rawGyroX, rawGyroY);
+  }
+
+  private void applyGyroData(float rawGyroX, float rawGyroY) {
     GyroSettings gyroSettings = getGyroSettings();
     if (!gyroSettings.enabled) {
       resetGyroRuntimeState();
@@ -1525,6 +1800,11 @@ public class WinHandler {
 
   // Tilt-to-position path: drives the stick from absolute yaw/pitch offset, so a held tilt sustains.
   public void updateGyroOrientation(float yaw, float pitch) {
+    if (usesSteamGyro()) return;
+    applyGyroOrientation(yaw, pitch);
+  }
+
+  private void applyGyroOrientation(float yaw, float pitch) {
     GyroSettings gyroSettings = getGyroSettings();
     if (!gyroSettings.enabled) {
       resetGyroRuntimeState();
@@ -1779,6 +2059,9 @@ public class WinHandler {
   private ExternalController getPreferredGyroController() {
     if (this.currentController != null) {
       int deviceId = this.currentController.getDeviceId();
+      if (this.sdlPads.containsKey(deviceId)) {
+        return this.currentController;
+      }
       return deviceId >= 0 && android.view.InputDevice.getDevice(deviceId) != null
           ? this.currentController
           : null;

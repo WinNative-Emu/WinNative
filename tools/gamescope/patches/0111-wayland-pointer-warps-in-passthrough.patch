@@ -1,0 +1,16 @@
+diff --git a/src/Backends/WaylandBackend.cpp b/src/Backends/WaylandBackend.cpp
+index bf72267..c400978 100644
+--- a/src/Backends/WaylandBackend.cpp
++++ b/src/Backends/WaylandBackend.cpp
+@@ -3223,7 +3223,10 @@ namespace gamescope
+         double flY = ( wl_fixed_to_double( fSurfaceY ) * uScale / 120.0 + oState->nDestY ) / g_nOutputHeight;
+ 
+         wlserver_lock();
+-        wlserver_touchmotion( flX, flY, 0, ++m_uFakeTimestamp );
++        // Always move the real pointer too: in Passthrough (what Steam's Big Picture asks for) a
++        // touch motion for an id that is not down moves nothing, so hover never reached the
++        // client and a click landed wherever the pointer had last been.
++        wlserver_touchmotion( flX, flY, 0, ++m_uFakeTimestamp, true );
+         wlserver_unlock();
+     }
+     void CWaylandInputThread::Wayland_Pointer_Button( wl_pointer *pPointer, uint32_t uSerial, uint32_t uTime, uint32_t uButton, uint32_t uState )

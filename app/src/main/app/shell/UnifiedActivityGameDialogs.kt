@@ -158,6 +158,8 @@ import com.winlator.cmod.app.db.PluviaDatabase
 import com.winlator.cmod.app.service.DownloadService
 import com.winlator.cmod.app.service.download.DownloadCoordinator
 import com.winlator.cmod.app.update.UpdateService
+import com.winlator.cmod.feature.library.LibraryStorageMove
+import com.winlator.cmod.feature.library.LibraryStoreOption
 import com.winlator.cmod.feature.settings.InputControlsFragment
 import com.winlator.cmod.feature.settings.SettingsFocusZone
 import com.winlator.cmod.feature.settings.SettingsHost
@@ -169,6 +171,7 @@ import com.winlator.cmod.feature.shortcuts.LibraryShortcutArtwork
 import com.winlator.cmod.feature.shortcuts.ShortcutBroadcastReceiver
 import com.winlator.cmod.feature.shortcuts.ShortcutSettingsComposeDialog
 import com.winlator.cmod.feature.shortcuts.ShortcutsFragment
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.common.StoreArtworkCache
 import com.winlator.cmod.feature.stores.epic.data.EpicCredentials
 import com.winlator.cmod.feature.stores.epic.data.EpicGame
@@ -226,9 +229,11 @@ import com.winlator.cmod.shared.android.RefreshRateUtils
 import com.winlator.cmod.shared.io.StorageUtils
 import com.winlator.cmod.shared.io.FileUtils
 import com.winlator.cmod.shared.ui.CarouselView
+import com.winlator.cmod.shared.ui.dialog.ContainerProgressPopup
 import com.winlator.cmod.shared.ui.dialog.PopupDialog
 import com.winlator.cmod.shared.ui.dialog.PopupTextAction
 import androidx.compose.foundation.focusGroup
+import com.winlator.cmod.shared.ui.focus.controllerConfirmOnA
 import com.winlator.cmod.shared.ui.focus.controllerFocusGlow
 import com.winlator.cmod.shared.ui.focus.controllerMenuInput
 import com.winlator.cmod.shared.ui.focus.controllerTextFieldEscape
@@ -247,6 +252,8 @@ import com.winlator.cmod.shared.ui.JoystickGridScroll
 import com.winlator.cmod.shared.ui.JoystickListScroll
 import com.winlator.cmod.shared.ui.ListView
 import com.winlator.cmod.shared.ui.widget.chasingBorder
+import com.winlator.cmod.shared.ui.layout.isPortraitLayout
+import com.winlator.cmod.shared.ui.layout.isCompactWidth
 import com.winlator.cmod.shared.theme.WinNativeTheme
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.Lazy
@@ -296,7 +303,15 @@ internal fun UnifiedActivity.LibraryDetailPopupFrame(
             contentAlignment = Alignment.Center,
         ) {
             val panelMaxWidth = if (wide) 440.dp else 360.dp
-            val panelWidthFraction = if (wide) 0.72f else 0.58f
+            // 0.58f/0.72f are landscape fractions: at phone width 0.58f gives a ~213 dp
+            // panel whose labels and footer buttons wrap mid-word. In portrait take the
+            // full available width and let panelMaxWidth do the capping.
+            val panelWidthFraction =
+                when {
+                    isPortraitLayout() -> 1f
+                    wide -> 0.72f
+                    else -> 0.58f
+                }
             val panelMaxHeight = (maxHeight - 16.dp).coerceAtLeast(240.dp)
 
             Surface(
@@ -392,9 +407,18 @@ internal fun UnifiedActivity.GameSettingsDialogFrame(
                     .windowInsetsPadding(WindowInsets.navigationBars),
             contentAlignment = Alignment.Center,
         ) {
+            val dialogMaxWidth = (maxWidth - 32.dp).coerceAtLeast(200.dp)
             val widthModifier =
                 if (wide) {
-                    Modifier.widthIn(min = 320.dp, max = (maxWidth - 32.dp).coerceAtMost(560.dp))
+                    // coerceAtMost can drop the max below the 320 dp min on a narrow screen,
+                    // and then min wins and the dialog is wider than its parent.
+                    val wideMax = dialogMaxWidth.coerceAtMost(560.dp)
+                    Modifier.widthIn(min = minOf(320.dp, wideMax), max = wideMax)
+                } else if (isCompactWidth()) {
+                    // The narrow frame is the per-game settings dialog for every tab but
+                    // CloudSaves; capped at 280 dp inside a 400 dp window its label/control
+                    // rows lose the label entirely.
+                    Modifier.fillMaxWidth().widthIn(max = dialogMaxWidth)
                 } else {
                     Modifier.widthIn(min = 200.dp, max = 280.dp)
                 }
@@ -756,7 +780,7 @@ internal fun UnifiedActivity.HeroBootDialog(
             title = title,
             icon = Icons.Outlined.DesktopWindows,
             accentColor = Accent,
-            modifier = Modifier.widthIn(min = 220.dp, max = 290.dp),
+            modifier = Modifier.widthIn(min = 220.dp, max = 360.dp),
             content = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -1707,6 +1731,9 @@ internal fun UnifiedActivity.GOGGameSettingsDialog(
 internal fun UnifiedActivity.LibraryGameDetailDialog(
     app: SteamApp,
     gogGame: GOGGame? = null,
+    storeOptions: List<LibraryStoreOption> = emptyList(),
+    activeStore: InstallStore? = null,
+    onSelectStore: (LibraryStoreOption) -> Unit = {},
     onDismissRequest: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -1741,6 +1768,20 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                 ?.substringBefore(".itch.io")
                 ?.takeIf { it.isNotBlank() }
         }
+
+    // Only a Steam install can be relocated here; the other stores own their own install paths.
+    val canMoveStorage = !isCustom && !isEpic && !isGog
+    var moveRefreshKey by remember(app.id) { mutableStateOf(0) }
+    var movePlan by remember(app.id) { mutableStateOf<LibraryStorageMove.Plan?>(null) }
+    var moveConfirmVisible by remember(app.id) { mutableStateOf(false) }
+    LaunchedEffect(app.id, canMoveStorage, moveRefreshKey) {
+        movePlan =
+            if (!canMoveStorage) {
+                null
+            } else {
+                withContext(Dispatchers.IO) { LibraryStorageMove.plan(context, app.id) }
+            }
+    }
 
     var steamBranches by remember(app.id) { mutableStateOf<List<StoreBranchOption>>(emptyList()) }
     var selectedSteamBranch by remember(app.id) { mutableStateOf(STEAM_DEFAULT_BRANCH) }
@@ -1987,6 +2028,17 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
     val totalPlaytime = playtimePrefs.getLong("${searchKey}_playtime", 0L)
     val playCount = playtimePrefs.getInt("${searchKey}_play_count", 0)
 
+    val itchStoreName = stringResource(R.string.itch_store_title)
+    val launchStoreOptions =
+        remember(storeOptions, itchStoreName) {
+            storeOptions.map { option ->
+                LaunchStoreOption(
+                    id = option.store.id,
+                    label = libraryStoreDisplayName(option.store, itchStoreName),
+                )
+            }
+        }
+
     val sourceLabel =
         when {
             isGog -> "GOG"
@@ -2003,31 +2055,22 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
             else -> "Steam"
         }
 
-    // Install path
-    val installPath =
-        remember(app, gogGame) {
+    val installPath by produceState("", app, gogGame, epicGame) {
+        value =
             when {
-                isGog -> {
-                    gogGame!!.installPath
-                }
-
-                isEpic -> {
-                    epicGame?.installPath ?: ""
-                }
-
-                isCustom -> {
-                    app.gameDir
-                }
-
-                else -> {
-                    try {
-                        SteamService.getAppDirPath(app.id)
-                    } catch (_: Exception) {
-                        ""
+                isGog -> gogGame!!.installPath
+                isEpic -> epicGame?.installPath ?: ""
+                isCustom -> app.gameDir
+                else ->
+                    withContext(Dispatchers.IO) {
+                        try {
+                            SteamService.getAppDirPath(app.id)
+                        } catch (_: Exception) {
+                            ""
+                        }
                     }
-                }
             }
-        }
+    }
 
     // Install size (computed async)
     val installSizeText by produceState<String?>(initialValue = null, key1 = installPath) {
@@ -2280,7 +2323,7 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
             ),
     ) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().controllerConfirmOnA(),
             shape = RectangleShape,
             color = Color.Black,
         ) {
@@ -2329,7 +2372,9 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                                 color = TextSecondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(end = 16.dp),
+                                // Unweighted, this measured at its full intrinsic width before
+                                // the weighted sub-screen title and starved it to nothing.
+                                modifier = Modifier.weight(1f, fill = false).padding(end = 16.dp),
                             )
                         }
                         HorizontalDivider(color = CardBorder, thickness = 0.5.dp)
@@ -2497,6 +2542,7 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                             if (showSaveTransfer) {
                                 androidx.compose.material3.AlertDialog(
                                     onDismissRequest = { showSaveTransfer = false },
+                                    modifier = Modifier.controllerConfirmOnA(),
                                     title = { androidx.compose.material3.Text(stringResource(R.string.retro_save_transfer_title)) },
                                     text = { androidx.compose.material3.Text(stringResource(R.string.retro_save_transfer_message)) },
                                     confirmButton = {
@@ -2552,6 +2598,13 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                                 appName = launchAppName,
                                 subtitle = subtitle,
                                 sourceLabel = sourceLabel,
+                                storeOptions = launchStoreOptions,
+                                selectedStoreId = activeStore?.id.orEmpty(),
+                                onSelectStore = { storeId ->
+                                    storeOptions
+                                        .firstOrNull { it.store.id == storeId }
+                                        ?.let(onSelectStore)
+                                },
                                 heroImageUrl = heroImageUrl,
                                 customHeroImageCacheKey = customHeroImageCacheKey,
                                 releaseDateEpochSeconds = app.releaseDate,
@@ -2750,6 +2803,8 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                                         isGog -> !hasBlockingGogDownloadForLibrary
                                         else -> !hasBlockingSteamDownloadForLibrary
                                     },
+                                moveTarget = movePlan?.target,
+                                onMoveGame = { moveConfirmVisible = movePlan != null },
                                 onVerifyFiles = {
                                     context.runIfOnlineOrToast {
                                         scope.launch {
@@ -3277,6 +3332,74 @@ internal fun UnifiedActivity.LibraryGameDetailDialog(
                     onDismissRequest = { showWorkshopDialog = false },
                 )
             }
+
+            movePlan?.let { plan ->
+                val toAppStorage = plan.target == LibraryStorageMove.Target.APP_STORAGE
+                LaunchDangerConfirmDialog(
+                    visible = moveConfirmVisible,
+                    title =
+                        stringResource(
+                            if (toAppStorage) {
+                                R.string.library_games_move_to_app_storage_title
+                            } else {
+                                R.string.library_games_move_to_download_folder_title
+                            },
+                        ),
+                    message =
+                        stringResource(
+                            if (toAppStorage) {
+                                R.string.library_games_move_to_app_storage_confirm
+                            } else {
+                                R.string.library_games_move_to_download_folder_confirm
+                            },
+                            app.name,
+                        ),
+                    confirmLabel = stringResource(R.string.common_ui_move),
+                    icon = Icons.Outlined.DriveFileMove,
+                    accentColor = LaunchAccent,
+                    onDismissRequest = { moveConfirmVisible = false },
+                    onConfirm = {
+                        moveConfirmVisible = false
+                        startLibraryStorageMove(plan, app.name) { moveRefreshKey++ }
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Runs a [LibraryStorageMove] behind a progress popup. The popup is the only thing holding the
+ * activity, so it is closed on every path out; [onMoved] refreshes the entry's move offer so the
+ * menu immediately names the other direction.
+ */
+private fun UnifiedActivity.startLibraryStorageMove(
+    plan: LibraryStorageMove.Plan,
+    appName: String,
+    onMoved: () -> Unit,
+) {
+    val popup = ContainerProgressPopup(this, R.string.library_games_moving, indeterminate = false)
+    popup.show()
+    lifecycleScope.launch {
+        val result =
+            LibraryStorageMove.move(applicationContext, plan) { copied, total ->
+                if (total > 0L) popup.setProgress(((copied * 100L) / total).toInt())
+            }
+        popup.close()
+        if (result.isSuccess) {
+            onMoved()
+            PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(plan.appId))
+            com.winlator.cmod.shared.ui.toast.WinToast.show(
+                this@startLibraryStorageMove,
+                getString(R.string.library_games_move_done, appName),
+                android.widget.Toast.LENGTH_SHORT,
+            )
+        } else {
+            com.winlator.cmod.shared.ui.toast.WinToast.show(
+                this@startLibraryStorageMove,
+                getString(R.string.library_games_move_failed, appName),
+                android.widget.Toast.LENGTH_LONG,
+            )
         }
     }
 }

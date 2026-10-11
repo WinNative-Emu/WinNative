@@ -2,6 +2,7 @@ package com.winlator.cmod.runtime.display.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.ViewGroup;
@@ -9,6 +10,8 @@ import android.widget.FrameLayout;
 import com.winlator.cmod.runtime.display.renderer.RenderCallback;
 import com.winlator.cmod.runtime.display.renderer.VulkanRenderer;
 import com.winlator.cmod.runtime.display.xserver.XServer;
+import com.winlator.cmod.runtime.system.LogManager;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 
@@ -45,6 +48,8 @@ public class XServerSurfaceView extends SurfaceView implements SurfaceHolder.Cal
 
     private volatile int width;
     private volatile int height;
+
+    private String TAG = "XServerSurfaceView";
 
     public XServerSurfaceView(Context context, XServer xServer) {
         super(context);
@@ -103,14 +108,18 @@ public class XServerSurfaceView extends SurfaceView implements SurfaceHolder.Cal
             paused = false;
             renderRequested = true;
             renderLock.notifyAll();
+//            LogManager.log(TAG, "onResume: inside [synchronized (renderLock)]");
         }
+        LogManager.log(TAG, "onResume called");
     }
 
     public void onPause() {
         synchronized (renderLock) {
             paused = true;
             renderLock.notifyAll();
+//            LogManager.log(TAG, "onPause: inside [synchronized (renderLock)]");
         }
+        LogManager.log(TAG, "onPause called");
     }
 
     // --- SurfaceHolder.Callback ----------------------------------------------
@@ -123,9 +132,11 @@ public class XServerSurfaceView extends SurfaceView implements SurfaceHolder.Cal
             surfaceReady = false;
             width = 0;
             height = 0;
+//            LogManager.log(TAG, "surfaceCreated: inside [synchronized (renderLock)]");
         }
         renderer.attachSurface(holder.getSurface());
         startRenderThreadIfNeeded();
+        LogManager.log(TAG, "surfaceCreated called");
     }
 
     private void joinRetiringRenderThread() {
@@ -147,6 +158,7 @@ public class XServerSurfaceView extends SurfaceView implements SurfaceHolder.Cal
                 width = 0;
                 height = 0;
                 renderLock.notifyAll();
+//                LogManager.log(TAG, "surfaceChanged: inside [synchronized (renderLock)] return");
             }
             return;
         }
@@ -159,7 +171,9 @@ public class XServerSurfaceView extends SurfaceView implements SurfaceHolder.Cal
             surfaceReady = true;
             renderRequested = true;
             renderLock.notifyAll();
+//            LogManager.log(TAG, "surfaceChanged: inside [synchronized (renderLock)] second");
         }
+        LogManager.log(TAG, "surfaceChanged called");
     }
 
     @Override
@@ -169,10 +183,12 @@ public class XServerSurfaceView extends SurfaceView implements SurfaceHolder.Cal
             width = 0;
             height = 0;
             renderLock.notifyAll();
+//            LogManager.log(TAG, "surfaceDestroyed: inside [synchronized (renderLock)]");
         }
         // Run the render thread one more iteration so it sees surfaceReady=false and exits.
         stopRenderThread();
         renderer.detachSurface();
+        LogManager.log(TAG, "surfaceDestroyed called");
     }
 
     // --- Render thread -------------------------------------------------------

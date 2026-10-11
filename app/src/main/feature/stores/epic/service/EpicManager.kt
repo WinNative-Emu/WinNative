@@ -1,5 +1,7 @@
 package com.winlator.cmod.feature.stores.epic.service
 import android.content.Context
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.epic.data.EpicGame
 import com.winlator.cmod.feature.stores.epic.db.dao.EpicGameDao
 import com.winlator.cmod.feature.stores.steam.enums.Marker
@@ -260,6 +262,11 @@ class EpicManager
                 val allGames = epicGameDao.getAllAsList()
 
                 for (game in allGames) {
+                    if (game.isInstalled && InstallOwnership.isForeign(game.installPath, InstallStore.EPIC)) {
+                        epicGameDao.update(game.copy(isInstalled = false, installPath = ""))
+                        continue
+                    }
+
                     if (
                         game.isInstalled &&
                         game.installPath.isNotEmpty() &&
@@ -285,6 +292,7 @@ class EpicManager
                         candidatePaths.firstOrNull { installPath ->
                             installPath.isNotBlank() &&
                                 File(installPath).isDirectory &&
+                                !InstallOwnership.isForeign(installPath, InstallStore.EPIC) &&
                                 MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER) &&
                                 !MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                         } ?: continue

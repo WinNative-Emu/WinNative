@@ -301,7 +301,9 @@ public final class RefreshRateUtils {
   public static void applyPreferredRefreshRate(Activity activity, int requestedHz, int fpsLimit) {
     if (activity.isFinishing() || activity.isDestroyed()) return;
 
-    if (com.winlator.cmod.shared.framegen.FrameGen.INSTANCE.getRequested()) {
+    // Retro sessions share this process; what one left armed says nothing about a PC session's panel.
+    if (com.winlator.cmod.shared.framegen.FrameGen.INSTANCE.getRequested()
+        && !(activity instanceof com.winlator.cmod.runtime.display.XServerDisplayActivity)) {
       com.winlator.cmod.shared.framegen.FrameGen.applyDisplayMode(activity);
       return;
     }

@@ -212,6 +212,9 @@ fun SettingsHost(
                     popExitTransition = { fadeOut(tween(250, easing = androidx.compose.animation.core.FastOutSlowInEasing)) },
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    composable(SettingsRoutes.fromNavItem(SettingsNavItem.DEVICE_PROFILE)) {
+                        com.winlator.cmod.feature.settings.device.DeviceProfileScreen(bridge = bridge)
+                    }
                     composable(SettingsRoutes.fromNavItem(SettingsNavItem.CONTAINERS)) {
                         AndroidFragment<ContainersFragment>()
                     }
@@ -252,6 +255,9 @@ fun SettingsHost(
                     }
                     composable(SettingsRoutes.fromNavItem(SettingsNavItem.SUPPORT)) {
                         com.winlator.cmod.feature.settings.support.SupportScreen(bridge = bridge)
+                    }
+                    composable(SettingsRoutes.fromNavItem(SettingsNavItem.ABOUT)) {
+                        com.winlator.cmod.feature.settings.about.AboutScreen(bridge = bridge)
                     }
                 }
             }

@@ -3,4 +3,7 @@
     <plurals name="github_repo_asset_count">
         <item quantity="other">%d 个 ZIP 文件</item>
     </plurals>
+    <plurals name="retro_engine_badges">
+        <item quantity="other">%d 个徽章</item>
+    </plurals>
 </resources>

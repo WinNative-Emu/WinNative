@@ -3,6 +3,8 @@ import android.content.Context
 import android.util.Log
 import com.winlator.cmod.app.db.download.DownloadRecord
 import com.winlator.cmod.app.service.download.DownloadCoordinator
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.epic.data.EpicGame
 import com.winlator.cmod.feature.stores.epic.service.manifest.ChunkInfo
 import com.winlator.cmod.feature.stores.epic.service.manifest.ChunkPart
@@ -309,6 +311,7 @@ class EpicDownloadManager
                     }
                     MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     MarkerUtils.addMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    InstallOwnership.claim(installPath, InstallStore.EPIC)
 
                     // Update database with install info after the completion marker exists.
                     try {

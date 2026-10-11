@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -356,6 +357,9 @@ internal fun RetroAchievementsScreen(
                         Modifier
                             .background(Scrim.copy(alpha = 0.62f))
                             .windowInsetsPadding(WindowInsets.systemBars)
+                            // Fixed-height dialog: without this the keyboard hides the
+                            // login form and its submit button.
+                            .imePadding()
                     },
                 )
                 .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onClose() },
@@ -372,7 +376,7 @@ internal fun RetroAchievementsScreen(
             modifier =
                 Modifier
                     .then(if (floatingOverGame) Modifier.padding(24.dp) else Modifier)
-                    .widthIn(min = 320.dp, max = dialogWidth)
+                    .widthIn(min = minOf(320.dp, dialogWidth), max = dialogWidth)
                     .fillMaxWidth()
                     .then(
                         if (floatingOverGame) {

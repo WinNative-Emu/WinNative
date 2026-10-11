@@ -33,7 +33,8 @@ object EpicGameLauncher {
      * Returns a list of command-line arguments to pass to the game executable for Epic Games
      * Services authentication. When [container] is non-null and the game requires an ownership
      * token, the token is materialised inside the container's Wine prefix and referenced as a
-     * Windows-style path; without a container the token cannot be delivered to DRM titles.
+     * Windows-style path; without a container the token cannot be delivered to DRM titles, unless
+     * [stageOwnershipToken] writes it where the game can reach it and returns that path.
      */
     suspend fun buildLaunchParameters(
         context: Context,
@@ -41,6 +42,7 @@ object EpicGameLauncher {
         offline: Boolean = false,
         languageCode: String = "en-US",
         container: Container? = null,
+        stageOwnershipToken: ((hex: String) -> String)? = null,
     ): Result<List<String>> =
         try {
             val params = mutableListOf<String>()
@@ -51,10 +53,10 @@ object EpicGameLauncher {
                     Result.success(params)
                 } else {
                     Timber.tag("EPIC").w("${game.appName} cannot run offline, will attempt online launch")
-                    buildOnlineLaunch(context, game, languageCode, container, params)
+                    buildOnlineLaunch(context, game, languageCode, container, stageOwnershipToken, params)
                 }
             } else {
-                buildOnlineLaunch(context, game, languageCode, container, params)
+                buildOnlineLaunch(context, game, languageCode, container, stageOwnershipToken, params)
             }
         } catch (e: Exception) {
             Timber.tag("EPIC").e(e, "Failed to build launch parameters")
@@ -66,6 +68,7 @@ object EpicGameLauncher {
         game: EpicGame,
         languageCode: String,
         container: Container?,
+        stageOwnershipToken: ((hex: String) -> String)?,
         params: MutableList<String>,
     ): Result<List<String>> {
         Timber.tag("EPIC").d("Launching ${game.appName} online, getting game launch token...")
@@ -97,14 +100,18 @@ object EpicGameLauncher {
         // verify ownership at startup.
         val ownershipTokenPath: String? =
             gameToken.ownershipToken?.let { hex ->
-                if (container == null) {
-                    Timber.tag("EPIC").w(
-                        "Ownership token requested for ${game.appName} but no container was supplied; " +
-                            "DRM verification will be skipped",
-                    )
-                    null
-                } else {
-                    saveOwnershipTokenToPrefix(container, game.namespace, game.catalogId, hex)
+                when {
+                    // A caller that runs the game outside a container of ours - the Linux Steam
+                    // client does - says where the token goes and what path reads it back.
+                    stageOwnershipToken != null -> stageOwnershipToken(hex)
+                    container == null -> {
+                        Timber.tag("EPIC").w(
+                            "Ownership token requested for ${game.appName} but no container was supplied; " +
+                                "DRM verification will be skipped",
+                        )
+                        null
+                    }
+                    else -> saveOwnershipTokenToPrefix(container, game.namespace, game.catalogId, hex)
                 }
             }
 

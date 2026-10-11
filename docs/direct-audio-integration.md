@@ -83,12 +83,25 @@ All host-side logic lives in
 
 Two axes decide which bundled build is installed:
 
-- **Wine ABI** — one Wine-11 build serves Proton 11.0-1 / -3 / -5 / -6 (ABI-interchangeable);
-  Proton 10.0-4 needs the separate wine10 build. Anything else is reported unsupported rather
-  than guessed at.
-- **Kernel page size** — `sdk35` for a 16 KB-page kernel, `sdk28` for the classic 4 KB, read via
-  `Os.sysconf(_SC_PAGESIZE)`. Loading the wrong one fails to map. Nothing else in the app needed
-  page size before, so the check is new.
+- **mmdevapi unixlib ABI** — the driver plugs straight into mmdevapi's unixlib table, so the
+  build that fits is a property of the Proton binary, not of its version string. Both the driver
+  and every Proton's own `winealsa.so` export `__wine_unix_call_funcs`, whose size is that table:
+  **36** entries for Proton 9.0 and 10.0-4, **37** for Proton 11.x. `DirectAudioDriver` reads the
+  count out of `<layer>/lib/wine/aarch64-unix/winealsa.so` and picks the bundled build whose own
+  unixlib reports the same count. No version parsing, so custom, GE and beta Protons work on the
+  same footing as the stock ones, and a Proton whose table matches neither build is refused
+  instead of being handed a mismatched driver.
+- **Kernel page size** — `sdk35` for a 16 KB-page kernel (`p_align` 0x4000), `sdk28` for the
+  classic 4 KB (0x1000), read via `Os.sysconf(_SC_PAGESIZE)`. Loading the wrong one fails to map.
+  Nothing else in the app needed page size before, so the check is new.
+
+The `wine10`/`wine11` asset names are historical — the wine10 build serves Proton 9.0 as well,
+which the old version table refused outright.
+
+A Wine 11 `.drv` has **no PE export table**, and that is correct: Wine 11's own `winealsa.drv`
+and `winepulse.drv` have exactly the same shape, because the `.drv` is a generic unixlib host
+there and the driver logic lives entirely in the `.so`. Only Wine 10 and earlier resolve
+`get_device_guid` / `get_device_name_from_guid` through PE exports.
 
 The complete 3-file set is then overlaid onto the container's Wine layer, stamped by bundled
 version + variant so it is a no-op on every launch after the first:
@@ -154,6 +167,31 @@ above.
 the backend — `Software\Wine\Drivers` → `Audio` = `directaudio`. Selecting DirectAudio adds no
 environment component and opens no socket, because there is no daemon to start.
 
+That registry key is the whole activation, so it must never name a driver that is not on disk:
+`mmdevapi` fails its `LoadLibraryW`, `CoCreateInstance(MMDeviceEnumerator)` fails with it, and a
+title that initialises audio while loading does not start at all. The failure looks like a hung
+launch, not like a missing sound device.
+
+`resolveAudioDriver()` therefore runs the overlay **before** the registry is written and, when it
+cannot complete, drops the launch back to `Container.DEFAULT_AUDIO_DRIVER` — the registry then
+names PulseAudio, the PulseAudio component is added like any other launch, and a toast says why.
+The container's own saved choice is untouched, so the next launch retries the install.
+
+`install()` reports that honestly: no bundled build matching the layer's unixlib ABI, a failed
+stage into the prefix, or a unixlib with neither `libaaudio.so` nor `libwaudio.so` in its dynamic
+section all return `false` rather than logging and returning success. A refused driver is also
+deleted from `system32`/`syswow64`, so a prefix staged by an earlier build does not keep a dead
+`winedirectaudio.drv` around.
+
+Order matters: `resolveAudioDriver()` runs **after** `setupWineSystemFiles()`, because
+`ensureWinePrefixReady()` can move a broken `.wine` aside and extract a fresh prefix. Staging
+the driver before that would put it in the directory that is about to become
+`.wine.broken-backup`.
+
+The version it is asked about must be the Wine **identifier** (`proton-11.0-6-arm64ec`), not
+`WineInfo.fullVersion()` (`11.0-6`) — `wineAbiTag()` requires the `arm64ec` arch in the string and
+rejects everything else, so passing the bare version makes every install fail.
+
 ### Microphone opt-in
 
 The toggle is per container and per shortcut (extra `directAudioMic`), surfaced in the audio
@@ -182,6 +220,37 @@ Upstream validated a real microphone recording and TF2's Options → Voice mic-t
 AYANEO Pocket FIT (Adreno 750, Android 14). Reproduce that first.
 
 ---
+
+## GameScope sessions
+
+A GameScope container runs Valve's ARM64 Proton under glibc, where the bionic unixlib cannot load
+and there is no `libaaudio` to call. The driver's source is the same; what changes is who opens
+the stream.
+
+- `tools/linuxfs/directaudio/build-directaudio.sh` builds upstream's `directaudio.c`, unmodified,
+  for aarch64 glibc against the headers of Valve's Wine 11 (pinned commit), and links it with
+  `wn_aaudio_client.c`: the 27 `AAudio_*` entry points, implemented as a client of the app. The
+  result ships as `assets/directaudio/linux/winedirectaudio.so`; the two PE halves are upstream's
+  own, taken from the `wine11` archive.
+- `DirectAudioHost` (`libwnaudiohost.so`) listens on a unix socket inside the session. One
+  connection is one stream: open/start/stop/close go over the socket, the PCM goes through a ring
+  in `ASharedMemory` whose descriptor rides on the open reply, and the real AAudio data callback
+  wakes the client's pump thread through a futex after every burst. The protocol is
+  `app/src/main/cpp/wnaudiohook/wn_aaudio_protocol.h`.
+- PulseAudio always runs in these sessions, because the Steam client and native games know
+  nothing else. DirectAudio only takes the Windows games.
+- `winnative-directaudio <steam root> on|off` runs at session start. It copies the driver into
+  every Proton whose `winealsa.so` walks the same unixlib table (37 entries today; the x86 Proton
+  has no `aarch64-unix` and is left alone), and writes or removes `Audio=directaudio` in each
+  prefix that Proton runs, templates included. With the driver off the value is removed, so a
+  prefix never names a driver its session cannot serve.
+- Capture is refused by the host unless the mic opt-in and `RECORD_AUDIO` both hold, the same
+  gate as a Wine session.
+
+Measured on a RedMagic (Brawlhalla, 48 kHz float stereo): no underruns after the stream's first
+half second, 76 ms reported track latency against 116 ms for the PulseAudio track beside it. That
+device denies `AUDIO_OUTPUT_FLAG_FAST` to every app track, this one included, so the burst is
+960 frames; a device that grants it gets the fast mixer with no change here.
 
 ## Known gaps
 

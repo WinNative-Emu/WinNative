@@ -145,10 +145,11 @@ object StoreArtworkCache {
         epicGame: EpicGame?,
         useLibraryCapsule: Boolean,
         listMode: Boolean,
+        preferWide: Boolean = false,
     ): ArtworkRef? =
         when {
-            gogGame != null -> gogPrimaryRef(gogGame)
-            epicGame != null -> epicPrimaryRef(epicGame)
+            gogGame != null -> gogPrimaryRef(gogGame, preferWide)
+            epicGame != null -> epicPrimaryRef(epicGame, preferWide)
             app.id < 0 -> null
             else -> {
                 val slot: String
@@ -161,6 +162,10 @@ object StoreArtworkCache {
                     useLibraryCapsule -> {
                         slot = "library_capsule"
                         url = app.getLibraryCapsuleUrl()
+                    }
+                    preferWide -> {
+                        slot = "header"
+                        url = app.getHeaderImageUrl()
                     }
                     else -> {
                         slot = "capsule"
@@ -191,8 +196,12 @@ object StoreArtworkCache {
             ArtworkRef("epic", game.id.toString(), "hero", game.artPortrait),
         ).filter { it.url.isNotBlank() }
 
-    fun epicPrimaryRef(game: EpicGame): ArtworkRef? =
+    fun epicPrimaryRef(
+        game: EpicGame,
+        preferWide: Boolean = false,
+    ): ArtworkRef? =
         when {
+            preferWide && game.artPortrait.isNotBlank() -> ArtworkRef("epic", game.id.toString(), "hero", game.artPortrait)
             game.artCover.isNotBlank() -> ArtworkRef("epic", game.id.toString(), "cover", game.artCover)
             game.artSquare.isNotBlank() -> ArtworkRef("epic", game.id.toString(), "square", game.artSquare)
             game.artLogo.isNotBlank() -> ArtworkRef("epic", game.id.toString(), "logo", game.artLogo)
@@ -213,8 +222,12 @@ object StoreArtworkCache {
             ArtworkRef("gog", game.id, "icon", game.iconUrl),
         ).filter { it.url.isNotBlank() }
 
-    fun gogPrimaryRef(game: GOGGame): ArtworkRef? =
+    fun gogPrimaryRef(
+        game: GOGGame,
+        preferWide: Boolean = false,
+    ): ArtworkRef? =
         when {
+            preferWide && game.heroImageUrl.isNotBlank() -> ArtworkRef("gog", game.id, "hero", game.heroImageUrl)
             game.imageUrl.isNotBlank() -> ArtworkRef("gog", game.id, "cover", game.imageUrl)
             game.iconUrl.isNotBlank() -> ArtworkRef("gog", game.id, "icon", game.iconUrl)
             else -> null

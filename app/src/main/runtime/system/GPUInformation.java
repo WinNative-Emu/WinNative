@@ -4,6 +4,7 @@ import android.content.Context;
 import java.util.Locale;
 
 public abstract class GPUInformation {
+  private static final Object PROBE_LOCK = new Object();
 
   public static boolean isAdrenoGPU(Context context) {
     return getRenderer(null, context).toLowerCase(Locale.ROOT).contains("adreno");
@@ -17,13 +18,37 @@ public abstract class GPUInformation {
     return !renderer.toLowerCase(Locale.ROOT).contains("unknown");
   }
 
-  public static native String getVulkanVersion(String driverName, Context context);
+  public static String getVulkanVersion(String driverName, Context context) {
+    synchronized (PROBE_LOCK) {
+      return getVulkanVersionNative(driverName, context);
+    }
+  }
 
-  public static native int getVendorID(String driverName, Context context);
+  public static int getVendorID(String driverName, Context context) {
+    synchronized (PROBE_LOCK) {
+      return getVendorIDNative(driverName, context);
+    }
+  }
 
-  public static native String getRenderer(String driverName, Context context);
+  public static String getRenderer(String driverName, Context context) {
+    synchronized (PROBE_LOCK) {
+      return getRendererNative(driverName, context);
+    }
+  }
 
-  public static native String[] enumerateExtensions(String driverName, Context context);
+  public static String[] enumerateExtensions(String driverName, Context context) {
+    synchronized (PROBE_LOCK) {
+      return enumerateExtensionsNative(driverName, context);
+    }
+  }
+
+  private static native String getVulkanVersionNative(String driverName, Context context);
+
+  private static native int getVendorIDNative(String driverName, Context context);
+
+  private static native String getRendererNative(String driverName, Context context);
+
+  private static native String[] enumerateExtensionsNative(String driverName, Context context);
 
   static {
     System.loadLibrary("winlator");

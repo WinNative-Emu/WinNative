@@ -119,8 +119,8 @@ void* CreateInterface(const char* version_name, int* return_code) {
         if (return_code) *return_code = 0;
         return getter();
     };
-    if (void* p = dispatch_iface("SteamMatchMaking",  16, wn_libsteamclient::wn_get_isteam_matchmaking))         return p;
     if (void* p = dispatch_iface("SteamMatchMakingServers", 23, wn_libsteamclient::wn_get_isteam_matchmaking_servers)) return p;
+    if (void* p = dispatch_iface("SteamMatchMaking",  16, wn_libsteamclient::wn_get_isteam_matchmaking))         return p;
     if (void* p = dispatch_iface("SteamUser",         9,  wn_libsteamclient::wn_get_isteam_user))                return p;
     if (void* p = dispatch_iface("SteamFriends",      12, wn_libsteamclient::wn_get_isteam_friends))             return p;
     if (void* p = dispatch_iface("SteamUtils",        10, wn_libsteamclient::wn_get_isteam_utils))               return p;

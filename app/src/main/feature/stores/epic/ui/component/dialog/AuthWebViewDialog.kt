@@ -8,6 +8,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
@@ -97,7 +98,9 @@ fun AuthWebViewDialog(
                     },
                 ) { paddingValues ->
                     AndroidView(
-                        modifier = Modifier.padding(paddingValues),
+                        // Full-screen dialog: nothing else consumes the IME inset, so the
+                        // keyboard would cover the password field and the sign-in button.
+                        modifier = Modifier.padding(paddingValues).imePadding(),
                         factory = { context ->
                             WebView(context).apply {
                                 layoutParams =

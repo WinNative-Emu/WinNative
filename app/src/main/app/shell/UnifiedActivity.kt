@@ -1,5 +1,10 @@
 package com.winlator.cmod.app.shell
 
+import com.winlator.cmod.runtime.input.controls.SteamControllerBackend
+import com.winlator.cmod.runtime.input.controls.SteamControllerPointer
+import com.winlator.cmod.runtime.input.controls.SteamControllerNavigation
+import com.winlator.cmod.runtime.input.controls.SteamControllerInputRouter
+import com.winlator.cmod.runtime.input.controls.SteamControllerPrefs
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.Intent
@@ -425,8 +430,16 @@ class UnifiedActivity :
 
     val storeHeaderVisible = kotlinx.coroutines.flow.MutableStateFlow(true)
 
+    // Must agree with the grid itself, which uses DeviceProfileSettings.libraryColumns with the
+    // current orientation. gridColumnsForWidth ignores orientation, so on a profile that varies
+    // by orientation the controller's focus index addressed a different cell than the one drawn.
     internal val storeColumns: Int
-        get() = com.winlator.cmod.shared.ui.gridColumnsForWidth(resources.configuration.screenWidthDp)
+        get() =
+            com.winlator.cmod.app.config.DeviceProfileSettings.libraryColumns(
+                this,
+                resources.configuration.screenWidthDp,
+                resources.configuration.screenHeightDp > resources.configuration.screenWidthDp,
+            )
 
     var storeGridState: androidx.compose.foundation.lazy.grid.LazyGridState? = null
 
@@ -478,6 +491,67 @@ class UnifiedActivity :
     }
 
     // Avoid fragment tree traversal on every input event.
+    private var steamMenuBackend: SteamControllerBackend? = null
+    private val steamPointer by lazy { SteamControllerPointer(this) }
+    private val steamNavigation = SteamControllerNavigation({
+        if (!com.winlator.cmod.shared.ui.nav.ControllerWindowInput.dispatch(it) && window.decorView.hasWindowFocus()) {
+            dispatchKeyEvent(it)
+        }
+    }, false)
+
+    private val steamMenuListener by lazy {
+        SteamControllerInputRouter(steamNavigation, steamPointer)
+    }
+
+    fun attachSteamInputSettings(listener: SteamControllerBackend.Listener, captures: () -> Boolean) {
+        steamMenuListener.attach(listener, captures)
+        startSteamMenuInput()
+        publishSteamInputState()
+    }
+
+    fun detachSteamInputSettings(listener: SteamControllerBackend.Listener) {
+        if (steamMenuListener.detach(listener)) publishSteamInputState()
+    }
+
+    fun publishSteamInputState() {
+        steamMenuListener.prepareStateReplay()
+        steamMenuBackend?.publishCurrentState()
+    }
+
+    fun updateSteamTrackpadMode(mode: Int) {
+        steamPointer.clear()
+        steamMenuListener.leftTrackpadScroll = mode != SteamControllerBackend.TRACKPAD_MOUSE_LEFT &&
+            mode != SteamControllerBackend.TRACKPAD_MOUSE_BOTH
+        steamMenuBackend?.setTrackpadMouseMode(mode)
+    }
+
+    fun identifySteamInput(deviceId: Int) { steamMenuBackend?.rumble(deviceId, 0xFFFF, 0xFFFF, 320) }
+
+    fun restartSteamInput() {
+        stopSteamMenuInput()
+        startSteamMenuInput()
+    }
+
+    private fun startSteamMenuInput() {
+        if (!steamMenuListener.foreground || steamMenuBackend != null || isFinishing || isDestroyed) return
+        if (!SteamControllerPrefs.isEnabled(this)) return
+        val mode = SteamControllerPrefs.getTrackpadMouseMode(this)
+        steamMenuListener.leftTrackpadScroll = mode != SteamControllerBackend.TRACKPAD_MOUSE_LEFT &&
+            mode != SteamControllerBackend.TRACKPAD_MOUSE_BOTH
+        val backend = SteamControllerBackend(this, mode, null, steamMenuListener)
+        if (backend.start()) steamMenuBackend = backend
+    }
+
+    private fun stopSteamMenuInput() {
+        steamMenuBackend?.stop()
+        steamMenuBackend = null
+        steamNavigation.clear()
+        steamPointer.clear()
+    }
+
+    private fun isSteamShadow(device: android.view.InputDevice?): Boolean =
+        steamMenuListener.hasControllers && device?.vendorId == SteamControllerBackend.VALVE_VENDOR_ID
+
     private var cachedInputControlsFragment: InputControlsFragment? = null
     private val inputControlsFragmentTracker =
         object : androidx.fragment.app.FragmentManager.FragmentLifecycleCallbacks() {
@@ -485,18 +559,23 @@ class UnifiedActivity :
                 fm: androidx.fragment.app.FragmentManager,
                 f: androidx.fragment.app.Fragment,
             ) {
-                if (f is InputControlsFragment) cachedInputControlsFragment = f
+                if (f is InputControlsFragment) {
+                    cachedInputControlsFragment = f
+                }
             }
 
             override fun onFragmentPaused(
                 fm: androidx.fragment.app.FragmentManager,
                 f: androidx.fragment.app.Fragment,
             ) {
-                if (f is InputControlsFragment) cachedInputControlsFragment = null
+                if (f is InputControlsFragment) {
+                    cachedInputControlsFragment = null
+                }
             }
         }
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (isSteamShadow(event.device)) return true
         cachedInputControlsFragment?.let { fragment ->
             if (fragment.dispatchKeyEvent(event)) return true
         }
@@ -615,14 +694,26 @@ class UnifiedActivity :
     }
 
     override fun onPause() {
+        steamMenuListener.foreground = false
+        steamNavigation.clear()
+        steamPointer.clear()
+        publishSteamInputState()
         super.onPause()
         chasingBordersPaused.value = true
         UpdateService.stopHourlyLoop()
         UpdateService.cancelPostGameCheck()
     }
 
+    override fun onStop() {
+        stopSteamMenuInput()
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
+        steamMenuListener.foreground = true
+        startSteamMenuInput()
+        publishSteamInputState()
         settingsStickEngaged = 0
         joystickActive = false
         chasingBordersPaused.value = false
@@ -635,6 +726,8 @@ class UnifiedActivity :
 
         UpdateService.startHourlyLoop(this)
         processPendingRetroCloudBackup()
+        com.winlator.cmod.feature.storage.ExternalStorage
+            .refresh()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -644,6 +737,8 @@ class UnifiedActivity :
     }
 
     override fun onDestroy() {
+        steamMenuListener.foreground = false
+        stopSteamMenuInput()
         if (isFinishing && !isChangingConfigurations) {
             DownloadService.clearCompletedDownloads()
         }
@@ -655,6 +750,7 @@ class UnifiedActivity :
     }
 
     override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
+        if (isSteamShadow(event.device)) return true
         cachedInputControlsFragment?.let { fragment ->
             if (fragment.dispatchGenericMotionEvent(event)) return true
         }
@@ -989,6 +1085,7 @@ class UnifiedActivity :
     override fun onCreate(savedInstanceState: Bundle?) {
         instance = this
         super.onCreate(savedInstanceState)
+
         if (!SetupWizardActivity.isSetupComplete(this) || !ImageFs.find(this).isUpToDate) {
             startActivity(
                 Intent(this, SetupWizardActivity::class.java)
@@ -1004,6 +1101,9 @@ class UnifiedActivity :
 
         supportFragmentManager.registerFragmentLifecycleCallbacks(inputControlsFragmentTracker, true)
         com.winlator.cmod.runtime.display.GlassesManager.init(this)
+        lifecycleScope.launch(Dispatchers.IO) {
+            com.winlator.cmod.feature.library.LibraryCache.preload(applicationContext)
+        }
         bootstrapStartupState()
         maybeAutoSignInGoogleOnLaunch()
         processPendingRetroCloudBackup()
@@ -1016,6 +1116,7 @@ class UnifiedActivity :
                         com.winlator.cmod.feature.stores.common.Store.EPIC -> "Epic"
                         com.winlator.cmod.feature.stores.common.Store.GOG -> "GOG"
                         com.winlator.cmod.feature.stores.common.Store.STEAM -> "Steam"
+                        com.winlator.cmod.feature.stores.common.Store.ITCH -> "Itch.io"
                     }
                 when (event) {
                     is com.winlator.cmod.feature.stores.common.StoreSessionEvent.SessionExpired -> {

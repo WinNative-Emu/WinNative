@@ -5,4 +5,9 @@
         <item quantity="few">%d fișiere ZIP</item>
         <item quantity="other">%d fișiere ZIP</item>
     </plurals>
+    <plurals name="retro_engine_badges">
+        <item quantity="one">%d insignă</item>
+        <item quantity="few">%d insigne</item>
+        <item quantity="other">%d de insigne</item>
+    </plurals>
 </resources>

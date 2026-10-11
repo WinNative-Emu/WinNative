@@ -13,6 +13,12 @@ dependencyResolutionManagement {
         maven { url 'https://central.sonatype.com/repository/maven-snapshots/' }
         maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
         maven { url 'https://jitpack.io' }
+        exclusiveContent {
+            forRepository {
+                maven { url = uri("${rootDir}/vendor/maven") }
+            }
+            filter { includeGroup 'org.libsdl.android' }
+        }
     }
 }
 

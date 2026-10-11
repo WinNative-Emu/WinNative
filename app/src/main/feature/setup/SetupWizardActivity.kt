@@ -79,6 +79,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -116,7 +117,12 @@ import androidx.lifecycle.lifecycleScope
 import com.winlator.cmod.R
 import com.winlator.cmod.app.shell.UnifiedActivity
 import com.winlator.cmod.feature.settings.DriversFragment
+import com.winlator.cmod.feature.settings.linuxClientMessage
+import com.winlator.cmod.feature.settings.linuxClientStageLabel
 import com.winlator.cmod.feature.settings.ContainerSettingsComposeDialog
+import com.winlator.cmod.shared.ui.dialog.ContentDialog
+import com.winlator.cmod.runtime.linux.ChildProcessRestrictions
+import com.winlator.cmod.runtime.linux.LinuxClientInstaller
 import com.winlator.cmod.runtime.container.Container
 import com.winlator.cmod.runtime.container.ContainerCreation
 import com.winlator.cmod.runtime.container.ContainerManager
@@ -139,6 +145,8 @@ import java.io.File
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.core.content.edit
+import timber.log.Timber
 
 private data class Particle(
     val x: Float,
@@ -210,12 +218,15 @@ private suspend fun LazyListState.scrollToSelected(index: Int) {
 }
 
 class SetupWizardActivity : FixedFontScaleFragmentActivity() {
+    private var childProcessPromptShown = false
+
     companion object {
         private const val PREFS_NAME = "winnative_setup"
         private const val EXTRA_FORCE_SHOW = "force_show"
         private const val EXTRA_RETURN_TO_CALLER = "return_to_caller"
         private const val KEY_SETUP_COMPLETE = "setup_complete"
         private const val KEY_RECOMMENDED_COMPONENTS_DONE = "recommended_components_done"
+        private const val LAST_PAGE = 3
         private const val KEY_DRIVERS_VISITED = "drivers_visited"
         private const val KEY_DEFAULT_X86_CONTAINER_ID = "default_x86_container_id"
         private const val KEY_DEFAULT_ARM64_CONTAINER_ID = "default_arm64_container_id"
@@ -390,7 +401,7 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
         private fun isContainerUsable(
             contentsManager: ContentsManager,
             container: Container,
-        ): Boolean = isWineVersionInstalled(contentsManager, container.wineVersion)
+        ): Boolean = !container.isGamescopeRuntime && isWineVersionInstalled(contentsManager, container.wineVersion)
 
         private fun hasInstalledRuntimes(context: Context): Boolean = ContentsManager.hasInstalledRuntimes(context)
 
@@ -533,6 +544,8 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
             fallbackUrl = "https://github.com/nicholasx417/WinNative-Components/releases/download/Proton/Proton-10-arm64ec-coffincolors.wcp",
         )
 
+    private val TAG = "SetupWizardActivity";
+
     private val storageGranted = mutableStateOf(false)
     private val notifGranted = mutableStateOf(false)
     private val notifDenied = mutableStateOf(false)
@@ -593,7 +606,7 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
             notifDenied.value = !granted
             if (granted) {
                 backgroundSessionEnabled.value = true
-                prefs(this).edit().putBoolean("enable_background_session", true).apply()
+                prefs(this).edit { putBoolean("enable_background_session", true) }
             } else if (Build.VERSION.SDK_INT >= 33 &&
                 !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
             ) {
@@ -614,7 +627,7 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
 
     private fun advanceWizardPage() {
         val page = pageIndex.intValue
-        if (page < 2) {
+        if (page < LAST_PAGE) {
             val canGoNext = if (page == 0) storageGranted.value && imageFsDone.value else true
             if (canGoNext) pageIndex.intValue += 1
         } else if (!creatingContainer.value && transferState.value == null) {
@@ -890,7 +903,24 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
 
         storageGranted.value = hasStoragePermission()
         notifGranted.value = hasNotificationPermissionSilently()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {  // Enable background protection by default on Android 13+.
+            if (!androidx.preference.PreferenceManager.getDefaultSharedPreferences(this).contains("enable_background_session")) {
+                androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+                    .edit { putBoolean("enable_background_session", true) }
+                Timber.d("Android 14+ detected, background session protection enabled")
+            }
+        }
         backgroundSessionEnabled.value = prefs(this).getBoolean("enable_background_session", false)
+        if (Build.VERSION.SDK_INT >= 36) {
+            Timber.d("Android 16+ detected")
+            // If wakeLock preference isn't saved, enable it by default on Android 16+.
+            if (!androidx.preference.PreferenceManager.getDefaultSharedPreferences(this).contains("enable_background_wakelock")) {
+                androidx.preference.PreferenceManager.getDefaultSharedPreferences(this).edit {
+                    putBoolean("enable_background_wakelock", true)
+                }
+                Timber.d("Android 16+ wakeLock preference enabled")
+            }
+        }
         refreshWizardState()
         loadAdvancedProfiles()
 
@@ -1009,7 +1039,7 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
     private fun requestNotifications() {
         if (hasNotificationPermissionSilently()) {
             backgroundSessionEnabled.value = true
-            prefs(this).edit().putBoolean("enable_background_session", true).apply()
+            prefs(this).edit { putBoolean("enable_background_session", true) }
             return
         }
 
@@ -1541,12 +1571,13 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
     @Composable
     private fun SetupWizardScreen() {
         val page by pageIndex
-        val totalPages = 3
+        val totalPages = LAST_PAGE + 1
         val pageTitle =
             when (page) {
                 0 -> stringResource(R.string.setup_wizard_required_access)
-                1 -> stringResource(R.string.setup_wizard_select_components)
-                2 -> stringResource(R.string.setup_wizard_containers)
+                1 -> stringResource(R.string.setup_wizard_steam_client)
+                2 -> stringResource(R.string.setup_wizard_select_components)
+                3 -> stringResource(R.string.setup_wizard_containers)
                 else -> ""
             }
         val canGoNext =
@@ -1862,8 +1893,9 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
                         ) {
                             when (targetPage) {
                                 0 -> PagePermissions(isCompact)
-                                1 -> PageAdvancedComponents(isCompact)
-                                2 -> PageDefaultSettings()
+                                1 -> PageSteamClient(isCompact)
+                                2 -> PageAdvancedComponents(isCompact)
+                                3 -> PageDefaultSettings()
                             }
                         }
                     }
@@ -2285,6 +2317,134 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
                 notifCard(Modifier.weight(1f))
                 systemCard(Modifier.weight(1f))
             }
+        }
+    }
+
+    /**
+     * Said once the Linux client is on its way, because the install is the point at which the
+     * device's own limit starts to matter and there are minutes of download to act in.
+     */
+    private fun promptChildProcessRestrictions() {
+        if (childProcessPromptShown || !ChildProcessRestrictions.active(this)) return
+        childProcessPromptShown = true
+        if (!ChildProcessRestrictions.hasSwitch()) {
+            ContentDialog.alert(this, getString(R.string.linux_child_processes_adb), null)
+            return
+        }
+        ContentDialog.confirm(this, getString(R.string.linux_child_processes_message)) {
+            if (!ChildProcessRestrictions.openDeveloperOptions(this)) {
+                ContentDialog.alert(this, getString(R.string.linux_child_processes_adb), null)
+            }
+        }
+    }
+
+    /**
+     * Which Steam client the user is after. The Linux one is the install Settings > Stores offers,
+     * run from here and shared with it, so it goes on while the rest of the wizard is filled in;
+     * the Windows one is made of the components and the container of the pages that follow.
+     */
+    @Composable
+    private fun PageSteamClient(isCompact: Boolean) {
+        val region by navRegion
+        val navIdx by navIndex
+        val activate by activateSignal
+        val controller by controllerConnected
+        val client by LinuxClientInstaller.state.collectAsState()
+        val working = client as? LinuxClientInstaller.State.Working
+        val installed =
+            client is LinuxClientInstaller.State.Installed || client is LinuxClientInstaller.State.UpdateAvailable
+        val startLinuxClient = {
+            if (working == null && !installed && client !is LinuxClientInstaller.State.Blocked) {
+                LinuxClientInstaller.start(this)
+                promptChildProcessRestrictions()
+            }
+        }
+
+        LaunchedEffect(Unit) { LinuxClientInstaller.refresh(this@SetupWizardActivity) }
+        LaunchedEffect(isCompact) {
+            setTabCount(0)
+            setContentLayout(2, if (isCompact) 1 else 2)
+        }
+        val lastActivate = remember { mutableStateOf(activate) }
+        LaunchedEffect(activate) {
+            if (activate == lastActivate.value) return@LaunchedEffect
+            lastActivate.value = activate
+            if (region != REGION_CONTENT) return@LaunchedEffect
+            when (navIdx) {
+                0 -> startLinuxClient()
+                1 -> advanceWizardPage()
+            }
+        }
+
+        val linuxCard: @Composable (Modifier) -> Unit = { mod ->
+            WizardActionCard(
+                modifier = mod,
+                title = stringResource(R.string.linux_client_title),
+                subtitle =
+                    stringResource(
+                        if (working != null) linuxClientStageLabel(working.stage) else R.string.common_ui_optional,
+                    ),
+                completed = installed,
+                buttonLabel =
+                    when {
+                        installed -> stringResource(R.string.common_ui_installed)
+                        working != null && working.total > 0 -> "${working.done * 100 / working.total}%"
+                        working != null -> stringResource(linuxClientStageLabel(working.stage))
+                        client is LinuxClientInstaller.State.Failed || client is LinuxClientInstaller.State.NoSpace ->
+                            stringResource(R.string.linux_client_retry)
+                        else -> stringResource(R.string.common_ui_download)
+                    },
+                highlighted = controller && region == REGION_CONTENT && navIdx == 0,
+                onClick = { setNav(REGION_CONTENT, 0); startLinuxClient() },
+                enabled = working == null && client !is LinuxClientInstaller.State.Blocked,
+                progress = working?.let { if (it.total > 0) it.done.toFloat() / it.total else 0f },
+            )
+        }
+        val windowsCard: @Composable (Modifier) -> Unit = { mod ->
+            WizardActionCard(
+                modifier = mod,
+                title = stringResource(R.string.setup_wizard_windows_steam_client),
+                subtitle = stringResource(R.string.common_ui_optional),
+                completed = false,
+                buttonLabel = stringResource(R.string.common_ui_continue),
+                highlighted = controller && region == REGION_CONTENT && navIdx == 1,
+                onClick = { setNav(REGION_CONTENT, 1); advanceWizardPage() },
+            )
+        }
+        val message =
+            if (working != null) {
+                stringResource(R.string.setup_wizard_linux_client_continues)
+            } else {
+                linuxClientMessage(client).orEmpty()
+            }
+
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
+        ) {
+            if (isCompact) {
+                linuxCard(Modifier.fillMaxWidth())
+                windowsCard(Modifier.fillMaxWidth())
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    linuxCard(Modifier.weight(1f))
+                    windowsCard(Modifier.weight(1f))
+                }
+            }
+            Text(
+                text = message + "\n" + stringResource(R.string.setup_wizard_windows_steam_summary),
+                color = Color(0xFF8B949E),
+                fontFamily = InterFont,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+            )
         }
     }
 
@@ -2903,7 +3063,15 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.TopCenter,
             ) {
-                val gridColumns = 3
+                // Fixed at 3, a portrait window gave each card about 120 dp: the Create
+                // button took its intrinsic width and the weighted text column beside it was
+                // left with a few dp, wrapping "ARM64EC" one character per line.
+                val gridColumns =
+                    when {
+                        maxWidth < 420.dp -> 1
+                        maxWidth < 720.dp -> 2
+                        else -> 3
+                    }
                 val compactGrid = maxWidth < 720.dp || maxHeight < 280.dp
                 val region by navRegion
                 val navIdx by navIndex
@@ -3047,6 +3215,8 @@ class SetupWizardActivity : FixedFontScaleFragmentActivity() {
                         fontSize = if (compact) 8.sp else 9.sp,
                         letterSpacing = 1.sp,
                         fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Spacer(Modifier.height(if (compact) 1.dp else 3.dp))

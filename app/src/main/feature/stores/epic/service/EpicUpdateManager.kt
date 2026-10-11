@@ -3,6 +3,8 @@ package com.winlator.cmod.feature.stores.epic.service
 import android.content.Context
 import com.winlator.cmod.app.db.download.DownloadRecord
 import com.winlator.cmod.app.service.download.DownloadCoordinator
+import com.winlator.cmod.feature.stores.common.InstallOwnership
+import com.winlator.cmod.feature.stores.common.InstallStore
 import com.winlator.cmod.feature.stores.epic.data.EpicGame
 import com.winlator.cmod.feature.stores.epic.service.manifest.ChunkInfo
 import com.winlator.cmod.feature.stores.epic.service.manifest.EpicManifest
@@ -346,6 +348,7 @@ class EpicUpdateManager
 
             MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
             MarkerUtils.addMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            InstallOwnership.claim(installPath, InstallStore.EPIC)
             com.winlator.cmod.app.PluviaApp.events.emitJava(
                 com.winlator.cmod.feature.stores.steam.events.AndroidEvent.LibraryInstallStatusChanged(baseGame.id),
             )
@@ -354,6 +357,7 @@ class EpicUpdateManager
         private fun restoreInstalledMarker(installPath: String) {
             MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
             MarkerUtils.addMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            InstallOwnership.claim(installPath, InstallStore.EPIC)
         }
 
         private fun compareFiles(

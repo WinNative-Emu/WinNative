@@ -952,6 +952,9 @@ public abstract class WineUtils {
 
   private static boolean seedVcRedistBatched(
       File systemRegFile, String[] runtimeArches, boolean isArm64EC) {
+    java.util.concurrent.locks.ReentrantLock registryLock =
+        WineRegistryEditor.lockFor(systemRegFile);
+    registryLock.lock();
     File temp = null;
     try {
       String block = buildVcRedistRegBlock(runtimeArches, isArm64EC);
@@ -977,6 +980,7 @@ public abstract class WineUtils {
       return false;
     } finally {
       if (temp != null && temp.exists()) temp.delete();
+      registryLock.unlock();
     }
   }
 
@@ -1093,8 +1097,8 @@ public abstract class WineUtils {
           registryEditor.removeKey(
               "Software\\Classes\\CLSID\\{083863F1-70DE-11D0-BD40-00A0C911CE86}\\Instance\\{E30629D1-27E5-11CE-875D-00608CB78066}");
         }
-        registryEditor.close();
       } finally {
+        registryEditor.close();
       }
     } else if (identifier.equals("xaudio")) {
       registryEditor = new WineRegistryEditor(systemRegFile);
@@ -1422,8 +1426,8 @@ public abstract class WineUtils {
               null,
               "C:\\windows\\system32\\xaudio2_2.dll");
         }
-        registryEditor.close();
       } finally {
+        registryEditor.close();
       }
     }
   }
@@ -1540,8 +1544,8 @@ public abstract class WineUtils {
         registryEditor.setDwordValue("System\\ControlSet001\\Services\\" + name, "Start", value);
         registryEditor.setDwordValue("System\\ControlSet002\\Services\\" + name, "Start", value);
       }
-      registryEditor.close();
     } finally {
+      registryEditor.close();
     }
   }
 

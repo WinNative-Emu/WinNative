@@ -23,6 +23,15 @@ object NetworkMonitor {
 
     private val initialized = AtomicBoolean(false)
 
+    fun isOffline(context: Context): Boolean {
+        if (_hasInternet.value) return false
+        return runCatching {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
+            caps == null || !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        }.getOrDefault(false)
+    }
+
     fun init(context: Context) {
         if (!initialized.compareAndSet(false, true)) return
 

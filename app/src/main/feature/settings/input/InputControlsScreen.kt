@@ -183,6 +183,9 @@ data class InputControlsScreenState(
     val triggerCardExpanded: Boolean = false,
     val triggerDescription: String = "",
     val controllerCards: List<InputControllerCardState> = emptyList(),
+    val steamControllerEnabled: Boolean = false,
+    val steamTrackpadModeIndex: Int = 1,
+    val steamPaddleLabels: List<String> = emptyList(),
     val dialog: InputControlsDialogUiState = InputControlsDialogUiState.None,
 )
 
@@ -291,6 +294,10 @@ data class InputControlsScreenActions(
     val onBindingTypeClick: (String, Int) -> Unit,
     val onBindingValueClick: (String, Int) -> Unit,
     val onRemoveBinding: (String, Int) -> Unit,
+    val onOpenControllerTest: () -> Unit,
+    val onSteamControllerEnabledChanged: (Boolean) -> Unit,
+    val onSteamTrackpadModeSelected: (Int) -> Unit,
+    val onSteamPaddleClick: (Int) -> Unit,
 )
 
 @Composable
@@ -367,6 +374,14 @@ fun InputControlsScreen(
                     title = stringResource(R.string.gesture_profile_export),
                     onClick = actions.onExportGestureProfile,
                 )
+                SectionLabel(stringResource(R.string.controller_test_title))
+                ActionCard(
+                    icon = Icons.Outlined.SportsEsports,
+                    title = stringResource(R.string.controller_test_card_title),
+                    onClick = actions.onOpenControllerTest,
+                )
+                SectionLabel(stringResource(R.string.steam_controller_section))
+                SteamControllerCard(state, actions)
                 SectionLabel(stringResource(R.string.session_gamepad_external_controllers))
                 if (state.controllerCards.isEmpty()) {
                     EmptyStateCard(stringResource(R.string.common_ui_no_items_to_display))
@@ -622,11 +637,12 @@ private fun Chip(
 @Composable
 private fun SelectionPill(
     text: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Row(
         modifier =
-            Modifier
+            modifier
                 .heightIn(min = 30.dp)
                 .clip(RoundedCornerShape(InputFieldCorner))
                 .background(InputField)
@@ -646,6 +662,8 @@ private fun SelectionPill(
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            // Unweighted, a long value pushed the chevron out of a constrained pill.
+            modifier = Modifier.weight(1f, fill = false),
         )
         Spacer(Modifier.width(8.dp))
         Icon(
@@ -2000,7 +2018,9 @@ private fun <T> OptionDropdown(
     var expanded by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = InputTextSecondary, fontSize = InputPrimaryTextSize, modifier = Modifier.weight(1f))
-        Box {
+        // Unweighted, the pill was measured against the whole row first and a long enum
+        // value ('Toggle on press and release') left the label wrapping mid-word.
+        Box(Modifier.weight(1f, fill = false)) {
             SelectionPill(text = optionLabel(current), onClick = { expanded = true })
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = InputCard) {
                 options.forEach { option ->
@@ -2039,14 +2059,26 @@ private fun BindingPicker(
     var category by remember { mutableStateOf(categoryOf(binding)) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = InputTextSecondary, fontSize = InputPrimaryTextSize, modifier = Modifier.weight(1f))
-        PillDropdown(category, BindingCategory.values().toList(), { prettyEnum(it.name) }) { newCategory ->
+        // Two unweighted pills took ~250-300 dp of a ~370 dp row between them, leaving the
+        // label a few dp; weighting them caps each at a third.
+        PillDropdown(
+            category,
+            BindingCategory.values().toList(),
+            { prettyEnum(it.name) },
+            modifier = Modifier.weight(1f, fill = false),
+        ) { newCategory ->
             if (newCategory != category) {
                 category = newCategory
                 if (categoryOf(binding) != newCategory) onBinding(Binding.NONE)
             }
         }
         Spacer(Modifier.width(8.dp))
-        PillDropdown(binding, optionsFor(category), { it.toString() }) { onBinding(it) }
+        PillDropdown(
+            binding,
+            optionsFor(category),
+            { it.toString() },
+            modifier = Modifier.weight(1f, fill = false),
+        ) { onBinding(it) }
     }
 }
 
@@ -2434,6 +2466,7 @@ private fun GyroscopeCard(
                     )
                     SelectionPill(
                         text = state.gyroscopeActivatorLabel,
+                        modifier = Modifier.weight(1f, fill = false),
                         onClick = actions.onGyroscopeActivatorClick,
                     )
                 }
@@ -2591,6 +2624,123 @@ private fun GyroscopeCard(
                     CenteredPillButton(
                         text = stringResource(R.string.session_gyroscope_reset_stick),
                         onClick = actions.onResetGyroPreview,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SteamControllerCard(
+    state: InputControlsScreenState,
+    actions: InputControlsScreenActions,
+) {
+    CardShell {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .paneNavItem(
+                            cornerRadius = InputCardCorner,
+                            onActivate = {
+                                actions.onSteamControllerEnabledChanged(!state.steamControllerEnabled)
+                            },
+                            highlightColor = InputNavHighlight,
+                        ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconBox(
+                    image = Icons.Outlined.SportsEsports,
+                    tint = if (state.steamControllerEnabled) InputAccent else InputTextSecondary,
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.steam_controller_enable),
+                        color = InputTextPrimary,
+                        fontSize = InputPrimaryTextSize,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(1.dp))
+                    Text(
+                        text = stringResource(R.string.steam_controller_enable_summary),
+                        color = InputTextSecondary,
+                        fontSize = InputSecondaryTextSize,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                AppSwitch(
+                    checked = state.steamControllerEnabled,
+                    onCheckedChange = actions.onSteamControllerEnabledChanged,
+                )
+            }
+            AnimatedVisibility(
+                visible = state.steamControllerEnabled,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(Modifier.height(InputItemGap))
+                    Text(
+                        text = stringResource(R.string.steam_controller_trackpad_mode),
+                        color = InputTextSecondary,
+                        fontSize = InputSectionTextSize,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(InputCompactGap))
+                    ChipRow(
+                        options =
+                            listOf(
+                                stringResource(R.string.steam_controller_trackpad_off),
+                                stringResource(R.string.steam_controller_trackpad_right),
+                                stringResource(R.string.steam_controller_trackpad_left),
+                                stringResource(R.string.steam_controller_trackpad_both),
+                            ),
+                        selectedIndex = state.steamTrackpadModeIndex,
+                        onSelected = actions.onSteamTrackpadModeSelected,
+                    )
+                    Spacer(Modifier.height(InputItemGap))
+                    Text(
+                        text = stringResource(R.string.steam_controller_extra_buttons),
+                        color = InputTextSecondary,
+                        fontSize = InputSectionTextSize,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(InputCompactGap))
+                    val paddleTitles =
+                        listOf(
+                            stringResource(R.string.steam_controller_paddle_l4),
+                            stringResource(R.string.steam_controller_paddle_l5),
+                            stringResource(R.string.steam_controller_paddle_r4),
+                            stringResource(R.string.steam_controller_paddle_r5),
+                            stringResource(R.string.steam_controller_button_qam),
+                        )
+                    paddleTitles.forEachIndexed { index, title ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = title,
+                                color = InputTextPrimary,
+                                fontSize = InputSecondaryTextSize,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            SelectionPill(
+                                text = state.steamPaddleLabels.getOrNull(index) ?: "",
+                                modifier = Modifier.weight(1f, fill = false),
+                                onClick = { actions.onSteamPaddleClick(index) },
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(InputCompactGap))
+                    Text(
+                        text = stringResource(R.string.steam_controller_restart_required),
+                        color = InputTextSecondary,
+                        fontSize = InputSecondaryTextSize,
                     )
                 }
             }

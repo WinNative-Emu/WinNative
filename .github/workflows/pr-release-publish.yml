@@ -108,6 +108,34 @@ jobs:
             wait "$pid"
           done
 
+      # PRs come from forks, which get no secrets, so every PR build is signed with a fresh throwaway
+      # key and cannot update over the previous one. This run holds secrets without running PR code,
+      # so the APKs are re-signed here with one key kept for PR builds only.
+      - name: Re-sign APKs with the PR key
+        if: ${{ steps.scope.outputs.allowed == 'true' }}
+        env:
+          PR_KEYSTORE_BASE64: ${{ secrets.PR_KEYSTORE_BASE64 }}
+          PR_KEYSTORE_PASSWORD: ${{ secrets.PR_KEYSTORE_PASSWORD }}
+          PR_KEY_ALIAS: ${{ secrets.PR_KEY_ALIAS }}
+          PR_KEY_PASSWORD: ${{ secrets.PR_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PR_KEYSTORE_BASE64" ]; then
+            echo "::warning::PR_KEYSTORE_BASE64 is not set; PR builds keep their one-off key and will not update over each other"
+            exit 0
+          fi
+          build_tools=$(find "$ANDROID_SDK_ROOT/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
+          keystore="$RUNNER_TEMP/pr.jks"
+          trap 'rm -f "$keystore"' EXIT
+          printf '%s' "$PR_KEYSTORE_BASE64" | base64 -d > "$keystore"
+          for apk in artifacts/*/*.apk; do
+            "$build_tools/apksigner" sign \
+              --ks "$keystore" --ks-pass env:PR_KEYSTORE_PASSWORD \
+              --ks-key-alias "$PR_KEY_ALIAS" --key-pass env:PR_KEY_PASSWORD \
+              "$apk"
+            "$build_tools/apksigner" verify --print-certs "$apk" | grep 'SHA-256 digest'
+          done
+
       - name: Build release notes from PR metadata
         if: ${{ steps.scope.outputs.allowed == 'true' }}
         id: pr
