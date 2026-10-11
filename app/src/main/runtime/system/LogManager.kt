@@ -13,6 +13,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.preference.PreferenceManager
 import com.winlator.cmod.app.config.SettingsConfig
+import com.winlator.cmod.runtime.linux.LinuxRuntime
 import com.winlator.cmod.shared.io.FileUtils
 import timber.log.Timber
 import java.io.Closeable
@@ -27,6 +28,10 @@ import java.time.format.DateTimeFormatter
 
 object LogManager {
     private const val TAG = "LogManager"
+    private const val SESSION_LOGS_DIR = "wayland-logs"
+    private const val STEAM_CLIENT_LOGS = "root/.local/share/Steam/logs"
+    private const val KEPT_PER_TYPE = 10
+    private val STAMP = Regex("[_-]\\d{4}-?\\d{2}-?\\d{2}[_-]\\d{2}-?\\d{2}-?\\d{2}")
     private const val APP_LOG_FILE = "app_filtered-logs.log"
     private const val EXIT_REASONS_FILE = "exit_reasons.log"
     private const val CRASH_FILE = "crash.log"
@@ -307,6 +312,8 @@ object LogManager {
         stopAppLogging()
         val logsDir = getLogsDir(context)
         logsDir.listFiles()?.filter { it.name.endsWith(".log") }?.forEach { it.delete() }
+        val appContext = context.applicationContext
+        Thread({ pruneLogs(appContext) }, "log-prune").start()
         startAppLogging(context, reset = true)
     }
 
@@ -547,24 +554,86 @@ object LogManager {
         }
     }
 
+    /** Where the compositor and the Linux session (gamescope, the Steam client's output) log. */
+    @JvmStatic
+    fun getSessionLogsDir(context: Context): File {
+        val dir = File(context.getExternalFilesDir(null) ?: context.filesDir, SESSION_LOGS_DIR)
+        if (!dir.exists()) dir.mkdirs()
+        return dir
+    }
+
+    /** The Linux Steam client's own logs, which it keeps inside the runtime. */
+    private fun steamClientLogsDir(context: Context): File = File(LinuxRuntime.rootDir(context), STEAM_CLIENT_LOGS)
+
     @JvmStatic
     fun getShareableLogFiles(context: Context): Array<File> {
         val filter: (File) -> Boolean = {
-            it.isFile && (it.name.endsWith(".log") || it.name.endsWith(".txt") || it.name.endsWith(".csv"))
+            it.isFile && (it.name.endsWith(".log") || it.name.endsWith(".txt") || it.name.endsWith(".csv") || it.name.endsWith(".log.1"))
         }
-        // Aggregate files from both the internal and external directories
-        val external = getLogsDir(context, true).listFiles()?.filter(filter) ?: emptyList()
-        val private = getLogsDir(context, false).listFiles()?.filter(filter) ?: emptyList()
-        return (external + private).toTypedArray()
+        return listOf(
+            getLogsDir(context, true),
+            getLogsDir(context, false),
+            getSessionLogsDir(context),
+            steamClientLogsDir(context),
+        ).flatMap { it.listFiles()?.filter(filter) ?: emptyList() }.toTypedArray()
     }
+
+    /**
+     * A token as Steam's own logs print one: three base64url pieces, the first starting `eyJ`.
+     * Its connection log records the account's session token in full on every logon.
+     */
+    private val SESSION_TOKEN = Regex("eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}")
+
+    /**
+     * Writes [file] to [out] as it should leave the device. A log is shared to be read by someone
+     * else, and the Steam client's own logs carry a token that signs its account in, so those are
+     * copied a line at a time with any token taken out. [out] is left open for the caller.
+     */
+    @JvmStatic
+    fun copyShareable(context: Context, file: File, out: java.io.OutputStream) {
+        if (file.parentFile != steamClientLogsDir(context)) {
+            file.inputStream().use { it.copyTo(out) }
+            return
+        }
+        val writer = java.io.OutputStreamWriter(out, Charsets.UTF_8)
+        file.bufferedReader(Charsets.UTF_8).use { reader ->
+            reader.lineSequence().forEach { line ->
+                writer.write(SESSION_TOKEN.replace(line, "[token removed by WinNative]"))
+                writer.write("\n")
+            }
+        }
+        writer.flush()
+    }
+
+    /**
+     * The name a log goes by in an archive: the session's and the Steam client's logs in folders
+     * of their own, so that none of them can take the name of another.
+     */
+    @JvmStatic
+    fun archiveName(context: Context, file: File): String =
+        when (file.parentFile) {
+            getSessionLogsDir(context) -> "gamescope/${file.name}"
+            steamClientLogsDir(context) -> "steam-client/${file.name}"
+            else -> file.name
+        }
 
     /** Total bytes of all shareable log files. */
     @JvmStatic
-    fun getShareableLogsSize(context: Context): Long {
-        // Sum sizes from both internal and external directories
-        val internalSize = getLogsDir(context, false).walk().filter { it.isFile }.sumOf { it.length() }
-        val externalSize = getLogsDir(context, true).walk().filter { it.isFile }.sumOf { it.length() }
-        return internalSize + externalSize
+    fun getShareableLogsSize(context: Context): Long = getShareableLogFiles(context).sumOf { it.length() }
+
+    /**
+     * Worker thread, as a session starts. A type of log is its name without the time it was
+     * started, and the session is about to add one of each, so one fewer than [KEPT_PER_TYPE] of
+     * the newest stay. The Steam client's logs are its own to rotate.
+     */
+    private fun pruneLogs(context: Context) {
+        for (dir in listOf(getLogsDir(context, true), getLogsDir(context, false), getSessionLogsDir(context))) {
+            dir.listFiles()
+                ?.filter { it.isFile }
+                ?.groupBy { it.name.replace(STAMP, "") }
+                ?.values
+                ?.forEach { type -> type.sortedByDescending { it.lastModified() }.drop(KEPT_PER_TYPE - 1).forEach { it.delete() } }
+        }
     }
 
     /** Deletes all shareable log files; returns the count removed. */

@@ -145,10 +145,19 @@ def appVersionName = providers.gradleProperty("VERSION_NAME")
         .orElse(providers.environmentVariable("VERSION_NAME"))
         .getOrElse("Nightly")
 
+// Same yyMMddHH (UTC) scheme as release.yml, so any build installs over an earlier release.
+abstract class UtcHourVersionCode implements ValueSource<String, org.gradle.api.provider.ValueSourceParameters.None> {
+    @Override
+    String obtain() {
+        new Date().format("yyMMddHH", TimeZone.getTimeZone("UTC"))
+    }
+}
+
 def appVersionCode = providers.gradleProperty("VERSION_CODE")
         .orElse(providers.environmentVariable("VERSION_CODE"))
+        .orElse(providers.of(UtcHourVersionCode) {})
         .map { Integer.parseInt(it.trim()) }
-        .getOrElse(2)
+        .get()
 
 def gitBuildId = "unknown"
 try {
@@ -163,6 +172,13 @@ def appBuildId = providers.gradleProperty("BUILD_ID")
         .orElse(providers.environmentVariable("BUILD_ID"))
         .map { it.trim() }
         .getOrElse(gitBuildId)
+
+// The pull request this build came from, so an install made from CI knows which one to follow.
+// Digits only: it is written into generated Java as a literal.
+def appPullRequest = providers.gradleProperty("PR_NUMBER")
+        .orElse(providers.environmentVariable("PR_NUMBER"))
+        .map { it.trim().replaceAll("[^0-9]", "") }
+        .getOrElse("")
 
 def playUnreachableVersionCodeBase = 2100000000
 def brandedVersionCode = playUnreachableVersionCodeBase + appVersionCode
@@ -203,6 +219,7 @@ android {
         buildConfigField("String", "COLD_CLIENT_VERSION", "\"${coldClientVersion}\"")
         buildConfigField "int", "TRUE_VERSION_CODE", "${appVersionCode}"
         buildConfigField "String", "BUILD_ID", "\"${appBuildId}\""
+        buildConfigField "String", "PR_NUMBER", "\"${appPullRequest}\""
         buildConfigField "String", "RESHADE_CATALOG_URL", "\"https://raw.githubusercontent.com/nicholasx417/WinNative-Components/main/Reshade.json\""
     }
 

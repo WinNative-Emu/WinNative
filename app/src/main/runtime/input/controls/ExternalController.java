@@ -403,9 +403,25 @@ public class ExternalController {
   }
 
   public boolean updateStateFromKeyEvent(KeyEvent event) {
-    boolean z = false;
     boolean pressed = event.getAction() == 0;
     int keyCode = event.getKeyCode();
+    switch (keyCode) {
+      case KeyEvent.KEYCODE_DPAD_UP:
+        this.state.dpad[0] = pressed;
+        return true;
+      case KeyEvent.KEYCODE_DPAD_RIGHT:
+        this.state.dpad[1] = pressed;
+        return true;
+      case KeyEvent.KEYCODE_DPAD_DOWN:
+        this.state.dpad[2] = pressed;
+        return true;
+      case KeyEvent.KEYCODE_DPAD_LEFT:
+        this.state.dpad[3] = pressed;
+        return true;
+      case KeyEvent.KEYCODE_BUTTON_MODE:
+        // Left to the activity: a tap goes to the guest on release, a hold opens the menu.
+        return false;
+    }
     int buttonIdx = getButtonIdxByKeyCode(keyCode);
     if (buttonIdx != -1) {
       if (buttonIdx == 10 || buttonIdx == 11) {
@@ -426,32 +442,6 @@ public class ExternalController {
       }
       this.state.setPressed(buttonIdx, pressed);
       return true;
-    }
-    switch (keyCode) {
-      case 19:
-        this.state.dpad[0] = pressed && Math.abs(this.state.thumbLY) < 0.15f;
-        break;
-      case 20:
-        boolean[] zArr = this.state.dpad;
-        if (pressed && Math.abs(this.state.thumbLY) < 0.15f) {
-          z = true;
-        }
-        zArr[2] = z;
-        break;
-      case 21:
-        boolean[] zArr2 = this.state.dpad;
-        if (pressed && Math.abs(this.state.thumbLX) < 0.15f) {
-          z = true;
-        }
-        zArr2[3] = z;
-        break;
-      case 22:
-        boolean[] zArr3 = this.state.dpad;
-        if (pressed && Math.abs(this.state.thumbLX) < 0.15f) {
-          z = true;
-        }
-        zArr3[1] = z;
-        break;
     }
     return true;
   }

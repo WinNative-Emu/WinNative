@@ -79,8 +79,14 @@ typedef struct tracee {
   /* Link for the list of all tracees.  */
   LIST_ENTRY(tracee) link;
 
+  /* Link for the tracees whose pid hashes alike.  */
+  LIST_ENTRY(tracee) bucket_link;
+
   /* Process identifier. */
   pid_t pid;
+
+  /* Process id of its thread group, what /proc/self names.  */
+  pid_t tgid;
 
   /* Is it currently running or not?  */
   bool running;
@@ -95,6 +101,9 @@ typedef struct tracee {
 
   /* Parent of this tracee, NULL if none.  */
   struct tracee *parent;
+
+  /* Number of tracees whose @parent this is.  */
+  size_t nb_children;
 
   /* Is it a "clone", i.e has the same parent as its creator.  */
   bool clone;
@@ -151,6 +160,12 @@ typedef struct tracee {
   bool _regs_were_changed;
   bool restore_original_regs;
   bool restore_original_regs_after_seccomp_event;
+
+  /* The registers were fetched at this stop already.  */
+  bool regs_fresh;
+
+  /* The enter stage left nothing for the exit stage to do.  */
+  bool sysexit_unneeded;
 
   /* State for the special handling of SIGSTOP.  */
   enum {
@@ -257,6 +272,7 @@ typedef struct tracee {
 #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
 extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
+extern void set_tracee_pid(Tracee *tracee, pid_t pid);
 extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
                                    bool only_with_pevent, word_t wait_options);
 extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);

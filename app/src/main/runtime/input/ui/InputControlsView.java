@@ -60,6 +60,7 @@ public class InputControlsView extends View {
   public static final String EXTRA_ADAPTIVE_JOYSTICKS = "adaptiveJoysticks";
   private static final byte MOUSE_WHEEL_DELTA = 120;
   private boolean editMode = false;
+  private boolean guideButtonShown = true;
   private final HashMap<Integer, SteamPadInput> steamPadInputs = new HashMap<>();
 
   private static final class SteamPadInput {
@@ -191,6 +192,15 @@ public class InputControlsView extends View {
 
   public boolean isEditMode() {
     return editMode;
+  }
+
+  public void setGuideButtonShown(boolean shown) {
+    guideButtonShown = shown;
+    invalidate();
+  }
+
+  public boolean isGuideButtonShown() {
+    return guideButtonShown || editMode;
   }
 
   public void setOverlayOpacity(float overlayOpacity) {
@@ -675,7 +685,7 @@ public class InputControlsView extends View {
 
   @Override
   protected void onDetachedFromWindow() {
-    cancelContinuousMouseMove();
+    cancelActiveTouches();
     if (mouseMoveTimer != null) {
       mouseMoveTimer.cancel();
       mouseMoveTimer = null;
@@ -691,14 +701,17 @@ public class InputControlsView extends View {
     if (xServer == null) return;
     WinHandler winHandler = xServer.getWinHandler();
     if (mouseMoveTimer == null && profile != null) {
-      final float cursorSpeed = profile.getCursorSpeed();
       mouseMoveTimer = new Timer();
       mouseMoveTimer.schedule(
           new TimerTask() {
             @Override
             public void run() {
               if (getContext() instanceof XServerDisplayActivity && ((XServerDisplayActivity)getContext()).isInputSuspended()) return;
-              if (mouseMoveOffsetX != 0 || mouseMoveOffsetY != 0) {                int dx = (int) (mouseMoveOffsetX * cursorSpeed * 20);
+              ControlsProfile currentProfile = profile;
+              if (currentProfile == null) return;
+              if (mouseMoveOffsetX != 0 || mouseMoveOffsetY != 0) {
+                float cursorSpeed = currentProfile.getCursorSpeed();
+                int dx = (int) (mouseMoveOffsetX * cursorSpeed * 20);
                 int dy = (int) (mouseMoveOffsetY * cursorSpeed * 20);
                 if (xServer.isRelativeMouseMovement()) {
                   xServer.updatePointerForDisplayDelta(dx, dy);
@@ -977,6 +990,8 @@ public class InputControlsView extends View {
             }
 
             batchingUpdates = false;
+            // Held back to the next frame, a stick drag reaches the game up to a frame late.
+            if (eventHandled) requestUnbufferedDispatch(event);
             if (eventHandled || staleReleased) flushGamepadState();
             syncCapturedPointers();
             if (!eventHandled) dispatchUnhandledTouch(event);
@@ -1055,6 +1070,7 @@ public class InputControlsView extends View {
 
             batchingUpdates = false;
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+            if (anyControlHandled) requestUnbufferedDispatch(event);
             if (anyControlHandled && winHandler != null) {
               winHandler.sendGamepadState();
             }
@@ -1347,6 +1363,9 @@ public class InputControlsView extends View {
           stateChanged = state.isPressed(buttonIdx) != isActionDown;
           if (stateChanged) state.setPressed(buttonIdx, isActionDown);
         }
+      } else if (binding == Binding.GAMEPAD_BUTTON_GUIDE) {
+        stateChanged = state.isPressed(GamepadState.BUTTON_GUIDE) != isActionDown;
+        if (stateChanged) state.setPressed(GamepadState.BUTTON_GUIDE, isActionDown);
       } else if (binding == Binding.GAMEPAD_LEFT_THUMB_UP
           || binding == Binding.GAMEPAD_LEFT_THUMB_DOWN) {
         float val = (isActionDown && offset == 0) ? 1.0f : Math.abs(offset);

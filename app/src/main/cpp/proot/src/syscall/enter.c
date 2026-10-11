@@ -28,7 +28,8 @@
 #include <sys/prctl.h> /* PR_SET_DUMPABLE */
 #include <sys/un.h>    /* struct sockaddr_un, */
 #include <talloc.h>    /* talloc_*, */
-#include <termios.h>   /* TCSETS, TCSANOW */
+#include <asm/ioctls.h>   /* TCGETS*, TCSETS*, */
+#include <asm/termbits.h> /* struct termios2, */
 
 #include "arch.h"
 #include "execve/execve.h"
@@ -109,6 +110,7 @@ int translate_syscall_enter(Tracee *tracee) {
   syscall_number = get_sysnum(tracee, ORIGINAL);
   switch (syscall_number) {
   case PR_execve:
+  case PR_execveat:
     status = translate_execve_enter(tracee);
     break;
 
@@ -119,10 +121,36 @@ int translate_syscall_enter(Tracee *tracee) {
   case PR_wait4:
   case PR_waitpid:
     status = translate_wait_enter(tracee);
+    tracee->sysexit_unneeded =
+        status >= 0 && tracee->as_ptracer.waits_in == WAITS_IN_KERNEL;
     break;
 
   case PR_brk:
     translate_brk_enter(tracee);
+    status = 0;
+    break;
+
+  case PR_ioctl:
+    /* The termios2 requests become the ones Android allows on a
+     * pty, see add_trace_tty_ioctl().  The kernel reads and writes
+     * the part the two structures share; exit.c fills in the
+     * speeds that termios2 adds.  */
+    switch ((uint32_t)peek_reg(tracee, CURRENT, SYSARG_2)) {
+    case TCGETS2:
+      poke_reg(tracee, SYSARG_2, TCGETS);
+      break;
+    case TCSETS2:
+      poke_reg(tracee, SYSARG_2, TCSETS);
+      break;
+    case TCSETSW2:
+      poke_reg(tracee, SYSARG_2, TCSETSW);
+      break;
+    case TCSETSF2:
+      poke_reg(tracee, SYSARG_2, TCSETSF);
+      break;
+    default:
+      break;
+    }
     status = 0;
     break;
 
@@ -237,6 +265,7 @@ int translate_syscall_enter(Tracee *tracee) {
   case PR_accept4:
     /* Nothing special to do if no sockaddr was specified.  */
     if (peek_reg(tracee, ORIGINAL, SYSARG_2) == 0) {
+      tracee->sysexit_unneeded = true;
       status = 0;
       break;
     }
@@ -299,6 +328,7 @@ int translate_syscall_enter(Tracee *tracee) {
   case PR_fchownat:
   case PR_fstatat64:
   case PR_newfstatat:
+  case PR_statx:
   case PR_utimensat:
   case PR_name_to_handle_at:
     dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
@@ -310,6 +340,8 @@ int translate_syscall_enter(Tracee *tracee) {
     flags = (syscall_number == PR_fchownat ||
              syscall_number == PR_name_to_handle_at)
                 ? peek_reg(tracee, CURRENT, SYSARG_5)
+            : syscall_number == PR_statx
+                ? peek_reg(tracee, CURRENT, SYSARG_3)
                 : peek_reg(tracee, CURRENT, SYSARG_4);
 
     if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
@@ -330,6 +362,27 @@ int translate_syscall_enter(Tracee *tracee) {
       break;
 
     status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
+    break;
+
+  case PR_fchmodat2:
+    dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
+    flags = peek_reg(tracee, CURRENT, SYSARG_4);
+
+    status = get_sysarg_path(tracee, path, SYSARG_2);
+    if (status < 0)
+      break;
+
+    if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
+      status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
+    else
+      status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
+    break;
+
+  case PR_openat2:
+    /* Its RESOLVE_* flags confine the lookup to a host directory
+     * tree, which the translated path no longer describes.  Callers
+     * fall back to openat(2), which is translated.  */
+    status = -ENOSYS;
     break;
 
   case PR_inotify_add_watch:

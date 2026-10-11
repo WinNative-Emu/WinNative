@@ -118,6 +118,10 @@ object WinNativeComposeDialogs {
                 }
             },
         )
+        // An alert has nothing to cancel, so back or a tap outside means what OK means. Without
+        // this the caller's callback is skipped, and one that was closing a screen behind the
+        // alert leaves it open. dismiss() does not come through here, so it runs once either way.
+        dialog.setOnCancelListener { onConfirm?.run() }
         dialog.show()
         return true
     }

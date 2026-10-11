@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
+import com.winlator.cmod.shared.ui.focus.isUnclaimedGamepadButton
 import kotlin.math.abs
 
 private const val PANE_STICK_ENGAGE = 0.5f
@@ -58,7 +59,12 @@ private class PaneNavWindowCallback(
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
-        if (!isOwnedKey(keyCode)) return base.dispatchKeyEvent(event)
+        if (!isOwnedKey(keyCode)) {
+            if (!isUnclaimedGamepadButton(keyCode)) return base.dispatchKeyEvent(event)
+            // Handled or not, the button is kept from falling back to DPAD_CENTER and activating.
+            base.dispatchKeyEvent(event)
+            return true
+        }
         if (event.action != KeyEvent.ACTION_DOWN) return true
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> handlers.onDir(PANE_DIR_LEFT)

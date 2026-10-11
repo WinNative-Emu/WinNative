@@ -614,7 +614,7 @@ static bool create_command_pool(VkRenderer* r) {
         VkFrame* f = &r->frames[i];
         if (vkAllocateCommandBuffers(r->device, &ai, &f->cmd) != VK_SUCCESS) return false;
         if (vkCreateSemaphore(r->device, &si, NULL, &f->image_available) != VK_SUCCESS) return false;
-        for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+        for (uint32_t g = 0; g < VK_FRAMEGEN_MAX_GENERATIONS; g++) {
             if (vkCreateSemaphore(r->device, &si, NULL, &f->image_available_gen[g]) != VK_SUCCESS) {
                 return false;
             }
@@ -1235,7 +1235,8 @@ static bool create_swapchain(VkRenderer* r, uint32_t fallback_width, uint32_t fa
     // nativeCreate, so a value-equality check is safe (no zero-sentinel ambiguity with
     // VK_PRESENT_MODE_IMMEDIATE_KHR which is enum value 0).
     VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
-    VkPresentModeKHR want = r->target_present_mode;
+    // Generated frames are presented back to back; only FIFO gives each its own vblank.
+    VkPresentModeKHR want = framegen_extra_images(r) ? VK_PRESENT_MODE_FIFO_KHR : r->target_present_mode;
     if (want != VK_PRESENT_MODE_FIFO_KHR) {
         uint32_t pm_count = 0;
         vkGetPhysicalDeviceSurfacePresentModesKHR(r->physical_device, r->surface, &pm_count, NULL);
@@ -1923,6 +1924,10 @@ static void destroy_dis(VkRenderer* r) {
     if (!r->dis) return;
     vkr_dis_destroy(r->dis);
     r->dis = NULL;
+    if (r->dis_flush_fence) {
+        vkDestroyFence(r->device, r->dis_flush_fence, NULL);
+        r->dis_flush_fence = VK_NULL_HANDLE;
+    }
     r->framegen_real_frames = 0;
     r->framegen_made_frames = 0;
     r->framegen_draw_ns = 0;
@@ -1931,12 +1936,45 @@ static void destroy_dis(VkRenderer* r) {
     r->framegen_timed_frames = 0;
 }
 
+// VkrDisFlushFn: DIS needs this frame's pixels on the CPU mid-frame for the hardware motion
+// estimator. What has been recorded by then is the scene pass into the composite target and
+// DIS's own copies - no swapchain image, no semaphore - so it is submitted on its own and the
+// same buffer is begun again; acquire waits and present signals all stay on the frame's submit.
+static VkCommandBuffer dis_flush_frame(void* user, VkCommandBuffer cmd) {
+    VkRenderer* r = (VkRenderer*)user;
+    if (!r->dis_flush_fence) {
+        VkFenceCreateInfo fci = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        if (vkCreateFence(r->device, &fci, NULL, &r->dis_flush_fence) != VK_SUCCESS) {
+            r->dis_flush_fence = VK_NULL_HANDLE;
+        }
+    }
+    vkEndCommandBuffer(cmd);
+    VkSubmitInfo si = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cmd;
+    if (r->dis_flush_fence) vkResetFences(r->device, 1, &r->dis_flush_fence);
+    pthread_mutex_lock(&r->queue_mutex);
+    VkResult sr = vkQueueSubmit(r->graphics_queue, 1, &si, r->dis_flush_fence);
+    if (sr != VK_SUCCESS || !r->dis_flush_fence) vkQueueWaitIdle(r->graphics_queue);
+    pthread_mutex_unlock(&r->queue_mutex);
+    if (sr == VK_SUCCESS && r->dis_flush_fence) {
+        vkWaitForFences(r->device, 1, &r->dis_flush_fence, VK_TRUE, UINT64_MAX);
+    } else if (sr != VK_SUCCESS) {
+        VK_LOGW("OpenFlow mid-frame submit -> %d", (int)sr);
+    }
+    vkResetCommandBuffer(cmd, 0);
+    VkCommandBufferBeginInfo bi = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cmd, &bi);
+    return cmd;
+}
+
 static void create_dis(VkRenderer* r) {
     if (r->dis || !r->device || !r->physical_device) return;
 
     r->dis = vkr_dis_create(r->device, r->physical_device);
     if (!r->dis) {
-        VK_LOGW("DIS shaders unavailable; frame generation stays off");
+        VK_LOGW("OpenFlow shaders unavailable; frame generation stays off");
         return;
     }
     vkr_dis_configure(r->dis, r->dis_scale ? r->dis_scale : 180u, r->dis_target_fps,
@@ -2635,9 +2673,8 @@ static bool record_and_submit_frame(VkRenderer* r) {
     uint32_t framegen_capacity = 0;
     if (via_composite && (r->lsfg || r->dis) && r->swapchain_image_count > 2) {
         framegen_capacity = r->swapchain_image_count - 2;
-        if (framegen_capacity > VKR_LSFG_MAX_GENERATIONS) {
-            framegen_capacity = VKR_LSFG_MAX_GENERATIONS;
-        }
+        const uint32_t engine_max = r->dis ? VKR_DIS_MAX_GENERATIONS : VKR_LSFG_MAX_GENERATIONS;
+        if (framegen_capacity > engine_max) framegen_capacity = engine_max;
         if (VK_FRAMES_IN_FLIGHT + framegen_capacity > VK_MAX_COMPOSITE_TARGETS) {
             framegen_capacity = VK_MAX_COMPOSITE_TARGETS - VK_FRAMES_IN_FLIGHT;
         }
@@ -2742,7 +2779,7 @@ static bool record_and_submit_frame(VkRenderer* r) {
     }
 
     uint32_t gen_count = 0;
-    uint32_t gen_image_index[VKR_LSFG_MAX_GENERATIONS] = {0};
+    uint32_t gen_image_index[VK_FRAMEGEN_MAX_GENERATIONS] = {0};
     for (uint32_t g = 0; g < framegen_planned; g++) {
         uint32_t idx = 0;
         VkResult ga = vkAcquireNextImageKHR(r->device, r->swapchain, gen_acquire_timeout,
@@ -2885,8 +2922,9 @@ static bool record_and_submit_frame(VkRenderer* r) {
     if (composite) {
         if ((use_dis || r->lsfg) && framegen_capacity > 0) {
             if (use_dis) {
-                vkr_dis_process(r->dis, f->cmd, composite->image,
-                                composite->width, composite->height, gen_count);
+                vkr_dis_process_ex(r->dis, f->cmd, composite->image,
+                                   composite->width, composite->height, gen_count,
+                                   dis_flush_frame, r);
             } else {
                 vkr_lsfg_process(r->lsfg, f->cmd, composite->image,
                                  r->swapchain_extent.width, r->swapchain_extent.height, gen_count);
@@ -3036,7 +3074,7 @@ static bool record_and_submit_frame(VkRenderer* r) {
 
     vkEndCommandBuffer(f->cmd);
 
-    #define VK_MAX_FRAME_SEMAPHORES (2 + VKR_LSFG_MAX_GENERATIONS)
+    #define VK_MAX_FRAME_SEMAPHORES (2 + VK_FRAMEGEN_MAX_GENERATIONS)
     VkSemaphore wait_sems[VK_MAX_FRAME_SEMAPHORES];
     VkPipelineStageFlags wait_stages[VK_MAX_FRAME_SEMAPHORES];
     VkSemaphore signal_sems[VK_MAX_FRAME_SEMAPHORES];
@@ -3096,7 +3134,7 @@ static bool record_and_submit_frame(VkRenderer* r) {
             f->image_available = VK_NULL_HANDLE;
             vkCreateSemaphore(r->device, &asi, NULL, &f->image_available);
         }
-        for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+        for (uint32_t g = 0; g < VK_FRAMEGEN_MAX_GENERATIONS; g++) {
             if (!f->image_available_gen[g]) continue;
             vkDestroySemaphore(r->device, f->image_available_gen[g], NULL);
             f->image_available_gen[g] = VK_NULL_HANDLE;
@@ -3327,7 +3365,7 @@ JNIEXPORT void JNICALL JNI_FN(nativeDestroy)(JNIEnv* env, jclass clazz, jlong ha
     for (uint32_t i = 0; i < VK_FRAMES_IN_FLIGHT; i++) {
         VkFrame* f = &r->frames[i];
         if (f->image_available) vkDestroySemaphore(r->device, f->image_available, NULL);
-        for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+        for (uint32_t g = 0; g < VK_FRAMEGEN_MAX_GENERATIONS; g++) {
             if (f->image_available_gen[g]) {
                 vkDestroySemaphore(r->device, f->image_available_gen[g], NULL);
             }
@@ -3941,7 +3979,7 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetDisFrameGenerationEnabled)(JNIEnv* env, j
     }
     framegen_rebuild_swapchain(r);
     pthread_mutex_unlock(&r->render_mutex);
-    VK_LOGI("DIS frame generation composite path %s (supported=%d)",
+    VK_LOGI("OpenFlow frame generation composite path %s (supported=%d)",
             want ? "enabled" : "disabled", (int)r->framegen_supported);
 }
 

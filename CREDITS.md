@@ -24,6 +24,12 @@ corresponding source for every copyleft component is available from the projects
 - **Mesa/Turnip** contributions by the [Mesa3D](https://www.mesa3d.org/) team
 - **Goldberg Steam Emulator** by [Mr. Goldberg](https://gitlab.com/Mr_Goldberg/goldberg_emulator),
   maintained by [Detanup01](https://github.com/Detanup01/gbe_fork)
+- **Wayland display server** — the embedded Wayland compositor (`app/src/main/cpp/waylandcomp`),
+  its Wayland runtime design, clipboard and IME bridges, and the winewayland launch path by
+  **Banner ([The412Banner](https://github.com/The412Banner))** from
+  [Bannerlator](https://github.com/The412Banner/Bannerlator), ported to WinNative; ships the
+  vendored `libwayland-server` 1.26 and `libffi` from the same project. See
+  [docs/WAYLAND-DISPLAY.md](docs/WAYLAND-DISPLAY.md).
 
 ## Retro console emulation
 
@@ -51,7 +57,7 @@ corresponding source for every copyleft component is available from the projects
   [Eden Emulator Project](https://git.eden-emu.dev/eden-emu/eden) (GPL-3.0-or-later) — the Vulkan
   port of that chain that WinNative's frame generation is derived from.
   See [what came from Camille LaVey's Eden port](#frame-generation--what-came-from-camille-laveys-eden-port)
-- **DIS optical flow frame generation** by **qwertypower**
+- **OpenFlow frame generation** (DIS optical flow) by **qwertypower**
   ([DEVAR Entertainment LLC](https://devar.ai/)) (GPL-3.0) — a complete open-source implementation
   of a Dense Inverse Search frame generator, the second frame generation engine in WinNative and
   the one that needs no shaders from anywhere else.
@@ -113,7 +119,7 @@ of a user's own Lossless Scaling install (`lsfg_dll.*`), translating them when o
 available (`lsfg_dxbc.*`), the JNI surface (`lsfg_jni.*`), driver probing (`lsfg_probe.*`), and
 wiring the chain into WinNative's compositor and swapchain (`vkr_lsfg.*`).
 
-## DIS frame generation — the fully open-source engine
+## OpenFlow frame generation — the fully open-source engine
 
 WinNative's second frame generator is a complete open-source implementation of **Dense Inverse
 Search** optical flow, contributed by **qwertypower** (DEVAR Entertainment LLC) under GPL-3.0.

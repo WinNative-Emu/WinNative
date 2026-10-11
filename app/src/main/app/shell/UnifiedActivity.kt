@@ -1101,6 +1101,9 @@ class UnifiedActivity :
 
         supportFragmentManager.registerFragmentLifecycleCallbacks(inputControlsFragmentTracker, true)
         com.winlator.cmod.runtime.display.GlassesManager.init(this)
+        lifecycleScope.launch(Dispatchers.IO) {
+            com.winlator.cmod.feature.library.LibraryCache.preload(applicationContext)
+        }
         bootstrapStartupState()
         maybeAutoSignInGoogleOnLaunch()
         processPendingRetroCloudBackup()

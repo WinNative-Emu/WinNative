@@ -1,0 +1,92 @@
+--- a/src/freedreno/vulkan/tu_knl_kgsl.cc
++++ b/src/freedreno/vulkan/tu_knl_kgsl.cc
+@@ -1705,13 +1705,6 @@
+ }
+ 
+ static int
+-kgsl_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
+-{
+-   UNREACHABLE("");
+-   return 0;
+-}
+-
+-static int
+ kgsl_device_get_suspend_count(struct tu_device *dev, uint64_t *suspend_count)
+ {
+    /* kgsl doesn't have a way to get it */
+@@ -1755,7 +1748,6 @@
+ 
+       .device_init = kgsl_device_init,
+       .device_finish = kgsl_device_finish,
+-      .device_get_gpu_timestamp = kgsl_device_get_gpu_timestamp,
+       .device_get_suspend_count = kgsl_device_get_suspend_count,
+       .device_check_status = kgsl_device_check_status,
+       .submitqueue_new = kgsl_submitqueue_new,
+--- a/src/freedreno/vulkan/tu_knl.cc
++++ b/src/freedreno/vulkan/tu_knl.cc
+@@ -247,6 +247,9 @@
+ tu_device_get_gpu_timestamp(struct tu_device *dev,
+                             uint64_t *ts)
+ {
++   /* Not every kernel interface can read the GPU's counter. */
++   if (dev->instance->knl->device_get_gpu_timestamp == NULL)
++      return -1;
+    return dev->instance->knl->device_get_gpu_timestamp(dev, ts);
+ }
+ 
+--- a/src/freedreno/vulkan/tu_device.cc
++++ b/src/freedreno/vulkan/tu_device.cc
+@@ -201,13 +201,21 @@
+       device->info->props.has_ray_intersection &&
+       (!device->info->props.has_sw_fuse || device->has_raytracing);
+ 
++   /* Calibrating a timestamp means reading the GPU's counter, which the kgsl
++    * interface cannot do: the extension is only there where the kernel
++    * interface implements it, and present timing, which requires it, with it.
++    */
++   bool has_calibrated_timestamps =
++      device->info->props.has_persistent_counter &&
++      device->instance->knl->device_get_gpu_timestamp != NULL;
++
+    *ext = (struct vk_device_extension_table) { .table = {
+       .KHR_8bit_storage = device->info->props.storage_8bit,
+       .KHR_16bit_storage = device->info->props.storage_16bit,
+       .KHR_acceleration_structure = has_raytracing,
+       .KHR_bind_memory2 = true,
+       .KHR_buffer_device_address = true,
+-      .KHR_calibrated_timestamps = device->info->props.has_persistent_counter,
++      .KHR_calibrated_timestamps = has_calibrated_timestamps,
+       .KHR_compute_shader_derivatives = true,
+       .KHR_copy_commands2 = true,
+       // TODO workaround for https://github.com/KhronosGroup/VK-GL-CTS/issues/525
+@@ -304,7 +312,7 @@
+       .EXT_attachment_feedback_loop_dynamic_state = true,
+       .EXT_attachment_feedback_loop_layout = true,
+       .EXT_border_color_swizzle = true,
+-      .EXT_calibrated_timestamps = device->info->props.has_persistent_counter,
++      .EXT_calibrated_timestamps = has_calibrated_timestamps,
+       .EXT_color_write_enable = true,
+       .EXT_conditional_rendering = true,
+       .EXT_conservative_rasterization = device->info->chip >= 7,
+@@ -357,7 +365,7 @@
+       .EXT_pipeline_creation_cache_control = true,
+       .EXT_pipeline_creation_feedback = true,
+ #ifdef TU_USE_WSI_PLATFORM
+-      .EXT_present_timing = device->info->props.has_persistent_counter,
++      .EXT_present_timing = has_calibrated_timestamps,
+ #endif
+       .EXT_primitive_restart_index = true,
+       .EXT_primitive_topology_list_restart = true,
+@@ -917,9 +925,9 @@
+ 
+ #ifdef TU_USE_WSI_PLATFORM
+    /* VK_EXT_present_timing */
+-   features->presentTiming = true;
+-   features->presentAtRelativeTime = true;
+-   features->presentAtAbsoluteTime = true;
++   features->presentTiming = pdevice->vk.supported_extensions.EXT_present_timing;
++   features->presentAtRelativeTime = pdevice->vk.supported_extensions.EXT_present_timing;
++   features->presentAtAbsoluteTime = pdevice->vk.supported_extensions.EXT_present_timing;
+ #endif
+ }
+ 

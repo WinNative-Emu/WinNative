@@ -76,8 +76,11 @@ public class FakeInputWriter {
   public static final short BTN_START = 315;
   public static final short BTN_THUMBL = 317;
   public static final short BTN_THUMBR = 318;
+  public static final short BTN_MODE = 316;
+  private static final int GUIDE_INDEX = 10;
   private static final short[] BUTTON_MAP = {
-    BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR
+    BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR,
+    BTN_MODE
   };
   private boolean isOpen = false;
   private volatile boolean destroyed = false;
@@ -601,9 +604,10 @@ public class FakeInputWriter {
     }
     this.buffer.clear();
     this.hasChanges = false;
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < GUIDE_INDEX; i++) {
       writeButton(i, state.isPressed((byte) i));
     }
+    writeButton(GUIDE_INDEX, state.isPressed(GamepadState.BUTTON_GUIDE));
     int rx = (int) (state.thumbRX * 32767.0f);
     int ry = (int) (state.thumbRY * 32767.0f);
     int lx = (int) (state.thumbLX * 32767.0f);

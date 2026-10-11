@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="banner_desktop_v1">
+  <copyright>
+    Copyright 2026 The412Banner
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice (including the next
+    paragraph) shall be included in all copies or substantial portions of the
+    Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+  </copyright>
+
+  <interface name="banner_desktop_v1" version="1">
+    <description summary="Windows virtual desktop layout">
+      Each Wine process is a separate Wayland client, so a Windows virtual
+      desktop can't be built from subsurfaces. Instead the process that owns
+      the desktop window marks one surface as the desktop, and every process
+      reports where its top-level windows sit on that desktop and the global
+      window stacking order. The compositor draws the desktop at the bottom,
+      the windows at the reported positions, and sends pointer and keyboard
+      input to the desktop surface; Wine routes it to the right window.
+    </description>
+
+    <request name="destroy" type="destructor"/>
+
+    <request name="set_desktop">
+      <description summary="mark a surface as the virtual desktop">
+        The surface is drawn at the origin, below every window, and sets the
+        size of the desktop.
+      </description>
+      <arg name="surface" type="object" interface="wl_surface"/>
+    </request>
+
+    <request name="set_window">
+      <description summary="place a top-level window on the desktop">
+        Position of the top-left corner of the surface in desktop
+        coordinates, and the window handle used by set_zorder.
+      </description>
+      <arg name="surface" type="object" interface="wl_surface"/>
+      <arg name="hwnd" type="uint"/>
+      <arg name="x" type="int"/>
+      <arg name="y" type="int"/>
+    </request>
+
+    <request name="set_zorder">
+      <description summary="report the desktop's window stacking order">
+        Visible top-level window handles as 32-bit values, topmost first.
+      </description>
+      <arg name="hwnds" type="array"/>
+    </request>
+  </interface>
+</protocol>

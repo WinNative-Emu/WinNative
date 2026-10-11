@@ -242,6 +242,22 @@
             "toggleSwitch": false,
             "text": "",
             "iconId": 15
+        },
+        {
+            "type": "BUTTON",
+            "shape": "CIRCLE",
+            "bindings": [
+                "GAMEPAD_BUTTON_GUIDE",
+                "NONE",
+                "NONE",
+                "NONE"
+            ],
+            "scale": 0.8,
+            "x": 0.5,
+            "y": 0.78,
+            "toggleSwitch": false,
+            "text": "",
+            "iconId": 40
         }
     ]
 }

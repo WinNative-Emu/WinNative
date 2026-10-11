@@ -1,0 +1,75 @@
+#!/bin/sh
+proton=$1
+shift
+# The Proton the app's settings chose for this game. Its line keeps the tool Steam mapped when it
+# was written: while Steam still starts that one the app's choice is newer, otherwise the user
+# changed it in Steam and Steam's stands. `*` is the container's, for games Steam leaves on ours.
+choices=/etc/winnative/proton-choices
+app=${STEAM_COMPAT_APP_ID:-${STEAM_COMPAT_DATA_PATH##*/}}
+if [ -n "$app" ] && [ -r "$choices" ]; then
+  case $proton in
+    */compatibilitytools.d/*/proton) started=${proton%/proton}; started=${started##*/} ;;
+    *) started=winnative-proton ;;
+  esac
+  tool=
+  fallback=
+  while read -r key name mapped; do
+    if [ "$key" = "$app" ]; then
+      [ "$mapped" = "$started" ] && tool=$name
+      fallback=
+      break
+    fi
+    [ "$key" = "*" ] && [ "$started" = winnative-proton ] && fallback=$name
+  done < "$choices"
+  tool=${tool:-$fallback}
+  case $tool in
+    "" | */* | .*) chosen= ;;
+    winnative-proton) chosen=/opt/winnative-proton/proton ;;
+    *) chosen=${STEAM_COMPAT_CLIENT_INSTALL_PATH:-$HOME/.local/share/Steam}/compatibilitytools.d/$tool/proton ;;
+  esac
+  if [ -n "$chosen" ] && [ -x "$chosen" ] && [ -x "$(dirname "$chosen")/files/bin-arm64/wine" ]; then
+    proton=$chosen
+  fi
+fi
+# The Vulkan driver the app's settings chose for this game, else the container's `*`. The session
+# draws with the driver of whichever entry started it, and the game would otherwise inherit that.
+drivers=/etc/winnative/driver-choices
+if [ -n "$app" ] && [ -r "$drivers" ]; then
+  icd=
+  while read -r key path; do
+    if [ "$key" = "$app" ]; then
+      icd=$path
+      break
+    fi
+    [ "$key" = "*" ] && icd=$path
+  done < "$drivers"
+  [ -n "$icd" ] && [ -r "$icd" ] && export VK_ICD_FILENAMES="$icd"
+fi
+base=$(dirname "$proton")
+if [ ! -x "$proton" ] || [ ! -x "$base/files/bin-arm64/wine" ]; then
+  echo "winnative-proton: incomplete ARM64 tool: $base" >&2
+  exit 126
+fi
+export PROTON_USE_ARM64=1
+# CachyOS Proton defaults to its PipeWire audio driver, and with no PipeWire server in the session
+# the game hung at audio init behind Steam's spinner. Off, it takes the PulseAudio path we do run.
+export PROTON_USE_PIPEWIRE=${PROTON_USE_PIPEWIRE:-0}
+fake=/usr/local/lib/libwninput.so
+if [ -f "$fake" ]; then
+  case ":${LD_PRELOAD:-}:" in
+    *":$fake:"*) ;;
+    *) LD_PRELOAD="$fake${LD_PRELOAD:+:$LD_PRELOAD}"; export LD_PRELOAD ;;
+  esac
+fi
+if [ -n "${WN_LOG:-}" ]; then
+  export PROTON_LOG=${PROTON_LOG:-1}
+  export PROTON_LOG_DIR=${PROTON_LOG_DIR:-$(dirname "$WN_LOG")}
+fi
+audio=off
+[ "${WN_DIRECTAUDIO:-0}" = 1 ] && audio=on
+winnative-directaudio --prepare "$base/files" "${STEAM_COMPAT_DATA_PATH:-}" "$audio" || exit $?
+echo "winnative-proton: tool=$base verb=${1:-missing} app=${SteamAppId:-unknown} icd=${VK_ICD_FILENAMES:-none}" >&2
+if [ -n "${WN_EPIC:-}" ] && [ -x /usr/local/bin/winnative-epic-launch ]; then
+  exec /usr/local/bin/winnative-epic-launch "$proton" "$@"
+fi
+exec "$proton" "$@"

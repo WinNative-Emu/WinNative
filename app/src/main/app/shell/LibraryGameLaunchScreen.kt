@@ -55,6 +55,7 @@ import androidx.compose.material.icons.outlined.SaveAlt
 import androidx.compose.material.icons.outlined.Construction
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DesktopWindows
+import androidx.compose.material.icons.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Refresh
@@ -113,9 +114,11 @@ import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.winlator.cmod.R
+import com.winlator.cmod.feature.library.LibraryStorageMove
 import com.winlator.cmod.shared.ui.layout.isPortraitLayout
 import com.winlator.cmod.shared.ui.layout.screenWidthDp
 import androidx.compose.runtime.CompositionLocalProvider
+import com.winlator.cmod.shared.ui.focus.controllerConfirmOnA
 import com.winlator.cmod.shared.ui.focus.controllerFocusGlow
 import com.winlator.cmod.shared.ui.outlinedSwitchColors
 import com.winlator.cmod.shared.ui.nav.DialogPaneNav
@@ -128,7 +131,7 @@ import java.util.Locale
 
 private val LaunchBlack = Color.Black
 private val LaunchCard = Color(0xFF12121B)
-private val LaunchAccent = Color(0xFF1A9FFF)
+internal val LaunchAccent = Color(0xFF1A9FFF)
 private val LaunchAccentGlow = Color(0xFF58A6FF)
 private val LaunchTextPrimary = Color(0xFFF0F4FF)
 private val LaunchTextSecondary = Color(0xFF93A6BC)
@@ -186,6 +189,12 @@ internal fun LibraryGameLaunchScreen(
     onVerifyFiles: () -> Unit = {},
     onCheckForUpdate: () -> Unit = {},
     onWorkshop: () -> Unit = {},
+    /**
+     * Where this game would go if moved, or null when there is nowhere to move it. Drives the one
+     * move entry, which only ever offers the other location.
+     */
+    moveTarget: LibraryStorageMove.Target? = null,
+    onMoveGame: () -> Unit = {},
     branches: List<StoreBranchOption> = emptyList(),
     selectedBranchId: String = "",
     isBranchSelectionEnabled: Boolean = true,
@@ -363,6 +372,8 @@ internal fun LibraryGameLaunchScreen(
                 showCheats = onCheats != null,
                 cheatsEnabled = cheatsEnabled,
                 areSteamActionsEnabled = areSteamActionsEnabled,
+                moveTarget = moveTarget,
+                onMoveGame = onMoveGame,
                 onVerifyFiles = onVerifyFiles,
                 onCheckForUpdate = onCheckForUpdate,
                 onWorkshop = onWorkshop,
@@ -955,6 +966,8 @@ private fun SourceTag(
     showCheats: Boolean = false,
     cheatsEnabled: Boolean = true,
     areSteamActionsEnabled: Boolean = true,
+    moveTarget: LibraryStorageMove.Target? = null,
+    onMoveGame: () -> Unit = {},
     storeOptions: List<LaunchStoreOption> = emptyList(),
     selectedStoreId: String = "",
     onSelectStore: (String) -> Unit = {},
@@ -1014,6 +1027,20 @@ private fun SourceTag(
                 icon = Icons.Outlined.Storefront,
                 label = stringResource(R.string.library_games_store_change),
             ) { menuOpen = false; storeMenuOpen = true }
+            if (moveTarget != null) {
+                LaunchSourceMenuItem(
+                    icon = Icons.Outlined.DriveFileMove,
+                    label =
+                        stringResource(
+                            if (moveTarget == LibraryStorageMove.Target.APP_STORAGE) {
+                                R.string.library_games_move_to_app_storage_title
+                            } else {
+                                R.string.library_games_move_to_download_folder_title
+                            },
+                        ),
+                    enabled = areSteamActionsEnabled,
+                ) { menuOpen = false; onMoveGame() }
+            }
             if (menuEnabled || showAchievements || showCheats) {
                 Box(
                     Modifier
@@ -1249,6 +1276,7 @@ private fun LaunchSourceActionPopup(
                     ),
         ) {
             Surface(
+                modifier = Modifier.controllerConfirmOnA(),
                 color = LaunchBlack.copy(alpha = 0.78f),
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),

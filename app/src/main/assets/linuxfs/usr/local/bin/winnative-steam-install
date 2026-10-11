@@ -1,0 +1,59 @@
+#!/bin/bash
+# Fetches the native arm64 Steam client from Valve's client-update CDN into ~/.local/share/Steam.
+# The client is not redistributable, so the runtime ships this script instead of the client.
+set -eu
+cdn=https://client-update.fastly.steamstatic.com
+manifest=steam_client_publicbeta_linuxarm64
+steam_root=${XDG_DATA_HOME:-$HOME/.local/share}/Steam
+stamp=$steam_root/package/winnative-installed
+[ -x "$steam_root/steamrtarm64/steam" ] && [ -f "$stamp" ] && exit 0
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+curl -fsSL "$cdn/$manifest" -o "$work/manifest"
+version=$(awk -F'"' '$2 == "version" { print $4; exit }' "$work/manifest")
+# Every component block: its name, then the plain zip's file name and sha256.
+awk -F'"' '
+  /^\t"/ && NF >= 3 && $4 == "" { block = $2 }
+  $2 == "file" { file[block] = $4 }
+  $2 == "sha2" { sha[block] = $4 }
+  END { for (b in file) if (b ~ /_all$/ || b ~ /_linuxarm64_linuxarm64$/) print b, file[b], sha[b] }
+' "$work/manifest" | sort > "$work/parts"
+[ -s "$work/parts" ] || { echo "winnative-steam-install: no client components in $manifest" >&2; exit 1; }
+
+mkdir -p "$steam_root/package"
+while read -r block file sum; do
+  echo "steam: $block"
+  curl -fsSL "$cdn/$file" -o "$work/$file"
+  echo "$sum  $work/$file" | sha256sum -c --quiet
+  unzip -qo "$work/$file" -d "$steam_root"
+  rm -f "$work/$file"
+done < "$work/parts"
+# Some entries are zipped with Windows separators; unzip keeps the backslash in the file name.
+find "$steam_root" -depth -name '*\\*' | while read -r odd; do
+  fixed=${odd//\\//}
+  mkdir -p "$(dirname "$fixed")"
+  if [ -d "$odd" ]; then
+    cp -a "$odd/." "$fixed/" && rm -rf "$odd"
+  else
+    mv -f "$odd" "$fixed"
+  fi
+done
+echo publicbeta > "$steam_root/package/beta"
+echo "$version" > "$stamp"
+ln -sfn "$steam_root/steamrtarm64" "$steam_root/steamrtarm32"
+chmod +x "$steam_root/steamrtarm64/steam" 2>/dev/null || true
+# What Valve's steam.sh sets up before it runs the client (it has no arm64 branch itself).
+mkdir -p "$HOME/.steam"
+ln -sfn "$steam_root" "$HOME/.steam/root"
+ln -sfn "$steam_root" "$HOME/.steam/steam"
+ln -sfn "$steam_root/steamrtarm64" "$HOME/.steam/bin64"
+ln -sfn "$steam_root/steamrtarm64" "$HOME/.steam/binarm64"
+# The Steamworks SDK paths a game's steamclient stub is dlopened from, one per architecture.
+# Proton's lsteamclient runs emulated under FEX and loads the x86_64 (sdk64) or x86 (sdk32)
+# stub, which is only an IPC shim to the arm64 client over ~/.steam/steam.pipe; native arm64
+# games take sdkarm64. Pointing sdk64 at the arm64 tree hands the emulated loader a library it
+# cannot map and Steamworks aborts.
+ln -sfn "$steam_root/linux64" "$HOME/.steam/sdk64"
+ln -sfn "$steam_root/linux32" "$HOME/.steam/sdk32"
+ln -sfn "$steam_root/linuxarm64" "$HOME/.steam/sdkarm64"

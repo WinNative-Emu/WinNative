@@ -22,6 +22,7 @@
 
 #include <assert.h>    /* assert(3), */
 #include <errno.h>     /* E*, */
+#include <fcntl.h>     /* open(2), O_*, */
 #include <limits.h>    /* PATH_MAX, */
 #include <stdio.h>     /* sscanf(3), */
 #include <string.h>    /* string(3), */
@@ -153,6 +154,98 @@ static inline int substitute_binding_stat(Tracee *tracee, Finality finality,
   return (S_ISLNK(statl.st_mode) ? 1 : 0);
 }
 
+/* Below this many directories, lstat(2)-ing each costs less than
+ * resolve_parent_at_once().  */
+#define RESOLVE_AT_ONCE_MIN_DEPTH 3
+
+/**
+ * Canonicalize at once the directory holding the last component of
+ * the absolute @user_path, instead of with an lstat(2) per component:
+ * the kernel resolves it, and it is canonical if the kernel's path is
+ * the one PRoot would build, ie. no link on the way.  Only for a
+ * lexically clean path under the rootfs binding alone.  This function
+ * returns the offset of the last component in @user_path and puts the
+ * directory in @guest_path, or returns 0 when the component-wise walk
+ * has to be used.
+ */
+static size_t resolve_parent_at_once(Tracee *tracee, const char *user_path,
+                                     char guest_path[PATH_MAX]) {
+  char parent[PATH_MAX];
+  char expected[PATH_MAX];
+  char resolved[PATH_MAX];
+  char link[32];
+  const Binding *binding;
+  const char *last;
+  const char *cursor;
+  size_t parent_length;
+  size_t prefix_length;
+  size_t expected_length;
+  ssize_t length;
+  int depth;
+  int fd;
+
+  if (tracee->glue_type != 0)
+    return 0;
+
+  last = strrchr(user_path, '/');
+  if (last == NULL || last == user_path || last[1] == '\0' ||
+      strcmp(last + 1, ".") == 0 || strcmp(last + 1, "..") == 0)
+    return 0;
+
+  parent_length = last - user_path;
+  if (parent_length >= PATH_MAX)
+    return 0;
+
+  /* No empty, "." or ".." component.  */
+  depth = 0;
+  for (cursor = user_path; cursor < last;) {
+    const char *end;
+
+    end = memchr(cursor + 1, '/', last - cursor);
+    if (end == NULL)
+      end = last;
+    if (end == cursor + 1 || (end == cursor + 2 && cursor[1] == '.') ||
+        (end == cursor + 3 && cursor[1] == '.' && cursor[2] == '.'))
+      return 0;
+    depth++;
+    cursor = end;
+  }
+  if (depth < RESOLVE_AT_ONCE_MIN_DEPTH)
+    return 0;
+
+  memcpy(parent, user_path, parent_length);
+  parent[parent_length] = '\0';
+
+  /* Bindings are ordered deepest first, so the rootfs binding
+   * matching means no other binding is on the way.  */
+  binding = get_binding(tracee, GUEST, parent);
+  if (binding == NULL || binding->guest.length != 1)
+    return 0;
+
+  /* A rootfs at "/" adds no prefix.  */
+  prefix_length = (binding->host.length == 1 ? 0 : binding->host.length);
+  expected_length = prefix_length + parent_length;
+  if (expected_length >= PATH_MAX)
+    return 0;
+  memcpy(expected, binding->host.path, prefix_length);
+  strcpy(expected + prefix_length, parent);
+
+  fd = open(expected, O_PATH | O_DIRECTORY | O_CLOEXEC);
+  if (fd < 0)
+    return 0;
+
+  snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
+  length = readlink(link, resolved, sizeof(resolved));
+  close(fd);
+
+  if (length < 0 || (size_t)length != expected_length ||
+      memcmp(resolved, expected, expected_length) != 0)
+    return 0;
+
+  strcpy(guest_path, parent);
+  return last + 1 - user_path;
+}
+
 /**
  * Copy in @guest_path the canonicalization (see `man 3 realpath`) of
  * @user_path regarding to @tracee->root.  The path to canonicalize
@@ -169,6 +262,7 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
   char host_path[PATH_MAX];
   Finality finality;
   const char *cursor;
+  size_t offset;
   int status;
 
   /* Avoid infinite loop on circular links.  */
@@ -183,15 +277,20 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
   } else
     strcpy(guest_path, "/");
 
-  /* Resolve bindings for the initial '/' component or user_path,
-   * which is not handled in the loop below.
-   * In particular HOST_PATH extensions are called from there.  */
-  status = substitute_binding_stat(tracee, NOT_FINAL, guest_path, host_path);
-  if (status < 0)
-    return status;
+  offset = (user_path[0] == '/'
+                ? resolve_parent_at_once(tracee, user_path, guest_path)
+                : 0);
+  if (offset == 0) {
+    /* Resolve bindings for the initial '/' component or user_path,
+     * which is not handled in the loop below.
+     * In particular HOST_PATH extensions are called from there.  */
+    status = substitute_binding_stat(tracee, NOT_FINAL, guest_path, host_path);
+    if (status < 0)
+      return status;
+  }
 
   /* Canonicalize recursely 'user_path' into 'guest_path'.  */
-  cursor = user_path;
+  cursor = user_path + offset;
   finality = NOT_FINAL;
   while (!IS_FINAL(finality)) {
     Comparison comparison;
@@ -216,6 +315,20 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
     }
 
     join_paths(scratch_path, guest_path, component);
+
+    /* A final component that is not dereferenced needs no
+     * lstat(2): whether it is a link only matters to follow
+     * it.  Glue is still built from that lstat(2).  */
+    if (finality == FINAL_NORMAL && !deref_final && tracee->glue_type == 0) {
+      strcpy(host_path, scratch_path);
+      status = substitute_binding(tracee, GUEST, host_path);
+      if (status < 0)
+        return status;
+
+      strcpy(scratch_path, guest_path);
+      join_paths(guest_path, scratch_path, component);
+      continue;
+    }
 
     /* Resolve bindings and check that a non-final
      * component exists and either is a directory or is a

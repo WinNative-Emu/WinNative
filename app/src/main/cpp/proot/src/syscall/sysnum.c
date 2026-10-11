@@ -79,7 +79,7 @@ static Sysnum translate_sysnum(Abi abi, word_t sysnum) {
   index = sysnum - sysnums.offset;
 
   /* Sanity checks.  */
-  if (index > sysnums.length)
+  if (index >= sysnums.length)
     return PR_void;
 
   return sysnums.table[index];

@@ -48,6 +48,18 @@ public abstract class ProcessHelper {
     "gameoverlayui",
     ".exe"
   };
+  /* Matched against the process name when the filters above cannot see a process at all. A Chromium
+   * helper (Steam's web helper is one) clears its own argv, so /proc/<pid>/cmdline is empty and every
+   * filter above - all of them Windows executable names - misses it. Two such processes were found
+   * orphaned to init with three threads spinning at 100%, having survived every session teardown for
+   * the better part of seven hours. Only ever acted on for a process of this app's own uid. */
+  private static final String[] SESSION_COMM_FILTERS = {
+    "crbrowsermain",
+    "crrenderermain",
+    "crgpumain",
+    "crutilitymain",
+    "crashpad_handle"
+  };
   private static final byte SIGCONT = 18;
   private static final byte SIGSTOP = 19;
   private static final byte SIGTERM = 15;
@@ -238,6 +250,11 @@ public abstract class ProcessHelper {
 
   private static boolean isCoreProcess(String normalizedData) {
     for (String filter : CORE_PROCESS_FILTERS) {
+      if (normalizedData.contains(filter)) return true;
+    }
+    // A Chromium helper is the web helper above under the name it reports; keeping it out of
+    // GAME_ONLY's SIGSTOP is the point of listing the web helper in the first place.
+    for (String filter : SESSION_COMM_FILTERS) {
       if (normalizedData.contains(filter)) return true;
     }
     return false;
@@ -715,7 +732,7 @@ public abstract class ProcessHelper {
       String statData = readProcStat(proc, pid);
       String cmdlineData = readProcCmdline(proc, pid);
       String normalized = (statData + " " + cmdlineData).toLowerCase(Locale.ROOT);
-      if (isSessionProcess(normalized) && !filteredPids.contains(pid)) filteredPids.add(pid);
+      if (isSessionProcess(proc, pid, normalized) && !filteredPids.contains(pid)) filteredPids.add(pid);
     }
     return filteredPids;
   }
@@ -736,7 +753,7 @@ public abstract class ProcessHelper {
       String statData = readProcStat(proc, pid);
       String cmdlineData = readProcCmdline(proc, pid);
       String normalized = (statData + " " + cmdlineData).toLowerCase(Locale.ROOT);
-      if (!isSessionProcess(normalized)) continue;
+      if (!isSessionProcess(proc, pid, normalized)) continue;
 
       String name = getStatProcessName(statData);
       String command = cmdlineData.trim();
@@ -750,9 +767,34 @@ public abstract class ProcessHelper {
     return details;
   }
 
-  private static boolean isSessionProcess(String normalizedProcessData) {
+  private static boolean isSessionProcess(File proc, String pid, String normalizedProcessData) {
     for (String filter : SESSION_PROCESS_FILTERS) {
       if (normalizedProcessData.contains(filter)) return true;
+    }
+    for (String filter : SESSION_COMM_FILTERS) {
+      if (normalizedProcessData.contains(filter)) return isSessionHelper(proc, pid);
+    }
+    return false;
+  }
+
+  /**
+   * Whether {@code pid} is a helper of this app's own session: this app's uid, and not this process.
+   * A process name matched on its own says nothing about who owns it, and a match the session cannot
+   * signal would leave every teardown waiting out its timeout on a process that never goes away.
+   * WebView's renderers carry Chromium's names too, but they run under an isolated uid of their own.
+   */
+  private static boolean isSessionHelper(File proc, String pid) {
+    if (pid.equals(Integer.toString(Process.myPid()))) return false;
+    try (FileInputStream fr = new FileInputStream(proc + "/" + pid + "/status");
+        BufferedReader br = new BufferedReader(new InputStreamReader(fr))) {
+      String line;
+      while ((line = br.readLine()) != null) {
+        if (!line.startsWith("Uid:")) continue;
+        String[] fields = line.trim().split("\\s+");
+        return fields.length > 1 && Integer.parseInt(fields[1]) == Process.myUid();
+      }
+    } catch (IOException | RuntimeException e) {
+      // Another app's process, or one that exited while it was being read.
     }
     return false;
   }

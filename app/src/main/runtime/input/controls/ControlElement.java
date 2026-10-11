@@ -464,7 +464,7 @@ return boundingBox;
     return customColor;
   }
 
-  /** Bumper/trigger labels follow the standard gamepad naming; null for every other binding. */
+  /** Bumper, trigger and guide labels follow the standard gamepad naming; null for the rest. */
   private static String bumperTriggerLabel(Binding binding) {
     if (binding == null) return null;
     switch (binding) {
@@ -476,6 +476,8 @@ return boundingBox;
         return "LT";
       case GAMEPAD_BUTTON_R2:
         return "RT";
+      case GAMEPAD_BUTTON_GUIDE:
+        return "WN";
       default:
         return null;
     }
@@ -627,7 +629,7 @@ return boundingBox;
   }
 
   public void draw(Canvas canvas) {
-    if (isAdaptiveHidden()) return;
+    if (isAdaptiveHidden() || isGuideOutsideLinuxSession()) return;
     VisualStyle style = inputControlsView.getVisualStyle();
     if (style == VisualStyle.GAMEHUB) {
       drawGameHub(canvas);
@@ -3785,7 +3787,19 @@ return boundingBox;
     return isAdaptiveStick() && !isEngaged();
   }
 
+  // Only a Linux session's Steam answers the guide button, so it stays out of the way elsewhere.
+  private boolean isGuideOutsideLinuxSession() {
+    if (inputControlsView.isGuideButtonShown()) return false;
+    boolean guide = false;
+    for (Binding binding : bindings) {
+      if (binding == Binding.GAMEPAD_BUTTON_GUIDE) guide = true;
+      else if (binding != Binding.NONE) return false;
+    }
+    return guide;
+  }
+
   private boolean acceptsTouchAt(float x, float y) {
+    if (isGuideOutsideLinuxSession()) return false;
     if (!isAdaptiveStick()) return containsPoint(x, y);
     Rect box = getBoundingBox();
     float reach = box.width() * ADAPTIVE_REACH;

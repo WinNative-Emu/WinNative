@@ -1295,6 +1295,15 @@ class EpicService : Service() {
     ): Int {
         Timber.tag("EPIC").d("onStartCommand() - action: ${intent?.action}")
 
+        // A null intent is Android restarting this service on its own after the process died.
+        // Nobody asked for it and there is no UI, so registering the keep-alive component below
+        // would leave a foreground service and its wakelock running for hours over nothing.
+        if (intent == null) {
+            Timber.tag("EPIC").i("Restarted by Android with no UI; stopping instead")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         SessionKeepAliveService.startComponent(this, SessionKeepAliveService.COMPONENT_EPIC, "Connected")
 
         val shouldSync =
@@ -1310,7 +1319,9 @@ class EpicService : Service() {
                 }
 
                 null -> {
-                    // START_STICKY restart: sync only if initial sync is missing or throttle elapsed.
+                    // Started without an action, which is how the throttled path above asks for a
+                    // start with no sync: sync only if the initial one is missing or the throttle
+                    // has since elapsed.
                     val timeSinceLastSync = System.currentTimeMillis() - lastSyncTimestamp
                     val shouldResync = !hasPerformedInitialSync || timeSinceLastSync >= SYNC_THROTTLE_MILLIS
 
@@ -1319,11 +1330,11 @@ class EpicService : Service() {
                             .tag(
                                 "EPIC",
                             ).i(
-                                "Service restarted by Android - performing sync (hasPerformedInitialSync=$hasPerformedInitialSync, timeSinceLastSync=${timeSinceLastSync}ms)",
+                                "Started without a sync action - performing sync (hasPerformedInitialSync=$hasPerformedInitialSync, timeSinceLastSync=${timeSinceLastSync}ms)",
                             )
                         true
                     } else {
-                        Timber.tag("EPIC").d("Service restarted by Android - skipping sync (throttled)")
+                        Timber.tag("EPIC").d("Started without a sync action - skipping sync (throttled)")
                         false
                     }
                 }

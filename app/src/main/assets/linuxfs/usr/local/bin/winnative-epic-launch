@@ -1,0 +1,60 @@
+#!/usr/bin/python3
+# Runs an Epic game the native Steam client started, signed in as the app's Epic account:
+#   winnative-epic-launch <proton> <verb> <program> [argument ...]
+#
+# The shortcut the app writes names the game in WN_EPIC. Epic signs a game in with an exchange
+# code that lasts five minutes and is spent the first time it is used, so the command line cannot
+# be written into the shortcut ahead of time - it is asked for here, as the game starts.
+#
+# A game whose sign-in cannot be had is started anyway: one that keeps its own session, or that
+# plays offline, still runs, and a title that insists on Epic says so itself. Refusing to start
+# would leave the user with a library entry that does nothing.
+import os
+import socket
+import sys
+
+ENDPOINT = "/run/winnative-epic/endpoint"
+TIMEOUT = 60
+
+
+def sign_in(app_name):
+    """The game's Epic command line, or [] when the app cannot supply one."""
+    try:
+        with open(ENDPOINT, encoding="utf-8") as f:
+            port, secret = f.read().split()
+    except (OSError, ValueError):
+        print("== epic: the app is not signed in to Epic; starting %s without it" % app_name, file=sys.stderr)
+        return []
+    try:
+        with socket.create_connection(("127.0.0.1", int(port)), TIMEOUT) as s:
+            s.settimeout(TIMEOUT)
+            s.sendall(("%s %s\n" % (secret, app_name)).encode("utf-8"))
+            reply = b""
+            while True:
+                part = s.recv(4096)
+                if not part:
+                    break
+                reply += part
+    except (OSError, ValueError) as e:
+        print("== epic: could not reach the app to sign %s in: %s" % (app_name, e), file=sys.stderr)
+        return []
+    lines = reply.decode("utf-8", "replace").splitlines()
+    if not lines or lines[0] != "ok":
+        print("== epic: %s was not signed in: %s" % (app_name, lines[0] if lines else "no answer"), file=sys.stderr)
+        return []
+    print("== epic: %s signed in" % app_name, file=sys.stderr)
+    return lines[1:]
+
+
+def main():
+    proton, args = sys.argv[1], sys.argv[2:]
+    app_name = os.environ.get("WN_EPIC", "")
+    # The variable is the app's own, and Proton passes the environment on to the game.
+    os.environ.pop("WN_EPIC", None)
+    os.execv(proton, [proton] + args + (sign_in(app_name) if app_name else []))
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        sys.exit("usage: winnative-epic-launch <proton> <verb> <program> [argument ...]")
+    main()

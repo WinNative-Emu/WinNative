@@ -5,6 +5,7 @@ project(Winlator)
 include(FetchContent)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wno-unused-function -Wimplicit-function-declaration")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 # Zstandard is used by winlator/native_content_io.cpp. Keep this dependency in
 # the parent build instead of relying on the Steam client subproject to create it.
@@ -77,6 +78,7 @@ endif()
 
 set(SHADER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/winlator/vk/shaders")
 set(SHADER_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+set(WINLATOR_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 file(MAKE_DIRECTORY "${SHADER_OUT_DIR}")
 
 set(BIN2C_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/winlator/vk/bin2c.cmake")
@@ -102,22 +104,6 @@ set(SHADER_LIST
     "effect_colorblind:frag:effect_colorblind_frag"
     "effect_pixelate:frag:effect_pixelate_frag"
     "sgsr1:frag:sgsr1_frag"
-    "dis_luma_r16:comp:dis_luma_r16_comp"
-    "dis_luma_r32:comp:dis_luma_r32_comp"
-    "dis_gradient:comp:dis_gradient_comp"
-    "dis_inverse_search:comp:dis_inverse_search_comp"
-    "dis_propagate:comp:dis_propagate_comp"
-    "dis_densify:comp:dis_densify_comp"
-    "dis_interpolate:comp:dis_interpolate_comp"
-    "dis_hist:comp:dis_hist_comp"
-    "dis_side:comp:dis_side_comp"
-    "dis_vr_prep:comp:dis_vr_prep_comp"
-    "dis_vr_d1:comp:dis_vr_d1_comp"
-    "dis_vr_d2:comp:dis_vr_d2_comp"
-    "dis_vr_w:comp:dis_vr_w_comp"
-    "dis_vr_coef:comp:dis_vr_coef_comp"
-    "dis_vr_sor:comp:dis_vr_sor_comp"
-    "dis_vr_add:comp:dis_vr_add_comp"
 )
 
 set(SHADER_HEADERS "")
@@ -146,6 +132,9 @@ foreach(entry ${SHADER_LIST})
 endforeach()
 
 add_custom_target(winlator_shaders DEPENDS ${SHADER_HEADERS})
+
+# OpenFlow frame generator (DIS optical flow + interpolation), linked by libwinlator and libwnwayland.
+add_subdirectory(openflow)
 
 # ----------------------------------------------------------------------------
 # Winlator native library (X-server, AHB, Vulkan compositor, helpers)
@@ -181,7 +170,6 @@ add_library(winlator SHARED
         winlator/vk/lsfg/lsfg_jni.c
         winlator/vk/framegen/fg_present.c
         winlator/vk/framegen/fg_jni.c
-        winlator/vk/dis/vkr_dis.c
 )
 
 add_dependencies(winlator winlator_shaders)
@@ -199,6 +187,7 @@ target_include_directories(winlator PRIVATE
 target_compile_features(winlator PRIVATE cxx_std_17)
 
 target_link_libraries(winlator
+        openflow
         log
         android
         mediandk
@@ -230,6 +219,13 @@ add_library(waudio SHARED
 target_compile_options(waudio PRIVATE -Wall -Wextra -fvisibility=hidden)
 target_link_libraries(waudio log dl)
 
+# The app's end of DirectAudio in a Linux session, see wnaudiohook/wn_aaudio_protocol.h.
+add_library(wnaudiohost SHARED
+        wnaudiohook/wn_aaudio_host.c
+)
+target_compile_options(wnaudiohost PRIVATE -Wall -Wextra -fvisibility=hidden)
+target_link_libraries(wnaudiohost aaudio android log)
+
 find_package(SDL3 REQUIRED CONFIG)
 
 add_library(steamctrl SHARED
@@ -237,3 +233,7 @@ add_library(steamctrl SHARED
 )
 target_compile_options(steamctrl PRIVATE -Wall -Wextra -fvisibility=hidden)
 target_link_libraries(steamctrl SDL3::SDL3 log)
+
+# Embedded Wayland compositor (winewayland.drv sessions); see waylandcomp/CMakeLists.txt.
+add_subdirectory(waylandcomp)
+add_subdirectory(proot)

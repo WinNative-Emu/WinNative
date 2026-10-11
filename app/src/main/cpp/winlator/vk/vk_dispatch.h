@@ -57,6 +57,7 @@ typedef struct VkDispatch {
     PFN_vkMapMemory MapMemory;
     PFN_vkUnmapMemory UnmapMemory;
     PFN_vkFlushMappedMemoryRanges FlushMappedMemoryRanges;
+    PFN_vkInvalidateMappedMemoryRanges InvalidateMappedMemoryRanges;
     PFN_vkGetAndroidHardwareBufferPropertiesANDROID GetAndroidHardwareBufferPropertiesANDROID;
 
     // Buffer
@@ -162,6 +163,10 @@ void vkd_unload(void);
 
 bool vkd_bind(void* libvulkan_handle, VkInstance instance);
 
+// For callers that already hold the driver's vkGetInstanceProcAddr rather than a dlopen handle
+// (the Wayland compositor resolves Turnip through adrenotools).
+bool vkd_bind_proc(PFN_vkGetInstanceProcAddr gipa, VkInstance instance);
+
 #ifdef __cplusplus
 }
 #endif
@@ -202,6 +207,7 @@ bool vkd_bind(void* libvulkan_handle, VkInstance instance);
 #define vkMapMemory vkd.MapMemory
 #define vkUnmapMemory vkd.UnmapMemory
 #define vkFlushMappedMemoryRanges vkd.FlushMappedMemoryRanges
+#define vkInvalidateMappedMemoryRanges vkd.InvalidateMappedMemoryRanges
 #define vkGetAndroidHardwareBufferPropertiesANDROID vkd.GetAndroidHardwareBufferPropertiesANDROID
 
 #define vkCreateBuffer vkd.CreateBuffer

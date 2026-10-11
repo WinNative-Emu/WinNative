@@ -437,13 +437,9 @@ internal fun UnifiedActivity.GameCapsule(
             }
         } else {
             val preferWide = !useLibraryCapsule && !listMode && DeviceProfileSettings.preferWideArtwork(context)
+            val primaryRef = StoreArtworkCache.primaryRef(app, gogGame, epicGame, useLibraryCapsule, listMode, preferWide)
             val imageModel =
-                remember(app.id, gogGame, epicGame, useLibraryCapsule, listMode, preferWide, artworkCacheRefreshKey) {
-                    StoreArtworkCache.imageModel(
-                        context,
-                        StoreArtworkCache.primaryRef(app, gogGame, epicGame, useLibraryCapsule, listMode, preferWide),
-                    )
-                }
+                remember(primaryRef, artworkCacheRefreshKey) { StoreArtworkCache.imageModel(context, primaryRef) }
             AsyncImage(
                 model =
                     ImageRequest
