@@ -1,0 +1,82 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: DroidDeck <noreply@droiddeck.invalid>
+Date: Tue, 29 Sep 2026 15:00:00 -0400
+Subject: [PATCH] syscall: work around Android's denial of hard links
+
+SELinux denies apps the file link permission, so linkat fails with
+EACCES. libostree names its O_TMPFILE files with linkat and failed to
+create the Flathub repo ("Creating repo: linkat: Permission denied").
+O_TMPFILE now answers EOPNOTSUPP, so libglnx falls back to a named
+temporary file and a rename, and a denied link answers EPERM, which
+ostree's checkout takes as a filesystem without hard links and copies.
+---
+diff --git a/src/syscall/enter.c b/src/syscall/enter.c
+index 8c3eb2e..4c28e10 100644
+--- a/src/syscall/enter.c
++++ b/src/syscall/enter.c
+@@ -400,6 +400,13 @@ int translate_syscall_enter(Tracee *tracee)
+ 
+ 	case PR_open:
+ 		flags = peek_reg(tracee, CURRENT, SYSARG_2);
++#ifdef __ANDROID__
++		/* An O_TMPFILE file can only be named by linkat, which Android denies apps. */
++		if ((flags & __O_TMPFILE) != 0) {
++			status = -EOPNOTSUPP;
++			break;
++		}
++#endif
+ 
+ 		if (   ((flags & O_NOFOLLOW) != 0)
+ 		    || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
+@@ -518,6 +525,12 @@ int translate_syscall_enter(Tracee *tracee)
+ 	case PR_openat:
+ 		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
+ 		flags = peek_reg(tracee, CURRENT, SYSARG_3);
++#ifdef __ANDROID__
++		if ((flags & __O_TMPFILE) != 0) {
++			status = -EOPNOTSUPP;
++			break;
++		}
++#endif
+ 
+ 		status = get_sysarg_path(tracee, path, SYSARG_2);
+ 		if (status < 0)
+diff --git a/src/syscall/exit.c b/src/syscall/exit.c
+index df41084..5d981db 100644
+--- a/src/syscall/exit.c
++++ b/src/syscall/exit.c
+@@ -544,6 +544,16 @@ void translate_syscall_exit(Tracee *tracee)
+ 		status = handle_statx_syscall(tracee, false);
+ 		break;
+ 
++#ifdef __ANDROID__
++	/* Android denies apps hard links with EACCES; EPERM is what callers such as
++	 * libostree take as "no hard links here" and copy instead. */
++	case PR_link:
++	case PR_linkat:
++		if ((int) syscall_result == -EACCES)
++			poke_reg(tracee, SYSARG_RESULT, -EPERM);
++		goto end;
++#endif
++
+ 	case PR_ioctl:
+ 		if (peek_reg(tracee, ORIGINAL, SYSARG_2) == _IOW(0x94, 9, int) /* FICLONE */ &&
+ 				(int) peek_reg(tracee, CURRENT, SYSARG_RESULT) == -EACCES) {
+diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
+index 6d1ba47..8db9f45 100644
+--- a/src/syscall/seccomp.c
++++ b/src/syscall/seccomp.c
+@@ -362,8 +362,13 @@ static FilteredSysnum proot_sysnums[] = {
+ 	{ PR_lchown,		0 },
+ 	{ PR_lchown32,		0 },
+ 	{ PR_lgetxattr,		0 },
++#ifdef __ANDROID__
++	{ PR_link,		FILTER_SYSEXIT },
++	{ PR_linkat,		FILTER_SYSEXIT },
++#else
+ 	{ PR_link,		0 },
+ 	{ PR_linkat,		0 },
++#endif
+ 	{ PR_listxattr,		0 },
+ 	{ PR_llistxattr,	0 },
+ 	{ PR_lremovexattr,	0 },

@@ -25,10 +25,10 @@
 
 #include <limits.h> /* PATH_MAX, */
 
-#include "path.h"
 #include "tracee/tracee.h"
+#include "path.h"
 
-extern mode_t build_glue(Tracee *tracee, const char *guest_path,
-                         char host_path[PATH_MAX], Finality finality);
+extern mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX],
+			Finality finality);
 
 #endif /* GLUE_H */

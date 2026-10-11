@@ -1,0 +1,137 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: maxjivi05 <maxjividen@gmail.com>
+Date: Wed, 23 Sep 2026 21:44:45 -0400
+Subject: [PATCH] tracee: find tracees by pid, and sweep only after a
+ termination
+
+---
+ src/cli/cli.c       |  2 +-
+ src/tracee/event.c  |  2 +-
+ src/tracee/tracee.c | 26 +++++++++++++++++++++++++-
+ src/tracee/tracee.h |  2 ++
+ 4 files changed, 29 insertions(+), 3 deletions(-)
+
+diff --git a/src/cli/cli.c b/src/cli/cli.c
+index bbc6400..ec50712 100644
+--- a/src/cli/cli.c
++++ b/src/cli/cli.c
+@@ -465,7 +465,7 @@ int main(int argc, char *const argv[])
+ 	tracee = get_tracee(NULL, 0, true);
+ 	if (tracee == NULL)
+ 		goto error;
+-	tracee->pid = getpid();
++	set_tracee_pid(tracee, getpid());
+ 
+ 	/* Set verboseness from env variable, may be overriden by option */
+ 	{
+diff --git a/src/tracee/event.c b/src/tracee/event.c
+index 756aa7e..ec79ef3 100644
+--- a/src/tracee/event.c
++++ b/src/tracee/event.c
+@@ -106,7 +106,7 @@ int launch_process(Tracee *tracee, char *const argv[])
+ 
+ 	default: /* parent */
+ 		/* We know the pid of the first tracee now.  */
+-		tracee->pid = pid;
++		set_tracee_pid(tracee, pid);
+ 		return 0;
+ 	}
+ 
+diff --git a/src/tracee/tracee.c b/src/tracee/tracee.c
+index a97757d..90894a0 100644
+--- a/src/tracee/tracee.c
++++ b/src/tracee/tracee.c
+@@ -48,6 +48,16 @@
+ 
+ static Tracees tracees;
+ 
++#define TRACEE_BUCKETS 1024
++static Tracees buckets[TRACEE_BUCKETS];
++
++static bool terminations_pending = false;
++
++static Tracees *bucket_of(pid_t pid)
++{
++	return &buckets[(unsigned int) pid % TRACEE_BUCKETS];
++}
++
+ 
+ /**
+  * Remove @zombie from its parent's list of zombies.  Note: this is a
+@@ -89,6 +99,7 @@ static int remove_tracee(Tracee *tracee)
+ 	int event;
+ 
+ 	LIST_REMOVE(tracee, link);
++	LIST_REMOVE(tracee, bucket_link);
+ 
+ 	/* Clean objects that are linked to this tracee's life
+ 	 * span.  */
+@@ -226,6 +237,7 @@ static Tracee *new_tracee(pid_t pid)
+ 	tracee->vpid = next_vpid++;
+ 
+ 	LIST_INSERT_HEAD(&tracees, tracee, link);
++	LIST_INSERT_HEAD(bucket_of(pid), tracee, bucket_link);
+ 
+ 	tracee->life_context = talloc_new(tracee);
+ 
+@@ -327,7 +339,7 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
+ 	if (current_tracee != NULL && current_tracee->pid == pid)
+ 		return (Tracee *)current_tracee;
+ 
+-	LIST_FOREACH(tracee, &tracees, link) {
++	LIST_FOREACH(tracee, bucket_of(pid), bucket_link) {
+ 		if (tracee->pid == pid) {
+ 			/* Flush then allocate a new memory collector.  */
+ 			TALLOC_FREE(tracee->ctx);
+@@ -340,12 +352,20 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
+ 	return (create ? new_tracee(pid) : NULL);
+ }
+ 
++void set_tracee_pid(Tracee *tracee, pid_t pid)
++{
++	tracee->pid = pid;
++	LIST_REMOVE(tracee, bucket_link);
++	LIST_INSERT_HEAD(bucket_of(pid), tracee, bucket_link);
++}
++
+ /**
+  * Mark tracee as terminated and optionally take action.
+  */
+ void terminate_tracee(Tracee *tracee)
+ {
+ 	tracee->terminated = true;
++	terminations_pending = true;
+ 
+ 	/* Case where the terminated tracee is marked
+ 	   to kill all tracees on exit.
+@@ -363,6 +383,10 @@ void free_terminated_tracees()
+ {
+ 	Tracee *next;
+ 
++	if (!terminations_pending)
++		return;
++	terminations_pending = false;
++
+ 	/* Items can't be deleted when using LIST_FOREACH.  */
+ 	next = tracees.lh_first;
+ 	while (next != NULL) {
+diff --git a/src/tracee/tracee.h b/src/tracee/tracee.h
+index 3dcbc7b..e4be3ff 100644
+--- a/src/tracee/tracee.h
++++ b/src/tracee/tracee.h
+@@ -79,6 +79,7 @@ typedef struct tracee {
+ 
+ 	/* Link for the list of all tracees.  */
+ 	LIST_ENTRY(tracee) link;
++	LIST_ENTRY(tracee) bucket_link;
+ 
+ 	/* Process identifier. */
+ 	pid_t pid;
+@@ -300,6 +301,7 @@ typedef struct tracee {
+ #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
+ 
+ extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
++extern void set_tracee_pid(Tracee *tracee, pid_t pid);
+ extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
+ 				bool only_with_pevent, word_t wait_options);
+ extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);

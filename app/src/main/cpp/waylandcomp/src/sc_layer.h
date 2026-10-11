@@ -150,8 +150,9 @@ int sc_layer_overlay_affordable(void);
 
 /* OVERLAY layer: show `src` (one window's imported frame) above the game layer, at the placement
  * `geo` = {src x0,y0,x1,y1 in image pixels, dst x0,y0,x1,y1 in output pixels} from vkp_map_draw.
+ * `translucent` preserves a client's alpha over the game for Steam notifications and overlays.
  * 0 = shown or dropped, -1 = unavailable (the caller must fall back to the copy path). */
-int sc_layer_present_overlay(struct vkp_image *src, const int geo[8]);
+int sc_layer_present_overlay(struct vkp_image *src, const int geo[8], int translucent);
 
 /* The scene is not a single fullscreen window this frame: hide every layer that is up. */
 void sc_layer_hide(void);

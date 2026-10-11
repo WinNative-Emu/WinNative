@@ -20,15 +20,15 @@
  * 02110-1301 USA.
  */
 
-#include <stdbool.h>      /* bool, */
-#include <sys/resource.h> /* prlimit(2), */
-#include <sys/time.h>     /* prlimit(2), */
+#include <stdbool.h>		/* bool, */
+#include <sys/time.h>		/* prlimit(2), */
+#include <sys/resource.h>	/* prlimit(2), */
 
-#include "cli/note.h"
-#include "tracee/abi.h"
-#include "tracee/mem.h"
-#include "tracee/reg.h"
 #include "tracee/tracee.h"
+#include "tracee/reg.h"
+#include "tracee/mem.h"
+#include "tracee/abi.h"
+#include "cli/note.h"
 
 /**
  * Set PRoot's stack soft limit to @tracee's one if this latter is
@@ -56,61 +56,62 @@
  * - as it's done here + reduce PRoot's stack soft limit as soon as
  *   it's possible; this would be overly complicated.
  */
-int translate_setrlimit_exit(const Tracee *tracee, bool is_prlimit) {
-  struct rlimit64 proot_stack;
-  word_t resource;
-  word_t address;
-  word_t tracee_stack_limit;
-  Reg sysarg;
-  int status;
+int translate_setrlimit_exit(const Tracee *tracee, bool is_prlimit)
+{
+	struct rlimit64 proot_stack;
+	word_t resource;
+	word_t address;
+	word_t tracee_stack_limit;
+	Reg sysarg;
+	int status;
 
-  sysarg = (is_prlimit ? SYSARG_2 : SYSARG_1);
+	sysarg = (is_prlimit ? SYSARG_2 : SYSARG_1);
 
-  resource = peek_reg(tracee, ORIGINAL, sysarg);
-  address = peek_reg(tracee, ORIGINAL, sysarg + 1);
+	resource = peek_reg(tracee, ORIGINAL, sysarg);
+	address  = peek_reg(tracee, ORIGINAL, sysarg + 1);
 
-  /* Not the resource we're looking for?  */
-  if (resource != RLIMIT_STACK)
-    return 0;
+	/* Not the resource we're looking for?  */
+	if (resource != RLIMIT_STACK)
+		return 0;
 
-  /* Retrieve new tracee's stack limit.  */
-  if (is_prlimit) {
-    /* Not the prlimit usage we're looking for?  */
-    if (address == 0)
-      return 0;
+	/* Retrieve new tracee's stack limit.  */
+	if (is_prlimit) {
+		/* Not the prlimit usage we're looking for?  */
+		if (address == 0)
+			return 0;
 
-    tracee_stack_limit = peek_uint64(tracee, address);
-  } else {
-    tracee_stack_limit = peek_word(tracee, address);
+		tracee_stack_limit = peek_uint64(tracee, address);
+	}
+	else {
+		tracee_stack_limit = peek_word(tracee, address);
 
-    /* Convert this special value from 32-bit to 64-bit,
-     * if needed.  */
-    if (is_32on64_mode(tracee) && tracee_stack_limit == (uint32_t)-1)
-      tracee_stack_limit = RLIM_INFINITY;
-  }
-  if (errno != 0)
-    return -errno;
+		/* Convert this special value from 32-bit to 64-bit,
+		 * if needed.  */
+		if (is_32on64_mode(tracee) && tracee_stack_limit == (uint32_t) -1)
+			tracee_stack_limit = RLIM_INFINITY;
+	}
+	if (errno != 0)
+		return -errno;
 
-  /* Get current PRoot's stack limit.  */
-  status = prlimit64(0, RLIMIT_STACK, NULL, &proot_stack);
-  if (status < 0) {
-    VERBOSE(tracee, 1, "can't get stack limit.");
-    return 0; /* Not fatal.  */
-  }
+	/* Get current PRoot's stack limit.  */
+	status = prlimit64(0, RLIMIT_STACK, NULL, &proot_stack);
+	if (status < 0) {
+		VERBOSE(tracee, 1, "can't get stack limit.");
+		return 0; /* Not fatal.  */
+	}
 
-  /* No need to increase current PRoot's stack limit?  */
-  if (proot_stack.rlim_cur >= tracee_stack_limit)
-    return 0;
+	/* No need to increase current PRoot's stack limit?  */
+	if (proot_stack.rlim_cur >= tracee_stack_limit)
+		return 0;
 
-  proot_stack.rlim_cur = tracee_stack_limit;
+	proot_stack.rlim_cur = tracee_stack_limit;
 
-  /* Increase current PRoot's stack limit.  */
-  status = prlimit64(0, RLIMIT_STACK, &proot_stack, NULL);
-  if (status < 0)
-    VERBOSE(tracee, 1, "can't set stack limit.");
-  return 0; /* Not fatal.  */
+	/* Increase current PRoot's stack limit.  */
+	status = prlimit64(0, RLIMIT_STACK, &proot_stack, NULL);
+	if (status < 0)
+		VERBOSE(tracee, 1, "can't set stack limit.");
+	return 0; /* Not fatal.  */
 
-  VERBOSE(tracee, 1, "stack soft limit increased to %llu bytes",
-          proot_stack.rlim_cur);
-  return 0;
+	VERBOSE(tracee, 1, "stack soft limit increased to %llu bytes", proot_stack.rlim_cur);
+	return 0;
 }

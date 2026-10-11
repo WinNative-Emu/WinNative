@@ -20,18 +20,16 @@
  * 02110-1301 USA.
  */
 
-#include <assert.h> /* assert(3), */
-#include <errno.h>  /* E*, */
-#include <stdio.h>  /* snprintf(3), */
-#include <stdlib.h> /* atoi(3), strtol(3), */
-#include <string.h> /* strcmp(3), */
+#include <stdio.h>   /* snprintf(3), */
+#include <string.h>  /* strcmp(3), */
+#include <stdlib.h>  /* atoi(3), strtol(3), */
+#include <errno.h>   /* E*, */
+#include <assert.h>  /* assert(3), */
 
-#include "path/binding.h"
-#include "path/path.h"
 #include "path/proc.h"
 #include "tracee/tracee.h"
-
-extern char *root_path;
+#include "path/path.h"
+#include "path/binding.h"
 
 /**
  * This function emulates the @result of readlink("@base/@component")
@@ -43,120 +41,124 @@ extern char *root_path;
  * to @result.
  */
 Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
-                     const char base[PATH_MAX], const char component[NAME_MAX],
-                     Comparison comparison) {
-  const Tracee *known_tracee;
-  char proc_path[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
-  int status;
-  pid_t pid;
+			const char base[PATH_MAX], const char component[NAME_MAX],
+			Comparison comparison)
+{
+	const Tracee *known_tracee;
+	char proc_path[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
+	int status;
+	pid_t pid;
 
-  /* Remember: comparison = compare_paths("/proc", base)  */
-  switch (comparison) {
-  case PATHS_ARE_EQUAL:
-    /* Substitute "/proc/self" with "/proc/<PID>" and
-     * "/proc/thread-self" with "/proc/<PID>/task/<TID>".  */
-    if (strcmp(component, "self") == 0)
-      status = snprintf(result, PATH_MAX, "/proc/%d", tracee->tgid);
-    else if (strcmp(component, "thread-self") == 0)
-      status = snprintf(result, PATH_MAX, "/proc/%d/task/%d", tracee->tgid,
-                        tracee->pid);
-    else
-      return DEFAULT;
+	/* TODO: Following assertion fails on some devices
+	 * https://github.com/termux/termux-packages/issues/1679
+	 */
+	//assert(comparison == compare_paths("/proc", base));
 
-    if (status < 0 || status >= PATH_MAX)
-      return -EPERM;
+	/* Remember: comparison = compare_paths("/proc", base)  */
+	switch (comparison) {
+	case PATHS_ARE_EQUAL:
+		/* Substitute "/proc/self" with "/proc/<PID>".  */
+		if (strcmp(component, "self") == 0)
+			status = snprintf(result, PATH_MAX, "/proc/%d", tracee->tgid);
+		else if (strcmp(component, "thread-self") == 0)
+			status = snprintf(result, PATH_MAX, "/proc/%d/task/%d", tracee->tgid, tracee->pid);
+		else
+			return DEFAULT;
 
-    return CANONICALIZE;
+		if (status < 0 || status >= PATH_MAX)
+			return -EPERM;
 
-  case PATH1_IS_PREFIX:
-    /* Handle "/proc/<PID>" below, where <PID> is process
-     * monitored by PRoot.  */
-    break;
+		return CANONICALIZE;
 
-  default:
-    return DEFAULT;
-  }
+	case PATH1_IS_PREFIX:
+		/* Handle "/proc/<PID>" below, where <PID> is process
+		 * monitored by PRoot.  */
+		break;
 
-  pid = atoi(base + strlen("/proc/"));
-  if (pid == 0)
-    return DEFAULT;
+	default:
+		return DEFAULT;
+	}
 
-  /* Handle links in "/proc/<PID>/".  */
-  status = snprintf(proc_path, sizeof(proc_path), "/proc/%d", pid);
-  if (status < 0 || (size_t)status >= sizeof(proc_path))
-    return -EPERM;
+	pid = atoi(base + strlen("/proc/"));
+	if (pid == 0)
+		return DEFAULT;
 
-  comparison = compare_paths(proc_path, base);
-  switch (comparison) {
-  case PATHS_ARE_EQUAL:
-    known_tracee = get_tracee(tracee, pid, false);
-    if (known_tracee == NULL)
-      return DEFAULT;
+	/* Handle links in "/proc/<PID>/".  */
+	status = snprintf(proc_path, sizeof(proc_path), "/proc/%d", pid);
+	if (status < 0 || (size_t) status >= sizeof(proc_path))
+		return -EPERM;
 
-#define SUBSTITUTE(name, string)                                               \
-  do {                                                                         \
-    if (strcmp(component, #name) != 0)                                         \
-      break;                                                                   \
-                                                                               \
-    status = strlen(string);                                                   \
-    if (status >= PATH_MAX)                                                    \
-      return -EPERM;                                                           \
-                                                                               \
-    strncpy(result, string, status + 1);                                       \
-    return CANONICALIZE;                                                       \
-  } while (0)
+	comparison = compare_paths(proc_path, base);
+	switch (comparison) {
+	case PATHS_ARE_EQUAL:
+		known_tracee = get_tracee(tracee, pid, false);
+		if (known_tracee == NULL)
+			return DEFAULT;
 
-    /* Substitute link "/proc/<PID>/???" with the content
-     * of tracee->???.  */
-    SUBSTITUTE(exe, known_tracee->exe);
-    SUBSTITUTE(cwd, known_tracee->fs->cwd);
-    SUBSTITUTE(root, root_path);
+#define SUBSTITUTE(name, string)				\
+		do {						\
+			if (strcmp(component, #name) != 0)	\
+				break;				\
+								\
+			status = strlen(string);		\
+			if (status >= PATH_MAX)			\
+				return -EPERM;			\
+								\
+			strncpy(result, string, status + 1);	\
+			return CANONICALIZE;			\
+		} while (0)
+
+		/* Substitute link "/proc/<PID>/???" with the content
+		 * of tracee->???.  */
+		SUBSTITUTE(exe, known_tracee->exe);
+		SUBSTITUTE(cwd, known_tracee->fs->cwd);
+		SUBSTITUTE(root, get_root(known_tracee));
 #undef SUBSTITUTE
-    return DEFAULT;
+		return DEFAULT;
 
-  case PATH1_IS_PREFIX:
-    /* Handle "/proc/<PID>/???" below.  */
-    break;
+	case PATH1_IS_PREFIX:
+		/* Handle "/proc/<PID>/???" below.  */
+		break;
 
-  default:
-    return DEFAULT;
-  }
+	default:
+		return DEFAULT;
+	}
 
-  /* Handle links in "/proc/<PID>/fd/".  */
-  status = snprintf(proc_path, sizeof(proc_path), "/proc/%d/fd", pid);
-  if (status < 0 || (size_t)status >= sizeof(proc_path))
-    return -EPERM;
+	/* Handle links in "/proc/<PID>/fd/".  */
+	status = snprintf(proc_path, sizeof(proc_path), "/proc/%d/fd", pid);
+	if (status < 0 || (size_t) status >= sizeof(proc_path))
+		return -EPERM;
 
-  comparison = compare_paths(proc_path, base);
-  switch (comparison) {
-    char *end_ptr;
+	comparison = compare_paths(proc_path, base);
+	switch (comparison) {
+		char *end_ptr;
 
-  case PATHS_ARE_EQUAL:
-    /* Sanity check: a number is expected.  */
-    errno = 0;
-    (void)strtol(component, &end_ptr, 10);
-    if (errno != 0 || end_ptr == component)
-      return -EPERM;
+	case PATHS_ARE_EQUAL:
+		/* Sanity check: a number is expected.  */
+		errno = 0;
+		(void) strtol(component, &end_ptr, 10);
+		if (errno != 0 || end_ptr == component)
+			return -EPERM;
 
-    /* Don't dereference "/proc/<PID>/fd/???" now: they
-     * can point to anonymous pipe, socket, ...  otherwise
-     * they point to a path already canonicalized by the
-     * kernel.
-     *
-     * Note they are still correctly detranslated in
-     * syscall/exit.c if a monitored process uses
-     * readlink() against any of them.  */
-    status = snprintf(result, PATH_MAX, "%s/%s", base, component);
-    if (status < 0 || status >= PATH_MAX)
-      return -EPERM;
+		/* Don't dereference "/proc/<PID>/fd/???" now: they
+		 * can point to anonymous pipe, socket, ...  otherwise
+		 * they point to a path already canonicalized by the
+		 * kernel.
+		 *
+		 * Note they are still correctly detranslated in
+		 * syscall/exit.c if a monitored process uses
+		 * readlink() against any of them.  */
+		status = snprintf(result, PATH_MAX, "%s/%s", base, component);
+		if (status < 0 || status >= PATH_MAX)
+			return -EPERM;
 
-    return DONT_CANONICALIZE;
+		return DONT_CANONICALIZE;
 
-  default:
-    break;
-  }
+	default:
+		break;
+	}
 
-  return DEFAULT;
+	return DEFAULT;
 }
 
 /**
@@ -168,28 +170,32 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
  * Unlike readlink(), this function includes the nul terminating byte
  * to @result (but this byte is not counted in the returned value).
  */
-ssize_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX],
-                       const char referer[PATH_MAX]) {
-  Action action;
-  char base[PATH_MAX];
-  char *component;
+ssize_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
+{
+	Action action;
+	char base[PATH_MAX];
+	char *component;
 
-  assert(compare_paths("/proc", referer) == PATH1_IS_PREFIX);
+	/* Sanity check.  */
+	if (strnlen(referer, PATH_MAX) >= PATH_MAX)
+		return -ENAMETOOLONG;
 
-  /* It's safe to use strrchr() here since @referer was
-   * previously canonicalized.  */
-  strcpy(base, referer);
-  component = strrchr(base, '/');
+	assert(compare_paths("/proc", referer) == PATH1_IS_PREFIX);
 
-  /* These cases are not possible: @referer is supposed to be a
-   * canonicalized subpath of "/proc".  */
-  assert(component != NULL && component != base);
+	/* It's safe to use strrchr() here since @referer was
+	 * previously canonicalized.  */
+	strcpy(base, referer);
+	component = strrchr(base, '/');
 
-  component[0] = '\0';
-  component++;
-  if (component[0] == '\0')
-    return 0;
+	/* These cases are not possible: @referer is supposed to be a
+	 * canonicalized subpath of "/proc".  */
+	assert(component != NULL && component != base);
 
-  action = readlink_proc(tracee, result, base, component, PATH1_IS_PREFIX);
-  return (action == CANONICALIZE ? strlen(result) : 0);
+	component[0] = '\0';
+	component++;
+	if (component[0] == '\0')
+		return 0;
+
+	action = readlink_proc(tracee, result, base, component, PATH1_IS_PREFIX);
+	return (action == CANONICALIZE ? strlen(result) : 0);
 }

@@ -9,17 +9,57 @@ set -u
 export HOME=${HOME:-/root}
 mode=${1:-desktop}
 shift || true
+# The app's gamescope (/usr/local/bin, tools/gamescope/PATCHES.md) is linked against the runtime's
+# current libraries; a runtime installed before them cannot load it and runs its own instead.
+if [ -z "${WN_INSIDE:-}" ]; then
+  gamescope=gamescope
+  if ! gamescope_version=$(gamescope --version 2>&1); then
+    gamescope=/usr/bin/gamescope
+    gamescope_version="$($gamescope --version 2>&1) (the app's build cannot load on this runtime)"
+  fi
+fi
 if [ -n "${WN_LOG:-}" ] && [ -z "${WN_INSIDE:-}" ]; then
   mkdir -p "$(dirname "$WN_LOG")" 2>/dev/null
   # The client alone writes megabytes an hour; one earlier log is kept, not every session's.
   if [ "$(stat -c %s "$WN_LOG" 2>/dev/null || echo 0)" -gt 8388608 ]; then
     mv -f "$WN_LOG" "$WN_LOG.1"
   fi
-  exec >>"$WN_LOG" 2>&1
+  # A guest looping on an error writes gigabytes in minutes: the log keeps its first WN_LOG_CAP
+  # bytes and the rest is drained, not refused - a writer that filled it must not die of SIGPIPE.
+  exec > >({ dd of="$WN_LOG" oflag=append conv=notrunc iflag=count_bytes count="${WN_LOG_CAP:-268435456}" bs=65536 status=none; cat >/dev/null; }) 2>&1
   echo "== winnative-session $(date) mode=$mode $*"
   echo "== uid=$(id -u) size=${WN_WIDTH:-?}x${WN_HEIGHT:-?} fps=${WN_FPS:-0} icd=${VK_ICD_FILENAMES:-none}"
-  echo "== gamescope: $(gamescope --version 2>&1 | head -1)"
+  echo "== gamescope: ${gamescope_version%%$'\n'*}"
 fi
+
+# Every program loads the locale LANG names (C.UTF-8) before main(). glibc ships it as a directory,
+# which it looks for once per category under two spellings before reading gconv's module lists:
+# about 30 opens, each a stop in proot, for every process in the session, a script's dirname or cat
+# included. An archive holding it (and gconv's cache) makes that one open. Built again when the
+# glibc package changes, or when the archive does (locale-gen rewrites it).
+prepare_locale() {
+  local dir=/usr/lib/locale stamp=/usr/lib/locale/.winnative-archive want have= pkg
+  pkg=(/var/lib/pacman/local/glibc-[0-9]*)
+  want=${pkg[0]##*/}
+  [ -f "$stamp" ] && read -r have < "$stamp"
+  [ "$have" = "$want" ] && [ -f "$dir/locale-archive" ] && [ ! "$dir/locale-archive" -nt "$stamp" ] && return 0
+  [ -d "$dir/C.utf8" ] && command -v localedef >/dev/null 2>&1 || return 0
+  # localedef names a new archive by hard link, which Android refuses; libwnsession renames it.
+  WN_LINK_RENAME=1 localedef --add-to-archive --replace "$dir/C.utf8" >/dev/null 2>&1 || return 0
+  rm -f /usr/lib/gconv/gconv-modules.cache
+  command -v iconvconfig >/dev/null 2>&1 && iconvconfig >/dev/null 2>&1
+  printf '%s\n' "$want" > "$stamp"
+  echo "== locale archive built for $want"
+}
+[ -z "${WN_INSIDE:-}" ] && prepare_locale
+
+# A sleep that starts no process. Under proot every exec is a traced execve plus the loader's
+# opens and maps, and the watchers below poll for the whole session: `sleep 1` in a loop was 60
+# execs a minute each. read -t on a pipe nothing ever writes to waits in bash itself.
+nap() {
+  [ -n "${wn_nap_fd:-}" ] || exec {wn_nap_fd}<> <(:)
+  read -r -t "$1" -u "$wn_nap_fd" _ 2>/dev/null || :
+}
 export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
@@ -30,7 +70,7 @@ if [ -z "${WN_INSIDE:-}" ]; then
   # a compositor: probe until a connection succeeds.
   for _ in $(seq 1 100); do
     wayland-info >/dev/null 2>&1 && break
-    sleep 0.1
+    nap 0.1
   done
   # The desktop is XFCE on labwc, a compositor of its own that draws into one window of the
   # app's: gamescope shows a single program at a time and cannot hold a panel and its windows.
@@ -52,7 +92,7 @@ if [ -z "${WN_INSIDE:-}" ]; then
   fi
   [ "$mode" = steam ] && args+=(-e)
   export WN_INSIDE=1
-  exec gamescope "${args[@]}" -- "$0" "$mode" "$@"
+  exec "$gamescope" "${args[@]}" -- "$0" "$mode" "$@"
 fi
 
 # gamescope manages X windows: toolkits go through Xwayland, not gamescope's own Wayland socket.
@@ -78,7 +118,7 @@ reap_orphans() {
     [ -n "$left" ] || return 0
     echo "== leaving behind:$left"
     kill -9 $left 2>/dev/null
-    sleep 0.2
+    nap 0.2
   done
 }
 
@@ -124,13 +164,61 @@ case $mode in
     # With DirectAudio chosen the games' prefixes name it as their audio driver; otherwise they
     # are handed back to Wine's own choice, which finds the PulseAudio server.
     winnative-directaudio "$steam_root" "$([ -n "${WN_DIRECTAUDIO:-}" ] && echo on || echo off)" || true
+    # The library beat. Both helpers are whole programs under proot (the seeder some forty of them,
+    # the compat one a python start), and nearly every beat has nothing new for them: a burst of
+    # thousands of proot stops every few seconds, game loads included. Each runs only when what it
+    # reads has changed, which bash answers without starting anything ([ -nt ], globs), and every
+    # five minutes regardless. The seeder acts on a prefix (or Proton's template for them) it has
+    # not marked, and on new install scripts, which arrive with a manifest; the compat pass on a new
+    # depot or tool.
     (
       beat=0
-      for _ in $(seq 1 720); do
-        sleep 5
-        winnative-seed-redists "$steam_root" >/dev/null 2>&1 || true
+      compat_stamp=$HOME/.wn-compat-beat
+      seed_stamp=$HOME/.wn-seed-beat
+      rm -f "$compat_stamp" "$seed_stamp"
+      changed_since() {
+        local d
+        for d in "${@:2}"; do
+          [ "$d" -nt "$1" ] && return 0
+        done
+        return 1
+      }
+      compat_due() {
+        [ -e "$compat_stamp" ] && [ "$((beat % 60))" -ne 0 ] || return 0
+        changed_since "$compat_stamp" "$steam_root/steamapps/common" "$steam_root/compatibilitytools.d"
+      }
+      seed_due() {
+        local reg
+        [ -e "$seed_stamp" ] && [ "$((beat % 60))" -ne 0 ] || return 0
+        changed_since "$seed_stamp" "${libraries[@]}" && return 0
+        for reg in "$steam_root"/steamapps/common/Proton*/files/share/default_pfx*/system.reg \
+                   /mnt/winnative-lib/*/steamapps/common/Proton*/files/share/default_pfx*/system.reg \
+                   "$steam_root"/compatibilitytools.d/*/files/share/default_pfx*/system.reg \
+                   /opt/winnative-proton/files/share/default_pfx*/system.reg \
+                   "$steam_root"/steamapps/compatdata/*/pfx/system.reg \
+                   /mnt/winnative/steamapps/compatdata/*/pfx/system.reg; do
+          [ -f "$reg" ] && [ ! -f "${reg%/*}/.winnative-redists" ] && return 0
+        done
+        return 1
+      }
+      for ((_i = 0; _i < 720; _i++)); do
+        nap 5
         beat=$((beat + 1))
-        if [ "$((beat % 3))" -eq 0 ]; then
+        [ "$((beat % 3))" -eq 0 ] || continue
+        libraries=("$steam_root/steamapps" /mnt/winnative/steamapps /mnt/winnative-lib/*/steamapps)
+        seed=; compat=
+        seed_due && seed=1
+        compat_due && compat=1
+        [ -n "$seed$compat" ] || continue
+        # Not beside a running game: the client rewrites its manifest at each launch, which made
+        # both due while it loaded. A new prefix is made from the template, which is marked.
+        pgrep -x wineserver >/dev/null 2>&1 && continue
+        if [ -n "$seed" ]; then
+          : > "$seed_stamp"
+          winnative-seed-redists "$steam_root" >/dev/null 2>&1 || true
+        fi
+        if [ -n "$compat" ]; then
+          : > "$compat_stamp"
           winnative-steam-compat "$steam_root" --refresh >/dev/null 2>&1 || true
         fi
       done
@@ -164,6 +252,25 @@ case $mode in
     xprop -root -spy STEAM_TOUCH_CLICK_MODE 2>/dev/null | while read -r _ _ touch_mode; do
       [ "$touch_mode" = 0 ] || xprop -root -f STEAM_TOUCH_CLICK_MODE 32c -set STEAM_TOUCH_CLICK_MODE 0
     done &
+    # Resume from the Steam menu. The menu is an overlay that takes input without changing the
+    # focus window, and a fullscreen game that loses input minimizes itself; after Resume it stayed
+    # minimized, a black screen with its caption in a corner. The app's gamescope restores it
+    # (tools/gamescope/PATCHES.md, 0112); this asks again a moment after input leaves the client
+    # (app 769) for anything else, which covers a game that minimizes late. Harmless when nothing
+    # is minimized. WN_RESTORE_ON_RESUME=0 turns it off.
+    [ "${WN_RESTORE_ON_RESUME:-1}" = 1 ] && (
+      prev=
+      xprop -spy -root GAMESCOPE_FOCUSED_APP 2>/dev/null | while read -r line; do
+        app=${line##*= }
+        case $app in ''|*[!0-9]*) prev=; continue ;; esac
+        if [ "$prev" = 769 ] && [ "$app" != 769 ]; then
+          nap 1
+          xprop -root -f GAMESCOPE_RESTORE_FOCUS_WINDOW 32c -set GAMESCOPE_RESTORE_FOCUS_WINDOW 1 2>/dev/null \
+            && echo "== resume: asked gamescope to restore the game window (app $app)"
+        fi
+        prev=$app
+      done
+    ) &
     # The client builds its network page and its connection indicator on NetworkManager, which
     # it looks for on the system bus as it starts. The network is Android's, so the runtime has
     # neither; without them Settings > Internet fails and the header shows no connection.
@@ -173,7 +280,7 @@ case $mode in
     system_bus=$!
     for _ in $(seq 1 50); do
       [ -S /run/dbus/system_bus_socket ] && break
-      sleep 0.1
+      nap 0.1
     done
     winnative-netmanager &
     netmanager=$!
@@ -184,33 +291,68 @@ case $mode in
         loaded="SteamApp Init - After Login total time"
         before=$(grep -ac "$loaded" "$ui_log" 2>/dev/null)
         for _ in $(seq 1 180); do
-          sleep 1
+          nap 1
           [ "$(grep -ac "$loaded" "$ui_log" 2>/dev/null)" = "$before" ] || break
         done
-        sleep 2
+        nap 2
         echo "== launching $deferred"
         # A pipe nobody reads would hold this open for good; the client reads it while it lives.
         timeout 10 bash -c 'echo "$0" > "$1"' "$deferred" "$HOME/.steam/steam.pipe"
       ) &
       waiter=$!
     fi
+    # The app asks for a clean exit when the session is closed (LinuxProgramLauncherComponent):
+    # the client writes back what it holds in memory and ends its downloads, instead of being
+    # killed with the session.
+    stop_request=${XDG_RUNTIME_DIR:-/tmp}/winnative-steam-stop
+    rm -f "$stop_request" "$HOME/.wn-stop-requested"
+    (
+      while :; do
+        if [ -e "$stop_request" ]; then
+          rm -f "$stop_request"
+          : > "$HOME/.wn-stop-requested"
+          echo "== steam: the app asked for a clean exit"
+          "$steam_root/steamrtarm64/steam" -shutdown >/dev/null 2>&1 || true
+          exit 0
+        fi
+        nap 0.5
+      done
+    ) &
+    stop_watcher=$!
+    # Each start is counted until the app sees the client's first frame and clears the count; a
+    # client that never shows itself is fetched again by winnative-steam-install.
+    echo start >> "$steam_root/package/winnative-unconfirmed"
     # The client exits 42 when it has updated itself and wants a fresh start (steam.sh does this).
+    # An update that cannot install asks for that every time; after three the session stops rather
+    # than loop in silence, which reads as a menu opening and closing by itself.
+    steam_updates=0
     while :; do
       "$steam_root/steamrtarm64/steam" -gamepadui -clientbeta publicbeta \
         -no-cef-sandbox -cef-force-gpu -cef-ozone-platform=x11 \
         -cef-use-gl=angle -cef-use-angle=vulkan "$@"
       rc=$?
       echo "== steam exited rc=$rc"
+      if [ -f "$HOME/.wn-stop-requested" ]; then
+        rm -f "$HOME/.wn-stop-requested"
+        break
+      fi
       [ "$rc" -eq 42 ] || break
+      steam_updates=$((steam_updates + 1))
+      if [ "$steam_updates" -ge 3 ]; then
+        echo "== steam: asked to restart for an update $steam_updates times and it is not installing; the session stops here rather than loop"
+        break
+      fi
+      # The URL arguments were acted on the first time; a restart must not repeat them.
+      set --
     done
     pkill -x xprop
     # Every job started here is ended here and waited for, before the sweep. One left running is
     # adopted by gamescope's reaper on the way out, which waits for it and so holds the
     # compositor and the proot above it open on a black screen; and the sweep is no second
     # chance, since a job this shell still owns is not an orphan for it to find.
-    kill "$netmanager" "$system_bus" "$heartbeat" 2>/dev/null
+    kill "$netmanager" "$system_bus" "$heartbeat" "$stop_watcher" 2>/dev/null
     [ -z "$waiter" ] || kill "$waiter" 2>/dev/null
-    wait "$netmanager" "$system_bus" "$heartbeat" ${waiter:+"$waiter"} 2>/dev/null
+    wait "$netmanager" "$system_bus" "$heartbeat" "$stop_watcher" ${waiter:+"$waiter"} 2>/dev/null
     reap_orphans
     exit "$rc"
     ;;

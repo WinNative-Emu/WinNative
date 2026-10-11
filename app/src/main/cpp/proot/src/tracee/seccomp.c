@@ -1,20 +1,21 @@
-#include <assert.h>    /* assert(3), */
 #include <errno.h>     /* E*, */
-#include <linux/net.h> /* SYS_SENDMMSG */
 #include <signal.h>    /* SIGSYS, */
-#include <stdbool.h>   /* bool, */
-#include <string.h>    /* memset   */
-#include <sys/vfs.h>   /* statfs64 */
-#include <time.h>      /* time(2), */
 #include <unistd.h>    /* getpgid, */
 #include <utime.h>     /* utimbuf, */
+#include <sys/vfs.h>   /* statfs64 */
+#include <string.h>    /* memset   */
+#include <linux/net.h> /* SYS_SENDMMSG */
+#include <assert.h>    /* assert(3), */
+#include <time.h>      /* time(2), */
 
+#include "extension/extension.h"
 #include "cli/note.h"
-#include "path/path.h"
 #include "syscall/chain.h"
 #include "syscall/syscall.h"
-#include "tracee/mem.h"
 #include "tracee/seccomp.h"
+#include "tracee/mem.h"
+#include "tracee/statx.h"
+#include "path/path.h"
 
 static int handle_seccomp_event_common(Tracee *tracee);
 
@@ -26,29 +27,39 @@ static int handle_seccomp_event_common(Tracee *tracee);
  * so SIGSYS handler sees untranslated paths and should leave
  * them untranslated.
  */
-void restart_syscall_after_seccomp(Tracee *tracee) {
-  word_t instr_pointer;
+void restart_syscall_after_seccomp(Tracee* tracee) {
+	word_t instr_pointer;
 
-  /* Enable restore regs at end of replaced call.  */
-  tracee->restore_original_regs_after_seccomp_event = true;
-  tracee->restart_how = PTRACE_SYSCALL;
+	/* Enable restore regs at end of replaced call.
+	 * This also defers delivering of signals until restarted syscall finishes.  */
+	tracee->restore_original_regs_after_seccomp_event = true;
+	tracee->restart_how = PTRACE_SYSCALL;
 
-  /* Move the instruction pointer back to the original trap */
-  instr_pointer = peek_reg(tracee, CURRENT, INSTR_POINTER);
-  poke_reg(tracee, INSTR_POINTER, instr_pointer - get_systrap_size(tracee));
+	/* Move the instruction pointer back to the original trap */
+	instr_pointer = peek_reg(tracee, CURRENT, INSTR_POINTER);
+	poke_reg(tracee, INSTR_POINTER, instr_pointer - get_systrap_size(tracee));
 
-  /* Write registers. (Omiting special sysnum logic as we're not during syscall
-   * execution, but we're queueing new syscall to be called) */
-  push_specific_regs(tracee, false);
+	/* X86 usually uses orig_rax when selecting syscall,
+	 * but as this code is happening outside syscall handler
+	 * we need to copy orig_eax back to eax.  */
+#if defined(ARCH_X86_64)
+	tracee->_regs[CURRENT].rax = tracee->_regs[CURRENT].orig_rax;
+#elif defined(ARCH_X86)
+	tracee->_regs[CURRENT].eax = tracee->_regs[CURRENT].orig_eax;
+#endif
+
+	/* Write registers. (Omiting special sysnum logic as we're not during syscall
+	 * execution, but we're queueing new syscall to be called) */
+	push_specific_regs(tracee, false);
 }
 
 /**
  * Set specified result (negative for errno) and do not restart syscall.
  */
 void set_result_after_seccomp(Tracee *tracee, word_t result) {
-  VERBOSE(tracee, 3, "Setting result after SIGSYS to 0x%lx", result);
-  poke_reg(tracee, SYSARG_RESULT, result);
-  push_specific_regs(tracee, false);
+	VERBOSE(tracee, 3, "Setting result after SIGSYS to 0x%lx", result);
+	poke_reg(tracee, SYSARG_RESULT, result);
+	push_specific_regs(tracee, false);
 }
 
 /**
@@ -56,472 +67,550 @@ void set_result_after_seccomp(Tracee *tracee, word_t result) {
  *
  * Return 0 to swallow signal or SIGSYS to deliver it to process.
  */
-int handle_seccomp_event(Tracee *tracee) {
-  int ret;
+int handle_seccomp_event(Tracee* tracee)
+{
+	int ret;
 
-  /* Reset status so next SIGTRAP | 0x80 is
-   * recognized as syscall entry.  */
-  tracee->status = 0;
+	/* Reset status so next SIGTRAP | 0x80 is
+	 * recognized as syscall entry.  */
+	tracee->status = 0;
 
-  /* Registers are never restored at this stage as they weren't saved.  */
-  tracee->restore_original_regs = false;
+	/* Registers are never restored at this stage as they weren't saved.  */
+	tracee->restore_original_regs = false;
 
-  /* Fetch registers.  */
-  ret = fetch_regs(tracee);
-  if (ret != 0) {
-    VERBOSE(tracee, 1, "Couldn't fetch regs on seccomp SIGSYS");
-    return SIGSYS;
-  }
+	/* Fetch registers.  */
+	ret = fetch_regs(tracee);
+	if (ret != 0) {
+		VERBOSE(tracee, 1, "Couldn't fetch regs on seccomp SIGSYS");
+		return SIGSYS;
+	}
 
-  /* Save regs so they can be restored at end of replaced call.  */
-  save_current_regs(tracee, ORIGINAL_SECCOMP_REWRITE);
+	/* Save regs so they can be restored at end of replaced call.  */
+	save_current_regs(tracee, ORIGINAL_SECCOMP_REWRITE);
 
-  print_current_regs(tracee, 3, "seccomp SIGSYS");
+	/* X86 uses orig_rax when selecting syscall,
+	 * however at this point we are after syscall has been rejected
+	 * and orig_rax was reset to -1.  */
+#if defined(ARCH_X86_64)
+	tracee->_regs[CURRENT].orig_rax = tracee->_regs[CURRENT].rax;
+#elif defined(ARCH_X86)
+	tracee->_regs[CURRENT].orig_eax = tracee->_regs[CURRENT].eax;
+#endif
 
-  return handle_seccomp_event_common(tracee);
+	print_current_regs(tracee, 3, "seccomp SIGSYS");
+
+	return handle_seccomp_event_common(tracee);
 }
 
-void fix_and_restart_enosys_syscall(Tracee *tracee) {
-  /* Reset tracee state so we're not handling syscall exit */
-  tracee->status = 0;
-  tracee->restore_original_regs = false;
+void fix_and_restart_enosys_syscall(Tracee* tracee)
+{
+	/* Reset tracee state so we're not handling syscall exit */
+	tracee->status = 0;
+	tracee->restore_original_regs = false;
 
-  /* Restore and save original registers */
-  memcpy(&tracee->_regs[CURRENT], &tracee->_regs[ORIGINAL],
-         sizeof(tracee->_regs[CURRENT]));
-  save_current_regs(tracee, ORIGINAL_SECCOMP_REWRITE);
+	/* Restore and save original registers */
+	memcpy(&tracee->_regs[CURRENT], &tracee->_regs[ORIGINAL], sizeof(tracee->_regs[CURRENT]));
+	save_current_regs(tracee, ORIGINAL_SECCOMP_REWRITE);
 
-  handle_seccomp_event_common(tracee);
+	handle_seccomp_event_common(tracee);
 }
 
-static int handle_seccomp_event_common(Tracee *tracee) {
-  int ret;
-  Sysnum sysnum;
+static int handle_seccomp_event_common(Tracee *tracee)
+{
+	int ret;
+	int status;
+	Sysnum sysnum = get_sysnum(tracee, CURRENT);
 
-  sysnum = get_sysnum(tracee, CURRENT);
+	sysnum = get_sysnum(tracee, CURRENT);
 
-  switch (sysnum) {
-  case PR_open:
-    set_sysnum(tracee, PR_openat);
-    poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_3));
-    poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	status = notify_extensions(tracee, SIGSYS_OCC, 0, 0);
+	if (status < 0) {
+		VERBOSE(tracee, 4, "SIGSYS errored out when being handled by an extension");
+		set_result_after_seccomp(tracee, status);
+		return 0;
+	}
+	if (status == 1) {
+		VERBOSE(tracee, 4, "SIGSYS fully handled by an extension");
+		set_result_after_seccomp(tracee, 0);
+		return 0;
+	}
+	if (status == 2) {
+		VERBOSE(tracee, 4, "SIGSYS fully handled by an extension with result set");
+		return 0;
+	}
 
-  case PR_accept:
-    set_sysnum(tracee, PR_accept4);
-    poke_reg(tracee, SYSARG_4, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	switch (sysnum) {
+	case PR_open:
+		set_sysnum(tracee, PR_openat);
+		poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_3));
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_setgroups:
-  case PR_setgroups32:
-    set_result_after_seccomp(tracee, 0);
-    break;
+	case PR_accept:
+		set_sysnum(tracee, PR_accept4);
+		poke_reg(tracee, SYSARG_4, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_getpgrp:
-    /* Query value with getpgid and set it as result.  */
-    set_result_after_seccomp(tracee, getpgid(tracee->pid));
-    break;
+	case PR_setgroups:
+	case PR_setgroups32:
+		set_result_after_seccomp(tracee, 0);
+		break;
 
-  case PR_symlink:
-    set_sysnum(tracee, PR_symlinkat);
-    poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, AT_FDCWD);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_getpgrp:
+		/* Query value with getpgid and set it as result.  */
+		set_result_after_seccomp(tracee, getpgid(tracee->pid));
+		break;
 
-  case PR_link:
-    set_sysnum(tracee, PR_linkat);
-    poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    poke_reg(tracee, SYSARG_3, AT_FDCWD);
-    poke_reg(tracee, SYSARG_5, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_symlink:
+		set_sysnum(tracee, PR_symlinkat);
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_chmod:
-    set_sysnum(tracee, PR_fchmodat);
-    poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    poke_reg(tracee, SYSARG_4, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_link:
+		set_sysnum(tracee, PR_linkat);
+		poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		poke_reg(tracee, SYSARG_3, AT_FDCWD);
+		poke_reg(tracee, SYSARG_5, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_chown:
-  case PR_lchown:
-  case PR_chown32:
-  case PR_lchown32:
-    set_sysnum(tracee, PR_fchownat);
-    poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_3));
-    poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    if (sysnum == PR_lchown || sysnum == PR_lchown32) {
-      poke_reg(tracee, SYSARG_5, AT_SYMLINK_NOFOLLOW);
-    } else {
-      poke_reg(tracee, SYSARG_5, 0);
-    }
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_chmod:
+		set_sysnum(tracee, PR_fchmodat);
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		poke_reg(tracee, SYSARG_4, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_unlink:
-  case PR_rmdir:
-    set_sysnum(tracee, PR_unlinkat);
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    poke_reg(tracee, SYSARG_3, sysnum == PR_rmdir ? AT_REMOVEDIR : 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_chown:
+	case PR_lchown:
+	case PR_chown32:
+	case PR_lchown32:
+		set_sysnum(tracee, PR_fchownat);
+		poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_3));
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		if (sysnum == PR_lchown || sysnum == PR_lchown32) {
+			poke_reg(tracee, SYSARG_5, AT_SYMLINK_NOFOLLOW);
+		} else {
+			poke_reg(tracee, SYSARG_5, 0);
+		}
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_send:
-    set_sysnum(tracee, PR_sendto);
-    poke_reg(tracee, SYSARG_5, 0);
-    poke_reg(tracee, SYSARG_6, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_unlink:
+	case PR_rmdir:
+		set_sysnum(tracee, PR_unlinkat);
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		poke_reg(tracee, SYSARG_3, sysnum==PR_rmdir ? AT_REMOVEDIR : 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_recv:
-    set_sysnum(tracee, PR_recvfrom);
-    poke_reg(tracee, SYSARG_5, 0);
-    poke_reg(tracee, SYSARG_6, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_send:
+		set_sysnum(tracee, PR_sendto);
+		poke_reg(tracee, SYSARG_5, 0);
+		poke_reg(tracee, SYSARG_6, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_waitpid:
-    set_sysnum(tracee, PR_wait4);
-    poke_reg(tracee, SYSARG_4, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_recv:
+		set_sysnum(tracee, PR_recvfrom);
+		poke_reg(tracee, SYSARG_5, 0);
+		poke_reg(tracee, SYSARG_6, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_statfs: {
-    int size;
-    char path[PATH_MAX];
-    char original[PATH_MAX];
-    char devshm_path[PATH_MAX];
-    struct statfs64 mstatfs64;
-    struct compat_statfs mstatfs;
-    size = read_string(tracee, original, peek_reg(tracee, CURRENT, SYSARG_1),
-                       PATH_MAX);
-    if (size < 0) {
-      set_result_after_seccomp(tracee, size);
-      break;
-    }
-    if (size >= PATH_MAX) {
-      set_result_after_seccomp(tracee, -ENAMETOOLONG);
-      break;
-    }
-    translate_path(tracee, path, AT_FDCWD, original, true);
-    errno = 0;
-    statfs64(path, &mstatfs64);
-    if (errno != 0) {
-      set_result_after_seccomp(tracee, -errno);
-      break;
-    }
+	case PR_waitpid:
+		set_sysnum(tracee, PR_wait4);
+		poke_reg(tracee, SYSARG_4, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-    /* Fake /dev/shm being tmpfs, see statfs handler in syscall/exit.c */
-    if (translate_path(tracee, devshm_path, AT_FDCWD, "/dev/shm", true) >= 0) {
-      Comparison comparison = compare_paths(devshm_path, path);
-      if (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX) {
-        mstatfs64.f_type = 0x01021994;
-      }
-    }
+	case PR_statfs:
+	{
+		int size;
+		int status;
+		char path[PATH_MAX];
+		char original[PATH_MAX];
+		char devshm_path[PATH_MAX];
+		struct statfs64 my_statfs64;
+		struct compat_statfs my_statfs;
+		size = read_string(tracee, original, peek_reg(tracee, CURRENT, SYSARG_1), PATH_MAX);
+		if (size < 0) {
+			set_result_after_seccomp(tracee, size);
+			break;
+		}
+		if (size >= PATH_MAX) { 
+			set_result_after_seccomp(tracee, -ENAMETOOLONG);
+			break;
+		}
+            	translate_path(tracee, path, AT_FDCWD, original, true);
+		errno = 0;
+		status = statfs64(path, &my_statfs64); 
+		if (errno != 0) {
+			set_result_after_seccomp(tracee, -errno);
+			break;
+		}
 
-    if ((mstatfs64.f_blocks | mstatfs64.f_bfree | mstatfs64.f_bavail |
-         mstatfs64.f_bsize | mstatfs64.f_frsize | mstatfs64.f_files |
-         mstatfs64.f_ffree) &
-        0xffffffff00000000ULL) {
-      set_result_after_seccomp(tracee, -EOVERFLOW);
-      break;
-    }
+		/* Fake /dev/shm being tmpfs, see statfs handler in syscall/exit.c */
+		if (translate_path(tracee, devshm_path, AT_FDCWD, "/dev/shm", true) >= 0) {
+			Comparison comparison = compare_paths(devshm_path, path);
+			if (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX) {
+				my_statfs64.f_type = 0x01021994;
+			}
+		}
 
-    mstatfs.f_type = mstatfs64.f_type;
-    mstatfs.f_bsize = mstatfs64.f_bsize;
-    mstatfs.f_blocks = mstatfs64.f_blocks;
-    mstatfs.f_bfree = mstatfs64.f_bfree;
-    mstatfs.f_bavail = mstatfs64.f_bavail;
-    mstatfs.f_files = mstatfs64.f_files;
-    mstatfs.f_ffree = mstatfs64.f_ffree;
-    mstatfs.f_fsid = mstatfs64.f_fsid;
-    mstatfs.f_namelen = mstatfs64.f_namelen;
-    mstatfs.f_frsize = mstatfs64.f_frsize;
-    mstatfs.f_flags = mstatfs64.f_flags;
-    memset(mstatfs.f_spare, 0, sizeof(mstatfs.f_spare));
+		if ((my_statfs64.f_blocks | my_statfs64.f_bfree | my_statfs64.f_bavail |
+     		     my_statfs64.f_bsize | my_statfs64.f_frsize | my_statfs64.f_files | 
+		     my_statfs64.f_ffree) & 0xffffffff00000000ULL) { 
+			set_result_after_seccomp(tracee, -EOVERFLOW);
+			break;
+		}
+		my_statfs.f_type = my_statfs64.f_type;
+		my_statfs.f_bsize = my_statfs64.f_bsize;
+		my_statfs.f_blocks = my_statfs64.f_blocks;
+		my_statfs.f_bfree = my_statfs64.f_bfree;
+		my_statfs.f_bavail = my_statfs64.f_bavail;
+		my_statfs.f_files = my_statfs64.f_files;
+		my_statfs.f_ffree = my_statfs64.f_ffree;
+		my_statfs.f_fsid = my_statfs64.f_fsid;
+		my_statfs.f_namelen = my_statfs64.f_namelen;
+		my_statfs.f_frsize = my_statfs64.f_frsize;
+		my_statfs.f_flags = my_statfs64.f_flags;
+		memset(my_statfs.f_spare, 0, sizeof(my_statfs.f_spare));
+                write_data(tracee, peek_reg(tracee, CURRENT, SYSARG_2), &my_statfs, sizeof(struct compat_statfs));
 
-    write_data(tracee, peek_reg(tracee, CURRENT, SYSARG_2), &mstatfs,
-               sizeof(struct compat_statfs));
-    set_result_after_seccomp(tracee, 0);
-    break;
-  }
+		set_result_after_seccomp(tracee, 0);
+		break;
+	}
 
-  case PR_utimes: {
-    /* int utimes(const char *filename, const struct timeval times[2]);
-     *
-     * convert to:
-     * int utimensat(int dirfd, const char *pathname, const struct timespec
-     * times[2], int flags);  */
-    struct timeval times[2];
-    struct timespec timens[2];
+	case PR_utimes:
+	{
+		/* int utimes(const char *filename, const struct timeval times[2]);
+		 *
+		 * convert to:
+		 * int utimensat(int dirfd, const char *pathname, const struct timespec times[2], int flags);  */
+		struct timeval times[2];
+		struct timespec timens[2];
 
-    set_sysnum(tracee, PR_utimensat);
-    if (peek_reg(tracee, CURRENT, SYSARG_2) != 0) {
-      ret = read_data(tracee, times, peek_reg(tracee, CURRENT, SYSARG_2),
-                      sizeof(times));
-      if (ret < 0) {
-        set_result_after_seccomp(tracee, ret);
-        break;
-      }
-      timens[0].tv_sec = (time_t)times[0].tv_sec;
-      timens[0].tv_nsec = (long)times[0].tv_usec * 1000;
-      timens[1].tv_sec = (time_t)times[1].tv_sec;
-      timens[1].tv_nsec = (long)times[1].tv_usec * 1000;
-      ret = set_sysarg_data(tracee, timens, sizeof(timens), SYSARG_2);
-      if (ret < 0) {
-        set_result_after_seccomp(tracee, ret);
-        break;
-      }
-    }
-    poke_reg(tracee, SYSARG_4, 0);
-    poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    restart_syscall_after_seccomp(tracee);
-    break;
-  }
+		set_sysnum(tracee, PR_utimensat);
+		if (peek_reg(tracee, CURRENT, SYSARG_2) != 0) {
+			ret = read_data(tracee, times, peek_reg(tracee, CURRENT, SYSARG_2), sizeof(times));
+			if (ret < 0) {
+				set_result_after_seccomp(tracee, ret);
+				break;
+			}
+			timens[0].tv_sec = (time_t)times[0].tv_sec;
+			timens[0].tv_nsec = (long)times[0].tv_usec * 1000;
+			timens[1].tv_sec = (time_t)times[1].tv_sec;
+			timens[1].tv_nsec = (long)times[1].tv_usec * 1000;
+			ret = set_sysarg_data(tracee, timens, sizeof(timens), SYSARG_2);
+			if (ret < 0) {
+				set_result_after_seccomp(tracee, ret);
+				break;
+			}
+		}
+		poke_reg(tracee, SYSARG_4, 0);
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
+	}
 
-  case PR_utime: {
-    /* int utime(const char *filename, const struct utimbuf *times);
-     *
-     * convert to:
-     * int utimensat(int dirfd, const char *pathname, const struct timespec
-     * times[2], int flags);  */
-    struct utimbuf times;
-    struct timespec timens[2];
+	case PR_utime:
+	{
+		/* int utime(const char *filename, const struct utimbuf *times);
+		 *
+		 * convert to:
+		 * int utimensat(int dirfd, const char *pathname, const struct timespec times[2], int flags);  */
+		struct utimbuf times;
+		struct timespec timens[2];
 
-    set_sysnum(tracee, PR_utimensat);
-    if (peek_reg(tracee, CURRENT, SYSARG_2) != 0) {
-      ret = read_data(tracee, &times, peek_reg(tracee, CURRENT, SYSARG_2),
-                      sizeof(times));
-      if (ret < 0) {
-        set_result_after_seccomp(tracee, ret);
-        break;
-      }
-      timens[0].tv_sec = (time_t)times.actime;
-      timens[0].tv_nsec = 0;
-      timens[1].tv_sec = (time_t)times.modtime;
-      timens[1].tv_nsec = 0;
-      ret = set_sysarg_data(tracee, timens, sizeof(timens), SYSARG_2);
-      if (ret < 0) {
-        set_result_after_seccomp(tracee, ret);
-        break;
-      }
-    }
-    poke_reg(tracee, SYSARG_4, 0);
-    poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    restart_syscall_after_seccomp(tracee);
-    break;
-  }
+		set_sysnum(tracee, PR_utimensat);
+		if (peek_reg(tracee, CURRENT, SYSARG_2) != 0) {
+			ret = read_data(tracee, &times, peek_reg(tracee, CURRENT, SYSARG_2), sizeof(times));
+			if (ret < 0) {
+				set_result_after_seccomp(tracee, ret);
+				break;
+			}
+			timens[0].tv_sec = (time_t)times.actime;
+			timens[0].tv_nsec = 0;
+			timens[1].tv_sec = (time_t)times.modtime;
+			timens[1].tv_nsec = 0;
+			ret = set_sysarg_data(tracee, timens, sizeof(timens), SYSARG_2);
+			if (ret < 0) {
+				set_result_after_seccomp(tracee, ret);
+				break;
+			}
+		}
+		poke_reg(tracee, SYSARG_4, 0);
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
+	}
 
-  case PR_stat:
-  case PR_lstat:
-    set_sysnum(tracee, PR_newfstatat);
-    poke_reg(tracee, SYSARG_4, sysnum == PR_lstat ? AT_SYMLINK_NOFOLLOW : 0);
-    poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    restart_syscall_after_seccomp(tracee);
-    break;
+#if defined(ARCH_X86) || defined(ARCH_X86_64)
+	case PR_sendmmsg:
+	{
+		/* Convert direct sendmmsg syscall to socketcall.
+		 * This affects only 32-bit x86, in other archs
+		 * bionic doesn't use socketcall() for sendmmsg.  */
+		size_t arg_size = sizeof_word(tracee);
+		assert(arg_size <= sizeof(word_t));
+		byte_t args[arg_size * 4];
+		memset(args, 0, arg_size * 4);
+		*(word_t*)(args) = peek_reg(tracee, CURRENT, SYSARG_1);
+		*(word_t*)(args + arg_size) = peek_reg(tracee, CURRENT, SYSARG_2);
+		*(word_t*)(args + 2 * arg_size) = peek_reg(tracee, CURRENT, SYSARG_3);
+		*(word_t*)(args + 3 * arg_size) = peek_reg(tracee, CURRENT, SYSARG_4);
+		word_t tracee_args = alloc_mem(tracee, arg_size * 4);
+		write_data(tracee, tracee_args, args, arg_size * 4);
+		set_sysnum(tracee, PR_socketcall);
+		poke_reg(tracee, SYSARG_1, SYS_SENDMMSG);
+		poke_reg(tracee, SYSARG_2, tracee_args);
+		restart_syscall_after_seccomp(tracee);
+		break;
+	}
+#endif
 
-  case PR_pipe:
-    set_sysnum(tracee, PR_pipe2);
-    poke_reg(tracee, SYSARG_2, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_stat:
+	case PR_lstat:
+		set_sysnum(tracee, PR_newfstatat);
+		poke_reg(tracee, SYSARG_4, sysnum == PR_lstat ? AT_SYMLINK_NOFOLLOW : 0);
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_dup2:
-    set_sysnum(tracee, PR_dup3);
-    poke_reg(tracee, SYSARG_3, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_pipe:
+		set_sysnum(tracee, PR_pipe2);
+		poke_reg(tracee, SYSARG_2, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_access:
-    set_sysnum(tracee, PR_faccessat);
-    poke_reg(tracee, SYSARG_4, 0);
-    poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_dup2:
+		set_sysnum(tracee, PR_dup3);
+		poke_reg(tracee, SYSARG_3, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_mkdir:
-    set_sysnum(tracee, PR_mkdirat);
-    poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_access:
+		set_sysnum(tracee, PR_faccessat);
+		poke_reg(tracee, SYSARG_4, 0);
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_rename:
-    set_sysnum(tracee, PR_renameat);
-    poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_3, AT_FDCWD);
-    poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
-    poke_reg(tracee, SYSARG_1, AT_FDCWD);
-    restart_syscall_after_seccomp(tracee);
-    break;
+	case PR_mkdir:
+		set_sysnum(tracee, PR_mkdirat);
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_select: {
-    word_t timeval_arg = peek_reg(tracee, CURRENT, SYSARG_5);
-    word_t timespec_arg = 0;
-    if (timeval_arg != 0) {
-      struct timeval tv = {};
-      if (read_data(tracee, &tv, timeval_arg, sizeof(tv))) {
-        set_result_after_seccomp(tracee, -EFAULT);
-        break;
-      }
-      if (tv.tv_usec >= 1000000 || tv.tv_usec < 0) {
-        set_result_after_seccomp(tracee, -EINVAL);
-        break;
-      }
-      struct timespec ts = {.tv_sec = tv.tv_sec, .tv_nsec = tv.tv_usec * 1000};
-      timespec_arg = alloc_mem(tracee, sizeof(ts));
-      if (write_data(tracee, timespec_arg, &ts, sizeof(ts))) {
-        set_result_after_seccomp(tracee, -EFAULT);
-        break;
-      }
-    }
-    set_sysnum(tracee, PR_pselect6);
-    poke_reg(tracee, SYSARG_5, timespec_arg);
-    poke_reg(tracee, SYSARG_6, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
-  }
+	case PR_rename:
+		set_sysnum(tracee, PR_renameat);
+		poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_3, AT_FDCWD);
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
 
-  case PR_poll: {
-    int ms_arg = (int)peek_reg(tracee, CURRENT, SYSARG_3);
-    word_t timespec_arg = 0;
-    if (ms_arg >= 0) {
-      struct timespec ts = {.tv_sec = ms_arg / 1000,
-                            .tv_nsec = (ms_arg % 1000) * 1000000};
-      timespec_arg = alloc_mem(tracee, sizeof(ts));
-      if (write_data(tracee, timespec_arg, &ts, sizeof(ts))) {
-        set_result_after_seccomp(tracee, -EFAULT);
-        break;
-      }
-    }
-    set_sysnum(tracee, PR_ppoll);
-    poke_reg(tracee, SYSARG_3, timespec_arg);
-    poke_reg(tracee, SYSARG_4, 0);
-    poke_reg(tracee, SYSARG_5, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
-  }
+	case PR_select:
+	{
+		// TODO: This doesn't update timeout with time spent inside select(2)
+		//       after returning from syscall
+		word_t timeval_arg = peek_reg(tracee, CURRENT, SYSARG_5);
+		word_t timespec_arg = 0;
+		if (timeval_arg != 0) {
+			struct timeval tv = {};
+			if (read_data(tracee, &tv, timeval_arg, sizeof(tv))) {
+				set_result_after_seccomp(tracee, -EFAULT);
+				break;
+			}
+			if (tv.tv_usec >= 1000000 || tv.tv_usec < 0) {
+				set_result_after_seccomp(tracee, -EINVAL);
+				break;
+			}
+			struct timespec ts = {
+				.tv_sec = tv.tv_sec,
+				.tv_nsec = tv.tv_usec * 1000
+			};
+			timespec_arg = alloc_mem(tracee, sizeof(ts));
+			if(write_data(tracee, timespec_arg, &ts, sizeof(ts))) {
+				set_result_after_seccomp(tracee, -EFAULT);
+				break;
+			}
+		}
+		set_sysnum(tracee, PR_pselect6);
+		poke_reg(tracee, SYSARG_5, timespec_arg);
+		poke_reg(tracee, SYSARG_6, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+	}
 
-  case PR_time: {
-    time_t t = time(NULL);
-    word_t addr = peek_reg(tracee, CURRENT, SYSARG_1);
-    errno = 0;
-    if (addr != 0) {
-      poke_word(tracee, addr, t);
-    }
-    set_result_after_seccomp(tracee, errno ? -EFAULT : t);
-    break;
-  }
+	case PR_poll:
+	{
+		int ms_arg = (int) peek_reg(tracee, CURRENT, SYSARG_3);
+		word_t timespec_arg = 0;
+		if (ms_arg >= 0) {
+			struct timespec ts = {
+				.tv_sec = ms_arg / 1000,
+				.tv_nsec = (ms_arg % 1000) * 1000000
+			};
+			timespec_arg = alloc_mem(tracee, sizeof(ts));
+			if(write_data(tracee, timespec_arg, &ts, sizeof(ts))) {
+				set_result_after_seccomp(tracee, -EFAULT);
+				break;
+			}
+		}
+		set_sysnum(tracee, PR_ppoll);
+		poke_reg(tracee, SYSARG_3, timespec_arg);
+		poke_reg(tracee, SYSARG_4, 0);
+		poke_reg(tracee, SYSARG_5, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+	}
 
-  case PR_ftruncate: {
-    if (detranslate_sysnum(get_abi(tracee), PR_ftruncate64) ==
-        SYSCALL_AVOIDER) {
-      set_result_after_seccomp(tracee, -ENOSYS);
-      break;
-    }
-    set_sysnum(tracee, PR_ftruncate64);
-    poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
-    poke_reg(tracee, SYSARG_2, 0);
-    poke_reg(tracee, SYSARG_4, 0);
-    restart_syscall_after_seccomp(tracee);
-    break;
-  }
+	case PR_epoll_wait:
+	{
+		set_sysnum(tracee, PR_epoll_pwait);
+		poke_reg(tracee, SYSARG_5, 0);
+		poke_reg(tracee, SYSARG_6, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+	}
 
-  case PR_setresuid:
-  case PR_setresgid: {
-    gid_t rxid, exid, sxid, rxid_, exid_, sxid_;
-    rxid = peek_reg(tracee, CURRENT, SYSARG_1);
-    exid = peek_reg(tracee, CURRENT, SYSARG_2);
-    sxid = peek_reg(tracee, CURRENT, SYSARG_3);
-    if (sysnum == PR_setresuid)
-      ret = getresuid(&rxid_, &exid_, &sxid_);
-    else if (sysnum == PR_setresgid)
-      ret = getresgid(&rxid_, &exid_, &sxid_);
-    if (ret) { // EFAULT = address outside address space
-      set_result_after_seccomp(tracee, -EPERM);
-      break;
-    }
-    ret = 0;
-    if (rxid != rxid_ && rxid != -1)
-      ret = -EPERM;
-    if (exid != exid_ && exid != -1)
-      ret = -EPERM;
-    if (sxid != sxid_ && sxid != -1)
-      ret = -EPERM;
-    set_result_after_seccomp(tracee, ret);
-    break;
-  }
+	case PR_time:
+	{
+		time_t t = time(NULL);
+		word_t addr = peek_reg(tracee, CURRENT, SYSARG_1);
+		errno = 0;
+		if (addr != 0) {
+			poke_word(tracee, addr, t);
+		}
+		set_result_after_seccomp(tracee, errno ? -EFAULT : t);
+		break;
+	}
 
-  case PR_setuid:
-  case PR_setuid32:
-  case PR_setgid:
-  case PR_setgid32:
-  case PR_setreuid:
-  case PR_setreuid32:
-  case PR_setregid:
-  case PR_setregid32: {
-    /* Android's app policy traps these. Without privileges a process may only
-     * take an id it already holds, so the answer is known without the kernel. */
-    bool is_uid = (sysnum == PR_setuid || sysnum == PR_setuid32 ||
-                   sysnum == PR_setreuid || sysnum == PR_setreuid32);
-    bool is_re = (sysnum == PR_setreuid || sysnum == PR_setreuid32 ||
-                  sysnum == PR_setregid || sysnum == PR_setregid32);
-    gid_t rxid, exid, sxid;
-    word_t first = peek_reg(tracee, CURRENT, SYSARG_1);
-    word_t second = is_re ? peek_reg(tracee, CURRENT, SYSARG_2) : (word_t)-1;
-    if (is_uid)
-      ret = getresuid(&rxid, &exid, &sxid);
-    else
-      ret = getresgid(&rxid, &exid, &sxid);
-    if (ret) {
-      set_result_after_seccomp(tracee, -EPERM);
-      break;
-    }
-    ret = 0;
-    if ((gid_t)first != (gid_t)-1 && (gid_t)first != rxid && (gid_t)first != exid && (gid_t)first != sxid)
-      ret = -EPERM;
-    if ((gid_t)second != (gid_t)-1 && (gid_t)second != rxid && (gid_t)second != exid && (gid_t)second != sxid)
-      ret = -EPERM;
-    set_result_after_seccomp(tracee, ret);
-    break;
-  }
+	case PR_statx:
+	{
+		set_result_after_seccomp(tracee, handle_statx_syscall(tracee, true));
+		break;
+	}
 
-  case PR_setfsuid:
-  case PR_setfsuid32:
-    set_result_after_seccomp(tracee, geteuid());
-    break;
+	case PR_ftruncate:
+	{
+		if (detranslate_sysnum(get_abi(tracee), PR_ftruncate64) == SYSCALL_AVOIDER) {
+			set_result_after_seccomp(tracee, -ENOSYS);
+			break;
+		}
+		set_sysnum(tracee, PR_ftruncate64);
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, 0);
+		poke_reg(tracee, SYSARG_4, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+	}
 
-  case PR_setfsgid:
-  case PR_setfsgid32:
-    set_result_after_seccomp(tracee, getegid());
-    break;
+	case PR_setresuid:
+	case PR_setresgid:
+	{
+		gid_t rxid, exid, sxid, rxid_, exid_, sxid_;
+		rxid = peek_reg(tracee, CURRENT, SYSARG_1);
+		exid = peek_reg(tracee, CURRENT, SYSARG_2);
+		sxid = peek_reg(tracee, CURRENT, SYSARG_3);
+		if (sysnum == PR_setresuid)
+			ret = getresuid(&rxid_, &exid_, &sxid_);
+		else if (sysnum == PR_setresgid)
+			ret = getresgid(&rxid_, &exid_, &sxid_);
+		if (ret) {  // EFAULT = address outside address space
+			set_result_after_seccomp(tracee, -EPERM);
+			break;
+		}
+		ret = 0;
+		if (rxid != rxid_ && rxid != -1)
+			ret = -EPERM;
+		if (exid != exid_ && exid != -1)
+			ret = -EPERM;
+		if (sxid != sxid_ && sxid != -1)
+			ret = -EPERM;
+		set_result_after_seccomp(tracee, ret);
+		break;
+	}
 
-  case PR_set_robust_list:
-  default:
-    /* Set errno to -ENOSYS */
-    set_result_after_seccomp(tracee, -ENOSYS);
-  }
+	case PR_setuid:
+	case PR_setuid32:
+	case PR_setgid:
+	case PR_setgid32:
+	case PR_setreuid:
+	case PR_setreuid32:
+	case PR_setregid:
+	case PR_setregid32:
+	{
+		/* Android's app policy traps these (fake_id0 answers them first
+		 * when it is loaded).  Without privileges a process may only take
+		 * an id it already holds, so the answer is known without the
+		 * kernel.  */
+		int is_uid = (sysnum == PR_setuid || sysnum == PR_setuid32
+			      || sysnum == PR_setreuid || sysnum == PR_setreuid32);
+		int is_re = (sysnum == PR_setreuid || sysnum == PR_setreuid32
+			     || sysnum == PR_setregid || sysnum == PR_setregid32);
+		gid_t first, second, rxid, exid, sxid;
+		first = peek_reg(tracee, CURRENT, SYSARG_1);
+		second = is_re ? (gid_t) peek_reg(tracee, CURRENT, SYSARG_2) : (gid_t) -1;
+		if (is_uid)
+			ret = getresuid(&rxid, &exid, &sxid);
+		else
+			ret = getresgid(&rxid, &exid, &sxid);
+		if (ret) {
+			set_result_after_seccomp(tracee, -EPERM);
+			break;
+		}
+		ret = 0;
+		if (first != (gid_t) -1 && first != rxid && first != exid && first != sxid)
+			ret = -EPERM;
+		if (second != (gid_t) -1 && second != rxid && second != exid && second != sxid)
+			ret = -EPERM;
+		set_result_after_seccomp(tracee, ret);
+		break;
+	}
 
-  return 0;
+	case PR_setfsuid:
+	case PR_setfsuid32:
+		/* The previous fsuid, which is the effective one without privileges.  */
+		set_result_after_seccomp(tracee, geteuid());
+		break;
+
+	case PR_setfsgid:
+	case PR_setfsgid32:
+		set_result_after_seccomp(tracee, getegid());
+		break;
+
+	case PR_set_robust_list:
+	default:
+		/* Set errno to -ENOSYS */
+		set_result_after_seccomp(tracee, -ENOSYS);
+	}
+
+	return 0;
 }
