@@ -1,0 +1,108 @@
+From: DroidDeck
+Subject: [PATCH] steamcompmgr: restore a game that minimized itself behind the Steam menu
+
+The Steam menu is an overlay that takes input without changing the focus window. A fullscreen
+wine game minimizes itself when it loses input (WM_CHANGE_STATE IconicState, which gamescope
+fakes by setting WM_STATE). gamescope only puts a window back to NormalState when the focus
+window changes, which never happens here, and wine will not activate a window it believes
+iconic - so after Resume the game stayed minimized: a black screen with its 160x24 caption in
+the top-left corner, 0 fps (seen with Titanfall 2 on GE-Proton 11).
+
+Remember the iconify request, restore NormalState before input returns to that window, and hand
+focus over again so wine sees the restore before the activation. GAMESCOPE_RESTORE_FOCUS_WINDOW
+on the root window asks for the same thing from outside.
+
+diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
+index 08afbc4..372a82c 100644
+--- a/src/steamcompmgr.cpp
++++ b/src/steamcompmgr.cpp
+@@ -4708,6 +4708,7 @@ void xwayland_ctx_t::DetermineAndApplyFocus( const std::vector< steamcompmgr_win
+ 			/* Some games (e.g. DOOM Eternal) don't react well to being put back as
+ 			* iconic, so never do that. Only take them out of iconic. */
+ 			set_wm_state( ctx, id, ICCCM_NORMAL_STATE );
++			ctx->focus.focusWindow->iconifyRequested = false;
+ 
+ 			gpuvis_trace_printf( "determine_and_apply_focus focus %lu", id );
+ 
+@@ -4795,6 +4796,19 @@ void xwayland_ctx_t::DetermineAndApplyFocus( const std::vector< steamcompmgr_win
+ 	if ( keyboardFocusWindow && ctx->currentKeyboardFocusWindow && find_win( ctx, ctx->currentKeyboardFocusWindow ) == keyboardFocusWin )
+ 		keyboardFocusWindow = ctx->currentKeyboardFocusWindow;
+ 
++	// An overlay that takes input (the Steam menu) moves input away without changing the focus window, and a
++	// fullscreen game iconifies itself when it loses input. The focus window never changed, so it is never taken
++	// out of iconic above, and wine will not activate a window it believes iconic: the game stays minimized
++	// (its 160x24 caption in the corner) after Resume. Put it back to NormalState before input returns to it,
++	// then hand focus over again so wine sees the restore first and the activation after it.
++	if ( inputFocus == ctx->focus.focusWindow && ctx->focus.focusWindow->iconifyRequested )
++	{
++		ctx->focus.focusWindow->iconifyRequested = false;
++		xwm_log.infof( "restoring iconified focus window 0x%lx as input returns to it", ctx->focus.focusWindow->xwayland().id );
++		set_wm_state( ctx, ctx->focus.focusWindow->xwayland().id, ICCCM_NORMAL_STATE );
++		ctx->currentKeyboardFocusWindow = None;
++	}
++
+ 	if ( ctx->focus.inputFocusWindow != inputFocus ||
+ 		ctx->focus.inputFocusMode != inputFocus->inputFocusMode ||
+ 		ctx->currentKeyboardFocusWindow != keyboardFocusWindow )
+@@ -6559,6 +6573,8 @@ handle_wm_change_state(xwayland_ctx_t *ctx, steamcompmgr_win_t *w, XClientMessag
+ 	if (state == ICCCM_ICONIC_STATE) {
+ 		xwm_log.debugf("Faking WM_CHANGE_STATE to ICONIC for window 0x%lx", w->xwayland().id);
+ 		set_wm_state( ctx, w->xwayland().id, ICCCM_ICONIC_STATE );
++		w->iconifyRequested = true;
++		MakeFocusDirty();
+ 	} else {
+ 		xwm_log.debugf("Unhandled WM_CHANGE_STATE to %ld for window 0x%lx", state, w->xwayland().id);
+ 	}
+@@ -7539,6 +7555,19 @@ handle_property_notify(xwayland_ctx_t *ctx, XPropertyEvent *ev)
+ 		if ( set_sdr_input_gain( bit_cast<float>(val) ) )
+ 			hasRepaint = true;
+ 	}
++	if ( ev->atom == ctx->atoms.gamescopeRestoreFocusWindow )
++	{
++		// Anything outside (the session's watcher) can ask for the same restore: NormalState on the focus
++		// window and focus handed to it again. Harmless on a window that is not iconic.
++		if ( ctx->focus.focusWindow && get_prop( ctx, ctx->root, ctx->atoms.gamescopeRestoreFocusWindow, 0 ) )
++		{
++			xwm_log.infof( "restore requested for focus window 0x%lx", ctx->focus.focusWindow->xwayland().id );
++			ctx->focus.focusWindow->iconifyRequested = false;
++			set_wm_state( ctx, ctx->focus.focusWindow->xwayland().id, ICCCM_NORMAL_STATE );
++			ctx->currentKeyboardFocusWindow = None;
++			MakeFocusDirty();
++		}
++	}
+ 	if ( ev->atom == ctx->atoms.gamescopeForceWindowsFullscreen )
+ 	{
+ 		ctx->force_windows_fullscreen = !!get_prop( ctx, ctx->root, ctx->atoms.gamescopeForceWindowsFullscreen, 0 );
+@@ -9056,6 +9085,7 @@ void init_xwayland_ctx(uint32_t serverId, gamescope_xwayland_server_t *xwayland_
+ 	ctx->atoms.gamescopeHDRTonemapOperator = XInternAtom( ctx->dpy, "GAMESCOPE_HDR_TONEMAP_OPERATOR", false );
+ 
+ 	ctx->atoms.gamescopeForceWindowsFullscreen = XInternAtom( ctx->dpy, "GAMESCOPE_FORCE_WINDOWS_FULLSCREEN", false );
++	ctx->atoms.gamescopeRestoreFocusWindow = XInternAtom( ctx->dpy, "GAMESCOPE_RESTORE_FOCUS_WINDOW", false );
+ 
+ 	ctx->atoms.gamescopeColorLut3DOverride = XInternAtom( ctx->dpy, "GAMESCOPE_COLOR_3DLUT_OVERRIDE", false );
+ 	ctx->atoms.gamescopeColorShaperLutOverride = XInternAtom( ctx->dpy, "GAMESCOPE_COLOR_SHAPERLUT_OVERRIDE", false );
+diff --git a/src/steamcompmgr_shared.hpp b/src/steamcompmgr_shared.hpp
+index 66022d7..af93a23 100644
+--- a/src/steamcompmgr_shared.hpp
++++ b/src/steamcompmgr_shared.hpp
+@@ -134,6 +134,8 @@ struct steamcompmgr_win_t {
+ 
+ 	bool isFullscreen = false;
+ 	bool isSysTrayIcon = false;
++	// The client asked to be iconified (WM_CHANGE_STATE) and has not been put back to NormalState since.
++	bool iconifyRequested = false;
+ 	bool sizeHintsSpecified = false;
+ 	bool skipTaskbar = false; 
+ 	bool skipPager = false;
+diff --git a/src/xwayland_ctx.hpp b/src/xwayland_ctx.hpp
+index 7b39ecb..81910a1 100644
+--- a/src/xwayland_ctx.hpp
++++ b/src/xwayland_ctx.hpp
+@@ -228,6 +228,7 @@ struct xwayland_ctx_t final : public gamescope::IWaitable
+ 		Atom gamescopeHDRTonemapOperator;
+ 
+ 		Atom gamescopeForceWindowsFullscreen;
++		Atom gamescopeRestoreFocusWindow;
+ 
+ 		Atom gamescopeColorLut3DOverride;
+ 		Atom gamescopeColorShaperLutOverride;

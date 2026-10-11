@@ -56,6 +56,7 @@ public final class LinuxRuntime {
     "usr/local/lib/libwnfastpath.so",
     "usr/local/lib/libwninput.so",
     "usr/local/lib/libwnsession.so",
+    "usr/local/bin/gamescope",
     "usr/local/bin/winnative-directaudio",
     "usr/local/bin/winnative-epic-launch",
     "usr/local/bin/winnative-netmanager",
@@ -306,7 +307,8 @@ public final class LinuxRuntime {
 
   /**
    * The session's own files, refreshed from the app's copies: the Vulkan driver, the preload
-   * libraries that {@code /etc/ld.so.preload} names, and the scripts the session runs.
+   * libraries that {@code /etc/ld.so.preload} names, the app's gamescope (tools/gamescope) and the
+   * scripts the session runs.
    *
    * They have to match the build that starts the session - a rootfs installed by an earlier one
    * carries older copies, and the device has no way to replace them from outside the app. They are

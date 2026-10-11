@@ -9,6 +9,15 @@ set -u
 export HOME=${HOME:-/root}
 mode=${1:-desktop}
 shift || true
+# The app's gamescope (/usr/local/bin, tools/gamescope/PATCHES.md) is linked against the runtime's
+# current libraries; a runtime installed before them cannot load it and runs its own instead.
+if [ -z "${WN_INSIDE:-}" ]; then
+  gamescope=gamescope
+  if ! gamescope_version=$(gamescope --version 2>&1); then
+    gamescope=/usr/bin/gamescope
+    gamescope_version="$($gamescope --version 2>&1) (the app's build cannot load on this runtime)"
+  fi
+fi
 if [ -n "${WN_LOG:-}" ] && [ -z "${WN_INSIDE:-}" ]; then
   mkdir -p "$(dirname "$WN_LOG")" 2>/dev/null
   # The client alone writes megabytes an hour; one earlier log is kept, not every session's.
@@ -20,7 +29,7 @@ if [ -n "${WN_LOG:-}" ] && [ -z "${WN_INSIDE:-}" ]; then
   exec > >({ dd of="$WN_LOG" oflag=append conv=notrunc iflag=count_bytes count="${WN_LOG_CAP:-268435456}" bs=65536 status=none; cat >/dev/null; }) 2>&1
   echo "== winnative-session $(date) mode=$mode $*"
   echo "== uid=$(id -u) size=${WN_WIDTH:-?}x${WN_HEIGHT:-?} fps=${WN_FPS:-0} icd=${VK_ICD_FILENAMES:-none}"
-  echo "== gamescope: $(gamescope --version 2>&1 | head -1)"
+  echo "== gamescope: ${gamescope_version%%$'\n'*}"
 fi
 
 # Every program loads the locale LANG names (C.UTF-8) before main(). glibc ships it as a directory,
@@ -83,7 +92,7 @@ if [ -z "${WN_INSIDE:-}" ]; then
   fi
   [ "$mode" = steam ] && args+=(-e)
   export WN_INSIDE=1
-  exec gamescope "${args[@]}" -- "$0" "$mode" "$@"
+  exec "$gamescope" "${args[@]}" -- "$0" "$mode" "$@"
 fi
 
 # gamescope manages X windows: toolkits go through Xwayland, not gamescope's own Wayland socket.
@@ -243,6 +252,25 @@ case $mode in
     xprop -root -spy STEAM_TOUCH_CLICK_MODE 2>/dev/null | while read -r _ _ touch_mode; do
       [ "$touch_mode" = 0 ] || xprop -root -f STEAM_TOUCH_CLICK_MODE 32c -set STEAM_TOUCH_CLICK_MODE 0
     done &
+    # Resume from the Steam menu. The menu is an overlay that takes input without changing the
+    # focus window, and a fullscreen game that loses input minimizes itself; after Resume it stayed
+    # minimized, a black screen with its caption in a corner. The app's gamescope restores it
+    # (tools/gamescope/PATCHES.md, 0112); this asks again a moment after input leaves the client
+    # (app 769) for anything else, which covers a game that minimizes late. Harmless when nothing
+    # is minimized. WN_RESTORE_ON_RESUME=0 turns it off.
+    [ "${WN_RESTORE_ON_RESUME:-1}" = 1 ] && (
+      prev=
+      xprop -spy -root GAMESCOPE_FOCUSED_APP 2>/dev/null | while read -r line; do
+        app=${line##*= }
+        case $app in ''|*[!0-9]*) prev=; continue ;; esac
+        if [ "$prev" = 769 ] && [ "$app" != 769 ]; then
+          nap 1
+          xprop -root -f GAMESCOPE_RESTORE_FOCUS_WINDOW 32c -set GAMESCOPE_RESTORE_FOCUS_WINDOW 1 2>/dev/null \
+            && echo "== resume: asked gamescope to restore the game window (app $app)"
+        fi
+        prev=$app
+      done
+    ) &
     # The client builds its network page and its connection indicator on NetworkManager, which
     # it looks for on the system bus as it starts. The network is Android's, so the runtime has
     # neither; without them Settings > Internet fails and the header shows no connection.
