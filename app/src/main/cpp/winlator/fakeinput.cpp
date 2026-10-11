@@ -216,6 +216,8 @@ void log(const char *message, ...) {
 }
 } // namespace Logger
 
+static void export_sdl_mappings();
+
 __attribute__((constructor)) static void library_init() {
   if (!hook_dir)
     hook_dir = getenv("FAKE_EVDEV_DIR")
@@ -229,6 +231,7 @@ __attribute__((constructor)) static void library_init() {
                  controller_fork_child);
 
   Logger::init();
+  export_sdl_mappings();
 }
 
 __attribute__((visibility("hidden"))) static void
@@ -455,6 +458,19 @@ read_gamepad_identity(int slot, GamepadIdentity *out) {
   return true;
 }
 
+// The identity a slot reports: the real pad's when the host published it, else the Xbox 360 default.
+__attribute__((visibility("hidden"))) static GamepadIdentity slot_identity(int slot) {
+  GamepadIdentity identity;
+  if (!read_gamepad_identity(slot, &identity)) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), GAMEPAD_NAME_TEMPLATE, slot);
+    identity.name = buf;
+    identity.vendor = GAMEPAD_VENDOR_ID_DEFAULT;
+    identity.product = GAMEPAD_PRODUCT_ID_DEFAULT;
+  }
+  return identity;
+}
+
 __attribute__((visibility("hidden"))) static uint64_t
 ring_write_seq(const FakeInputRingHeader *ring) {
   return __atomic_load_n(&ring->write_seq, __ATOMIC_ACQUIRE);
@@ -579,13 +595,7 @@ open_fake_input_ring(const char *event, int flags) {
   controller->mapping_size = FAKE_INPUT_RING_SIZE;
   controller->generation = ring_generation(ring);
 
-  if (!read_gamepad_identity(slot, &controller->identity)) {
-    char buf[32];
-    snprintf(buf, sizeof(buf), GAMEPAD_NAME_TEMPLATE, slot);
-    controller->identity.name = std::string(buf);
-    controller->identity.vendor = static_cast<uint16_t>(GAMEPAD_VENDOR_ID_DEFAULT);
-    controller->identity.product = static_cast<uint16_t>(GAMEPAD_PRODUCT_ID_DEFAULT);
-  }
+  controller->identity = slot_identity(slot);
 
   // Establish the cursor at open so taps arriving before the first read stay
   // queued. If publication is busy, read() will finish establishing it later.
@@ -625,22 +635,86 @@ __attribute__((visibility("hidden"))) static bool presents_steam_virtual() {
   return known == 1;
 }
 
-// The virtual gamepad is an X-Box 360 pad, whose triggers are ABS_Z and ABS_RZ. Wine places a
-// gamepad's axes by their position among the ones it advertises, so the triggers have to sit
-// where that pad has them: as ABS_GAS and ABS_BRAKE they follow the sticks, the right stick
-// lands on the left trigger, and a released right trigger reads as the right stick held up.
+// The ring carries the triggers as ABS_BRAKE (left) and ABS_GAS (right); the pad presents them as
+// ABS_Z and ABS_RZ, where an Xbox 360 pad has them, whatever identity it carries. Readers place a
+// gamepad's axes by position: SDL's mapping for a known vendor and product (winebus's SDL bus in a
+// container), and Proton's evdev bus, which takes any pad with six axes and ten buttons for one.
+// With the triggers last the right stick landed on the left trigger, and a released right trigger
+// read as the right stick held up. Wine's XInput reads the triggers from the Z and Rz usages, which
+// are ABS_Z and ABS_RZ on its usage-based path too.
 __attribute__((visibility("hidden"))) static uint16_t presented_abs_code(uint16_t code) {
-  if (!presents_steam_virtual()) return code;
   if (code == ABS_BRAKE) return ABS_Z;
   if (code == ABS_GAS) return ABS_RZ;
   return code;
 }
 
 __attribute__((visibility("hidden"))) static uint16_t ring_abs_code(uint16_t code) {
-  if (!presents_steam_virtual()) return code;
   if (code == ABS_Z) return ABS_BRAKE;
   if (code == ABS_RZ) return ABS_GAS;
   return code;
+}
+
+// SDL's mapping of the layout this pad presents, whatever its identity. SDL numbers buttons by key
+// code (BTN_A, B, X, Y, TL, TR, SELECT, START, MODE, THUMBL, THUMBR) and axes by ABS code with the
+// hat apart (X, Y, Z, RX, RY, RZ).
+static constexpr const char *SDL_PAD_MAPPING =
+    "a:b0,b:b1,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,back:b6,start:b7,guide:b8,"
+    "leftstick:b9,rightstick:b10,leftx:a0,lefty:a1,lefttrigger:a2,rightx:a3,righty:a4,"
+    "righttrigger:a5,dpup:h0.1,dpright:h0.2,dpdown:h0.4,dpleft:h0.8,";
+
+// SDL maps a pad it knows by vendor, product and version with its own database, which describes
+// that physical pad's kernel layout, not this one: 054c:05c4 gets a hid-sony entry with thirteen
+// buttons, so a DualShock identity scrambled every button. Each slot's identity is given the
+// mapping above as an exact match, which SDL chooses over any built-in entry. SDL reads
+// SDL_GAMECONTROLLERCONFIG once, as its game controller subsystem starts, so it is set here, as the
+// library loads; a mapping already in the variable comes after these and wins. Runs as a
+// constructor: no static object of this file is used, the controller tables may not exist yet.
+static void export_sdl_mappings() {
+  const char *rings = getenv("FAKE_EVDEV_MEMFD_PATHS");
+  if (!rings || !*rings)
+    return;
+  // Inherited from the process that started this one, which exported the same lines.
+  const char *existing = getenv("SDL_GAMECONTROLLERCONFIG");
+  std::string mappings;
+  for (const char *token = rings; *token;) {
+    int slot = atoi(token);
+    const char *equals = strchr(token, '=');
+    const char *next = strchr(token, ';');
+    token = next ? next + 1 : token + strlen(token);
+    if (!equals || (next && equals > next) || slot < 0 ||
+        slot >= static_cast<int>(GAMEPAD_IDENTITY_MAX_SLOTS))
+      continue;
+
+    GamepadIdentity identity;
+    if (presents_steam_virtual()) {
+      identity.vendor = STEAM_VIRTUAL_VENDOR_ID;
+      identity.product = STEAM_VIRTUAL_PRODUCT_ID;
+      identity.name = "Microsoft X-Box 360 pad";
+    } else if (!read_gamepad_identity(slot, &identity)) {
+      identity.vendor = GAMEPAD_VENDOR_ID_DEFAULT;
+      identity.product = GAMEPAD_PRODUCT_ID_DEFAULT;
+      identity.name = "Xbox 360 Controller";
+    }
+    // The GUID of a USB evdev pad: bus, CRC (left 0 to match any name), vendor, product, version.
+    char guid[33];
+    snprintf(guid, sizeof(guid), "03000000%02x%02x0000%02x%02x0000%02x%02x0000",
+             identity.vendor & 0xff, identity.vendor >> 8, identity.product & 0xff,
+             identity.product >> 8, GAMEPAD_VERSION & 0xff, GAMEPAD_VERSION >> 8);
+    for (char &c : identity.name)
+      if (c == ',') c = ' ';
+    std::string line = std::string(guid) + "," + identity.name + "," + SDL_PAD_MAPPING;
+    if (mappings.find(guid) != std::string::npos || (existing && strstr(existing, line.c_str())))
+      continue;
+    mappings.append(line).append("\n");
+  }
+  if (mappings.empty())
+    return;
+  if (existing && *existing)
+    mappings.append(existing);
+  else
+    mappings.pop_back();
+  setenv("SDL_GAMECONTROLLERCONFIG", mappings.c_str(), 1);
+  Logger::log("SDL mappings for the presented pads:\n%s\n", mappings.c_str());
 }
 
 __attribute__((visibility("hidden"))) static void
