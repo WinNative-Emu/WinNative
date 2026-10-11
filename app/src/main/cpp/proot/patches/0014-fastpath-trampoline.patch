@@ -1,0 +1,205 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: DroidDeck <droiddeck@users.noreply.github.com>
+Date: Wed, 30 Sep 2026 00:00:00 +0000
+Subject: [PATCH] fastpath: let translated syscalls from the tracee's trampoline
+ page through, and keep the kernel's cwd at the guest's
+
+With PROOT_FASTPATH set (and only then), every SECCOMP_RET_TRACE in the filter
+is preceded by a check of the caller's address: a syscall made from the fast
+path's trampoline page (tools/proot/fastpath, FASTPATH_STUB_ADDR) was already
+translated inside the tracee and runs without a stop. The check follows the
+syscall-number dispatch, so untraced syscalls stay constant-ALLOW and keep the
+kernel's seccomp action cache. chdir/fchdir, emulated as before, also move the
+kernel's cwd to the host directory (host "/" where the kernel cannot follow),
+and the first tracee starts there, so relative lookups made inside the tracee
+resolve where proot resolves them. Without PROOT_FASTPATH nothing changes.
+---
+--- a/src/syscall/enter.c
++++ b/src/syscall/enter.c
+@@ -20,7 +20,8 @@
+  * 02110-1301 USA.
+  */
+ 
+-#include <errno.h>       /* errno(3), E* */
++#include <errno.h>
++#include <stdlib.h>       /* errno(3), E* */
+ #include <talloc.h>      /* talloc_*, */
+ #include <sys/un.h>      /* struct sockaddr_un, */
+ #include <linux/net.h>   /* SYS_*, */
+@@ -198,6 +199,20 @@
+ 		if ((statl.st_mode & S_IXUSR) == 0)
+ 			return -EACCES;
+ 
++		/* With the fast path, the kernel's cwd follows the guest's
++		 * (at its host path), so relative lookups made inside the
++		 * tracee resolve where proot would resolve them.  */
++		if (getenv("PROOT_FASTPATH") != NULL) {
++			int fd = open(path, O_PATH | O_DIRECTORY | O_CLOEXEC);
++
++			/* Where the kernel could not follow, it goes to the
++			 * host's "/", which no binding names: the fast path
++			 * then sends every relative lookup to proot.  */
++			strcpy(oldpath, fd >= 0 ? path : "/");
++			if (fd >= 0)
++				close(fd);
++		}
++
+ 		/* Sadly this method doesn't detranslate statefully,
+ 		 * this means that there's an ambiguity when several
+ 		 * bindings are from the same host path:
+@@ -229,6 +244,14 @@
+ 		tracee->fs->cwd = tmp;
+ 		talloc_set_name_const(tracee->fs->cwd, "$cwd");
+ 
++		if (getenv("PROOT_FASTPATH") != NULL) {
++			/* fchdir(2) runs as it is; chdir(2) on the host path.  */
++			status = syscall_number == PR_chdir
++				? set_sysarg_path(tracee, oldpath, SYSARG_1)
++				: 0;
++			break;
++		}
++
+ 		set_sysnum(tracee, PR_void);
+ 		status = 0;
+ 		break;
+--- a/src/syscall/seccomp.c
++++ b/src/syscall/seccomp.c
+@@ -35,6 +35,7 @@
+ #include <talloc.h>        /* talloc_*, */
+ #include <errno.h>         /* E*, */
+ #include <string.h>        /* memcpy(3), */
++#include <stdlib.h>        /* getenv(3), */
+ #include <stddef.h>        /* offsetof(3), */
+ #include <stdint.h>        /* uint*_t, UINT*_MAX, */
+ #include <stdbool.h>
+@@ -77,9 +78,95 @@
+  * items).  This function returns -errno if an error occurred,
+  * otherwise 0.
+  */
++/* The fast path's trampoline page (tools/proot/fastpath): a traced syscall made from it was
++ * already translated inside the tracee and is let through without a stop.  With PROOT_FASTPATH
++ * set, every SECCOMP_RET_TRACE is preceded by a check of the caller's address.  The check sits
++ * after the syscall-number dispatch, so syscalls proot never traces stay constant-ALLOW and keep
++ * the kernel's seccomp action cache.  FASTPATH_STUB_ADDR must match FP_STUB_ADDR in fastpath.c. */
++#define FASTPATH_STUB_ADDR 0xffff00000ULL
++#define FASTPATH_STUB_SIZE 0x1000ULL
++#define LENGTH_FASTPATH_TAIL 7
++
++static bool fastpath_enabled(void)
++{
++	static int enabled = -1;
++	if (enabled < 0)
++		enabled = getenv("PROOT_FASTPATH") != NULL;
++	return enabled;
++}
++
++static bool is_ret_trace(const struct sock_filter *statement)
++{
++	return statement->code == (BPF_RET + BPF_K)
++		&& (statement->k & SECCOMP_RET_ACTION_FULL) == SECCOMP_RET_TRACE;
++}
++
++static int add_statements_raw(struct sock_fprog *program, size_t nb_statements,
++			struct sock_filter *statements);
++
++/* Append @statements, each RET_TRACE expanded into the trampoline check when the fast path is
++ * on, every jump within (or out of) the block adjusted for the expansion.  */
+ static int add_statements(struct sock_fprog *program, size_t nb_statements,
+ 			struct sock_filter *statements)
+ {
++	struct sock_filter out[64];
++	size_t position[33];
++	size_t i, o;
++
++	if (!fastpath_enabled())
++		return add_statements_raw(program, nb_statements, statements);
++
++	assert(nb_statements <= 32);
++	for (i = 0, o = 0; i < nb_statements; i++) {
++		position[i] = o;
++		o += is_ret_trace(&statements[i]) ? LENGTH_FASTPATH_TAIL : 1;
++	}
++	position[nb_statements] = o;
++
++#define NEW_TARGET(index) (((index) <= nb_statements) ? position[(index)] : position[nb_statements] + (index) - nb_statements)
++
++	for (i = 0, o = 0; i < nb_statements; i++) {
++		struct sock_filter statement = statements[i];
++
++		if (BPF_CLASS(statement.code) == BPF_JMP) {
++			if (BPF_OP(statement.code) == BPF_JA)
++				statement.k = NEW_TARGET(i + 1 + statement.k) - position[i] - 1;
++			else {
++				statement.jt = NEW_TARGET(i + 1 + statement.jt) - position[i] - 1;
++				statement.jf = NEW_TARGET(i + 1 + statement.jf) - position[i] - 1;
++			}
++		}
++
++		if (!is_ret_trace(&statement)) {
++			out[o++] = statement;
++			continue;
++		}
++
++		{
++			const size_t ip = offsetof(struct seccomp_data, instruction_pointer);
++			const uint32_t hi = (uint32_t) (FASTPATH_STUB_ADDR >> 32);
++			const uint32_t lo = (uint32_t) FASTPATH_STUB_ADDR;
++			struct sock_filter tail[LENGTH_FASTPATH_TAIL] = {
++				BPF_STMT(BPF_LD + BPF_W + BPF_ABS, ip + sizeof(uint32_t)),
++				BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, hi, 0, 4),
++				BPF_STMT(BPF_LD + BPF_W + BPF_ABS, ip),
++				BPF_JUMP(BPF_JMP + BPF_JGE + BPF_K, lo, 0, 2),
++				BPF_JUMP(BPF_JMP + BPF_JGE + BPF_K, lo + (uint32_t) FASTPATH_STUB_SIZE, 1, 0),
++				BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_ALLOW),
++				statement,
++			};
++			memcpy(&out[o], tail, sizeof(tail));
++			o += LENGTH_FASTPATH_TAIL;
++		}
++	}
++#undef NEW_TARGET
++
++	return add_statements_raw(program, o, out);
++}
++
++static int add_statements_raw(struct sock_fprog *program, size_t nb_statements,
++			struct sock_filter *statements)
++{
+ 	size_t length;
+ 	void *tmp;
+ 	size_t i;
+@@ -211,8 +298,16 @@
+ 	return add_statements(program, LENGTH_TRACE_IOCTL, statements);
+ }
+ 
++static size_t trace_length_raw(Sysnum sysnum);
++
+ static size_t trace_length(Sysnum sysnum)
+ {
++	/* Each trace block has exactly one RET_TRACE (see add_statements).  */
++	return trace_length_raw(sysnum) + (fastpath_enabled() ? LENGTH_FASTPATH_TAIL - 1 : 0);
++}
++
++static size_t trace_length_raw(Sysnum sysnum)
++{
+ 	switch (sysnum) {
+ 	case PR_prctl:
+ 	case PR_setrlimit:
+--- a/src/tracee/event.c
++++ b/src/tracee/event.c
+@@ -98,6 +98,15 @@
+ 		if (getenv("PROOT_NO_SECCOMP") == NULL)
+ 			(void) enable_syscall_filtering(tracee);
+ 
++		/* The fast path resolves relative paths against the
++		 * kernel's cwd: start it at the guest's (see chdir in
++		 * syscall/enter.c).  */
++		if (getenv("PROOT_FASTPATH") != NULL) {
++			char host_cwd[PATH_MAX];
++			if (translate_path(tracee, host_cwd, AT_FDCWD, tracee->fs->cwd, true) >= 0)
++				(void) chdir(host_cwd);
++		}
++
+ 		/* Now process is ptraced, so the current rootfs is already the
+ 		 * guest rootfs.  Note: Valgrind can't handle execve(2) on
+ 		 * "foreign" binaries (ENOEXEC) but can handle execvp(3) on such

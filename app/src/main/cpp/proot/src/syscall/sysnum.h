@@ -25,15 +25,15 @@
 
 #include <stdbool.h>
 
+#include "tracee/tracee.h"
 #include "tracee/abi.h"
 #include "tracee/reg.h"
-#include "tracee/tracee.h"
 
-#define SYSNUM(item) PR_##item,
+#define SYSNUM(item) PR_ ## item,
 typedef enum {
-  PR_void = 0,
-#include "syscall/sysnums.list"
-  PR_NB_SYSNUM
+	PR_void = 0,
+	#include "syscall/sysnums.list"
+	PR_NB_SYSNUM
 } Sysnum;
 #undef SYSNUM
 

@@ -1,0 +1,242 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: maxjivi05 <maxjividen@gmail.com>
+Date: Sun, 27 Sep 2026 07:57:46 -0400
+Subject: [PATCH] seccomp: answer a stop's flags from its registers and skip
+ the sysexit stop when nothing is left for it
+
+---
+ src/syscall/enter.c   |  3 +++
+ src/syscall/seccomp.c | 51 +++++++++++++++++++++++++++++++++++++------
+ src/syscall/seccomp.h |  1 +
+ src/syscall/syscall.c | 17 ++++++++++++---
+ src/tracee/event.c    | 14 +++++++-----
+ src/tracee/tracee.h   |  2 ++
+ 6 files changed, 73 insertions(+), 15 deletions(-)
+
+diff --git a/src/syscall/enter.c b/src/syscall/enter.c
+index 8c3eb2e..b84fdc3 100644
+--- a/src/syscall/enter.c
++++ b/src/syscall/enter.c
+@@ -149,6 +149,8 @@ int translate_syscall_enter(Tracee *tracee)
+ 	case PR_wait4:
+ 	case PR_waitpid:
+ 		status = translate_wait_enter(tracee);
++		tracee->sysexit_unneeded = status >= 0
++			&& tracee->as_ptracer.waits_in == WAITS_IN_KERNEL;
+ 		break;
+ 
+ 	case PR_brk:
+@@ -271,6 +273,7 @@ int translate_syscall_enter(Tracee *tracee)
+ 	case PR_accept4:
+ 		/* Nothing special to do if no sockaddr was specified.  */
+ 		if (peek_reg(tracee, ORIGINAL, SYSARG_2) == 0) {
++			tracee->sysexit_unneeded = true;
+ 			status = 0;
+ 			break;
+ 		}
+diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
+index 8557d4a..cec4330 100644
+--- a/src/syscall/seccomp.c
++++ b/src/syscall/seccomp.c
+@@ -37,6 +37,7 @@
+ #include <string.h>        /* memcpy(3), */
+ #include <stddef.h>        /* offsetof(3), */
+ #include <stdint.h>        /* uint*_t, UINT*_MAX, */
++#include <stdbool.h>
+ #include <sys/resource.h>
+ #include <assert.h>        /* assert(3), */
+ 
+@@ -542,6 +543,9 @@ static int merge_filtered_sysnums(TALLOC_CTX *context, FilteredSysnum **sysnums,
+ 	return 0;
+ }
+ 
++static int collect_filtered_sysnums(TALLOC_CTX *context, const Tracee *tracee,
++				FilteredSysnum **filtered_sysnums);
++
+ /**
+  * Tell the kernel to trace only syscalls handled by PRoot and its
+  * extensions.  This filter will be enabled for the given @tracee and
+@@ -551,14 +555,30 @@ static int merge_filtered_sysnums(TALLOC_CTX *context, FilteredSysnum **sysnums,
+ int enable_syscall_filtering(const Tracee *tracee)
+ {
+ 	FilteredSysnum *filtered_sysnums = NULL;
+-	Extension *extension;
+ 	int status;
+ 
+ 	assert(tracee != NULL && tracee->ctx != NULL);
+ 
++	status = collect_filtered_sysnums(tracee->ctx, tracee, &filtered_sysnums);
++	if (status < 0)
++		return status;
++
++	status = set_seccomp_filters(filtered_sysnums);
++	if (status < 0)
++		return status;
++
++	return 0;
++}
++
++static int collect_filtered_sysnums(TALLOC_CTX *context, const Tracee *tracee,
++				FilteredSysnum **filtered_sysnums)
++{
++	Extension *extension;
++	int status;
++
+ 	/* Add the sysnums required by PRoot to the list of filtered
+ 	 * sysnums.  TODO: only if path translation is required.  */
+-	status = merge_filtered_sysnums(tracee->ctx, &filtered_sysnums, proot_sysnums);
++	status = merge_filtered_sysnums(context, filtered_sysnums, proot_sysnums);
+ 	if (status < 0)
+ 		return status;
+ 
+@@ -569,20 +589,37 @@ int enable_syscall_filtering(const Tracee *tracee)
+ 			if (extension->filtered_sysnums == NULL)
+ 				continue;
+ 
+-			status = merge_filtered_sysnums(tracee->ctx, &filtered_sysnums,
++			status = merge_filtered_sysnums(context, filtered_sysnums,
+ 							extension->filtered_sysnums);
+ 			if (status < 0)
+ 				return status;
+ 		}
+ 	}
+ 
+-	status = set_seccomp_filters(filtered_sysnums);
+-	if (status < 0)
+-		return status;
+-
+ 	return 0;
+ }
+ 
++word_t filtered_sysnum_flags(const Tracee *tracee, Sysnum sysnum)
++{
++	static word_t flags[PR_NB_SYSNUM];
++	static bool initialized = false;
++	FilteredSysnum *filtered_sysnums = NULL;
++	size_t i;
++
++	if (!initialized) {
++		if (collect_filtered_sysnums(NULL, tracee, &filtered_sysnums) < 0) {
++			TALLOC_FREE(filtered_sysnums);
++			return FILTER_SYSEXIT;
++		}
++		for (i = 0; filtered_sysnums[i].value != PR_void; i++)
++			flags[filtered_sysnums[i].value] |= filtered_sysnums[i].flags;
++		TALLOC_FREE(filtered_sysnums);
++		initialized = true;
++	}
++
++	return sysnum < PR_NB_SYSNUM ? flags[sysnum] : FILTER_SYSEXIT;
++}
++
+ #else
+ 
+ #include "tracee/tracee.h"
+diff --git a/src/syscall/seccomp.h b/src/syscall/seccomp.h
+index 3d5ba40..67053b5 100644
+--- a/src/syscall/seccomp.h
++++ b/src/syscall/seccomp.h
+@@ -44,5 +44,6 @@ typedef struct {
+ #define FILTER_SYSEXIT  0x1
+ 
+ extern int enable_syscall_filtering(const Tracee *tracee);
++extern word_t filtered_sysnum_flags(const Tracee *tracee, Sysnum sysnum);
+ 
+ #endif /* SECCOMP_H */
+diff --git a/src/syscall/syscall.c b/src/syscall/syscall.c
+index 0761a26..9ab063c 100644
+--- a/src/syscall/syscall.c
++++ b/src/syscall/syscall.c
+@@ -107,9 +107,13 @@ void translate_syscall(Tracee *tracee)
+ 
+ 	assert(tracee->exe != NULL);
+ 
+-	status = fetch_regs(tracee);
+-	if (status < 0)
+-		return;
++	if (tracee->regs_fresh)
++		tracee->regs_fresh = false;
++	else {
++		status = fetch_regs(tracee);
++		if (status < 0)
++			return;
++	}
+ 
+ 	int suppressed_syscall_status = 0;
+ 
+@@ -136,9 +140,16 @@ void translate_syscall(Tracee *tracee)
+ 		 * requested by the tracee, it is not a syscall
+ 		 * chained by PRoot.  */
+ 		if (tracee->chain.syscalls == NULL) {
++			tracee->sysexit_unneeded = false;
+ 			save_current_regs(tracee, ORIGINAL);
+ 			status = translate_syscall_enter(tracee);
+ 			save_current_regs(tracee, MODIFIED);
++
++			if (status >= 0 && tracee->sysexit_unneeded
++			    && tracee->seccomp == ENABLED && !tracee->sysexit_pending
++			    && !tracee->restore_original_regs_after_seccomp_event
++			    && get_sysnum(tracee, MODIFIED) == get_sysnum(tracee, ORIGINAL))
++				tracee->restart_how = PTRACE_CONT;
+ 		}
+ 		else {
+ 			if (tracee->chain.sysnum_workaround_state != SYSNUM_WORKAROUND_PROCESS_REPLACED_CALL) {
+diff --git a/src/tracee/event.c b/src/tracee/event.c
+index ec79ef3..41afacd 100644
+--- a/src/tracee/event.c
++++ b/src/tracee/event.c
+@@ -38,6 +38,7 @@
+ #include "tracee/event.h"
+ #include "tracee/seccomp.h"
+ #include "tracee/mem.h"
++#include "tracee/reg.h"
+ #include "cli/note.h"
+ #include "path/path.h"
+ #include "path/binding.h"
+@@ -576,18 +577,20 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
+ 			if (tracee->seccomp != ENABLED)
+ 				break;
+ 
+-			status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
++			status = fetch_regs(tracee);
+ 			if (status < 0)
+ 				break;
++			tracee->regs_fresh = true;
++			flags = filtered_sysnum_flags(tracee, get_sysnum(tracee, CURRENT));
+ 
+ 			/* Use the common ptrace flow when
+ 			 * sysexit has to be handled.  */
+ 			if ((flags & FILTER_SYSEXIT) != 0 || sysexit_necessary) {
+-				if (seccomp_after_ptrace_enter) {
+-					tracee->restart_how = PTRACE_SYSCALL;
+-					translate_syscall(tracee);
+-				}
+ 				tracee->restart_how = PTRACE_SYSCALL;
++				if (seccomp_after_ptrace_enter)
++					translate_syscall(tracee);
++				else
++					tracee->regs_fresh = false;
+ 				break;
+ 			}
+ 
+@@ -720,6 +723,7 @@ bool restart_tracee(Tracee *tracee, int signal)
+ 
+ 	tracee->last_restart_how = tracee->restart_how;
+ 	tracee->restart_how = 0;
++	tracee->regs_fresh = false;
+ 	tracee->running = true;
+ 
+ 	return true;
+diff --git a/src/tracee/tracee.h b/src/tracee/tracee.h
+index e4be3ff..c444a50 100644
+--- a/src/tracee/tracee.h
++++ b/src/tracee/tracee.h
+@@ -161,6 +161,8 @@ typedef struct tracee {
+ 	bool _regs_were_changed;
+ 	bool restore_original_regs;
+ 	bool restore_original_regs_after_seccomp_event;
++	bool regs_fresh;
++	bool sysexit_unneeded;
+ 
+ 	/* State for the special handling of SIGSTOP.  */
+ 	enum {

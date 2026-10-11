@@ -141,6 +141,9 @@ public final class WaylandCompositor {
                                                      String nativeLibDir);
     public static native void nativeSetSurface(Surface surface);
     public static native void nativeEndSession();
+    /** setpriority() on one of the app's own processes or threads, only ever raising it. Returns
+     *  the nice it is left at; 100 = unknown. */
+    public static native int nativeRaisePriority(int tid, int nice);
 
     // Input. Scene input types: 2 = move to a,b; 3 = evdev button a pressed (b=1) or released;
     // 4 = a wheel steps (negative = up); 6 = relative motion by a,b in 1/256 px.

@@ -1850,6 +1850,10 @@ int vkp_surface_rotation_degrees(void) {
 
 ANativeWindow *vkp_window(void) { return g_window; }
 
+void vkp_reset_first_frame(void) {
+    g_first_frame_done = 0;
+}
+
 void vkp_signal_first_frame(void) {
     if (g_first_frame_done) return;
     g_first_frame_done = 1;

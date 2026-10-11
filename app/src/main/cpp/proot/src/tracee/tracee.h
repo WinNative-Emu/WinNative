@@ -23,263 +23,297 @@
 #ifndef TRACEE_H
 #define TRACEE_H
 
-#include <stdbool.h>   /* bool,  */
-#include <stdint.h>    /* *int*_t, */
-#include <sys/ptrace.h>/* enum __ptrace_request */
-#include <sys/queue.h> /* LIST_*, */
 #include <sys/types.h> /* pid_t, size_t, */
 #include <sys/user.h>  /* struct user*, */
+#include <stdbool.h>   /* bool,  */
+#include <sys/queue.h> /* LIST_*, */
+#include <sys/ptrace.h>/* enum __ptrace_request */
 #include <talloc.h>    /* talloc_*, */
+#include <stdint.h>    /* *int*_t, */
 
-#include "arch.h" /* word_t, user_regs_struct */
+#include "arch.h" /* word_t, user_regs_struct, HAS_POKEDATA_WORKAROUND */
 #include "compat.h"
 
 typedef enum {
-  CURRENT = 0,
-  ORIGINAL = 1,
-  MODIFIED = 2,
-  ORIGINAL_SECCOMP_REWRITE = 3,
-  NB_REG_VERSION
+	CURRENT  = 0,
+	ORIGINAL = 1,
+	MODIFIED = 2,
+	ORIGINAL_SECCOMP_REWRITE = 3,
+	NB_REG_VERSION
 } RegVersion;
 
 struct bindings;
 struct load_info;
+struct extensions;
 struct chained_syscalls;
 
 /* Information related to a file-system name-space.  */
 typedef struct {
-  struct {
-    /* List of bindings as specified by the user but not canonicalized yet.  */
-    struct bindings *pending;
+	struct {
+		/* List of bindings as specified by the user but not canonicalized yet.  */
+		struct bindings *pending;
 
-    /* List of bindings canonicalized and sorted in the "guest" order.  */
-    struct bindings *guest;
+		/* List of bindings canonicalized and sorted in the "guest" order.  */
+		struct bindings *guest;
 
-    /* List of bindings canonicalized and sorted in the "host" order.  */
-    struct bindings *host;
-  } bindings;
+		/* List of bindings canonicalized and sorted in the "host" order.  */
+		struct bindings *host;
+	} bindings;
 
-  /* Current working directory, à la /proc/self/pwd.  */
-  char *cwd;
+	/* Current working directory, à la /proc/self/pwd.  */
+	char *cwd;
 } FileSystemNameSpace;
 
 /* Virtual heap, emulated with a regular memory mapping.  */
 typedef struct {
-  word_t base;
-  size_t size;
-  bool disabled;
+	word_t base;
+	size_t size;
+	bool disabled;
 } Heap;
 
 /* Information related to a tracee process. */
 typedef struct tracee {
-  /**********************************************************************
-   * Private resources                                                  *
-   **********************************************************************/
+	/**********************************************************************
+	 * Private resources                                                  *
+	 **********************************************************************/
 
-  /* Link for the list of all tracees.  */
-  LIST_ENTRY(tracee) link;
+	/* Link for the list of all tracees.  */
+	LIST_ENTRY(tracee) link;
+	LIST_ENTRY(tracee) bucket_link;
 
-  /* Link for the tracees whose pid hashes alike.  */
-  LIST_ENTRY(tracee) bucket_link;
+	/* Process identifier. */
+	pid_t pid;
+	pid_t tgid;
 
-  /* Process identifier. */
-  pid_t pid;
+	/* Unique tracee identifier. */
+	uint64_t vpid;
 
-  /* Process id of its thread group, what /proc/self names.  */
-  pid_t tgid;
+	/* Is it currently running or not?  */
+	bool running;
 
-  /* Is it currently running or not?  */
-  bool running;
+	/* Is this tracee ready to be freed?  TODO: move to a list
+	 * dedicated to terminated tracees instead.  */
+	bool terminated;
 
-  /* Is this tracee ready to be freed?
-   * dedicated to terminated tracees instead.  */
-  bool terminated;
+	/* Whether termination of this tracee implies an immediate kill
+	 * of all tracees. */
+	bool killall_on_exit;
 
-  /* Whether termination of this tracee implies an immediate kill
-   * of all tracees. */
-  bool killall_on_exit;
+	/* Parent of this tracee, NULL if none.  */
+	struct tracee *parent;
+	size_t nb_children;
 
-  /* Parent of this tracee, NULL if none.  */
-  struct tracee *parent;
+	/* Is it a "clone", i.e has the same parent as its creator.  */
+	bool clone;
 
-  /* Number of tracees whose @parent this is.  */
-  size_t nb_children;
+	/* Support for ptrace emulation (tracer side).  */
+	struct {
+		size_t nb_ptracees;
+		LIST_HEAD(zombies, tracee) zombies;
 
-  /* Is it a "clone", i.e has the same parent as its creator.  */
-  bool clone;
+		pid_t wait_pid;
+		word_t wait_options;
 
-  /* Support for ptrace emulation (tracer side).  */
-  struct {
-    size_t nb_ptracees;
-    LIST_HEAD(zombies, tracee) zombies;
+		enum {
+			DOESNT_WAIT = 0,
+			WAITS_IN_KERNEL,
+			WAITS_IN_PROOT
+		} waits_in;
+	} as_ptracer;
 
-    pid_t wait_pid;
-    word_t wait_options;
+	/* Support for ptrace emulation (tracee side).  */
+	struct {
+		struct tracee *ptracer;
 
-    enum { DOESNT_WAIT = 0, WAITS_IN_KERNEL, WAITS_IN_PROOT } waits_in;
-  } as_ptracer;
+		struct {
+			#define STRUCT_EVENT struct { int value; bool pending; }
 
-  /* Support for ptrace emulation (tracee side).  */
-  struct {
-    struct tracee *ptracer;
+			STRUCT_EVENT proot;
+			STRUCT_EVENT ptracer;
+		} event4;
 
-    struct {
-#define STRUCT_EVENT                                                           \
-  struct {                                                                     \
-    int value;                                                                 \
-    bool pending;                                                              \
-  }
+		bool tracing_started;
+		bool ignore_loader_syscalls;
+		bool ignore_syscalls;
+		word_t options;
+		bool is_zombie;
+	} as_ptracee;
 
-      STRUCT_EVENT proot;
-      STRUCT_EVENT ptracer;
-    } event4;
-
-    bool tracing_started;
-    bool ignore_loader_syscalls;
-    bool ignore_syscalls;
-    word_t options;
-    bool is_zombie;
-  } as_ptracee;
-
-  /* Current status:
-   *        0: enter syscall
-   *        1: exit syscall no error
-   *   -errno: exit syscall with error.  */
-  int status;
+	/* Current status:
+	 *        0: enter syscall
+	 *        1: exit syscall no error
+	 *   -errno: exit syscall with error.  */
+	int status;
 
 #define IS_IN_SYSENTER(tracee) ((tracee)->status == 0)
 #define IS_IN_SYSEXIT(tracee) (!IS_IN_SYSENTER(tracee))
-#define IS_IN_SYSEXIT2(tracee, sysnum)                                         \
-  (IS_IN_SYSEXIT(tracee) && get_sysnum((tracee), ORIGINAL) == sysnum)
+#define IS_IN_SYSEXIT2(tracee, sysnum) (IS_IN_SYSEXIT(tracee) \
+				     && get_sysnum((tracee), ORIGINAL) == sysnum)
 
-  /* How this tracee is restarted.  */
-  int restart_how, last_restart_how;
+	/* How this tracee is restarted.  */
+#ifdef __GLIBC__
+	enum __ptrace_request
+#else
+	int
+#endif
+		restart_how, last_restart_how;
 
-  /* Value of the tracee's general purpose registers.  */
-  struct user_regs_struct _regs[NB_REG_VERSION];
-  bool _regs_were_changed;
-  bool restore_original_regs;
-  bool restore_original_regs_after_seccomp_event;
+	/* Value of the tracee's general purpose registers.  */
+	struct user_regs_struct _regs[NB_REG_VERSION];
+	bool _regs_were_changed;
+	bool restore_original_regs;
+	bool restore_original_regs_after_seccomp_event;
+	bool regs_fresh;
+	bool sysexit_unneeded;
 
-  /* The registers were fetched at this stop already.  */
-  bool regs_fresh;
+	/* State for the special handling of SIGSTOP.  */
+	enum {
+		SIGSTOP_IGNORED = 0,  /* Ignore SIGSTOP (once the parent is known).  */
+		SIGSTOP_ALLOWED,      /* Allow SIGSTOP (once the parent is known).   */
+		SIGSTOP_PENDING,      /* Block SIGSTOP until the parent is unknown.  */
+	} sigstop;
 
-  /* The enter stage left nothing for the exit stage to do.  */
-  bool sysexit_unneeded;
+	/* True if next SIGSYS caused by seccomp should be silently dropped
+	 * without affecting state of any registers.  */
+	bool skip_next_seccomp_signal;
 
-  /* State for the special handling of SIGSTOP.  */
-  enum {
-    SIGSTOP_IGNORED = 0, /* Ignore SIGSTOP (once the parent is known).  */
-    SIGSTOP_ALLOWED,     /* Allow SIGSTOP (once the parent is known).   */
-    SIGSTOP_PENDING,     /* Block SIGSTOP until the parent is unknown.  */
-  } sigstop;
+	/* Context used to collect all the temporary dynamic memory
+	 * allocations.  */
+	TALLOC_CTX *ctx;
 
-  /* True if next SIGSYS caused by seccomp should be silently dropped
-   * without affecting state of any registers.  */
-  bool skip_next_seccomp_signal;
+	/* Context used to collect all dynamic memory allocations that
+	 * should be released once this tracee is freed.  */
+	TALLOC_CTX *life_context;
 
-  /* Context used to collect all the temporary dynamic memory
-   * allocations.  */
-  TALLOC_CTX *ctx;
+	/* Note: I could rename "ctx" in "event_span" and
+	 * "life_context" in "life_span".  */
 
-  /* Context used to collect all dynamic memory allocations that
-   * should be released once this tracee is freed.  */
-  TALLOC_CTX *life_context;
+	/* Specify the type of the final component during the
+	 * initialization of a binding.  This variable is first
+	 * defined in bind_path() then used in build_glue().  */
+	mode_t glue_type;
 
-  /* Note: I could rename "ctx" in "event_span" and
-   * "life_context" in "life_span".  */
+	/* During a sub-reconfiguration, the new setup is relatively
+	 * to @tracee's file-system name-space.  Also, @paths holds
+	 * its $PATH environment variable in order to emulate the
+	 * execvp(3) behavior.  */
+	struct {
+		struct tracee *tracee;
+		const char *paths;
+	} reconf;
 
-  /* Specify the type of the final component during the
-   * initialization of a binding.  This variable is first
-   * defined in bind_path() then used in build_glue().  */
-  mode_t glue_type;
+	/* Unrequested syscalls inserted by PRoot after an actual
+	 * syscall.  */
+	struct {
+		struct chained_syscalls *syscalls;
+		bool force_final_result;
+		word_t final_result;
+		enum {
+			SYSNUM_WORKAROUND_INACTIVE,
+			SYSNUM_WORKAROUND_PROCESS_FAULTY_CALL,
+			SYSNUM_WORKAROUND_PROCESS_REPLACED_CALL
+		} sysnum_workaround_state;
+		int suppressed_signal;
+	} chain;
 
-  /* During a sub-reconfiguration, the new setup is relatively
-   * to @tracee's file-system name-space.  Also, @paths holds
-   * its $PATH environment variable in order to emulate the
-   * execvp(3) behavior.  */
-  struct {
-    struct tracee *tracee;
-    const char *paths;
-  } reconf;
+	/* Load info generated during execve sysenter and used during
+	 * execve sysexit.  */
+	struct load_info *load_info;
 
-  /* Unrequested syscalls inserted by PRoot after an actual
-   * syscall.  */
-  struct {
-    struct chained_syscalls *syscalls;
-    bool force_final_result;
-    word_t final_result;
-    enum {
-      SYSNUM_WORKAROUND_INACTIVE,
-      SYSNUM_WORKAROUND_PROCESS_FAULTY_CALL,
-      SYSNUM_WORKAROUND_PROCESS_REPLACED_CALL
-    } sysnum_workaround_state;
-    int suppressed_signal;
-  } chain;
-
-  /* Load info generated during execve sysenter and used during
-   * execve sysexit.  */
-  struct load_info *load_info;
-
-#ifdef ARCH_ARM64
-  bool is_aarch32;
+#ifdef HAS_POKEDATA_WORKAROUND
+	word_t pokedata_workaround_stub_addr;
+	bool pokedata_workaround_cancelled_syscall;
+	bool pokedata_workaround_relaunched_syscall;
 #endif
 
-  /**********************************************************************
-   * Private but inherited resources                                    *
-   **********************************************************************/
+#ifdef ARCH_ARM64
+	bool is_aarch32;
+#endif
 
-  /* Verbose level.  */
-  int verbose;
 
-  /* State of the seccomp acceleration for this tracee.  */
-  enum { DISABLED = 0, DISABLING, ENABLED } seccomp;
+	/**********************************************************************
+	 * Private but inherited resources                                    *
+	 **********************************************************************/
 
-  /* Ensure the sysexit stage is always hit under seccomp.  */
-  bool sysexit_pending;
+	/* Verbose level.  */
+	int verbose;
 
-  /* If true, syscall entry was handled by seccomp and next SIGTRAP | 0x80
-   * has to be ignored as it's same syscall entry */
-  bool seccomp_already_handled_enter;
+	/* State of the seccomp acceleration for this tracee.  */
+	enum { DISABLED = 0, DISABLING, ENABLED } seccomp;
 
-  /**********************************************************************
-   * Shared or private resources, depending on the CLONE_FS/VM flags.   *
-   **********************************************************************/
+	/* Ensure the sysexit stage is always hit under seccomp.  */
+	bool sysexit_pending;
 
-  /* Information related to a file-system name-space.  */
-  FileSystemNameSpace *fs;
+	/* If true, syscall entry was handled by seccomp and next SIGTRAP | 0x80
+	 * has to be ignored as it's same syscall entry */
+	bool seccomp_already_handled_enter;
 
-  /* Virtual heap, emulated with a regular memory mapping.  */
-  Heap *heap;
+	/**********************************************************************
+	 * Shared or private resources, depending on the CLONE_FS/VM flags.   *
+	 **********************************************************************/
 
-  /**********************************************************************
-   * Shared resources until the tracee makes a call to execve().        *
-   **********************************************************************/
+	/* Information related to a file-system name-space.  */
+	FileSystemNameSpace *fs;
 
-  /* Path to the executable, à la /proc/self/exe.  */
-  char *exe;
-  char *new_exe;
+	/* Virtual heap, emulated with a regular memory mapping.  */
+	Heap *heap;
 
-  /**********************************************************************
-   * Shared or private resources, depending on the (re-)configuration   *
-   **********************************************************************/
 
-  /* Path to glue between the guest rootfs and the host rootfs.  */
-  const char *glue;
+	/**********************************************************************
+	 * Shared resources until the tracee makes a call to execve().        *
+	 **********************************************************************/
+
+	/* Path to the executable, à la /proc/self/exe.  */
+	char *exe;
+	char *new_exe;
+	char *host_exe;
+
+
+	/**********************************************************************
+	 * Shared or private resources, depending on the (re-)configuration   *
+	 **********************************************************************/
+
+	/* Runner command-line.  */
+	char **qemu;
+	bool skip_proot_loader;
+
+	/* Path to glue between the guest rootfs and the host rootfs.  */
+	const char *glue;
+
+	/* List of extensions enabled for this tracee.  */
+	struct extensions *extensions;
+
+
+	/**********************************************************************
+	 * Shared but read-only resources                                     *
+	 **********************************************************************/
+
+	/* For the mixed-mode, the guest LD_LIBRARY_PATH is saved
+	 * during the "guest -> host" transition, in order to be
+	 * restored during the "host -> guest" transition (only if the
+	 * host LD_LIBRARY_PATH hasn't changed).  */
+	const char *host_ldso_paths;
+	const char *guest_ldso_paths;
+
+	/* For diagnostic purpose.  */
+	const char *tool_name;
 
 } Tracee;
+
+#define HOST_ROOTFS "/host-rootfs"
 
 #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
 extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
 extern void set_tracee_pid(Tracee *tracee, pid_t pid);
 extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
-                                   bool only_with_pevent, word_t wait_options);
+				bool only_with_pevent, word_t wait_options);
 extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);
 extern int new_child(Tracee *parent, word_t clone_flags);
 extern Tracee *new_dummy_tracee(TALLOC_CTX *context);
 extern void terminate_tracee(Tracee *tracee);
 extern void free_terminated_tracees();
+extern int swap_config(Tracee *tracee1, Tracee *tracee2);
 extern void kill_all_tracees();
 
 typedef LIST_HEAD(tracees, tracee) Tracees;

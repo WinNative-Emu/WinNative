@@ -9,6 +9,7 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <linux/futex.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -18,7 +19,21 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
+#ifndef SYS_openat2
+#define SYS_openat2 437
+#endif
+
+#define WN_RESOLVE_BENEATH 0x08
+#define WN_RESOLVE_IN_ROOT 0x10
+
+struct wn_open_how {
+  uint64_t flags;
+  uint64_t mode;
+  uint64_t resolve;
+};
+
 static long (*real_syscall)(long, ...);
+static int openat2_missing;
 
 static struct robust_list_head *thread_robust_head(void) {
   pthread_mutexattr_t attr;
@@ -54,6 +69,35 @@ static struct robust_list_head *thread_robust_head(void) {
   return head;
 }
 
+static long openat2_via_openat(const long *args) {
+  const char *path = (const char *)args[1];
+  const struct wn_open_how *how = (const struct wn_open_how *)args[2];
+  if (!path || !how || (size_t)args[3] < sizeof(*how)) {
+    errno = EINVAL;
+    return -1;
+  }
+  if (how->resolve & WN_RESOLVE_IN_ROOT) {
+    while (*path == '/') {
+      path++;
+    }
+    if (!*path) {
+      path = ".";
+    }
+  } else if ((how->resolve & WN_RESOLVE_BENEATH) && *path == '/') {
+    errno = EXDEV;
+    return -1;
+  }
+  return real_syscall(SYS_openat, args[0], (long)path, (long)(int)how->flags, (long)how->mode);
+}
+
+static int execveat_is_execve(const long *args) {
+  const char *path = (const char *)args[1];
+  if (!path || (args[4] & (AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW))) {
+    return 0;
+  }
+  return path[0] == '/' || (int)args[0] == AT_FDCWD;
+}
+
 long syscall(long number, ...) {
   va_list ap;
   long args[6];
@@ -74,6 +118,19 @@ long syscall(long number, ...) {
   }
   if (!real_syscall) {
     real_syscall = (long (*)(long, ...)) dlsym(RTLD_NEXT, "syscall");
+  }
+  if (number == SYS_openat2) {
+    if (!__atomic_load_n(&openat2_missing, __ATOMIC_RELAXED)) {
+      long fd = real_syscall(number, args[0], args[1], args[2], args[3]);
+      if (fd != -1 || errno != ENOSYS) {
+        return fd;
+      }
+      __atomic_store_n(&openat2_missing, 1, __ATOMIC_RELAXED);
+    }
+    return openat2_via_openat(args);
+  }
+  if (number == SYS_execveat && execveat_is_execve(args)) {
+    return real_syscall(SYS_execve, args[1], args[2], args[3]);
   }
   return real_syscall(number, args[0], args[1], args[2], args[3], args[4], args[5]);
 }

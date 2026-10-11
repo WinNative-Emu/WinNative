@@ -1909,6 +1909,7 @@ static int on_frame_timer(void *data) {
 static int layer_candidate(const struct draw_list *dl, int scene_w, int scene_h) {
     for (int i = dl->n - 1; i >= 0 && i >= dl->n - 2; i--) {
         const struct vkp_draw *d = &dl->d[i];
+        if (d->blend) continue; /* the translucent plane must not replace the opaque game layer */
         if (!vkp_image_is_dmabuf(d->img)) continue;
         if (d->dx != 0 || d->dy != 0 || d->dw != scene_w || d->dh != scene_h) continue;
         if (d->sx != 0 || d->sy != 0 || (int)d->sw != vkp_image_width(d->img) ||
@@ -2247,7 +2248,7 @@ static void render_scene(void) {
              * its own layer, cropped and placed by the display. */
             int go[8], ov = 0;
             if (over == 1 && li >= 0 && vkp_map_draw(&dl.d[li + 1], go))
-                ov = sc_layer_present_overlay(dl.d[li + 1].img, go) == 0 ? 1 : -1;
+                ov = sc_layer_present_overlay(dl.d[li + 1].img, go, dl.d[li + 1].blend) == 0 ? 1 : -1;
             if (ov <= 0) sc_layer_hide_overlay();
             if (ov < 0) { /* the overlay layer refused it: draw the whole scene the old way */
                 sc_layer_hide();
@@ -3091,6 +3092,8 @@ static void session_end(void) {
 /* A new session on the running compositor: a fresh session log. The app has already stored the
  * session's settings (hide shell, output mode, FPS limit, zero-copy...). Compositor thread. */
 static void session_begin(void) {
+    /* The app waits for this session's first frame as it did for the first session's. */
+    vkp_reset_first_frame();
     open_session_log();
     wnc_log("display", "session started on the running compositor (%s)", vkp_gpu_name());
 }
