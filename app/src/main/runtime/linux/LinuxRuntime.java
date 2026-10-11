@@ -44,6 +44,10 @@ public final class LinuxRuntime {
   public static final String DRIVER_ICD = "freedreno_icd.json";
   public static final String DRIVER_VERSION_FILE = "version";
   public static final String DRIVER_NAME_FILE = "name";
+  /** In the session's XDG_RUNTIME_DIR: the app asks the Steam client for a clean exit (winnative-session). */
+  public static final String STEAM_STOP_REQUEST = "winnative-steam-stop";
+  /** Starts of the Steam client that have shown nothing yet (winnative-steam-install repairs it). */
+  private static final String STEAM_UNCONFIRMED = "root/.local/share/Steam/package/winnative-unconfirmed";
   /** Refreshed into the rootfs at every session start; see {@link #syncSessionFiles}. */
 
   private static final String[] SESSION_FILES = {
@@ -350,6 +354,14 @@ public final class LinuxRuntime {
       if (!written) staged.delete();
     }
     if (!written) throw new IOException("could not write etc/ld.so.preload");
+  }
+
+  /** Worker thread. The Steam client reached the screen: its starts so far are not failures. */
+  public static void steamClientShown(Context context) {
+    File unconfirmed = new File(rootDir(context), STEAM_UNCONFIRMED);
+    if (unconfirmed.exists() && !unconfirmed.delete()) {
+      android.util.Log.w("LinuxRuntime", "could not clear " + unconfirmed);
+    }
   }
 
   /** X access control and Steam look the session user up by uid: the app uid is root inside. */

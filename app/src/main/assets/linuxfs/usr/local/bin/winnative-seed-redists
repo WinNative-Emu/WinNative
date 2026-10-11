@@ -11,28 +11,37 @@
 # WineUtils.seedVcRedistRegistryIfDllsPresent() takes for the app's own containers. The names and
 # versions come out of the install scripts rather than a list kept here, because Valve revises
 # them; a prefix already carrying the same set is left alone.
+#
+# Games also carry install scripts of their own (<game>/_CommonRedist/vcredist/2022/installscript.vdf
+# and the like), often with another version in the value name; those are read too. And the VC++
+# 2015-2022 runtime is recorded as installed the way Microsoft's installers look for it: on ARM64
+# Proton the x64 bundle otherwise stops with "Microsoft Visual C++ 2015-2022 Redistributable (arm64)
+# is required", while Proton's own msvcp140/vcruntime140 already serve the game.
 set -u
 steam_root=${1:?steam root}
 
 redist="$steam_root/steamapps/common/Steamworks Shared/_CommonRedist"
 
 # Every process an install script would run, as the registry key and value the client writes once
-# it has run it. Names sit one level inside "Run Process", the key they share a level further in.
-pairs=$(find "$redist" -name installscript.vdf -print0 2>/dev/null | sort -z | xargs -0 -r awk '
-  FNR == 1 { depth = 0; name = ""; key = "" }
-  /^[[:space:]]*\{/ { depth++; next }
+# it has run it. A block whose HasRunKey is set is one process; its name is the key the block opened
+# under, at whatever depth - an install script nests it under "Run Process", the client's evaluator
+# script for a game wraps the same blocks once more.
+read_scripts() { xargs -0 -r awk '
+  FNR == 1 { depth = 0; pending = "" }
+  /^[[:space:]]*\{/ { depth++; name[depth] = pending; key[depth] = ""; pending = ""; next }
   /^[[:space:]]*\}/ {
-    if (depth == 3 && name != "" && key != "")
-      printf "%s\t%s\n", key, name
-    depth--
+    if (depth > 0 && key[depth] != "" && name[depth] != "")
+      printf "%s\t%s\n", key[depth], name[depth]
+    if (depth > 0) depth--
     next
   }
   {
     n = split($0, part, "\"")
-    if (n >= 5 && tolower(part[2]) == "hasrunkey") { key = part[4]; next }
-    if (n >= 3 && depth == 2) { name = part[2]; key = "" }
+    if (n >= 5 && tolower(part[2]) == "hasrunkey") { key[depth] = part[4]; next }
+    if (n == 3) pending = part[2]
   }
-')
+'; }
+pairs=$(find "$redist" -name installscript.vdf -print0 2>/dev/null | sort -z | read_scripts)
 # The client downloads the scripts with the first game that wants them, which is too late for that
 # game; until then the set they held when this was written stands in.
 [ -n "$pairs" ] || pairs=$(sed 's/^\([^ ]*\) /HKEY_LOCAL_MACHINE\\\\Software\\\\Valve\\\\Steam\\\\Apps\\\\CommonRedist\\\\\1\t/' <<'KNOWN'
@@ -54,9 +63,58 @@ vcredist\\2022 x86 14.51.36247.0
 vcredist\\2022 x64 14.51.36247.0
 KNOWN
 )
-stamp=$(printf '%s' "$pairs" | cksum)
 
-block=$(printf '%s\n' "$pairs" | awk -F'\t' -v now="$(date +%s)" '
+# The libraries: the client's own, the app's, every one the app maps in and every one the client
+# has registered.
+libraries=$(printf '%s\n%s\n%s\n%s\n' "$steam_root" /mnt/winnative \
+  "$(cut -f1 /etc/winnative/steam-libraries 2>/dev/null)" \
+  "$(sed -n 's/^[[:space:]]*"path"[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$steam_root/steamapps/libraryfolders.vdf" 2>/dev/null)" \
+  | awk 'NF && !seen[$0]++')
+
+# The games' own scripts. Finding them walks every game folder, so the list is kept until a game is
+# installed, updated or removed (its appmanifest changes).
+cache="$steam_root/.winnative-game-scripts"
+sig=$(while IFS= read -r library; do ls -l --time-style=+%s "$library"/steamapps/appmanifest_*.acf 2>/dev/null; done <<<"$libraries" | cksum)
+if [ "$(head -n 1 "$cache" 2>/dev/null)" != "$sig" ]; then
+  {
+    printf '%s\n' "$sig"
+    while IFS= read -r library; do
+      [ -d "$library/steamapps/common" ] || continue
+      find "$library/steamapps/common" -mindepth 2 -maxdepth 5 -iname 'installscript*.vdf' \
+        -not -path '*/Steamworks Shared/*' 2>/dev/null
+    done <<<"$libraries" | sort -u
+  } >"$cache.tmp" && mv -f "$cache.tmp" "$cache"
+fi
+game_pairs=$(tail -n +2 "$cache" 2>/dev/null | tr '\n' '\0' | read_scripts)
+[ -n "$(printf '%s' "$game_pairs" | tr -d '[:space:]')" ] && pairs=$(printf '%s\n%s\n' "$pairs" "$game_pairs" | sort -u | sed '/^$/d')
+
+# The VC++ 2015-2022 runtime as its installers check for it, for each architecture and both registry
+# views. The version is the newest the scripts above know, so any 2015-2022 bundle finds itself
+# already installed and exits without asking for anything.
+VCRT_MAJOR=14 VCRT_MINOR=51 VCRT_BUILD=36247
+vcrt() {
+  local view arch
+  for view in 'Software' 'Software\\Wow6432Node'; do
+    for arch in x86 x64 arm64; do
+      printf '\n[%s\\\\Microsoft\\\\VisualStudio\\\\14.0\\\\VC\\\\Runtimes\\\\%s] %d\n' "$view" "$arch" "$1"
+      printf '"Bld"=dword:%08x\n"Installed"=dword:00000001\n"Major"=dword:%08x\n"Minor"=dword:%08x\n"Rbld"=dword:00000000\n' \
+        "$VCRT_BUILD" "$VCRT_MAJOR" "$VCRT_MINOR"
+      printf '"Version"="v%d.%d.%d.00"\n' "$VCRT_MAJOR" "$VCRT_MINOR" "$VCRT_BUILD"
+    done
+  done
+}
+
+# Each prefix's marker lists the names it was given, so it is handed only what it lacks: a game's
+# own names arriving later add to a prefix instead of having the whole set appended again.
+want=()
+declare -A wanted=()
+while IFS= read -r line; do
+  [[ $line == *$'\t'* ]] && [ -z "${wanted[$line]:-}" ] && wanted[$line]=1 && want+=("$line")
+done <<<"$pairs"
+want+=("vcrt"$'\t'"$VCRT_MAJOR.$VCRT_MINOR.$VCRT_BUILD")
+
+printf -v now '%(%s)T' -1
+block_for() { printf '%s\n' "$@" | awk -F'\t' -v now="$now" '
   {
     path = $1
     sub(/^HKEY_LOCAL_MACHINE\\\\/, "", path)
@@ -65,27 +123,42 @@ block=$(printf '%s\n' "$pairs" | awk -F'\t' -v now="$(date +%s)" '
     printf "\n[%s] %d\n\"%s\"=dword:00000001\n", path, now, $2
     # The client writes these from 32-bit steam.exe, so its own copy lands under Wow6432Node;
     # both spellings are seeded because the reader picks by its own word size.
-    sub(/^Software\\\\/, "Software\\\\\\\\Wow6432Node\\\\\\\\", path)
-    printf "\n[%s] %d\n\"%s\"=dword:00000001\n", path, now, $2
+    # Joined rather than sub()stituted: gawk and mawk read backslashes in a replacement differently.
+    if (substr(path, 1, 10) != "Software\\\\")
+      next
+    printf "\n[%s] %d\n\"%s\"=dword:00000001\n", "Software\\\\Wow6432Node\\\\" substr(path, 11), now, $2
   }
-')
-[ -n "$block" ] || exit 0
+'
+  local line
+  for line; do [[ $line == vcrt$'\t'* ]] && vcrt "$now"; done
+}
 
 # Proton builds a new prefix from its template, and the client runs the install scripts in that
 # prefix moments later, so the template carries the markers too. Its date is kept: Proton reads a
-# changed one as a new template and upgrades every prefix made from the old.
-for reg in "$steam_root"/steamapps/common/Proton*/files/share/default_pfx*/system.reg \
-           "$steam_root"/compatibilitytools.d/*/files/share/default_pfx*/system.reg \
-           /opt/winnative-proton/files/share/default_pfx*/system.reg \
-           "$steam_root"/steamapps/compatdata/*/pfx/system.reg \
-           /mnt/winnative/steamapps/compatdata/*/pfx/system.reg; do
+# changed one as a new template and upgrades every prefix made from the old. Every library's
+# compatdata is the app's own (/mnt/winnative), so the prefixes are found there and in the client's.
+regs=()
+while IFS= read -r library; do
+  regs+=("$library"/steamapps/common/Proton*/files/share/default_pfx*/system.reg)
+done <<<"$libraries"
+regs+=("$steam_root"/compatibilitytools.d/*/files/share/default_pfx*/system.reg
+       /opt/winnative-proton/files/share/default_pfx*/system.reg
+       "$steam_root"/steamapps/compatdata/*/pfx/system.reg
+       /mnt/winnative/steamapps/compatdata/*/pfx/system.reg)
+for reg in "${regs[@]}"; do
   [ -f "$reg" ] || continue
-  seeded=$(dirname "$reg")/.winnative-redists
-  [ "$(cat "$seeded" 2>/dev/null)" = "$stamp" ] && continue
+  seeded=${reg%/*}/.winnative-redists
+  declare -A had=()
+  if [ -f "$seeded" ]; then
+    while IFS= read -r line; do [[ $line == *$'\t'* ]] && had[$line]=1; done <"$seeded"
+  fi
+  missing=()
+  for line in "${want[@]}"; do [ -n "${had[$line]:-}" ] || missing+=("$line"); done
+  [ ${#missing[@]} -eq 0 ] && continue
   dated=$(mktemp) || continue
   touch -r "$reg" "$dated"
-  if printf '%s\n' "$block" >>"$reg"; then
-    printf '%s\n' "$stamp" >"$seeded"
+  if printf '%s\n' "$(block_for "${missing[@]}")" >>"$reg"; then
+    printf '%s\n' "${!had[@]}" "${missing[@]}" >"$seeded"
     echo "== seeded redist markers into $reg"
   fi
   touch -r "$dated" "$reg"

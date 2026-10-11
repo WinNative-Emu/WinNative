@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class LinuxProgramLauncherComponent extends EnvironmentComponent {
   private static final String TAG = "LinuxLauncher";
@@ -19,6 +20,9 @@ public class LinuxProgramLauncherComponent extends EnvironmentComponent {
   /** Below the compositor thread's -8; see {@link #raiseTracer}. */
   private static final int TRACER_NICE = -6;
   private static final long TRACER_RAISE_DELAY_MS = 2000;
+  /** How long the session script gets to see a clean-exit request, and the client to act on it. */
+  private static final long STEAM_PICKUP_MS = 1500;
+  private static final long STEAM_EXIT_MS = 10_000;
   private final List<String> command;
   private final EnvVars envVars;
   private final File workingDir;
@@ -151,6 +155,42 @@ public class LinuxProgramLauncherComponent extends EnvironmentComponent {
           StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     } catch (IOException e) {
       Log.w(TAG, "Could not write Linux session log", e);
+    }
+  }
+
+  /**
+   * Asks the Steam client to shut down the way it would on a Deck, so it writes back what it holds
+   * in memory and ends its downloads, instead of being killed with the session: the session script
+   * watches for {@code request} and removes it as it starts the shutdown. Blocks for up to
+   * {@link #STEAM_PICKUP_MS} for that and then {@link #STEAM_EXIT_MS} for the session to end; never
+   * call it on the UI thread. Nothing happens when the session is not running.
+   */
+  public void askSteamToExit(File request) {
+    Process running;
+    synchronized (lock) {
+      running = process;
+    }
+    if (running == null || !running.isAlive()) return;
+    try {
+      Files.write(request.toPath(), new byte[0]);
+    } catch (IOException e) {
+      Log.w(TAG, "Could not ask the Steam client to exit", e);
+      return;
+    }
+    long started = System.currentTimeMillis();
+    try {
+      long pickupDeadline = started + STEAM_PICKUP_MS;
+      while (request.exists() && running.isAlive() && System.currentTimeMillis() < pickupDeadline) {
+        Thread.sleep(50);
+      }
+      if (request.exists() || !running.isAlive()) return;
+      boolean exited = running.waitFor(STEAM_EXIT_MS, TimeUnit.MILLISECONDS);
+      record("Steam client " + (exited ? "exited" : "did not exit") + " after "
+          + (System.currentTimeMillis() - started) + " ms");
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } finally {
+      request.delete();
     }
   }
 

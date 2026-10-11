@@ -646,6 +646,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private boolean waylandMode;
     /* The container boots gamescope in the Linux runtime; the compositor is its display. */
     private boolean gamescopeMode;
+    /** The Linux session runs the Steam client (winnative-session steam). */
+    private volatile boolean linuxSteamSession;
     private WaylandSession waylandSession;
     private final java.util.concurrent.atomic.AtomicInteger waylandFrameSerial =
             new java.util.concurrent.atomic.AtomicInteger();
@@ -4100,6 +4102,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 cleanupActivityCallbacks("exit");
                 // Teardown blocks for seconds (cloud upload + clean-shutdown wait); run off the UI thread or the closing splash freezes. UI-touching calls are marshalled back.
                 new Thread(() -> {
+                    askLinuxSteamToExit();
                     sanitizeSteamStateForNextSession("exit", true);
                     if (midiHandler != null) midiHandler.stop();
                     stopWinHandler("exit");
@@ -4132,6 +4135,20 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 }, "XServerExitCleanup").start();
             }, 1000);
         });
+    }
+
+    /**
+     * The Linux Steam client, asked to shut down before anything of the session is ended: the
+     * teardown below matches its web helper's processes as session processes and would kill them
+     * first. Worker thread; returns at once when no client is running.
+     */
+    private void askLinuxSteamToExit() {
+        XEnvironment env = environment;
+        if (!linuxSteamSession || env == null) return;
+        LinuxProgramLauncherComponent launcher = env.getComponent(LinuxProgramLauncherComponent.class);
+        if (launcher == null) return;
+        launcher.askSteamToExit(new File(GuestProgramLauncherComponent.getWaylandRuntimeDir(this),
+                LinuxRuntime.STEAM_STOP_REQUEST));
     }
 
     private void closeAfterSessionExit() {
@@ -8979,6 +8996,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
         com.winlator.cmod.runtime.linux.LinuxProtons.INSTANCE.reconcile(this);
         com.winlator.cmod.runtime.linux.LinuxDriverChoices.write(this);
         List<String> session = linuxSessionArgs();
+        linuxSteamSession = LinuxRuntime.MODE_STEAM.equals(session.get(0));
         File runtimeDir = GuestProgramLauncherComponent.getWaylandRuntimeDir(this);
         runtimeDir.mkdirs();
 
@@ -9308,6 +9326,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
             @Override
             public void onFirstFrame() {
                 onFirstGuestWindow();
+                if (linuxSteamSession) {
+                    Context app = getApplicationContext();
+                    new Thread(() -> LinuxRuntime.steamClientShown(app), "SteamClientShown").start();
+                }
             }
 
             @Override

@@ -795,8 +795,12 @@ ONE_PATH(remove, REMOVED, IN_DELETE, next_remove(path))
     return r; \
   }
 
+/* A refused link may be answered as a rename (links.c). */
+int wn_link_answer(const char *oldpath, const char *newpath, int result) __attribute__((visibility("hidden")));
+static int link_or_rename(const char *from, const char *to) { return wn_link_answer(from, to, next_link(from, to)); }
+
 TWO_PATHS(rename, 1, IN_MOVED_TO, next_rename)
-TWO_PATHS(link, 0, IN_CREATE, next_link)
+TWO_PATHS(link, 0, IN_CREATE, link_or_rename)
 TWO_PATHS(symlink, 0, IN_CREATE, next_symlink)
 
 #else
