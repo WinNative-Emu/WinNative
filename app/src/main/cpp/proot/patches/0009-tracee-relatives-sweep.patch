@@ -1,0 +1,83 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: maxjivi05 <maxjividen@gmail.com>
+Date: Sun, 27 Sep 2026 07:58:52 -0400
+Subject: [PATCH] tracee: sweep relatives only for tracees that have some,
+ reuse the memory collector
+
+---
+ src/path/path.h     |  2 +-
+ src/tracee/tracee.c | 16 ++++++++++------
+ src/tracee/tracee.h |  1 +
+ 3 files changed, 12 insertions(+), 7 deletions(-)
+
+diff --git a/src/path/path.h b/src/path/path.h
+index d455894..7d0e68d 100644
+--- a/src/path/path.h
++++ b/src/path/path.h
+@@ -48,9 +48,9 @@ typedef enum {
+ 
+ /* Path with cached attributes.  */
+ typedef struct {
+-	char path[PATH_MAX];
+ 	size_t length;
+ 	Side side;
++	char path[PATH_MAX];
+ } Path;
+ 
+ /* Path ending type.  */
+diff --git a/src/tracee/tracee.c b/src/tracee/tracee.c
+index d6e414d..8bb2929 100644
+--- a/src/tracee/tracee.c
++++ b/src/tracee/tracee.c
+@@ -105,12 +105,16 @@ static int remove_tracee(Tracee *tracee)
+ 	 * span.  */
+ 	talloc_report_depth_cb(tracee->life_context, 0, 100, clean_life_span_object, tracee);
+ 
+-	/* This could be optimize by using a dedicated list of
+-	 * children and ptracees.  */
++	if (tracee->parent != NULL)
++		tracee->parent->nb_children--;
++
++	if (tracee->nb_children != 0 || tracee->as_ptracer.nb_ptracees != 0)
+ 	LIST_FOREACH(relative, &tracees, link) {
+ 		/* Its children are now orphan.  */
+-		if (relative->parent == tracee)
++		if (relative->parent == tracee) {
+ 			relative->parent = NULL;
++			tracee->nb_children--;
++		}
+ 
+ 		/* Its tracees are now free.  */
+ 		if (relative->as_ptracee.ptracer == tracee) {
+@@ -342,9 +346,7 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
+ 
+ 	LIST_FOREACH(tracee, bucket_of(pid), bucket_link) {
+ 		if (tracee->pid == pid) {
+-			/* Flush then allocate a new memory collector.  */
+-			TALLOC_FREE(tracee->ctx);
+-			tracee->ctx = talloc_new(tracee);
++			talloc_free_children(tracee->ctx);
+ 
+ 			return tracee;
+ 		}
+@@ -506,6 +508,8 @@ int new_child(Tracee *parent, word_t clone_flags)
+ 		child->parent = parent->parent;
+ 	else
+ 		child->parent = parent;
++	if (child->parent != NULL)
++		child->parent->nb_children++;
+ 
+ 	/* Remember if this child belongs to the same thread group as
+ 	 * its parent.  This is currently useful for ptrace emulation
+diff --git a/src/tracee/tracee.h b/src/tracee/tracee.h
+index 527f428..1fca85f 100644
+--- a/src/tracee/tracee.h
++++ b/src/tracee/tracee.h
+@@ -101,6 +101,7 @@ typedef struct tracee {
+ 
+ 	/* Parent of this tracee, NULL if none.  */
+ 	struct tracee *parent;
++	size_t nb_children;
+ 
+ 	/* Is it a "clone", i.e has the same parent as its creator.  */
+ 	bool clone;

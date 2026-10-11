@@ -1,0 +1,64 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: DroidDeck <droiddeck@users.noreply.github.com>
+Date: Tue, 29 Sep 2026 00:00:00 +0000
+Subject: [PATCH] kompat: only trace the utsname calls when no older kernel is
+ emulated
+
+---
+ src/extension/kompat/kompat.c | 29 +++++++++++++++++++++++++++--
+ 1 file changed, 27 insertions(+), 2 deletions(-)
+
+diff --git a/src/extension/kompat/kompat.c b/src/extension/kompat/kompat.c
+index 5c39942..4cb7dec 100644
+--- a/src/extension/kompat/kompat.c
++++ b/src/extension/kompat/kompat.c
+@@ -985,6 +985,29 @@ static FilteredSysnum filtered_sysnums[] = {
+ 	FILTERED_SYSNUM_END,
+ };
+ 
++/* When the virtual kernel is not older than the actual one and the
++ * hwcap is left alone, the only thing left to emulate is the utsname
++ * itself: every other handler above returns without a change.  */
++static FilteredSysnum utsname_only_sysnums[] = {
++	{ PR_setdomainname,	FILTER_SYSEXIT },
++	{ PR_sethostname,	FILTER_SYSEXIT },
++	{ PR_uname, 		FILTER_SYSEXIT },
++	FILTERED_SYSNUM_END,
++};
++
++/**
++ * Return whether @config only renames the kernel identity (nodename,
++ * domainname, version string) without emulating an older kernel or
++ * another hwcap, in which case futex, fcntl, epoll_pwait, ... don't
++ * have to stop in the tracer and the vDSO can be left in place.
++ */
++static bool utsname_only(const Config *config)
++{
++	return config->actual_release != 0
++		&& config->virtual_release >= config->actual_release
++		&& config->hwcap == (word_t) -1;
++}
++
+ /**
+  * Handler for this @extension.  It is triggered each time an @event
+  * occured.  See ExtensionEvent for the meaning of @data1 and @data2.
+@@ -1007,7 +1030,9 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
+ 		if (status < 0)
+ 			return -1;
+ 
+-		extension->filtered_sysnums = filtered_sysnums;
++		extension->filtered_sysnums = utsname_only(config)
++			? utsname_only_sysnums
++			: filtered_sysnums;
+ 		return 0;
+ 	}
+ 
+@@ -1038,7 +1063,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
+ 
+ 		/* Note: this can be done only before PRoot pushes the
+ 		 * load script into tracee's stack.  */
+-		if ((int) result >= 0 && sysnum == PR_execve)
++		if ((int) result >= 0 && sysnum == PR_execve && !utsname_only(config))
+ 			adjust_elf_auxv(tracee, config);
+ 		return 0;
+ 	}
