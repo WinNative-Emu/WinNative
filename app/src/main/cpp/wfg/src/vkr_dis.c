@@ -20,6 +20,7 @@
 #include "shaders/dis_hist_comp.spv.h"
 #include "shaders/dis_side_comp.spv.h"
 #include "shaders/dis_flow_pack_comp.spv.h"
+#include "shaders/dis_splat_comp.spv.h"
 #include "shaders/dis_me_luma_comp.spv.h"
 #include "shaders/dis_vr_prep_comp.spv.h"
 #include "shaders/dis_vr_d1_comp.spv.h"
@@ -197,6 +198,8 @@ struct VkrDis {
     DisImage hist[2];
     DisImage side;
     DisImage flow_out;
+    DisImage splat_key;
+    DisImage splat_field;
     DisImage me_field;
 
     // Farneback flow (DIS_ENGINE_FARNEBACK and _HYBRID): each frame's polynomial expansion,
@@ -227,6 +230,8 @@ struct VkrDis {
     VkImageView view_hist[2];
     VkImageView view_side;
     VkImageView view_flow_out;
+    VkImageView view_splat_key;
+    VkImageView view_splat_field;
     VkImageView view_me_field;
     VkImageView view_fb_b[DIS_SLOTS][DIS_MAX_LEVELS];
     VkImageView view_fb_c[DIS_SLOTS][DIS_MAX_LEVELS];
@@ -249,6 +254,7 @@ struct VkrDis {
     VkDescriptorSet hist_sets[DIS_SLOTS][2];
     VkDescriptorSet side_sets[DIS_SLOTS];
     VkDescriptorSet pack_set;
+    VkDescriptorSet splat_sets[DIS_SLOTS];
     // Farneback, all from vr_set_layout: the expansion of slot s at level l; the equations of
     // the pair ending in slot s at level l, starting from the level above ([0]) or from this
     // level's previous iteration ([1]); and the solve of level l.
@@ -282,6 +288,7 @@ struct VkrDis {
     DisPass pass_fb_vsolve;
     DisPass pass_side;
     DisPass pass_pack;
+    DisPass pass_splat;
     DisPass pass_me_luma;
     DisPass pass_vr_prep;
     DisPass pass_vr_d1;
@@ -577,6 +584,8 @@ static uint32_t dis_collect_images(VkrDis* d, DisImage** out, uint32_t cap) {
     DIS_PUSH(&d->hist[1]);
     DIS_PUSH(&d->side);
     DIS_PUSH(&d->flow_out);
+    DIS_PUSH(&d->splat_key);
+    DIS_PUSH(&d->splat_field);
     DIS_PUSH(&d->me_field);
     for (uint32_t s = 0; s < DIS_SLOTS; s++) {
         DIS_PUSH(&d->fb_b[s]);
@@ -787,7 +796,7 @@ static bool dis_create_pipelines(VkrDis* d) {
     // VR sets exist only for the levels the refinement actually runs on.
     const uint32_t vr_sets = (DIS_SLOTS
                            + DIS_VR_SHARED_SETS) * DIS_VR_LEVELS;
-    const uint32_t hist_sets = DIS_SLOTS * 2u;
+    const uint32_t hist_sets = DIS_SLOTS * 2u + DIS_SLOTS;   // + the splat sets
     const uint32_t fb_sets = DIS_SLOTS * DIS_MAX_LEVELS * 3u + DIS_MAX_LEVELS + DIS_SLOTS + 1u;
     const uint32_t vr_layout_sets = vr_sets + hist_sets + fb_sets;
     const uint32_t total_sets = shared_sets + vr_layout_sets;
@@ -890,6 +899,7 @@ static bool dis_create_pipelines(VkrDis* d) {
     d->pass_fb_vsolve.pipeline = dis_create_compute_pipeline_with_layout(d, dis_fb_vsolve_comp, dis_fb_vsolve_comp_size, d->vr_pipeline_layout, NULL);
     d->pass_side.pipeline = dis_create_compute_pipeline(d, dis_side_comp, dis_side_comp_size);
     d->pass_pack.pipeline = dis_create_compute_pipeline(d, dis_flow_pack_comp, dis_flow_pack_comp_size);
+    d->pass_splat.pipeline = dis_create_compute_pipeline_with_layout(d, dis_splat_comp, dis_splat_comp_size, d->vr_pipeline_layout, NULL);
 
     // The hardware-motion luminance pass writes a host-visible buffer, which neither shared
     // layout has, so it gets a small layout and pool of its own: the colour frame and the buffer.
@@ -944,7 +954,7 @@ static bool dis_create_pipelines(VkrDis* d) {
         !d->pass_vr_prep.pipeline || !d->pass_vr_d1.pipeline || !d->pass_vr_d2.pipeline ||
         !d->pass_vr_w.pipeline || !d->pass_vr_coef.pipeline || !d->pass_vr_sor.pipeline ||
         !d->pass_vr_add.pipeline || !d->pass_hist.pipeline || !d->pass_side.pipeline ||
-        !d->pass_pack.pipeline || !d->pass_me_luma.pipeline ||
+        !d->pass_pack.pipeline || !d->pass_splat.pipeline || !d->pass_me_luma.pipeline ||
         !d->pass_fb_poly.pipeline || !d->pass_fb_hsum.pipeline || !d->pass_fb_vsolve.pipeline) {
         return false;
     }
@@ -1158,6 +1168,7 @@ static void dis_write_all_descriptors(VkrDis* d) {
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 2, d->view_flow_out, d->sampler);
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 3, d->view_side, d->sampler);
             dis_batch_sampled(d, &b, d->interp_sets[s][dir], 4, d->view_hist[dir], d->sampler);
+            dis_batch_sampled(d, &b, d->interp_sets[s][dir], 6, d->view_splat_field, d->sampler);
             dis_batch_storage(d, &b, d->interp_sets[s][dir], 5, d->view_interp_out);
 
             dis_batch_sampled(d, &b, d->hist_sets[s][dir], 0, d->view_color[prev], d->sampler);
@@ -1165,6 +1176,12 @@ static void dis_write_all_descriptors(VkrDis* d) {
             dis_batch_sampled(d, &b, d->hist_sets[s][dir], 2, d->view_hist[1u - dir], d->sampler);
             dis_batch_storage(d, &b, d->hist_sets[s][dir], DIS_VR_FIRST_STORAGE, d->view_hist[dir]);
         }
+
+        dis_batch_sampled(d, &b, d->splat_sets[s], 0, d->view_flow_luma[prev][0], d->sampler);
+        dis_batch_sampled(d, &b, d->splat_sets[s], 1, d->view_flow_luma[next][0], d->sampler);
+        dis_batch_sampled(d, &b, d->splat_sets[s], 2, d->view_flow_out, d->sampler);
+        dis_batch_storage(d, &b, d->splat_sets[s], DIS_VR_FIRST_STORAGE, d->view_splat_key);
+        dis_batch_storage(d, &b, d->splat_sets[s], DIS_VR_FIRST_STORAGE + 1, d->view_splat_field);
 
         dis_batch_sampled(d, &b, d->side_sets[s], 0, d->view_flow_refined[0], d->sampler);
         dis_batch_storage(d, &b, d->side_sets[s], 5, d->view_side);
@@ -1273,6 +1290,8 @@ static void dis_destroy_views(VkrDis* d) {
     dis_destroy_view(d, &d->view_hist[1]);
     dis_destroy_view(d, &d->view_side);
     dis_destroy_view(d, &d->view_flow_out);
+    dis_destroy_view(d, &d->view_splat_key);
+    dis_destroy_view(d, &d->view_splat_field);
     dis_destroy_view(d, &d->view_me_field);
     dis_destroy_view(d, &d->view_fb_l1);
     for (uint32_t l = 0; l < DIS_MAX_LEVELS; l++) {
@@ -1327,6 +1346,8 @@ static void dis_destroy_images(VkrDis* d) {
     dis_destroy_image(d, &d->hist[1]);
     dis_destroy_image(d, &d->side);
     dis_destroy_image(d, &d->flow_out);
+    dis_destroy_image(d, &d->splat_key);
+    dis_destroy_image(d, &d->splat_field);
     dis_destroy_image(d, &d->me_field);
     for (uint32_t s = 0; s < DIS_SLOTS; s++) {
         dis_destroy_image(d, &d->fb_b[s]);
@@ -1525,6 +1546,12 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
     // every device, so its three lookups per output pixel stay single bilinear taps.
     if (!dis_create_image(d, &d->flow_out, w, h, VK_FORMAT_R16G16_SFLOAT, 1,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
+    // The field splatted to a generated frame's time (dis_splat.comp): the winning priority per
+    // texel (R32_UINT, whose storage atomics every device has) and the vector it carries.
+    if (!dis_create_image(d, &d->splat_key, w, h, VK_FORMAT_R32_UINT, 1,
+                          VK_IMAGE_USAGE_STORAGE_BIT)) return false;
+    if (!dis_create_image(d, &d->splat_field, w, h, VK_FORMAT_R16G16B16A16_SFLOAT, 1,
+                          VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
     // Hardware motion hint, one vector per block of the level it seeds. It always exists so the
     // search's binding stays valid; the search reads it only on frames that uploaded one.
     const uint32_t hint_w = L >= 3 ? (w >> 2) : 1u;
@@ -1581,6 +1608,8 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
     if (!dis_create_view(d, d->hist[1].image, VK_FORMAT_R32_SFLOAT, 0, 1, &d->view_hist[1])) return false;
     if (!dis_create_view(d, d->side.image, VK_FORMAT_R32_SFLOAT, 0, 1, &d->view_side)) return false;
     if (!dis_create_view(d, d->flow_out.image, VK_FORMAT_R16G16_SFLOAT, 0, 1, &d->view_flow_out)) return false;
+    if (!dis_create_view(d, d->splat_key.image, VK_FORMAT_R32_UINT, 0, 1, &d->view_splat_key)) return false;
+    if (!dis_create_view(d, d->splat_field.image, VK_FORMAT_R16G16B16A16_SFLOAT, 0, 1, &d->view_splat_field)) return false;
     if (!dis_create_view(d, d->me_field.image, VK_FORMAT_R32G32_SFLOAT, 0, 1, &d->view_me_field)) return false;
     if (!dis_create_view(d, d->fb_l1.image, VK_FORMAT_R32G32_SFLOAT, 0, 1, &d->view_fb_l1)) return false;
 
@@ -1626,6 +1655,7 @@ static bool dis_allocate_sets(VkrDis* d) {
         if (!dis_alloc(d, d->set_layout, 1, &d->side_sets[s])) return false;
         if (!dis_alloc(d, d->vr_set_layout, 1, &d->hist_sets[s][0])) return false;
         if (!dis_alloc(d, d->vr_set_layout, 1, &d->hist_sets[s][1])) return false;
+        if (!dis_alloc(d, d->vr_set_layout, 1, &d->splat_sets[s])) return false;
         for (uint32_t l = 0; l < DIS_VR_LEVELS; l++) {
             if (!dis_alloc(d, d->vr_set_layout, 1, &d->vr_prep_sets[s][l])) return false;
         }
@@ -1923,6 +1953,7 @@ void vkr_dis_destroy(VkrDis* d) {
     if (d->pass_hist.pipeline) vkd.DestroyPipeline(d->device, d->pass_hist.pipeline, NULL);
     if (d->pass_side.pipeline) vkd.DestroyPipeline(d->device, d->pass_side.pipeline, NULL);
     if (d->pass_pack.pipeline) vkd.DestroyPipeline(d->device, d->pass_pack.pipeline, NULL);
+    if (d->pass_splat.pipeline) vkd.DestroyPipeline(d->device, d->pass_splat.pipeline, NULL);
     if (d->pass_fb_poly.pipeline) vkd.DestroyPipeline(d->device, d->pass_fb_poly.pipeline, NULL);
     if (d->pass_fb_hsum.pipeline) vkd.DestroyPipeline(d->device, d->pass_fb_hsum.pipeline, NULL);
     if (d->pass_fb_vsolve.pipeline) vkd.DestroyPipeline(d->device, d->pass_fb_vsolve.pipeline, NULL);
@@ -2732,6 +2763,32 @@ static void dis_render_into(VkrDis* d, VkCommandBuffer cmd, float t, int debug_m
                             VkImage base_image) {
     const uint32_t w = d->content.width;
     const uint32_t h = d->content.height;
+
+    // The field splatted to t: clear, raise the keys, write the winners (dis_splat.comp).
+    {
+        const uint32_t fw = d->flow_out.extent.width;
+        const uint32_t fh = d->flow_out.extent.height;
+        vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_splat.pipeline);
+        vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
+                                  &d->splat_sets[d->active_slot], 0, NULL);
+        for (int mode = 0; mode < 3; mode++) {
+            const struct { float t; int mode; } spc = {t, mode};
+            vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                                 sizeof(spc), &spc);
+            vkd.CmdDispatch(cmd, (fw + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE,
+                            (fh + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE, 1);
+            // The key is read-modify-written by the atomics, so the next pass waits for both.
+            VkMemoryBarrier mb;
+            memset(&mb, 0, sizeof(mb));
+            mb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+            mb.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+            mb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+            vkd.CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &mb, 0, NULL, 0,
+                                   NULL);
+        }
+        DIS_PROF(cmd, "splat");
+    }
 
     DisInterpPC ipc;
     ipc.t = t;

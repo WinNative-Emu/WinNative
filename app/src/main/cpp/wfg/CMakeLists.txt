@@ -25,6 +25,7 @@ set(DIS_SHADERS
     dis_hist
     dis_side
     dis_flow_pack
+    dis_splat
     dis_vr_prep
     dis_vr_d1
     dis_vr_d2

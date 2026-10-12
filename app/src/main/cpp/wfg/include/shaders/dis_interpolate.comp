@@ -19,6 +19,9 @@ layout(set = 0, binding = 2) uniform sampler2D flowTex;
 layout(set = 0, binding = 3) uniform sampler2D sideTex;
 layout(set = 0, binding = 4) uniform sampler2D histTex;
 layout(set = 0, binding = 5, rgba8) uniform image2D outImage;
+// The field splatted to t (dis_splat.comp): xy the vector times z, z the share of the bilinear
+// footprint something landed on.
+layout(set = 0, binding = 6) uniform sampler2D splatTex;
 
 layout(push_constant) uniform PC {
     float t;
@@ -53,6 +56,17 @@ layout(constant_id = 0) const int manualFlowFilter = 0;
 // Take the stabilised overlay confidence from dis_hist on top of the per-pixel test.
 #ifndef DIS_USE_HIST
 #define DIS_USE_HIST 1
+#endif
+
+// Take the vector that lands on the pixel from the splatted field where there is one.
+#ifndef DIS_SPLAT
+#define DIS_SPLAT 1
+#endif
+#ifndef SPLAT_APART_LO
+#define SPLAT_APART_LO 0.5
+#endif
+#ifndef SPLAT_APART_HI
+#define SPLAT_APART_HI 1.5
 #endif
 
 // Hand a pixel that a warped sample fetches from a static overlay to the other frame.
@@ -177,14 +191,37 @@ void main() {
         if (any(isnan(fn)) || any(isinf(fn))) break;
         fa = fn;
     }
-    fa = mix(f, fa, edgeMix);
 #endif
-
-    // The real pair where it sits: the early-out below and the static test at the end both
-    // need it.
+    // The real pair where it sits: the splat guard, the early-out below and the static test at
+    // the end all need it.
     vec3 s0 = textureLod(prevColor, uv, 0.0).xyz;
     vec3 s1 = textureLod(nextColor, uv, 0.0).xyz;
     float rStatic = dot(abs(s0 - s1), vec3(1.0));
+
+#if DIS_SPLAT
+    // The fixed-point steps cannot choose between two layers that both claim the pixel; the
+    // splat already did, by which of them the next frame confirms. Where nothing landed (content
+    // coming into view) the steps stand. Only where the two disagree by more than a flow
+    // texel: inside one layer the steps follow the smooth field, and the splat, a winner per
+    // texel, would only make it blocky.
+    vec4 sp = textureLod(splatTex, uv, 0.0);
+    if (sp.z > 1e-3 && !(any(isnan(sp.xy)) || any(isinf(sp.xy)))) {
+        vec2 fs = sp.xy / sp.z;
+        float apart = length((fs - fa) * vec2(textureSize(splatTex, 0)));
+        float take = smoothstep(0.25, 0.75, sp.z) * smoothstep(SPLAT_APART_LO, SPLAT_APART_HI, apart);
+        // Not on a static overlay - still in the history and the same in both frames here: there
+        // the moving scenery behind ties with it on how well the pair confirms it and outranks
+        // its zero on length.
+        if (take > 0.0) {
+            take *= 1.0 - textureLod(histTex, uv, 0.0).r * (1.0 - smoothstep(0.03, 0.12, rStatic));
+        }
+        fa = mix(fa, fs, take);
+    }
+#endif
+#if DIS_SOURCE_STEPS > 0 || DIS_SPLAT
+    fa = mix(f, fa, edgeMix);
+#endif
+
 
     // Under a quarter of a pixel no warp can change an output pixel visibly, and where the
     // pair also agrees nothing crossed the pixel either, so the ten warped fetches below
