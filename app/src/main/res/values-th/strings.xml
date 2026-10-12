@@ -1391,7 +1391,7 @@
     <string name="setup_wizard_no_components_available">ไม่มีคอมโพเนนต์สำหรับหมวดหมู่นี้</string>
     <string name="setup_wizard_default_settings">การตั้งค่าเริ่มต้น</string>
     <string name="setup_wizard_containers">การตั้งค่าคอนเทนเนอร์</string>
-    <string name="setup_wizard_containers_description">เปิดแต่ละคอนเทนเนอร์และตั้งค่าเริ่มต้นที่คุณต้องการให้เกมใหม่ทุกเกมสืบทอด เกมใหม่จะใช้คอนเทนเนอร์ x86-64 เป็นค่าเริ่มต้น</string>
+    <string name="setup_wizard_containers_description">เปิดแต่ละคอนเทนเนอร์และตั้งค่าเริ่มต้นที่คุณต้องการให้เกมใหม่ทุกเกมสืบทอด แตะคอนเทนเนอร์เพื่อตั้งเป็นค่าเริ่มต้น เกมใหม่จะใช้คอนเทนเนอร์เริ่มต้นนั้น</string>
     <string name="setup_wizard_store_sign_in_optional">การลงชื่อเข้าใช้ร้านค้าเป็นตัวเลือกเสริม การลงชื่อเข้าใช้แต่ละครั้งจะกลับมาที่นี่เมื่อเสร็จสิ้น</string>
     <string name="setup_wizard_granted">ได้รับสิทธิ์แล้ว</string>
     <string name="setup_wizard_grant">ให้สิทธิ์</string>
@@ -2765,6 +2765,11 @@
     <string name="settings_frame_generation_updated">อัปเดตจาก %1$s แล้ว</string>
     <string name="settings_frame_generation_not_owned">การสร้างเฟรมใช้เชเดอร์จาก Lossless Scaling ซื้อบน Steam ด้วยบัญชีที่ลงชื่อเข้าใช้อยู่เพื่อเปิดใช้งาน</string>
     <string name="settings_frame_generation_locate">เลือก Lossless.dll…</string>
+    <string name="containers_set_default">ตั้งเป็นค่าเริ่มต้น</string>
+    <string name="containers_default_badge">ค่าเริ่มต้น (%1$s)</string>
+    <string name="containers_set_default_success">ตั้งคอนเทนเนอร์ %1$s เป็นค่าเริ่มต้นสำหรับเกมใหม่ เกมเดิมไม่ได้รับผลกระทบ</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">สร้างเฟรมเพิ่มเติมสำหรับเครื่องเล่นนี้ด้วย Lossless Scaling</string>
     <string name="retro_gs_frame_generation_unsupported">GPU นี้ไม่รองรับความสามารถ Vulkan ที่เชดเดอร์ของ Lossless Scaling ต้องใช้</string>
     <string name="itch_store_title">itch.io</string>

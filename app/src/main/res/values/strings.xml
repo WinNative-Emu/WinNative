@@ -562,6 +562,11 @@
     <string name="container_config_win_components">Win Components</string>
     <string name="container_config_drives">Drives</string>
     <string name="container_config_arch">Arch</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
+    <string name="containers_set_default">Set as default</string>
+    <string name="containers_default_badge">Default (%1$s)</string>
+    <string name="containers_set_default_success">%1$s container set as default for new games. Existing games are unaffected.</string>
     <string name="container_config_storage_info">Storage Info</string>
     <string name="container_config_drive_c">Drive C:</string>
     <string name="container_config_cache">Cache</string>
@@ -1591,7 +1596,7 @@ Installed path:
     <string name="setup_wizard_no_components_available">No components available for this category.</string>
     <string name="setup_wizard_default_settings">Default Settings</string>
     <string name="setup_wizard_containers">Container Setup</string>
-    <string name="setup_wizard_containers_description">Open each container and set the defaults you want every new game to inherit. New games will target the x86-64 container by default.</string>
+    <string name="setup_wizard_containers_description">Open each container and set the defaults you want every new game to inherit. Tap a container to make it the default; new games use that default container.</string>
     <string name="setup_wizard_store_sign_in_optional">Store sign-in is optional. Each sign-in returns here when it finishes.</string>
     <string name="setup_wizard_granted">Granted</string>
     <string name="setup_wizard_grant">Grant</string>

@@ -1106,7 +1106,7 @@
     <string name="setup_wizard_loading_components">Завантаження компонентів\u2026</string>
     <string name="setup_wizard_no_components_available">Немає доступних компонентів для цієї категорії.</string>
     <string name="setup_wizard_default_settings">Типові налаштування</string>
-    <string name="setup_wizard_containers_description">Відкрийте кожен контейнер та встановіть типові значення, які будуть успадковувати всі нові ігри. Нові ігри за замовчуванням використовуватимуть контейнер x86-64.</string>
+    <string name="setup_wizard_containers_description">Відкрийте кожен контейнер та встановіть типові значення, які будуть успадковувати всі нові ігри. Натисніть на контейнер, щоб зробити його типовим; нові ігри використовуватимуть цей типовий контейнер.</string>
     <string name="setup_wizard_store_sign_in_optional">Вхід до магазину необов\'язковий. Кожен вхід повертає вас сюди після завершення.</string>
     <string name="setup_wizard_granted">Надано</string>
     <string name="setup_wizard_grant">Надати</string>
@@ -2773,6 +2773,11 @@
     <string name="settings_frame_generation_updated">Оновлено з %1$s.</string>
     <string name="settings_frame_generation_not_owned">Генерація кадрів використовує шейдери Lossless Scaling. Придбайте його у Steam під поточним обліковим записом, щоб увімкнути це.</string>
     <string name="settings_frame_generation_locate">Вибрати Lossless.dll…</string>
+    <string name="containers_set_default">Встановити за замовчуванням</string>
+    <string name="containers_default_badge">За замовчуванням (%1$s)</string>
+    <string name="containers_set_default_success">Контейнер %1$s встановлено за замовчуванням для нових ігор. Існуючі ігри не змінюються.</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">Добудовує додаткові кадри для цієї консолі за допомогою Lossless Scaling.</string>
     <string name="retro_gs_frame_generation_unsupported">Цей графічний процесор не надає можливостей Vulkan, потрібних шейдерам Lossless Scaling.</string>
     <string name="itch_store_title">itch.io</string>

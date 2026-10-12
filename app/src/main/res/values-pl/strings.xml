@@ -1106,7 +1106,7 @@ Zainstalowana ścieżka:
     <string name="setup_wizard_loading_components">Wczytywanie komponentów\u2026</string>
     <string name="setup_wizard_no_components_available">Brak dostępnych komponentów dla tej kategorii.</string>
     <string name="setup_wizard_default_settings">Ustawienia domyślne</string>
-    <string name="setup_wizard_containers_description">Otwórz każdy kontener i ustaw wartości domyślne, które odziedziczy każda nowa gra. Nowe gry domyślnie korzystają z kontenera x86-64.</string>
+    <string name="setup_wizard_containers_description">Otwórz każdy kontener i ustaw wartości domyślne, które odziedziczy każda nowa gra. Dotknij kontenera, aby uczynić go domyślnym; nowe gry używają tego domyślnego kontenera.</string>
     <string name="setup_wizard_store_sign_in_optional">Logowanie do sklepu jest opcjonalne. Każde logowanie wraca tutaj po zakończeniu.</string>
     <string name="setup_wizard_granted">Przyznano</string>
     <string name="setup_wizard_grant">Przyznaj</string>
@@ -2773,6 +2773,11 @@ Zainstalowana ścieżka:
     <string name="settings_frame_generation_updated">Zaktualizowano z %1$s.</string>
     <string name="settings_frame_generation_not_owned">Generowanie klatek korzysta z shaderów Lossless Scaling. Kup je na Steam na zalogowanym koncie, aby to włączyć.</string>
     <string name="settings_frame_generation_locate">Wybierz Lossless.dll…</string>
+    <string name="containers_set_default">Ustaw jako domyślny</string>
+    <string name="containers_default_badge">Domyślny (%1$s)</string>
+    <string name="containers_set_default_success">Kontener %1$s ustawiony jako domyślny dla nowych gier. Istniejące gry pozostają bez zmian.</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">Interpoluje dodatkowe klatki dla tej konsoli za pomocą Lossless Scaling.</string>
     <string name="retro_gs_frame_generation_unsupported">Ten układ graficzny nie udostępnia funkcji Vulkan wymaganych przez shadery Lossless Scaling.</string>
     <string name="itch_store_title">itch.io</string>

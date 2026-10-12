@@ -1098,7 +1098,7 @@ Percorso installato:
     <string name="setup_wizard_loading_components">Caricamento componenti\u2026</string>
     <string name="setup_wizard_no_components_available">Nessun componente disponibile per questa categoria.</string>
     <string name="setup_wizard_default_settings">Impostazioni predefinite</string>
-    <string name="setup_wizard_containers_description">Apri ogni contenitore e imposta i valori predefiniti che vuoi che ogni nuovo gioco erediti. I nuovi giochi utilizzeranno il contenitore x86-64 per impostazione predefinita.</string>
+    <string name="setup_wizard_containers_description">Apri ogni contenitore e imposta i valori predefiniti che vuoi che ogni nuovo gioco erediti. Tocca un contenitore per renderlo predefinito; i nuovi giochi useranno quel contenitore.</string>
     <string name="setup_wizard_store_sign_in_optional">L\'accesso al negozio è facoltativo. Ogni accesso ritorna qui quando è completato.</string>
     <string name="setup_wizard_granted">Concesso</string>
     <string name="setup_wizard_grant">Concedi</string>
@@ -2767,6 +2767,11 @@ Percorso installato:
     <string name="settings_frame_generation_updated">Aggiornato da %1$s.</string>
     <string name="settings_frame_generation_not_owned">La generazione fotogrammi usa gli shader di Lossless Scaling. Acquistalo su Steam con l\'account connesso per abilitarla.</string>
     <string name="settings_frame_generation_locate">Seleziona Lossless.dll…</string>
+    <string name="containers_set_default">Imposta come predefinito</string>
+    <string name="containers_default_badge">Predefinito (%1$s)</string>
+    <string name="containers_set_default_success">Contenitore %1$s impostato come predefinito per i nuovi giochi. I giochi esistenti non sono interessati.</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">Interpola fotogrammi aggiuntivi per questa console con Lossless Scaling.</string>
     <string name="retro_gs_frame_generation_unsupported">Questa GPU non espone le funzioni Vulkan richieste dagli shader di Lossless Scaling.</string>
     <string name="itch_store_title">itch.io</string>

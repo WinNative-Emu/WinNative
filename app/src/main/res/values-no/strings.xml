@@ -1391,7 +1391,7 @@ Installert bane:
     <string name="setup_wizard_no_components_available">Ingen komponenter tilgjengelig for denne kategorien.</string>
     <string name="setup_wizard_default_settings">Standardinnstillinger</string>
     <string name="setup_wizard_containers">Containeroppsett</string>
-    <string name="setup_wizard_containers_description">Åpne hver container og angi standardene du vil at hvert nye spill skal arve. Nye spill retter seg mot x86-64-containeren som standard.</string>
+    <string name="setup_wizard_containers_description">Åpne hver container og angi standardene du vil at hvert nye spill skal arve. Trykk på en container for å gjøre den til standard; nye spill bruker den standard-containeren.</string>
     <string name="setup_wizard_store_sign_in_optional">Butikkinnlogging er valgfritt. Hver innlogging returnerer hit når den er ferdig.</string>
     <string name="setup_wizard_granted">Innvilget</string>
     <string name="setup_wizard_grant">Innvilg</string>
@@ -2765,6 +2765,11 @@ Installert bane:
     <string name="settings_frame_generation_updated">Oppdatert fra %1$s.</string>
     <string name="settings_frame_generation_not_owned">Bildegenerering bruker shadere fra Lossless Scaling. Kjøp det på Steam med den påloggede kontoen for å aktivere dette.</string>
     <string name="settings_frame_generation_locate">Velg Lossless.dll…</string>
+    <string name="containers_set_default">Angi som standard</string>
+    <string name="containers_default_badge">Standard (%1$s)</string>
+    <string name="containers_set_default_success">%1$s-beholderen er satt som standard for nye spill. Eksisterende spill påvirkes ikke.</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">Interpolerer ekstra bilder for denne konsollen med Lossless Scaling.</string>
     <string name="retro_gs_frame_generation_unsupported">Denne GPU-en tilbyr ikke Vulkan-funksjonene som Lossless Scaling-shaderne trenger.</string>
     <string name="itch_store_title">itch.io</string>
