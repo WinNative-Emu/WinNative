@@ -404,6 +404,7 @@ typedef struct {
 typedef struct {
     float t;
     int debugMode;
+    int layer;
 } DisInterpPC;
 
 typedef struct {
@@ -1179,7 +1180,7 @@ static void dis_write_all_descriptors(VkrDis* d) {
 
         dis_batch_sampled(d, &b, d->splat_sets[s], 0, d->view_flow_luma[prev][0], d->sampler);
         dis_batch_sampled(d, &b, d->splat_sets[s], 1, d->view_flow_luma[next][0], d->sampler);
-        dis_batch_sampled(d, &b, d->splat_sets[s], 2, d->view_flow_out, d->sampler);
+        dis_batch_sampled(d, &b, d->splat_sets[s], 2, d->view_flow_refined[0], d->sampler);
         dis_batch_storage(d, &b, d->splat_sets[s], DIS_VR_FIRST_STORAGE, d->view_splat_key);
         dis_batch_storage(d, &b, d->splat_sets[s], DIS_VR_FIRST_STORAGE + 1, d->view_splat_field);
 
@@ -1547,10 +1548,12 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
     if (!dis_create_image(d, &d->flow_out, w, h, VK_FORMAT_R16G16_SFLOAT, 1,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
     // The field splatted to a generated frame's time (dis_splat.comp): the winning priority per
-    // texel (R32_UINT, whose storage atomics every device has) and the vector it carries.
-    if (!dis_create_image(d, &d->splat_key, w, h, VK_FORMAT_R32_UINT, 1,
+    // texel (R32_UINT, whose storage atomics every device has) and the vector it carries, one
+    // strip of the flow's height per generated frame of the pair.
+    if (!dis_create_image(d, &d->splat_key, w, h * VKR_DIS_MAX_GENERATIONS, VK_FORMAT_R32_UINT, 1,
                           VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->splat_field, w, h, VK_FORMAT_R16G16B16A16_SFLOAT, 1,
+    if (!dis_create_image(d, &d->splat_field, w, h * VKR_DIS_MAX_GENERATIONS,
+                          VK_FORMAT_R16G16B16A16_SFLOAT, 1,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
     // Hardware motion hint, one vector per block of the level it seeds. It always exists so the
     // search's binding stays valid; the search reads it only on frames that uploaded one.
@@ -2541,6 +2544,9 @@ static void dis_farneback(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_
     DIS_PROF(cmd, "farneback");
 }
 
+static void dis_splat_pass(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_t generations,
+                           int mode);
+
 VkCommandBuffer vkr_dis_process_ex(VkrDis* d, VkCommandBuffer cmd, VkImage source,
                                    uint32_t width, uint32_t height, uint32_t generations,
                                    VkrDisFlushFn flush, void* flush_user) {
@@ -2608,6 +2614,11 @@ VkCommandBuffer vkr_dis_process_ex(VkrDis* d, VkCommandBuffer cmd, VkImage sourc
     }
 
     const bool wants_flow = generations > 0 || d->debug_flow;
+    // The field splatted to every generated frame's time (dis_splat.comp): cleared here, under
+    // the luma pass's barrier; splatted next to the pack pass and resolved after it.
+    const uint32_t splat_gens =
+        generations < VKR_DIS_MAX_GENERATIONS ? generations : VKR_DIS_MAX_GENERATIONS;
+    if (splat_gens > 0) dis_splat_pass(d, cmd, slot, splat_gens, 0);
     if (d->me && flush && wants_flow) {
         cmd = dis_hardware_motion(d, cmd, slot, flush, flush_user);
     } else if (d->me) {
@@ -2733,6 +2744,7 @@ VkCommandBuffer vkr_dis_process_ex(VkrDis* d, VkCommandBuffer cmd, VkImage sourc
         // other - the packed field and the side map read the refined field, the overlay
         // history reads the colour pair - so they share one barrier.
         dis_dispatch(d, cmd, d->pass_pack.pipeline, d->pack_set, w, h);
+        if (splat_gens > 0) dis_splat_pass(d, cmd, slot, splat_gens, 1);
         d->prior_valid = true;
 
         vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_hist.pipeline);
@@ -2749,6 +2761,11 @@ VkCommandBuffer vkr_dis_process_ex(VkrDis* d, VkCommandBuffer cmd, VkImage sourc
         dis_dispatch(d, cmd, d->pass_side.pipeline, d->side_sets[slot], w, h);
         dis_compute_barrier(cmd);
         DIS_PROF(cmd, "pack+hist+side");
+        if (splat_gens > 0) {
+            dis_splat_pass(d, cmd, slot, splat_gens, 2);
+            dis_compute_barrier(cmd);
+            DIS_PROF(cmd, "splat");
+        }
     }
     return cmd;
 }
@@ -2758,41 +2775,32 @@ void vkr_dis_process(VkrDis* d, VkCommandBuffer cmd, VkImage source, uint32_t wi
     (void)vkr_dis_process_ex(d, cmd, source, width, height, generations, NULL, NULL);
 }
 
-static void dis_render_into(VkrDis* d, VkCommandBuffer cmd, float t, int debug_mode,
+// One pass of dis_splat.comp over every generated frame of the pair: 0 clears, 1 splats, 2
+// writes the winners. The caller places the barriers.
+static void dis_splat_pass(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_t generations,
+                           int mode) {
+    const struct { int gens; int mode; } spc = {(int)generations, mode};
+    const uint32_t fw = d->flow_out.extent.width;
+    const uint32_t fh = d->flow_out.extent.height;
+    vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_splat.pipeline);
+    vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
+                              &d->splat_sets[slot], 0, NULL);
+    vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(spc),
+                         &spc);
+    vkd.CmdDispatch(cmd, (fw + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE,
+                    (fh + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE, 1);
+}
+
+static void dis_render_into(VkrDis* d, VkCommandBuffer cmd, float t, int layer, int debug_mode,
                             VkImage target_image, uint32_t width, uint32_t height,
                             VkImage base_image) {
     const uint32_t w = d->content.width;
     const uint32_t h = d->content.height;
 
-    // The field splatted to t: clear, raise the keys, write the winners (dis_splat.comp).
-    {
-        const uint32_t fw = d->flow_out.extent.width;
-        const uint32_t fh = d->flow_out.extent.height;
-        vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_splat.pipeline);
-        vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
-                                  &d->splat_sets[d->active_slot], 0, NULL);
-        for (int mode = 0; mode < 3; mode++) {
-            const struct { float t; int mode; } spc = {t, mode};
-            vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-                                 sizeof(spc), &spc);
-            vkd.CmdDispatch(cmd, (fw + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE,
-                            (fh + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE, 1);
-            // The key is read-modify-written by the atomics, so the next pass waits for both.
-            VkMemoryBarrier mb;
-            memset(&mb, 0, sizeof(mb));
-            mb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            mb.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-            mb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-            vkd.CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &mb, 0, NULL, 0,
-                                   NULL);
-        }
-        DIS_PROF(cmd, "splat");
-    }
-
     DisInterpPC ipc;
     ipc.t = t;
     ipc.debugMode = debug_mode;
+    ipc.layer = layer;
 
     vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_interp.pipeline);
     vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pipeline_layout, 0, 1,
@@ -2876,14 +2884,15 @@ void vkr_dis_generate_into(VkrDis* d, VkCommandBuffer cmd, uint32_t generation,
     if (d->last_generations == 0) return;
 
     const float t = (float)(generation + 1) / (float)(d->last_generations + 1);
-    dis_render_into(d, cmd, t, d->debug_flow ? 1 : 0, target_image, width, height, base_image);
+    dis_render_into(d, cmd, t, (int)generation, d->debug_flow ? 1 : 0, target_image, width, height,
+                    base_image);
 }
 
 void vkr_dis_debug_into(VkrDis* d, VkCommandBuffer cmd, VkImage target_image, uint32_t width,
                         uint32_t height) {
     if (!d || !d->built || d->unavailable || !d->debug_flow) return;
     if (d->frame_count < 2) return;
-    dis_render_into(d, cmd, 0.5f, 1, target_image, width, height, VK_NULL_HANDLE);
+    dis_render_into(d, cmd, 0.5f, 0, 1, target_image, width, height, VK_NULL_HANDLE);
 }
 
 void vkr_dis_forget_targets(VkrDis* d) {

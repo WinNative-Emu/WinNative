@@ -13,7 +13,8 @@ precision highp int;
 
 // The field forward-splatted to the generated frame's time, at flow resolution: every level-0
 // texel carries its vector to where it lands at t, and where several land on one texel the
-// one both real frames confirm wins. Run three times per generated frame (pc.mode):
+// one both real frames confirm wins. Run three times per source pair (pc.mode), for every
+// generated frame of the pair at once - one strip of the images per frame:
 //   0 - clear the key and the field;
 //   1 - every texel atomically raises the key of the texels it lands on to its priority;
 //   2 - the texels whose priority is the key there write their vector.
@@ -30,6 +31,11 @@ precision highp int;
 // behind an occluder (or is wrong) and gives way. Vector length breaks the remaining ties.
 //
 // The key is cleared to 0 and every priority is at least 1, so 0 means "nothing landed".
+//
+// Per pair rather than per generated frame because what it costs is barriers, not work: the
+// grid is the flow's, a few tens of thousands of texels, but three passes with a barrier
+// between each added 0.13 ms per generated frame on an Adreno 750. Here the clear rides the
+// luma pass's barrier, the splat the pack pass's, and only the resolve adds one.
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
@@ -40,11 +46,11 @@ layout(set = 0, binding = 8, r32ui) uniform uimage2D splatKey;
 layout(set = 0, binding = 9, rgba16f) uniform image2D splatField;
 
 layout(push_constant) uniform PC {
-    float t;
+    int gens;
     int mode;
 } pc;
 
-// Mean absolute luma difference (0..255) per consistency step: 2 luma levels per step, 31 steps.
+// Mean absolute luma difference (0..255) per consistency step: 8 luma levels per step, 31 steps.
 #define SPLAT_ERR_STEP 8.0
 
 uint priority(ivec2 p, vec2 fpx, ivec2 sz) {
@@ -69,30 +75,37 @@ uint priority(ivec2 p, vec2 fpx, ivec2 sz) {
 
 void main() {
     ivec2 p = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 sz = imageSize(splatKey);
+    ivec2 sz = textureSize(flowTex, 0);
     if (p.x >= sz.x || p.y >= sz.y) return;
 
     if (pc.mode == 0) {
-        imageStore(splatKey, p, uvec4(0u));
-        imageStore(splatField, p, vec4(0.0));
+        for (int g = 0; g < pc.gens; g++) {
+            imageStore(splatKey, p + ivec2(0, g * sz.y), uvec4(0u));
+            imageStore(splatField, p + ivec2(0, g * sz.y), vec4(0.0));
+        }
         return;
     }
 
     vec2 f = texelFetch(flowTex, p, 0).xy;
     if (any(isnan(f)) || any(isinf(f))) return;
     vec2 fpx = f * vec2(sz);
+    // The same for every generated frame: scored once, splatted to each.
     uint key = priority(p, fpx, sz);
 
-    // The four texels round the landing point, so a stretched field leaves no gaps of a texel.
-    vec2 target = vec2(p) + 0.5 + pc.t * fpx;
-    ivec2 base = ivec2(floor(target - 0.5));
-    for (int i = 0; i < 4; i++) {
-        ivec2 q = base + ivec2(i & 1, i >> 1);
-        if (any(lessThan(q, ivec2(0))) || any(greaterThanEqual(q, sz))) continue;
-        if (pc.mode == 1) {
-            imageAtomicMax(splatKey, q, key);
-        } else if (imageLoad(splatKey, q).r == key) {
-            imageStore(splatField, q, vec4(f, 1.0, 0.0));
+    for (int g = 0; g < pc.gens; g++) {
+        // The four texels round the landing point, so a stretched field leaves no gaps.
+        float t = float(g + 1) / float(pc.gens + 1);
+        vec2 target = vec2(p) + 0.5 + t * fpx;
+        ivec2 base = ivec2(floor(target - 0.5));
+        ivec2 strip = ivec2(0, g * sz.y);
+        for (int i = 0; i < 4; i++) {
+            ivec2 q = base + ivec2(i & 1, i >> 1);
+            if (any(lessThan(q, ivec2(0))) || any(greaterThanEqual(q, sz))) continue;
+            if (pc.mode == 1) {
+                imageAtomicMax(splatKey, q + strip, key);
+            } else if (imageLoad(splatKey, q + strip).r == key) {
+                imageStore(splatField, q + strip, vec4(f, 1.0, 0.0));
+            }
         }
     }
 }

@@ -20,12 +20,13 @@ layout(set = 0, binding = 3) uniform sampler2D sideTex;
 layout(set = 0, binding = 4) uniform sampler2D histTex;
 layout(set = 0, binding = 5, rgba8) uniform image2D outImage;
 // The field splatted to t (dis_splat.comp): xy the vector times z, z the share of the bilinear
-// footprint something landed on.
+// footprint something landed on. One strip of SPLAT_STRIPS per generated frame, stacked down.
 layout(set = 0, binding = 6) uniform sampler2D splatTex;
 
 layout(push_constant) uniform PC {
     float t;
     int debugMode;
+    int layer;     // which generated frame of the pair: the splat strip
 } pc;
 
 layout(constant_id = 0) const int manualFlowFilter = 0;
@@ -61,6 +62,10 @@ layout(constant_id = 0) const int manualFlowFilter = 0;
 // Take the vector that lands on the pixel from the splatted field where there is one.
 #ifndef DIS_SPLAT
 #define DIS_SPLAT 1
+#endif
+// Strips in the splat images: VKR_DIS_MAX_GENERATIONS.
+#ifndef SPLAT_STRIPS
+#define SPLAT_STRIPS 7
 #endif
 #ifndef SPLAT_APART_LO
 #define SPLAT_APART_LO 0.5
@@ -204,10 +209,12 @@ void main() {
     // coming into view) the steps stand. Only where the two disagree by more than a flow
     // texel: inside one layer the steps follow the smooth field, and the splat, a winner per
     // texel, would only make it blocky.
-    vec4 sp = textureLod(splatTex, uv, 0.0);
+    vec2 splatSize = vec2(textureSize(splatTex, 0)) / vec2(1.0, float(SPLAT_STRIPS));
+    float sv = clamp(uv.y, 0.5 / splatSize.y, 1.0 - 0.5 / splatSize.y);
+    vec4 sp = textureLod(splatTex, vec2(uv.x, (float(pc.layer) + sv) / float(SPLAT_STRIPS)), 0.0);
     if (sp.z > 1e-3 && !(any(isnan(sp.xy)) || any(isinf(sp.xy)))) {
         vec2 fs = sp.xy / sp.z;
-        float apart = length((fs - fa) * vec2(textureSize(splatTex, 0)));
+        float apart = length((fs - fa) * splatSize);
         float take = smoothstep(0.25, 0.75, sp.z) * smoothstep(SPLAT_APART_LO, SPLAT_APART_HI, apart);
         // Not on a static overlay - still in the history and the same in both frames here: there
         // the moving scenery behind ties with it on how well the pair confirms it and outranks
