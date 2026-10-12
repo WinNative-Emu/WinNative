@@ -946,7 +946,6 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="session_drawer_dis_resolution_scale">Resolution Scale</string>
     <string name="session_drawer_dis_preset_fast">Fast</string>
     <string name="session_drawer_dis_preset_balance">Balance</string>
-    <string name="session_drawer_dis_preset_quality">Quality</string>
     <string name="session_drawer_dis_resolution_scale_note">Motion is analysed at %1$d pixels on the shorter side of the frame. Lower is cheaper; higher tracks small or fast detail better.</string>
     <string name="session_drawer_dis_target_fps">Target FPS</string>
     <string name="session_drawer_dis_target_fps_max">Max refresh rate</string>

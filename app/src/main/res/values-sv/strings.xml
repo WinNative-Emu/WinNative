@@ -2736,7 +2736,6 @@ Installerad sökväg:
     <string name="session_drawer_dis_resolution_scale">Upplösningsskala</string>
     <string name="session_drawer_dis_preset_fast">Snabb</string>
     <string name="session_drawer_dis_preset_balance">Balanserad</string>
-    <string name="session_drawer_dis_preset_quality">Kvalitet</string>
     <string name="session_drawer_dis_resolution_scale_note">Rörelse analyseras vid %1$d pixlar på bildens kortaste sida. Lägre är billigare; högre följer små eller snabba detaljer bättre.</string>
     <string name="session_drawer_dis_target_fps">Mål-FPS</string>
     <string name="session_drawer_dis_target_fps_max">Max uppdateringsfrekvens</string>

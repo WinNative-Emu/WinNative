@@ -2738,7 +2738,6 @@ Caminho instalado:
     <string name="session_drawer_dis_resolution_scale">Escala de resolução</string>
     <string name="session_drawer_dis_preset_fast">Rápido</string>
     <string name="session_drawer_dis_preset_balance">Equilibrado</string>
-    <string name="session_drawer_dis_preset_quality">Qualidade</string>
     <string name="session_drawer_dis_resolution_scale_note">O movimento é analisado a %1$d pixels no lado menor do quadro. Menor é mais barato; maior acompanha melhor os detalhes pequenos ou rápidos.</string>
     <string name="session_drawer_dis_target_fps">FPS alvo</string>
     <string name="session_drawer_dis_target_fps_max">Frequência máx.</string>

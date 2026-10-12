@@ -6,7 +6,6 @@ import kotlin.math.abs
 enum class DisFlowPreset(val minSide: Int, val labelRes: Int) {
     FAST(180, R.string.session_drawer_dis_preset_fast),
     BALANCE(252, R.string.session_drawer_dis_preset_balance),
-    QUALITY(360, R.string.session_drawer_dis_preset_quality),
     ;
 
     companion object {

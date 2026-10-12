@@ -2736,7 +2736,6 @@ Ruta instalada:
     <string name="session_drawer_dis_resolution_scale">Escala de resolución</string>
     <string name="session_drawer_dis_preset_fast">Rápido</string>
     <string name="session_drawer_dis_preset_balance">Equilibrado</string>
-    <string name="session_drawer_dis_preset_quality">Calidad</string>
     <string name="session_drawer_dis_resolution_scale_note">El movimiento se analiza con %1$d píxeles en el lado corto del fotograma. Menos cuesta menos; más sigue mejor los detalles pequeños o rápidos.</string>
     <string name="session_drawer_dis_target_fps">FPS objetivo</string>
     <string name="session_drawer_dis_target_fps_max">Frecuencia máx.</string>

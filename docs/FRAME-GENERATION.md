@@ -41,7 +41,7 @@ runs.
 | Multiplier | LSFG | 2× / 3× / 4× — generated frames per rendered frame |
 | Adaptive Target | LSFG | Aim for a specific output rate (60/90/120/144/165) instead of a fixed multiplier |
 | Flow Scale | LSFG | 25–100%, resolution of the optical-flow pyramid; lower is cheaper and softer |
-| Resolution Scale | WFG | Fast / Balance / Quality — 180 / 252 / 360 pixels on the frame's **shorter** side |
+| Resolution Scale | WFG | Fast / Balance — 180 / 252 pixels on the frame's **shorter** side |
 | Target FPS | WFG | Max refresh rate, or a specific one (60/90/120/144/165) |
 | Show flow | WFG | Debug view: renders the estimated motion field instead of the frame |
 | FPS Limiter | Both | Caps the game's own frame rate, from 15 fps upward |

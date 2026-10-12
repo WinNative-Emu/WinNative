@@ -2644,7 +2644,6 @@
     <string name="session_drawer_dis_resolution_scale">Масштаб разрешения</string>
     <string name="session_drawer_dis_preset_fast">Быстро</string>
     <string name="session_drawer_dis_preset_balance">Баланс</string>
-    <string name="session_drawer_dis_preset_quality">Качество</string>
     <string name="session_drawer_dis_resolution_scale_note">Движение анализируется при %1$d пикселях по короткой стороне кадра. Меньше — дешевле, больше — лучше отслеживает мелкие и быстрые детали.</string>
     <string name="session_drawer_dis_target_fps">Целевой FPS</string>
     <string name="session_drawer_dis_target_fps_max">Макс. частота обновления</string>

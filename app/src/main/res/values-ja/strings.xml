@@ -2736,7 +2736,6 @@
     <string name="session_drawer_dis_resolution_scale">解像度スケール</string>
     <string name="session_drawer_dis_preset_fast">高速</string>
     <string name="session_drawer_dis_preset_balance">バランス</string>
-    <string name="session_drawer_dis_preset_quality">高品質</string>
     <string name="session_drawer_dis_resolution_scale_note">フレームの短辺 %1$d ピクセルで動きを解析します。低いほど負荷が軽く、高いほど小さい動きや速い動きを追跡できます。</string>
     <string name="session_drawer_dis_target_fps">目標FPS</string>
     <string name="session_drawer_dis_target_fps_max">最大リフレッシュレート</string>

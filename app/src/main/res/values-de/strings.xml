@@ -2740,7 +2740,6 @@ Installierter Pfad:
     <string name="session_drawer_dis_resolution_scale">Auflösungsskalierung</string>
     <string name="session_drawer_dis_preset_fast">Schnell</string>
     <string name="session_drawer_dis_preset_balance">Ausgewogen</string>
-    <string name="session_drawer_dis_preset_quality">Qualität</string>
     <string name="session_drawer_dis_resolution_scale_note">Bewegung wird mit %1$d Pixeln an der kürzeren Bildseite analysiert. Niedriger ist günstiger, höher erfasst kleine oder schnelle Details besser.</string>
     <string name="session_drawer_dis_target_fps">Ziel-FPS</string>
     <string name="session_drawer_dis_target_fps_max">Max. Bildwiederholrate</string>

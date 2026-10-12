@@ -2736,7 +2736,6 @@ Yüklü konum:
     <string name="session_drawer_dis_resolution_scale">Çözünürlük Ölçeği</string>
     <string name="session_drawer_dis_preset_fast">Hızlı</string>
     <string name="session_drawer_dis_preset_balance">Dengeli</string>
-    <string name="session_drawer_dis_preset_quality">Kalite</string>
     <string name="session_drawer_dis_resolution_scale_note">Hareket, karenin kısa kenarında %1$d piksel çözünürlükte analiz edilir. Düşük değer daha ucuzdur; yüksek değer küçük veya hızlı ayrıntıları daha iyi izler.</string>
     <string name="session_drawer_dis_target_fps">Hedef FPS</string>
     <string name="session_drawer_dis_target_fps_max">Maks. yenileme hızı</string>

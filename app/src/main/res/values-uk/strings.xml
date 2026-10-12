@@ -2744,7 +2744,6 @@
     <string name="session_drawer_dis_resolution_scale">Масштаб роздільної здатності</string>
     <string name="session_drawer_dis_preset_fast">Швидко</string>
     <string name="session_drawer_dis_preset_balance">Баланс</string>
-    <string name="session_drawer_dis_preset_quality">Якість</string>
     <string name="session_drawer_dis_resolution_scale_note">Рух аналізується за %1$d пікселями по короткій стороні кадру. Менше — дешевше, більше — краще відстежує дрібні та швидкі деталі.</string>
     <string name="session_drawer_dis_target_fps">Цільовий FPS</string>
     <string name="session_drawer_dis_target_fps_max">Макс. частота оновлення</string>

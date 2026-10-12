@@ -2634,7 +2634,6 @@
     <string name="session_drawer_dis_resolution_scale">रिज़ॉल्यूशन स्केल</string>
     <string name="session_drawer_dis_preset_fast">तेज़</string>
     <string name="session_drawer_dis_preset_balance">संतुलित</string>
-    <string name="session_drawer_dis_preset_quality">गुणवत्ता</string>
     <string name="session_drawer_dis_resolution_scale_note">फ़्रेम की छोटी भुजा पर %1$d पिक्सेल पर गति का विश्लेषण किया जाता है। कम मान हल्का होता है; अधिक मान छोटे या तेज़ विवरण को बेहतर ट्रैक करता है।</string>
     <string name="session_drawer_dis_target_fps">लक्ष्य FPS</string>
     <string name="session_drawer_dis_target_fps_max">अधिकतम रिफ्रेश दर</string>

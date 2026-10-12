@@ -2737,7 +2737,6 @@
     <string name="session_drawer_dis_resolution_scale">解析度縮放</string>
     <string name="session_drawer_dis_preset_fast">快速</string>
     <string name="session_drawer_dis_preset_balance">均衡</string>
-    <string name="session_drawer_dis_preset_quality">畫質</string>
     <string name="session_drawer_dis_resolution_scale_note">以畫面短邊 %1$d 像素分析動態。數值越低開銷越小，越高越能追蹤細小或快速的細節。</string>
     <string name="session_drawer_dis_target_fps">目標 FPS</string>
     <string name="session_drawer_dis_target_fps_max">最高更新率</string>
