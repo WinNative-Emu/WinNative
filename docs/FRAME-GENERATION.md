@@ -26,12 +26,12 @@ Generation**. WinNative finds the DLL automatically from your Steam library; if 
 **Select Lossless.dll…** to point at it. The LSFG half of the **FG** tab stays disabled until
 the shaders import successfully.
 
-## WFG
+## WFG — WinNative/Winlator Frame Generator
 
-**Nothing to buy, nothing to import.** WFG is a complete open-source Dense Inverse Search frame
-generator built into WinNative — sixteen compute shaders that ship with the APK — so it works on
-a fresh install with no Steam account and no `Lossless.dll`. Turn it on in the **FG** tab and it
-runs.
+**Nothing to buy, nothing to import.** WFG (WinNative/Winlator Frame Generator, GPL-3.0) is a
+complete open-source Dense Inverse Search frame generator built into WinNative — compute shaders
+that ship with the APK — so it works on a fresh install with no Steam account and no
+`Lossless.dll`. Turn it on in the **FG** tab and it runs.
 
 ## Controls
 

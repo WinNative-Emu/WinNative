@@ -76,10 +76,6 @@ layout(set = 0, binding = 0) uniform sampler2D lastLumaMap;
 layout(set = 0, binding = 1) uniform sampler2D nextLumaMap;
 layout(set = 0, binding = 2) uniform sampler2D lastGradientMap;
 layout(set = 0, binding = 3) uniform sampler2D flowMap;
-// Motion hint from a hardware estimator (GL_QCOM_motion_estimation), one vector per block, in
-// normalised uv units; read only on the level named by hintLevel. A component beyond HINT_INVALID
-// marks a block the estimator had nothing for.
-layout(set = 0, binding = 4) uniform sampler2D hintFlowMap;
 layout(set = 0, binding = 5, rgba32f) uniform image2D sparseFlowMap;
 // The previous pair's final flow, in normalised uv units, indexed by position in its first frame;
 // read on the levels whose bit is set in priorLevels.
@@ -91,12 +87,9 @@ layout(set = 0, binding = 7) uniform sampler2D fbFlowMap;
 layout(push_constant) uniform PC {
     int level;
     int coarseLevel;
-    int hintLevel;
     int priorLevels;
     int fbLevels;
 } pc;
-
-#define HINT_INVALID 1.0e6
 
 float uluminance(vec3 c) {
     return (0.299 * c.x + 0.587 * c.y + 0.114 * c.z) * 255.0;
@@ -220,24 +213,6 @@ void main() {
     // Further starting points, each scored on the patch with the same mean-normalised SSD the
     // search minimises; the search starts from the best. A wrong candidate simply loses here.
     float startSSD = -1.0;
-
-    // The hardware estimator's vector. The coarse level still covers what the estimator cannot:
-    // its search range is a few dozen pixels, and past that its vector is garbage.
-    if (pc.level == pc.hintLevel) {
-        vec2 hintSize = vec2(textureSize(hintFlowMap, 0));
-        ivec2 hp = clamp(ivec2((vec2(pix) + 4.0) * hintSize / vec2(denseSize)),
-                         ivec2(0), ivec2(hintSize) - 1);
-        vec2 hint = texelFetch(hintFlowMap, hp, 0).xy;
-        if (all(lessThan(abs(hint), vec2(HINT_INVALID * 0.5)))) {
-            hint *= vec2(denseSize);
-            startSSD = patchSSD(flow, pix, lp, denseSize);
-            float hintSSD = patchSSD(hint, pix, lp, denseSize);
-            if (hintSSD < startSSD) {
-                startSSD = hintSSD;
-                flow = hint;
-            }
-        }
-    }
 
     // The previous pair's vector: motion goes on. It is what follows an object too small or too
     // fast for the coarse levels to see - there it is lost in the background - and a periodic
