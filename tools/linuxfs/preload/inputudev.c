@@ -136,6 +136,9 @@ static int caller_is_winebus(void *caller) {
   return strstr(info.dli_fname, "winebus.so") != NULL;
 }
 
+char *wn_cached_realpath(const char *path, char *resolved, char *(*real)(const char *, char *))
+    __attribute__((visibility("hidden")));
+
 char *realpath(const char *path, char *resolved) {
   static char *(*real_realpath)(const char *, char *);
   void *caller = __builtin_return_address(0);
@@ -149,7 +152,7 @@ char *realpath(const char *path, char *resolved) {
   }
   if (real_realpath == NULL) real_realpath = next_symbol("realpath");
   if (real_realpath == NULL) return NULL;
-  return real_realpath(path, resolved);
+  return wn_cached_realpath(path, resolved, real_realpath);
 }
 
 void *udev_device_new_from_syspath(void *udev, const char *syspath) {

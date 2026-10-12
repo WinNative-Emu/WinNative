@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: maxjivi05 <maxjividen@gmail.com>
+Date: Sun, 27 Sep 2026 07:58:07 -0400
+Subject: [PATCH] tracee: take a clone3 child's exit signal from struct
+ clone_args
+
+---
+ src/tracee/tracee.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/src/tracee/tracee.c b/src/tracee/tracee.c
+index 7c0c50c..25eeb57 100644
+--- a/src/tracee/tracee.c
++++ b/src/tracee/tracee.c
+@@ -424,9 +424,13 @@ int new_child(Tracee *parent, word_t clone_flags)
+ 	if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone)
+ 		clone_flags = peek_reg(parent, CURRENT, SYSARG_1);
+ 	else if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone3) {
+-		word_t flags = peek_word(parent, peek_reg(parent, CURRENT, SYSARG_1));
+-		if (errno == 0)
+-			clone_flags = flags;
++		word_t args = peek_reg(parent, CURRENT, SYSARG_1);
++		word_t flags = peek_uint64(parent, args);
++		if (errno == 0) {
++			word_t exit_signal = peek_uint64(parent, args + 4 * sizeof(uint64_t));
++			if (errno == 0)
++				clone_flags = (flags & ~(word_t) 0xFF) | (exit_signal & 0xFF);
++		}
+ 	}
+ 
+ 	/* Get the pid of the parent's new child.  */

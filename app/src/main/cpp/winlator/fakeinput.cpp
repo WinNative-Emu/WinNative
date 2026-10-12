@@ -15,6 +15,7 @@
 #include <dirent.h>
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <linux/input.h>
 #include <linux/joystick.h>
 #include <poll.h>
@@ -48,10 +49,11 @@ typedef unsigned long ioctl_request_t;
 typedef int ioctl_request_t;
 #endif
 
-static constexpr uint16_t GAMEPAD_VENDOR_ID_BASE = 0x1234;
-static constexpr uint16_t GAMEPAD_PRODUCT_ID_BASE = 0x5678;
+static constexpr uint16_t GAMEPAD_VENDOR_ID_DEFAULT = 0x045E; // Microsoft
+static constexpr uint16_t GAMEPAD_PRODUCT_ID_DEFAULT = 0x028E; // Xbox 360 Controller
 static constexpr uint16_t GAMEPAD_VERSION = 0x0110;
-static constexpr const char *GAMEPAD_NAME_TEMPLATE = "Generic HID Gamepad %d";
+static constexpr uint32_t GAMEPAD_IDENTITY_MAX_SLOTS = 4;
+static constexpr const char *GAMEPAD_NAME_TEMPLATE = "Xbox 360 Controller (%d)";
 // The gamepad Steam Input presents to a game, and the name SDL reads its slot from.
 static constexpr uint16_t STEAM_VIRTUAL_VENDOR_ID = 0x28de;
 static constexpr uint16_t STEAM_VIRTUAL_PRODUCT_ID = 0x11ff;
@@ -94,6 +96,16 @@ static constexpr size_t FAKE_INPUT_RING_SIZE =
     FAKE_INPUT_RING_HEADER_SIZE +
     (FAKE_INPUT_RING_CAPACITY * FAKE_INPUT_EVENT_SIZE);
 
+// Per-slot real-controller identity, published by the host when the user opts
+// into "Force External Gamepad Identity" so games with dedicated non-Xbox
+// controller support (e.g. PlayStation) can recognize the real pad instead
+// of the spoofed Xbox 360 Controller identity.
+struct GamepadIdentity {
+  uint16_t vendor;
+  uint16_t product;
+  std::string name;
+};
+
 struct FakeController {
   char *event = nullptr;
   int slot = -1;
@@ -115,6 +127,7 @@ struct FakeController {
   size_t keyframe_remaining = 0;
   int32_t keyframe_axes[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   uint32_t keyframe_buttons = 0;
+  GamepadIdentity identity;
 };
 
 struct NeutralEventSpec {
@@ -203,6 +216,8 @@ void log(const char *message, ...) {
 }
 } // namespace Logger
 
+static void export_sdl_mappings();
+
 __attribute__((constructor)) static void library_init() {
   if (!hook_dir)
     hook_dir = getenv("FAKE_EVDEV_DIR")
@@ -216,6 +231,7 @@ __attribute__((constructor)) static void library_init() {
                  controller_fork_child);
 
   Logger::init();
+  export_sdl_mappings();
 }
 
 __attribute__((visibility("hidden"))) static void
@@ -379,6 +395,82 @@ get_ring_path_for_slot(int slot) {
   return it == ring_paths.end() ? std::string() : it->second;
 }
 
+// Reads the slot's identity straight out of its udev entry
+// ("<udev_data_dir>/c13:<minor>"), which the host keeps up to date as pads are
+// bound and released.
+//
+// Returns false when the entry is missing or incomplete, which leaves the caller
+// on the compiled-in Xbox 360 default.
+__attribute__((visibility("hidden"))) static bool
+read_gamepad_identity(int slot, GamepadIdentity *out) {
+  static auto my_open = reinterpret_cast<int (*)(const char *, int, ...)>(dlsym(RTLD_NEXT, "open"));
+  if (!udev_data_dir || !*udev_data_dir || !my_open)
+    return false;
+  if (slot < 0 || slot >= static_cast<int>(GAMEPAD_IDENTITY_MAX_SLOTS))
+    return false;
+
+  char path[PATH_MAX];
+  snprintf(path, PATH_MAX, "%s/c13:%u", udev_data_dir, FAKE_INPUT_EVENT_MINOR_BASE + slot);
+
+  int fd = my_open(path, O_RDONLY | O_CLOEXEC);
+  if (fd < 0)
+    return false;
+
+  // A udev entry for one of our pads is a few hundred bytes; read it whole so a
+  // truncated tail can never hide the NAME line.
+  char buffer[2048];
+  ssize_t length = syscall(SYS_read, fd, buffer, sizeof(buffer) - 1);
+  syscall(SYS_close, fd);
+  if (length <= 0)
+    return false;
+  buffer[length] = '\0';
+
+  GamepadIdentity parsed;
+  parsed.vendor = 0;
+  parsed.product = 0;
+  bool have_vendor = false;
+  bool have_product = false;
+  char *saveptr = nullptr;
+  for (char *line = strtok_r(buffer, "\n", &saveptr); line;
+       line = strtok_r(nullptr, "\n", &saveptr)) {
+    if (!strncmp(line, "E:ID_VENDOR_ID=", 15)) {
+      parsed.vendor = static_cast<uint16_t>(strtoul(line + 15, nullptr, 16));
+      have_vendor = true;
+    } else if (!strncmp(line, "E:ID_MODEL_ID=", 14)) {
+      parsed.product = static_cast<uint16_t>(strtoul(line + 14, nullptr, 16));
+      have_product = true;
+    } else if (!strncmp(line, "E:NAME=", 7)) {
+      // udev quotes the value; the name itself never contains a quote because
+      // the host strips them before publishing.
+      const char *value = line + 7;
+      size_t value_length = strlen(value);
+      if (value_length >= 2 && value[0] == '"' && value[value_length - 1] == '"')
+        parsed.name.assign(value + 1, value_length - 2);
+      else
+        parsed.name.assign(value);
+    }
+  }
+
+  if (!have_vendor || !have_product || parsed.name.empty())
+    return false;
+
+  *out = parsed;
+  return true;
+}
+
+// The identity a slot reports: the real pad's when the host published it, else the Xbox 360 default.
+__attribute__((visibility("hidden"))) static GamepadIdentity slot_identity(int slot) {
+  GamepadIdentity identity;
+  if (!read_gamepad_identity(slot, &identity)) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), GAMEPAD_NAME_TEMPLATE, slot);
+    identity.name = buf;
+    identity.vendor = GAMEPAD_VENDOR_ID_DEFAULT;
+    identity.product = GAMEPAD_PRODUCT_ID_DEFAULT;
+  }
+  return identity;
+}
+
 __attribute__((visibility("hidden"))) static uint64_t
 ring_write_seq(const FakeInputRingHeader *ring) {
   return __atomic_load_n(&ring->write_seq, __ATOMIC_ACQUIRE);
@@ -479,8 +571,7 @@ open_fake_input_ring(const char *event, int flags) {
   if (fd < 0)
     return -1;
 
-  void *mapping =
-      mmap(nullptr, FAKE_INPUT_RING_SIZE, PROT_READ, MAP_SHARED, fd, 0);
+  void *mapping = mmap(nullptr, FAKE_INPUT_RING_SIZE, PROT_READ, MAP_SHARED, fd, 0);
   if (mapping == MAP_FAILED) {
     int saved_errno = errno;
     syscall(SYS_close, fd);
@@ -488,8 +579,7 @@ open_fake_input_ring(const char *event, int flags) {
     return -1;
   }
 
-  FakeInputRingHeader *ring =
-      reinterpret_cast<FakeInputRingHeader *>(mapping);
+  FakeInputRingHeader *ring = reinterpret_cast<FakeInputRingHeader *>(mapping);
   if (!ring_header_is_valid(ring)) {
     Logger::log("Input ring %s has no valid header\n", ring_path.c_str());
     munmap(mapping, FAKE_INPUT_RING_SIZE);
@@ -504,6 +594,9 @@ open_fake_input_ring(const char *event, int flags) {
   controller->ring = ring;
   controller->mapping_size = FAKE_INPUT_RING_SIZE;
   controller->generation = ring_generation(ring);
+
+  controller->identity = slot_identity(slot);
+
   // Establish the cursor at open so taps arriving before the first read stay
   // queued. If publication is busy, read() will finish establishing it later.
   SnapshotState snap;
@@ -542,22 +635,86 @@ __attribute__((visibility("hidden"))) static bool presents_steam_virtual() {
   return known == 1;
 }
 
-// The virtual gamepad is an X-Box 360 pad, whose triggers are ABS_Z and ABS_RZ. Wine places a
-// gamepad's axes by their position among the ones it advertises, so the triggers have to sit
-// where that pad has them: as ABS_GAS and ABS_BRAKE they follow the sticks, the right stick
-// lands on the left trigger, and a released right trigger reads as the right stick held up.
+// The ring carries the triggers as ABS_BRAKE (left) and ABS_GAS (right); the pad presents them as
+// ABS_Z and ABS_RZ, where an Xbox 360 pad has them, whatever identity it carries. Readers place a
+// gamepad's axes by position: SDL's mapping for a known vendor and product (winebus's SDL bus in a
+// container), and Proton's evdev bus, which takes any pad with six axes and ten buttons for one.
+// With the triggers last the right stick landed on the left trigger, and a released right trigger
+// read as the right stick held up. Wine's XInput reads the triggers from the Z and Rz usages, which
+// are ABS_Z and ABS_RZ on its usage-based path too.
 __attribute__((visibility("hidden"))) static uint16_t presented_abs_code(uint16_t code) {
-  if (!presents_steam_virtual()) return code;
   if (code == ABS_BRAKE) return ABS_Z;
   if (code == ABS_GAS) return ABS_RZ;
   return code;
 }
 
 __attribute__((visibility("hidden"))) static uint16_t ring_abs_code(uint16_t code) {
-  if (!presents_steam_virtual()) return code;
   if (code == ABS_Z) return ABS_BRAKE;
   if (code == ABS_RZ) return ABS_GAS;
   return code;
+}
+
+// SDL's mapping of the layout this pad presents, whatever its identity. SDL numbers buttons by key
+// code (BTN_A, B, X, Y, TL, TR, SELECT, START, MODE, THUMBL, THUMBR) and axes by ABS code with the
+// hat apart (X, Y, Z, RX, RY, RZ).
+static constexpr const char *SDL_PAD_MAPPING =
+    "a:b0,b:b1,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,back:b6,start:b7,guide:b8,"
+    "leftstick:b9,rightstick:b10,leftx:a0,lefty:a1,lefttrigger:a2,rightx:a3,righty:a4,"
+    "righttrigger:a5,dpup:h0.1,dpright:h0.2,dpdown:h0.4,dpleft:h0.8,";
+
+// SDL maps a pad it knows by vendor, product and version with its own database, which describes
+// that physical pad's kernel layout, not this one: 054c:05c4 gets a hid-sony entry with thirteen
+// buttons, so a DualShock identity scrambled every button. Each slot's identity is given the
+// mapping above as an exact match, which SDL chooses over any built-in entry. SDL reads
+// SDL_GAMECONTROLLERCONFIG once, as its game controller subsystem starts, so it is set here, as the
+// library loads; a mapping already in the variable comes after these and wins. Runs as a
+// constructor: no static object of this file is used, the controller tables may not exist yet.
+static void export_sdl_mappings() {
+  const char *rings = getenv("FAKE_EVDEV_MEMFD_PATHS");
+  if (!rings || !*rings)
+    return;
+  // Inherited from the process that started this one, which exported the same lines.
+  const char *existing = getenv("SDL_GAMECONTROLLERCONFIG");
+  std::string mappings;
+  for (const char *token = rings; *token;) {
+    int slot = atoi(token);
+    const char *equals = strchr(token, '=');
+    const char *next = strchr(token, ';');
+    token = next ? next + 1 : token + strlen(token);
+    if (!equals || (next && equals > next) || slot < 0 ||
+        slot >= static_cast<int>(GAMEPAD_IDENTITY_MAX_SLOTS))
+      continue;
+
+    GamepadIdentity identity;
+    if (presents_steam_virtual()) {
+      identity.vendor = STEAM_VIRTUAL_VENDOR_ID;
+      identity.product = STEAM_VIRTUAL_PRODUCT_ID;
+      identity.name = "Microsoft X-Box 360 pad";
+    } else if (!read_gamepad_identity(slot, &identity)) {
+      identity.vendor = GAMEPAD_VENDOR_ID_DEFAULT;
+      identity.product = GAMEPAD_PRODUCT_ID_DEFAULT;
+      identity.name = "Xbox 360 Controller";
+    }
+    // The GUID of a USB evdev pad: bus, CRC (left 0 to match any name), vendor, product, version.
+    char guid[33];
+    snprintf(guid, sizeof(guid), "03000000%02x%02x0000%02x%02x0000%02x%02x0000",
+             identity.vendor & 0xff, identity.vendor >> 8, identity.product & 0xff,
+             identity.product >> 8, GAMEPAD_VERSION & 0xff, GAMEPAD_VERSION >> 8);
+    for (char &c : identity.name)
+      if (c == ',') c = ' ';
+    std::string line = std::string(guid) + "," + identity.name + "," + SDL_PAD_MAPPING;
+    if (mappings.find(guid) != std::string::npos || (existing && strstr(existing, line.c_str())))
+      continue;
+    mappings.append(line).append("\n");
+  }
+  if (mappings.empty())
+    return;
+  if (existing && *existing)
+    mappings.append(existing);
+  else
+    mappings.pop_back();
+  setenv("SDL_GAMECONTROLLERCONFIG", mappings.c_str(), 1);
+  Logger::log("SDL mappings for the presented pads:\n%s\n", mappings.c_str());
 }
 
 __attribute__((visibility("hidden"))) static void
@@ -567,6 +724,25 @@ copy_slot_ioctl_string(int op, void *argp, const char *format, int event_number)
     return;
 
   snprintf(static_cast<char *>(argp), size, format, event_number);
+}
+
+__attribute__((visibility("hidden"))) static void
+copy_ioctl_string(int op, void *argp, const char *value) {
+  size_t size = _IOC_SIZE(op);
+  if (!argp || size == 0)
+    return;
+
+  snprintf(static_cast<char *>(argp), size, "%s", value);
+}
+
+// The name EVIOCGNAME and JSIOCGNAME report: Steam Input's virtual pad to a game under the
+// Steam client, otherwise the slot's identity (the real pad's, or the Xbox 360 default).
+__attribute__((visibility("hidden"))) static void
+copy_presented_name(int op, void *argp, const FakeController &controller) {
+  if (presents_steam_virtual())
+    copy_slot_ioctl_string(op, argp, STEAM_VIRTUAL_NAME_TEMPLATE, controller.slot);
+  else
+    copy_ioctl_string(op, argp, controller.identity.name.c_str());
 }
 
 __attribute__((visibility("hidden"))) static bool is_fake_input_fd(int fd) {
@@ -987,17 +1163,15 @@ EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
       id.vendor = STEAM_VIRTUAL_VENDOR_ID;
       id.product = STEAM_VIRTUAL_PRODUCT_ID;
     } else {
-      id.vendor = static_cast<uint16_t>(GAMEPAD_VENDOR_ID_BASE + event_number);
-      id.product = static_cast<uint16_t>(GAMEPAD_PRODUCT_ID_BASE + event_number);
+      id.vendor = controller->second->identity.vendor;
+      id.product = controller->second->identity.product;
     }
     id.version = GAMEPAD_VERSION;
     memcpy(argp, (void *)&id, sizeof(id));
     return 0;
   } else if (type == 0x45 && number == 0x6) {
     Logger::log("Hooking ioctl EVIOCGNAME for event %s\n", event);
-    copy_slot_ioctl_string(op, argp,
-                           presents_steam_virtual() ? STEAM_VIRTUAL_NAME_TEMPLATE : GAMEPAD_NAME_TEMPLATE,
-                           event_number);
+    copy_presented_name(op, argp, *controller->second);
     return 0;
   } else if (type == 0x45 && number == 0x7) {
     Logger::log("Hooking ioctl EVIOCGPHYS for event %s\n", event);
@@ -1127,7 +1301,7 @@ EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
     return 0;
   } else if (type == 0x6A && number == 0x13) {
     Logger::log("Hooking ioctl JSIOCGNAME(len) for event %s\n", event);
-    copy_slot_ioctl_string(op, argp, GAMEPAD_NAME_TEMPLATE, event_number);
+    copy_presented_name(op, argp, *controller->second);
     return 0;
   } else {
     Logger::log("Unhandled evdev ioctl, type %d number %d\n", type, number);

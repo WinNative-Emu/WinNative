@@ -1,0 +1,35 @@
+From: Matthew Schwartz <matthew.schwartz@linux.dev>
+Subject: [PATCH] steamcompmgr: take override-redirect from MapNotify
+
+Wine creates a toplevel as override-redirect and flips it to managed with
+XChangeWindowAttributes while it is unmapped, which generates no X event.
+When add_win reads the attributes before the flip, the window stays cached
+as override-redirect and is left out of GAMESCOPE_FOCUSABLE_APPS. Steam
+then keeps its loading screen over the game, as with A Plague Tale:
+Innocence (752590). Before 2238420d, the focus nudge's move usually
+refreshed the flag.
+
+MapNotify carries the current override-redirect state, so refresh the
+cached flag there rather than re-reading the attributes.
+
+Closes: #2457
+---
+ src/steamcompmgr.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
+index f00b62c..cb3b9c6 100644
+--- a/src/steamcompmgr.cpp
++++ b/src/steamcompmgr.cpp
+@@ -8778,7 +8778,11 @@ void xwayland_ctx_t::Dispatch()
+ 				steamcompmgr_win_t * w = find_win(ctx, ev.xmap.window);
+ 
+ 				if (w && w->xwayland().id == ev.xmap.window)
++				{
++					// Wine flips override-redirect while unmapped and the flip itself sends no event.
++					w->xwayland().a.override_redirect = ev.xmap.override_redirect;
+ 					map_win(ctx, ev.xmap.window, ev.xmap.serial);
++				}
+ 				break;
+ 			}
+ 			case UnmapNotify:

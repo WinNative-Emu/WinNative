@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: WinNative <maxjivi05@users.noreply.github.com>
+Date: Sat, 10 Oct 2026 00:00:00 +0000
+Subject: [PATCH] answer the set*id and setfs*id calls Android
+ traps
+
+---
+ src/tracee/seccomp.c | 48 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
+
+diff --git a/src/tracee/seccomp.c b/src/tracee/seccomp.c
+index 77d5b27..70cf73b 100644
+--- a/src/tracee/seccomp.c
++++ b/src/tracee/seccomp.c
+@@ -558,6 +558,54 @@ static int handle_seccomp_event_common(Tracee *tracee)
+ 		break;
+ 	}
+ 
++	case PR_setuid:
++	case PR_setuid32:
++	case PR_setgid:
++	case PR_setgid32:
++	case PR_setreuid:
++	case PR_setreuid32:
++	case PR_setregid:
++	case PR_setregid32:
++	{
++		/* Android's app policy traps these (fake_id0 answers them first
++		 * when it is loaded).  Without privileges a process may only take
++		 * an id it already holds, so the answer is known without the
++		 * kernel.  */
++		int is_uid = (sysnum == PR_setuid || sysnum == PR_setuid32
++			      || sysnum == PR_setreuid || sysnum == PR_setreuid32);
++		int is_re = (sysnum == PR_setreuid || sysnum == PR_setreuid32
++			     || sysnum == PR_setregid || sysnum == PR_setregid32);
++		gid_t first, second, rxid, exid, sxid;
++		first = peek_reg(tracee, CURRENT, SYSARG_1);
++		second = is_re ? (gid_t) peek_reg(tracee, CURRENT, SYSARG_2) : (gid_t) -1;
++		if (is_uid)
++			ret = getresuid(&rxid, &exid, &sxid);
++		else
++			ret = getresgid(&rxid, &exid, &sxid);
++		if (ret) {
++			set_result_after_seccomp(tracee, -EPERM);
++			break;
++		}
++		ret = 0;
++		if (first != (gid_t) -1 && first != rxid && first != exid && first != sxid)
++			ret = -EPERM;
++		if (second != (gid_t) -1 && second != rxid && second != exid && second != sxid)
++			ret = -EPERM;
++		set_result_after_seccomp(tracee, ret);
++		break;
++	}
++
++	case PR_setfsuid:
++	case PR_setfsuid32:
++		/* The previous fsuid, which is the effective one without privileges.  */
++		set_result_after_seccomp(tracee, geteuid());
++		break;
++
++	case PR_setfsgid:
++	case PR_setfsgid32:
++		set_result_after_seccomp(tracee, getegid());
++		break;
++
+ 	case PR_set_robust_list:
+ 	default:
+ 		/* Set errno to -ENOSYS */
+-- 
+2.43.0
+

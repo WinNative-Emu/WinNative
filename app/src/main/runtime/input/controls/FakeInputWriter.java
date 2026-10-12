@@ -163,12 +163,14 @@ public class FakeInputWriter {
     return ringDir != null ? new File(ringDir, "ring" + slot) : null;
   }
 
-  private static String getCanonicalOrAbsolutePath(File file) {
-    try {
-      return file.getCanonicalPath();
-    } catch (IOException e) {
-      return file.getAbsolutePath();
-    }
+  /**
+   * The ring's path as the guest opens it. A Linux session binds the app's directories at their
+   * own paths, spelled the way {@code Context.getFilesDir()} spells them, so the export has to use
+   * that spelling. A canonical path is not that: where /data/user/0 is a link or a separate mount
+   * onto /data/data (ColorOS 16) it names a prefix nothing is bound at, and every pad goes dead.
+   */
+  private static String exportPath(File ringFile) {
+    return ringFile.getAbsolutePath();
   }
 
   private static void initializeRingHeader(ByteBuffer data) {
@@ -269,7 +271,7 @@ public class FakeInputWriter {
       ringSlot.ringFile = ringFile.getAbsoluteFile();
       ringSlot.ringRaf = raf;
       ringSlot.ringChannel = channel;
-      ringSlot.exportPath = getCanonicalOrAbsolutePath(ringFile);
+      ringSlot.exportPath = exportPath(ringFile);
       Log.i(TAG, "Created fake input file ring for slot " + slot + ": " + ringSlot.exportPath);
       return ringSlot;
     } catch (IOException e) {

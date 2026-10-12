@@ -6,6 +6,29 @@ cdn=https://client-update.fastly.steamstatic.com
 manifest=steam_client_publicbeta_linuxarm64
 steam_root=${XDG_DATA_HOME:-$HOME/.local/share}/Steam
 stamp=$steam_root/package/winnative-installed
+# A client stopped part way through its own update keeps its stamp and its files, and every session
+# then waits on a client that never draws. winnative-session counts each start here and the app
+# clears the count when the client's first frame reaches the screen; after two starts that showed
+# nothing the client is fetched again, once.
+unconfirmed=$steam_root/package/winnative-unconfirmed
+repair=
+if [ -f "$unconfirmed" ] && ! grep -qx repaired "$unconfirmed" && [ "$(grep -cx start "$unconfirmed")" -ge 2 ]; then
+  repair=1
+  echo "== repairing the Steam client: started $(grep -cx start "$unconfirmed") times without showing anything"
+  rm -f "$stamp" "$steam_root/.crash" "$steam_root/steam.pid" \
+    "$steam_root"/package/steam_client_*.manifest "$steam_root"/package/steam_client_*.installed
+  # A package the client downloaded is named for its SHA-1; one that does not match it goes too.
+  for part in "$steam_root"/package/*.zip.*; do
+    [ -f "$part" ] || continue
+    sum=${part##*.}
+    sum=${sum%%_*}
+    case $sum in
+      *[!0-9a-f]*|"") continue ;;
+    esac
+    [ ${#sum} -eq 40 ] || continue
+    [ "$(sha1sum "$part" | cut -d' ' -f1)" = "$sum" ] || rm -f "$part"
+  done
+fi
 [ -x "$steam_root/steamrtarm64/steam" ] && [ -f "$stamp" ] && exit 0
 
 work=$(mktemp -d)
@@ -41,6 +64,7 @@ find "$steam_root" -depth -name '*\\*' | while read -r odd; do
 done
 echo publicbeta > "$steam_root/package/beta"
 echo "$version" > "$stamp"
+[ -z "$repair" ] || echo repaired > "$unconfirmed"
 ln -sfn "$steam_root/steamrtarm64" "$steam_root/steamrtarm32"
 chmod +x "$steam_root/steamrtarm64/steam" 2>/dev/null || true
 # What Valve's steam.sh sets up before it runs the client (it has no arm64 branch itself).

@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: maxjivi05 <maxjividen@gmail.com>
+Date: Sun, 27 Sep 2026 07:58:16 -0400
+Subject: [PATCH] proc: name a thread's /proc/self by its thread group and
+ resolve /proc/thread-self
+
+---
+ src/path/proc.c     | 7 +++++--
+ src/tracee/tracee.c | 3 +++
+ src/tracee/tracee.h | 1 +
+ 3 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/src/path/proc.c b/src/path/proc.c
+index 1c816df..62650f6 100644
+--- a/src/path/proc.c
++++ b/src/path/proc.c
+@@ -58,10 +58,13 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
+ 	switch (comparison) {
+ 	case PATHS_ARE_EQUAL:
+ 		/* Substitute "/proc/self" with "/proc/<PID>".  */
+-		if (strcmp(component, "self") != 0)
++		if (strcmp(component, "self") == 0)
++			status = snprintf(result, PATH_MAX, "/proc/%d", tracee->tgid);
++		else if (strcmp(component, "thread-self") == 0)
++			status = snprintf(result, PATH_MAX, "/proc/%d/task/%d", tracee->tgid, tracee->pid);
++		else
+ 			return DEFAULT;
+ 
+-		status = snprintf(result, PATH_MAX, "/proc/%d", tracee->pid);
+ 		if (status < 0 || status >= PATH_MAX)
+ 			return -EPERM;
+ 
+diff --git a/src/tracee/tracee.c b/src/tracee/tracee.c
+index 25eeb57..d6e414d 100644
+--- a/src/tracee/tracee.c
++++ b/src/tracee/tracee.c
+@@ -234,6 +234,7 @@ static Tracee *new_tracee(pid_t pid)
+ 	talloc_set_destructor(tracee, remove_tracee);
+ 
+ 	tracee->pid = pid;
++	tracee->tgid = pid;
+ 	tracee->vpid = next_vpid++;
+ 
+ 	LIST_INSERT_HEAD(&tracees, tracee, link);
+@@ -355,6 +356,7 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
+ void set_tracee_pid(Tracee *tracee, pid_t pid)
+ {
+ 	tracee->pid = pid;
++	tracee->tgid = pid;
+ 	LIST_REMOVE(tracee, bucket_link);
+ 	LIST_INSERT_HEAD(bucket_of(pid), tracee, bucket_link);
+ }
+@@ -511,6 +513,7 @@ int new_child(Tracee *parent, word_t clone_flags)
+ 	 * specificity (ie. when a thread calls execve(2), its pid
+ 	 * gets replaced by the pid of its thread group leader).  */
+ 	child->clone = ((clone_flags & CLONE_THREAD) != 0);
++	child->tgid = child->clone ? parent->tgid : child->pid;
+ 
+ 	/* Depending on how the new process is created, it may be
+ 	 * automatically traced by the parent's tracer.  */
+diff --git a/src/tracee/tracee.h b/src/tracee/tracee.h
+index c444a50..527f428 100644
+--- a/src/tracee/tracee.h
++++ b/src/tracee/tracee.h
+@@ -83,6 +83,7 @@ typedef struct tracee {
+ 
+ 	/* Process identifier. */
+ 	pid_t pid;
++	pid_t tgid;
+ 
+ 	/* Unique tracee identifier. */
+ 	uint64_t vpid;

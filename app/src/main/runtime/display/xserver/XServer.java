@@ -11,6 +11,7 @@ import com.winlator.cmod.runtime.display.xserver.extensions.DRI3Extension;
 import com.winlator.cmod.runtime.display.xserver.extensions.Extension;
 import com.winlator.cmod.runtime.display.xserver.extensions.MITSHMExtension;
 import com.winlator.cmod.runtime.display.xserver.extensions.PresentExtension;
+import com.winlator.cmod.runtime.display.xserver.extensions.RenderExtension;
 import com.winlator.cmod.runtime.display.xserver.extensions.SyncExtension;
 import com.winlator.cmod.runtime.display.xserver.extensions.XInput2Extension;
 import com.winlator.cmod.shared.android.CursorLocker;
@@ -390,6 +391,14 @@ public class XServer {
       nextErrorId[0] += ext.getNumErrors();
     }
     extensions.put(ext.getMajorOpcode(), ext);
+  }
+
+  public void enableRenderCursors() {
+    extensions.put(RenderExtension.MAJOR_OPCODE, new RenderExtension(this));
+  }
+
+  public boolean isRenderCursorsEnabled() {
+    return extensions.get(RenderExtension.MAJOR_OPCODE) != null;
   }
 
   private void setupExtensions() {

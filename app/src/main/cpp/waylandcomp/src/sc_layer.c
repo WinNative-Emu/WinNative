@@ -85,6 +85,7 @@ static struct {
 
 #define ASC_VISIBILITY_HIDE 0
 #define ASC_VISIBILITY_SHOW 1
+#define ASC_TRANSPARENCY_TRANSLUCENT 1
 #define ASC_TRANSPARENCY_OPAQUE 2
 
 static int load_api(void) {
@@ -766,7 +767,8 @@ static ASurfaceControl *swap_sc_begin(struct layer *l) {
 
 /* The transaction that puts pool slot `idx` of layer `l` on screen at `r`, as `color` (NULL = no
  * description). 0 = applied. */
-static int present_slot(struct layer *l, int idx, const int r[8], const struct wnc_color *color) {
+static int present_slot(struct layer *l, int idx, const int r[8], const struct wnc_color *color,
+                        int translucent) {
     struct slot *s = &l->slots[idx];
     ASurfaceTransaction *tx = api.txCreate();
     if (!tx) return -1;
@@ -774,9 +776,10 @@ static int present_slot(struct layer *l, int idx, const int r[8], const struct w
     if (old) api.setZOrder(tx, l->sc, l->z);
     /* The blit was waited for on the CPU, so no acquire fence is needed (-1). */
     api.setBuffer(tx, l->sc, s->ahb, -1);
-    /* The compositor composes with blits, which overwrite: nothing is ever alpha-blended on the
-     * copy path either, so every layer is opaque and the picture matches it pixel for pixel. */
-    api.setBufferTransparency(tx, l->sc, ASC_TRANSPARENCY_OPAQUE);
+    /* A translucent window above the game (a Steam notification, the Quick Access menu) keeps its
+     * alpha over the game layer; every other layer is opaque, as the copy path draws it. */
+    api.setBufferTransparency(tx, l->sc,
+                              translucent ? ASC_TRANSPARENCY_TRANSLUCENT : ASC_TRANSPARENCY_OPAQUE);
     apply_geometry(tx, l, r);
     apply_frame_rate(tx, l);
     apply_colour(tx, l, color);
@@ -835,6 +838,7 @@ int sc_layer_present_ahb(AHardwareBuffer *ahb, int w, int h, int acquire_fd, voi
             apply_geometry(tx, l, r); apply_frame_rate(tx, l); apply_colour(tx, l, color);
             api.txApply(tx); api.txDelete(tx);
         }
+        vkp_signal_first_frame();
         return 0;
     }
     ASurfaceTransaction *tx = api.txCreate();
@@ -862,7 +866,10 @@ int sc_layer_present_ahb(AHardwareBuffer *ahb, int w, int h, int acquire_fd, voi
     l->cur_slot = -1;
     l->cur_token = token;
     if (!l->shown) { l->shown = 1; wnc_log("layer", "%s: layer shown", l->name); }
-    if (!l->first_logged) { l->first_logged = 1; vkp_signal_first_frame(); }
+    /* The notification is re-armed for each session; the layer and its logging flag outlive it,
+     * so the notification's own one-shot decides whether to fire. */
+    l->first_logged = 1;
+    vkp_signal_first_frame();
     if (color && color->dataspace) wnc_color_frame_shown(color, WNC_HDR_ZERO_COPY, ahb_format);
     return 0;
 unavailable:
@@ -883,15 +890,15 @@ int sc_layer_present(struct vkp_image *src, int scene_w, int scene_h, const stru
     int idx = take_free_slot(l, sw, sh, AHB_RGBA8, &wait_fd);
     if (idx < 0) { log_drop(l); return 0; }
     if (vkp_blit_image(src, l->slots[idx].img, wait_fd) != 0) return -1;
-    if (present_slot(l, idx, r, color) != 0) return -1;
+    if (present_slot(l, idx, r, color, 0) != 0) return -1;
     if (color && color->dataspace) wnc_color_frame_shown(color, WNC_HDR_LAYER_COPY, AHB_RGBA8);
     if (!l->first_logged) {
         l->first_logged = 1;
         wnc_log("layer", "presenting %dx%d game frames on their own SurfaceControl layer (%s pool, %d buffers); "
                    "HUD and pointer stay Android views above it", sw, sh,
                    l->pool_modifier == MOD_QCOM_COMPRESSED ? "UBWC" : "linear", l->pool_n);
-        vkp_signal_first_frame();
     }
+    vkp_signal_first_frame();
     return 0;
 }
 
@@ -908,14 +915,14 @@ int sc_layer_present_pass(const struct vkp_draw *draws, int n, int scene_w, int 
     int idx = take_free_slot(l, rw, rh, AHB_RGBA8, &wait_fd);
     if (idx < 0) { vkp_pass_abort(); log_drop(l); return 0; }
     if (vkp_pass_copy_to(l->slots[idx].img, wait_fd) != 0) return -1;
-    if (present_slot(l, idx, r, NULL) != 0) return -1; /* the effects chain's result is 8-bit sRGB */
+    if (present_slot(l, idx, r, NULL, 0) != 0) return -1; /* the effects chain's result is 8-bit sRGB */
     if (!l->first_logged) {
         l->first_logged = 1;
         wnc_log("layer", "presenting %dx%d frames on their own SurfaceControl layer (%s pool, %d buffers); "
                    "HUD and pointer stay Android views above it", rw, rh,
                    l->pool_modifier == MOD_QCOM_COMPRESSED ? "UBWC" : "linear", l->pool_n);
-        vkp_signal_first_frame();
     }
+    vkp_signal_first_frame();
     return 0;
 }
 
@@ -950,7 +957,7 @@ int sc_layer_present_hdr_scene(const struct vkp_draw *draws, int n, const struct
     }
     if (idx < 0) { vkp_pass_abort(); log_drop(l); return 0; }
     if (vkp_pass_copy_to(l->slots[idx].img, wait_fd) != 0) return -1;
-    if (present_slot(l, idx, r, tm ? NULL : color) != 0) return -1; /* tone-mapped = plain sRGB: no tag */
+    if (present_slot(l, idx, r, tm ? NULL : color, 0) != 0) return -1; /* tone-mapped = plain sRGB: no tag */
     if (color && color->dataspace)
         wnc_color_frame_shown(color, tm ? WNC_HDR_TONEMAPPED : WNC_HDR_COMPOSED, tm ? AHB_RGBA8 : g_hdr_pool_fmt);
     static int said = -1;
@@ -970,7 +977,8 @@ int sc_layer_present_hdr_scene(const struct vkp_draw *draws, int n, const struct
                        cov[0] ? ", " : "", cov);
         }
     }
-    if (!l->first_logged) { l->first_logged = 1; vkp_signal_first_frame(); }
+    l->first_logged = 1;
+    vkp_signal_first_frame();
     return 0;
 }
 
@@ -1031,7 +1039,7 @@ int sc_layer_overlay_affordable(void) {
     return ok;
 }
 
-int sc_layer_present_overlay(struct vkp_image *src, const int geo[8]) {
+int sc_layer_present_overlay(struct vkp_image *src, const int geo[8], int translucent) {
     struct layer *l = layer_of(SC_LAYER_OVERLAY);
     if (!src || !geo) return -1;
     /* The caller decides with sc_layer_overlay_affordable() BEFORE it commits the game to a layer;
@@ -1046,7 +1054,7 @@ int sc_layer_present_overlay(struct vkp_image *src, const int geo[8]) {
     /* The window is copied into the layer buffer 1:1; `geo` crops it and places it, so the layer
      * is exactly the window's rectangle on screen and nothing else is blended anywhere. */
     if (vkp_blit_image(src, l->slots[idx].img, wait_fd) != 0) return -1;
-    if (present_slot(l, idx, geo, NULL) != 0) return -1;
+    if (present_slot(l, idx, geo, NULL, translucent) != 0) return -1;
     if (!l->first_logged) {
         l->first_logged = 1;
         log_layer_count();

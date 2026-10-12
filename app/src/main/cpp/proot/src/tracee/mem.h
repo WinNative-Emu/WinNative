@@ -23,26 +23,25 @@
 #ifndef TRACEE_MEM_H
 #define TRACEE_MEM_H
 
-#include <errno.h>     /* ENAMETOOLONG, */
 #include <limits.h>    /* PATH_MAX, */
-#include <stdint.h>    /* pid_t, size_t, */
 #include <sys/types.h> /* pid_t, size_t, */
+#include <stdint.h>    /* pid_t, size_t, */
 #include <sys/uio.h>   /* struct iovec, */
+#include <errno.h>     /* ENAMETOOLONG, */
 
 #include "arch.h" /* word_t, */
 #include "tracee/tracee.h"
 
-extern int write_data(Tracee *tracee, word_t dest_tracee,
-                      const void *src_tracer, word_t size);
-extern int writev_data(Tracee *tracee, word_t dest_tracee,
-                       const struct iovec *src_tracer, int src_tracer_count);
-extern int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee,
-                     word_t size);
-extern int read_string(const Tracee *tracee, char *dest_tracer,
-                       word_t src_tracee, word_t max_size);
+extern int write_data(Tracee *tracee, word_t dest_tracee, const void *src_tracer, word_t size);
+extern int writev_data(Tracee *tracee, word_t dest_tracee, const struct iovec *src_tracer, int src_tracer_count);
+extern int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t size);
+extern int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word_t max_size);
 extern word_t peek_word(const Tracee *tracee, word_t address);
 extern void poke_word(const Tracee *tracee, word_t address, word_t value);
 extern word_t alloc_mem(Tracee *tracee, ssize_t size);
+extern int clear_mem(Tracee *tracee, word_t address, size_t size);
+extern void mem_prepare_after_execve(Tracee *tracee);
+extern void mem_prepare_before_first_execve(Tracee *tracee);
 
 /**
  * Copy to @dest_tracer at most PATH_MAX bytes -- including the
@@ -51,17 +50,17 @@ extern word_t alloc_mem(Tracee *tracee, ssize_t size);
  * function returns -errno on error, otherwise it returns the number
  * in bytes of the string, including the end-of-string terminator.
  */
-static inline int read_path(const Tracee *tracee, char dest_tracer[PATH_MAX],
-                            word_t src_tracee) {
-  int status;
+static inline int read_path(const Tracee *tracee, char dest_tracer[PATH_MAX], word_t src_tracee)
+{
+	int status;
 
-  status = read_string(tracee, dest_tracer, src_tracee, PATH_MAX);
-  if (status < 0)
-    return status;
-  if (status >= PATH_MAX)
-    return -ENAMETOOLONG;
+	status = read_string(tracee, dest_tracer, src_tracee, PATH_MAX);
+	if (status < 0)
+		return status;
+	if (status >= PATH_MAX)
+		return -ENAMETOOLONG;
 
-  return status;
+	return status;
 }
 
 /**
@@ -69,12 +68,13 @@ static inline int read_path(const Tracee *tracee, char dest_tracer[PATH_MAX],
  * given @address in the @tracee's memory space.  The caller must test
  * errno to check if an error occured.
  */
-#define GENERATE_peek(type)                                                    \
-  static inline type##_t peek_##type(const Tracee *tracee, word_t address) {   \
-    type##_t result;                                                           \
-    errno = -read_data(tracee, &result, address, sizeof(type##_t));            \
-    return result;                                                             \
-  }
+#define GENERATE_peek(type)							\
+static inline type ## _t peek_ ## type(const Tracee *tracee, word_t address) 	\
+{										\
+	type ## _t result;							\
+	errno = -read_data(tracee, &result, address, sizeof(type ## _t));	\
+	return result;								\
+}
 
 GENERATE_peek(uint8);
 GENERATE_peek(uint16);
@@ -93,11 +93,11 @@ GENERATE_peek(int64);
  * @tracee's memory space to the given @value.  The caller must test
  * errno to check if an error occured.
  */
-#define GENERATE_poke(type)                                                    \
-  static inline void poke_##type(Tracee *tracee, word_t address,               \
-                                 type##_t value) {                             \
-    errno = -write_data(tracee, address, &value, sizeof(type##_t));            \
-  }
+#define GENERATE_poke(type)							\
+static inline void poke_ ## type(Tracee *tracee, word_t address, type ## _t value) \
+{										\
+	errno = -write_data(tracee, address, &value, sizeof(type ## _t));	\
+}
 
 GENERATE_poke(uint8);
 GENERATE_poke(uint16);

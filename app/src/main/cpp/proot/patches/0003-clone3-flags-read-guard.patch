@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: maxjivi05 <maxjividen@gmail.com>
+Date: Wed, 23 Sep 2026 21:44:45 -0400
+Subject: [PATCH] tracee: keep a thread's inherited clone flags when clone3's
+ arguments cannot be read
+
+---
+ src/tracee/tracee.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/src/tracee/tracee.c b/src/tracee/tracee.c
+index 90894a0..7c0c50c 100644
+--- a/src/tracee/tracee.c
++++ b/src/tracee/tracee.c
+@@ -423,10 +423,11 @@ int new_child(Tracee *parent, word_t clone_flags)
+ 	status = fetch_regs(parent);
+ 	if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone)
+ 		clone_flags = peek_reg(parent, CURRENT, SYSARG_1);
+-        else if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone3)
+-                // Look at the first word of the clone_args structure, which
+-                // contains the usual clone flags.
+-                clone_flags = peek_word(parent, peek_reg(parent, CURRENT, SYSARG_1));
++	else if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone3) {
++		word_t flags = peek_word(parent, peek_reg(parent, CURRENT, SYSARG_1));
++		if (errno == 0)
++			clone_flags = flags;
++	}
+ 
+ 	/* Get the pid of the parent's new child.  */
+ 	status = ptrace(PTRACE_GETEVENTMSG, parent->pid, NULL, &pid);

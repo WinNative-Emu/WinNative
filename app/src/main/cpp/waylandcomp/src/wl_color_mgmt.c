@@ -693,6 +693,11 @@ void wnc_color_session_end(void) {
 struct cm_desc {
     int refs;                       /* protocol objects + surfaces (pending / current) */
     struct wnc_color c;
+    /* Set on the output / preferred descriptions the compositor serves (never on one a game built
+     * from parameters): get_information is answered rather than refused, with these as the target. */
+    int informative;
+    float ref_lum;                  /* nits: PQ reference white */
+    float disp_min_lum, disp_max_lum; /* nits: the display's own volume, from the app */
 };
 
 static uint32_t g_next_identity = 1;
@@ -711,8 +716,34 @@ struct cm_params {
 
 static void image_description_destroy_req(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
 static void image_description_get_information(struct wl_client *c, struct wl_resource *r, uint32_t id) {
-    wl_resource_post_error(r, WP_IMAGE_DESCRIPTION_V1_ERROR_NO_INFORMATION,
-                           "get_information is not allowed on this image description");
+    struct cm_desc *d = wl_resource_get_user_data(r);
+    if (!d || !d->informative) {
+        /* Built by the game from parameters: the protocol says it knows what it asked for. */
+        wl_resource_post_error(r, WP_IMAGE_DESCRIPTION_V1_ERROR_NO_INFORMATION,
+                               "get_information is not allowed on this image description");
+        return;
+    }
+    struct wl_resource *info = wl_resource_create(c, &wp_image_description_info_v1_interface,
+                                                  wl_resource_get_version(r), id);
+    if (!info) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(info, NULL, NULL, NULL); /* events only */
+    const struct wnc_color *col = &d->c;
+    int32_t xy[8] = { (int32_t)(col->red[0] * 1e6f + 0.5f),   (int32_t)(col->red[1] * 1e6f + 0.5f),
+                      (int32_t)(col->green[0] * 1e6f + 0.5f), (int32_t)(col->green[1] * 1e6f + 0.5f),
+                      (int32_t)(col->blue[0] * 1e6f + 0.5f),  (int32_t)(col->blue[1] * 1e6f + 0.5f),
+                      (int32_t)(col->white[0] * 1e6f + 0.5f), (int32_t)(col->white[1] * 1e6f + 0.5f) };
+    wp_image_description_info_v1_send_primaries(info, xy[0], xy[1], xy[2], xy[3], xy[4], xy[5], xy[6], xy[7]);
+    wp_image_description_info_v1_send_primaries_named(info, col->primaries);
+    wp_image_description_info_v1_send_tf_named(info, col->tf);
+    /* min is cd/m² * 10000, max and reference are cd/m² */
+    wp_image_description_info_v1_send_luminances(info, (uint32_t)(col->min_lum * 10000.0f + 0.5f),
+                                                 (uint32_t)(col->max_lum + 0.5f), (uint32_t)(d->ref_lum + 0.5f));
+    wp_image_description_info_v1_send_target_primaries(info, xy[0], xy[1], xy[2], xy[3], xy[4], xy[5], xy[6], xy[7]);
+    wp_image_description_info_v1_send_target_luminance(info, (uint32_t)(d->disp_min_lum * 10000.0f + 0.5f),
+                                                       (uint32_t)(d->disp_max_lum + 0.5f));
+    /* done is a destructor event: the client's proxy is gone once it arrives, so the resource goes too. */
+    wp_image_description_info_v1_send_done(info);
+    wl_resource_destroy(info);
 }
 static const struct wp_image_description_v1_interface image_description_impl = {
     .destroy = image_description_destroy_req,
@@ -722,15 +753,43 @@ static void image_description_resource_destroy(struct wl_resource *r) {
     desc_unref(wl_resource_get_user_data(r));
 }
 
-/* An image description object that will never be ready (output / preferred descriptions are not
- * implemented in round 1; nothing we serve asks for them). */
-static void make_failed_description(struct wl_client *c, struct wl_resource *parent, uint32_t id, const char *what) {
+/* What the display layer shows while the gate is open - BT.2020 + PQ over the display's own
+ * volume - served as the output's image description and as every surface's preferred one. It is
+ * ready at once and open to get_information, and that is not optional: gamescope asks for the
+ * preferred description and for its information in the same breath, before any roundtrip
+ * (WaylandBackend.cpp, UpdateWPPreferredColorManagement). Answering 'failed' and then refusing
+ * get_information with a protocol error severs its connection mid-roundtrip - "Broken pipe",
+ * signal 6 - while a device with the gate closed never offers colour management and never gets
+ * here. gamescope reads only the luminances from the answer (reference white vs the display's
+ * peak) to decide whether it exposes HDR to what it hosts. */
+static void make_output_description(struct wl_client *c, struct wl_resource *parent, uint32_t id, const char *what) {
+    struct cm_desc *d = calloc(1, sizeof(*d));
+    if (!d) { wl_client_post_no_memory(c); return; }
+    struct wnc_color *col = &d->c;
+    col->identity = g_next_identity++;
+    if (!g_next_identity) g_next_identity = 1;
+    col->primaries = WP_COLOR_MANAGER_V1_PRIMARIES_BT2020;
+    col->tf = WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_ST2084_PQ;
+    col->dataspace = WNC_ADATASPACE_BT2020_PQ;
+    col->has_st2086 = 1;
+    col->red[0] = 0.708f; col->red[1] = 0.292f; col->green[0] = 0.170f; col->green[1] = 0.797f;
+    col->blue[0] = 0.131f; col->blue[1] = 0.046f; col->white[0] = 0.3127f; col->white[1] = 0.3290f;
+    col->min_lum = 0.005f; col->max_lum = 10000.0f;  /* the PQ volume */
+    d->informative = 1;
+    d->ref_lum = 203.0f;                              /* PQ reference white */
+    pthread_mutex_lock(&g_mu);
+    d->disp_min_lum = g_req.min_lum > 0.0f ? g_req.min_lum : 0.0f;
+    d->disp_max_lum = g_req.max_lum > 0.0f ? g_req.max_lum : 1000.0f;
+    pthread_mutex_unlock(&g_mu);
+    snprintf(col->text, sizeof(col->text), "BT.2020, ST 2084 PQ; target %.0f nits (the display)", d->disp_max_lum);
+
     struct wl_resource *r = wl_resource_create(c, &wp_image_description_v1_interface, wl_resource_get_version(parent), id);
-    if (!r) { wl_client_post_no_memory(c); return; }
-    wl_resource_set_implementation(r, &image_description_impl, NULL, image_description_resource_destroy);
-    wp_image_description_v1_send_failed(r, WP_IMAGE_DESCRIPTION_V1_CAUSE_OPERATING_SYSTEM,
-                                        "not implemented by this compositor");
-    wnc_log(TAG, "%s asked for %s: not implemented in this build, answered 'failed'", wnc_client_name(c), what);
+    if (!r) { free(d); wl_client_post_no_memory(c); return; }
+    d->refs = 1;
+    wl_resource_set_implementation(r, &image_description_impl, d, image_description_resource_destroy);
+    wp_image_description_v1_send_ready(r, col->identity);
+    wnc_log(TAG, "%s asked for %s: answered the display's HDR10 volume (%s), ready and open to get_information",
+               wnc_client_name(c), what, col->text);
 }
 
 static void params_create(struct wl_client *client, struct wl_resource *r, uint32_t id) {
@@ -1020,11 +1079,11 @@ const struct wnc_color *wnc_color_of(struct wl_resource *surface) {
     return cs && cs->current ? &cs->current->c : NULL;
 }
 
-/* ---------------------------------------------------------------- output + feedback (minimal) */
+/* ---------------------------------------------------------------- output + feedback */
 
 static void cm_output_destroy_req(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
 static void cm_output_get_image_description(struct wl_client *c, struct wl_resource *r, uint32_t id) {
-    make_failed_description(c, r, id, "the output's image description");
+    make_output_description(c, r, id, "the output's image description");
 }
 static const struct wp_color_management_output_v1_interface cm_output_impl = {
     .destroy = cm_output_destroy_req,
@@ -1033,7 +1092,7 @@ static const struct wp_color_management_output_v1_interface cm_output_impl = {
 
 static void cm_feedback_destroy_req(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
 static void cm_feedback_get_preferred(struct wl_client *c, struct wl_resource *r, uint32_t id) {
-    make_failed_description(c, r, id, "a surface's preferred image description");
+    make_output_description(c, r, id, "a surface's preferred image description");
 }
 static const struct wp_color_management_surface_feedback_v1_interface cm_feedback_impl = {
     .destroy = cm_feedback_destroy_req,

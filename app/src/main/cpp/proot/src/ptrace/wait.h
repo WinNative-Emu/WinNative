@@ -41,9 +41,9 @@ extern bool handle_ptracee_event(Tracee *ptracee, int wait_status);
  *
  * -- wait(2) man-page
  */
-#define EXPECTED_WAIT_CLONE(wait_options, tracee)                              \
-  ((((wait_options) & __WALL) != 0) ||                                         \
-   ((((wait_options) & __WCLONE) != 0) && (tracee)->clone) ||                  \
-   ((((wait_options) & __WCLONE) == 0) && !(tracee)->clone))
+#define EXPECTED_WAIT_CLONE(wait_options, tracee)		\
+	((((wait_options) & __WALL) != 0)			\
+      || ((((wait_options) & __WCLONE) != 0) && (tracee)->clone) \
+      || ((((wait_options) & __WCLONE) == 0) && !(tracee)->clone))
 
 #endif /* PTRACE_WAIT_H */
