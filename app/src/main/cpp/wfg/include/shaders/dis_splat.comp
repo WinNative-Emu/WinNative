@@ -50,6 +50,15 @@ layout(push_constant) uniform PC {
     int mode;
 } pc;
 
+// Splat only the vectors that land where the field moves differently, by more than this many
+// flow texels.
+#ifndef SPLAT_CONFLICT_ONLY
+#define SPLAT_CONFLICT_ONLY 1
+#endif
+#ifndef SPLAT_CONFLICT
+#define SPLAT_CONFLICT 1.0
+#endif
+
 // Mean absolute luma difference (0..255) per consistency step: 8 luma levels per step, 31 steps.
 #define SPLAT_ERR_STEP 8.0
 
@@ -89,13 +98,34 @@ void main() {
     vec2 f = texelFetch(flowTex, p, 0).xy;
     if (any(isnan(f)) || any(isinf(f))) return;
     vec2 fpx = f * vec2(sz);
-    // The same for every generated frame: scored once, splatted to each.
-    uint key = priority(p, fpx, sz);
+    // The same for every generated frame: scored once, splatted to each - scored lazily, since
+    // most texels splat to none.
+    uint key = 0u;
 
     for (int g = 0; g < pc.gens; g++) {
-        // The four texels round the landing point, so a stretched field leaves no gaps.
         float t = float(g + 1) / float(pc.gens + 1);
         vec2 target = vec2(p) + 0.5 + t * fpx;
+#if SPLAT_CONFLICT_ONLY
+        // Only where the field at the landing point moves differently: inside a layer the
+        // interpolate's own lookup finds this same vector, and the splat (the only atomics in
+        // WFG, the larger part of its cost on an Adreno 750) would change nothing.
+        ivec2 land = clamp(ivec2(floor(target)), ivec2(0), sz - 1);
+        vec2 fl = texelFetch(flowTex, land, 0).xy;
+        if (length((fl - f) * vec2(sz)) < SPLAT_CONFLICT) continue;
+#endif
+        if (key == 0u) key = priority(p, fpx, sz);
+#if SPLAT_CONFLICT_ONLY
+        // The texels that do not splat still compete: the content the lookup would put at the
+        // landing point comes from where the field there starts, and a vector that would lose
+        // to it changes nothing either.
+        if (all(equal(fl, fl))) {
+            vec2 flpx = fl * vec2(sz);
+            ivec2 nat = clamp(ivec2(floor(vec2(land) + 0.5 - t * flpx)), ivec2(0), sz - 1);
+            vec2 fn = texelFetch(flowTex, nat, 0).xy;
+            if (all(equal(fn, fn)) && priority(nat, fn * vec2(sz), sz) >= key) continue;
+        }
+#endif
+        // The four texels round the landing point, so a stretched field leaves no gaps.
         ivec2 base = ivec2(floor(target - 0.5));
         ivec2 strip = ivec2(0, g * sz.y);
         for (int i = 0; i < 4; i++) {
