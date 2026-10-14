@@ -194,6 +194,7 @@ struct VkrDis {
     DisImage splat_key;
     DisImage fill_cons;
     DisImage flow_fill;
+    DisImage flow_prev;
     DisImage splat_field;
 
     // Farneback flow (DIS_ENGINE_FARNEBACK and _HYBRID): each frame's polynomial expansion,
@@ -227,6 +228,7 @@ struct VkrDis {
     VkImageView view_splat_key;
     VkImageView view_fill_cons;
     VkImageView view_flow_fill;
+    VkImageView view_flow_prev;
     VkImageView view_splat_field;
     VkImageView view_fb_b[DIS_SLOTS][DIS_MAX_LEVELS];
     VkImageView view_fb_c[DIS_SLOTS][DIS_MAX_LEVELS];
@@ -557,6 +559,7 @@ static uint32_t dis_collect_images(VkrDis* d, DisImage** out, uint32_t cap) {
     DIS_PUSH(&d->splat_key);
     DIS_PUSH(&d->fill_cons);
     DIS_PUSH(&d->flow_fill);
+    DIS_PUSH(&d->flow_prev);
     DIS_PUSH(&d->splat_field);
     for (uint32_t s = 0; s < DIS_SLOTS; s++) {
         DIS_PUSH(&d->fb_b[s]);
@@ -767,7 +770,7 @@ static bool dis_create_pipelines(VkrDis* d) {
     // VR sets exist only for the levels the refinement actually runs on.
     const uint32_t vr_sets = (DIS_SLOTS
                            + DIS_VR_SHARED_SETS) * DIS_VR_LEVELS;
-    const uint32_t hist_sets = DIS_SLOTS * 2u + DIS_SLOTS + DIS_SLOTS * 2u;   // + splat and fill
+    const uint32_t hist_sets = DIS_SLOTS * 2u + DIS_SLOTS + DIS_SLOTS * 2u + 1u;   // + splat, fill, pack
     const uint32_t fb_sets = DIS_SLOTS * DIS_MAX_LEVELS * 3u + DIS_MAX_LEVELS + DIS_SLOTS + 1u;
     const uint32_t vr_layout_sets = vr_sets + hist_sets + fb_sets;
     const uint32_t total_sets = shared_sets + vr_layout_sets;
@@ -869,7 +872,7 @@ static bool dis_create_pipelines(VkrDis* d) {
     d->pass_fb_hsum.pipeline = dis_create_compute_pipeline_with_layout(d, dis_fb_hsum_comp, dis_fb_hsum_comp_size, d->vr_pipeline_layout, NULL);
     d->pass_fb_vsolve.pipeline = dis_create_compute_pipeline_with_layout(d, dis_fb_vsolve_comp, dis_fb_vsolve_comp_size, d->vr_pipeline_layout, NULL);
     d->pass_side.pipeline = dis_create_compute_pipeline(d, dis_side_comp, dis_side_comp_size);
-    d->pass_pack.pipeline = dis_create_compute_pipeline(d, dis_flow_pack_comp, dis_flow_pack_comp_size);
+    d->pass_pack.pipeline = dis_create_compute_pipeline_with_layout(d, dis_flow_pack_comp, dis_flow_pack_comp_size, d->vr_pipeline_layout, NULL);
     d->pass_splat.pipeline = dis_create_compute_pipeline_with_layout(d, dis_splat_comp, dis_splat_comp_size, d->vr_pipeline_layout, NULL);
     d->pass_fill.pipeline = dis_create_compute_pipeline_with_layout(d, dis_fill_comp, dis_fill_comp_size, d->vr_pipeline_layout, NULL);
 
@@ -1114,6 +1117,7 @@ static void dis_write_all_descriptors(VkrDis* d) {
             dis_batch_sampled(d, &b, fs, 3, d->view_flow_luma[next][0], d->sampler);
             dis_batch_sampled(d, &b, fs, 4, d->view_flow_refined[0], d->sampler);
             dis_batch_sampled(d, &b, fs, 5, d->view_hist[dir], d->sampler);
+            dis_batch_sampled(d, &b, fs, 6, d->view_flow_prev, d->sampler);
             dis_batch_storage(d, &b, fs, DIS_VR_FIRST_STORAGE, d->view_fill_cons);
             dis_batch_storage(d, &b, fs, DIS_VR_FIRST_STORAGE + 1, d->view_flow_fill);
         }
@@ -1168,7 +1172,9 @@ static void dis_write_all_descriptors(VkrDis* d) {
     // Not per slot: the input and the output are single images, and this set is written
     // once here and never updated, so sharing it across frames is safe.
     dis_batch_sampled(d, &b, d->pack_set, 0, d->view_flow_refined[0], d->sampler);
-    dis_batch_storage(d, &b, d->pack_set, 5, d->view_flow_out);
+    dis_batch_sampled(d, &b, d->pack_set, 1, d->view_fill_cons, d->sampler);
+    dis_batch_storage(d, &b, d->pack_set, DIS_VR_FIRST_STORAGE, d->view_flow_out);
+    dis_batch_storage(d, &b, d->pack_set, DIS_VR_FIRST_STORAGE + 1, d->view_flow_prev);
 
     // Farneback. The pair ending in slot s runs from prev to s; a level starts from the level
     // above (normalised uv reads the same at any size), the coarsest from the previous pair's
@@ -1228,6 +1234,7 @@ static void dis_destroy_views(VkrDis* d) {
     dis_destroy_view(d, &d->view_splat_key);
     dis_destroy_view(d, &d->view_fill_cons);
     dis_destroy_view(d, &d->view_flow_fill);
+    dis_destroy_view(d, &d->view_flow_prev);
     dis_destroy_view(d, &d->view_splat_field);
     dis_destroy_view(d, &d->view_fb_l1);
     for (uint32_t l = 0; l < DIS_MAX_LEVELS; l++) {
@@ -1285,6 +1292,7 @@ static void dis_destroy_images(VkrDis* d) {
     dis_destroy_image(d, &d->splat_key);
     dis_destroy_image(d, &d->fill_cons);
     dis_destroy_image(d, &d->flow_fill);
+    dis_destroy_image(d, &d->flow_prev);
     dis_destroy_image(d, &d->splat_field);
     for (uint32_t s = 0; s < DIS_SLOTS; s++) {
         dis_destroy_image(d, &d->fb_b[s]);
@@ -1364,7 +1372,9 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
     // ones replaced, which is what the interpolation uses (dis_fill.comp).
     if (!dis_create_image(d, &d->fill_cons, w, h, VK_FORMAT_R32_SFLOAT, 1,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
-    if (!dis_create_image(d, &d->flow_fill, w, h, VK_FORMAT_R16G16_SFLOAT, 1,
+    if (!dis_create_image(d, &d->flow_prev, w, h, VK_FORMAT_R16G16B16A16_SFLOAT, 1,
+                          VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
+    if (!dis_create_image(d, &d->flow_fill, w, h, VK_FORMAT_R16G16B16A16_SFLOAT, 1,
                           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) return false;
     // The field splatted to a generated frame's time (dis_splat.comp): the winning priority per
     // texel (R32_UINT, whose storage atomics every device has) and the vector it carries, one
@@ -1425,7 +1435,8 @@ static bool dis_create_resources(VkrDis* d, uint32_t w, uint32_t h, uint32_t ful
     if (!dis_create_view(d, d->flow_out.image, VK_FORMAT_R16G16_SFLOAT, 0, 1, &d->view_flow_out)) return false;
     if (!dis_create_view(d, d->splat_key.image, VK_FORMAT_R32_UINT, 0, 1, &d->view_splat_key)) return false;
     if (!dis_create_view(d, d->fill_cons.image, VK_FORMAT_R32_SFLOAT, 0, 1, &d->view_fill_cons)) return false;
-    if (!dis_create_view(d, d->flow_fill.image, VK_FORMAT_R16G16_SFLOAT, 0, 1, &d->view_flow_fill)) return false;
+    if (!dis_create_view(d, d->flow_fill.image, VK_FORMAT_R16G16B16A16_SFLOAT, 0, 1, &d->view_flow_fill)) return false;
+    if (!dis_create_view(d, d->flow_prev.image, VK_FORMAT_R16G16B16A16_SFLOAT, 0, 1, &d->view_flow_prev)) return false;
     if (!dis_create_view(d, d->splat_field.image, VK_FORMAT_R16G16B16A16_SFLOAT, 0, 1, &d->view_splat_field)) return false;
     if (!dis_create_view(d, d->fb_l1.image, VK_FORMAT_R32G32_SFLOAT, 0, 1, &d->view_fb_l1)) return false;
 
@@ -1477,7 +1488,7 @@ static bool dis_allocate_sets(VkrDis* d) {
         }
     }
 
-    if (!dis_alloc(d, d->set_layout, 1, &d->pack_set)) return false;
+    if (!dis_alloc(d, d->vr_set_layout, 1, &d->pack_set)) return false;
 
     for (uint32_t l = 0; l < DIS_VR_LEVELS; l++) {
         VkDescriptorSet vr_sets[DIS_VR_SHARED_SETS];
@@ -2192,13 +2203,14 @@ static void dis_farneback(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, uint32_
 
 // One pass of dis_fill.comp: 0 scores how well the next frame confirms each vector, 1 writes
 // the field with the unconfirmed ones replaced. The caller places the barriers.
-static void dis_fill_pass(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, int mode, uint32_t w,
-                          uint32_t h) {
+static void dis_fill_pass(VkrDis* d, VkCommandBuffer cmd, uint32_t slot, int mode, int accel,
+                          uint32_t w, uint32_t h) {
     vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_fill.pipeline);
     vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
                               &d->fill_sets[slot][d->hist_parity], 0, NULL);
-    vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(mode),
-                         &mode);
+    const struct { int mode; int accel; } fpc = {mode, accel};
+    vkd.CmdPushConstants(cmd, d->vr_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(fpc),
+                         &fpc);
     vkd.CmdDispatch(cmd, (w + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE,
                     (h + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE, 1);
 }
@@ -2390,8 +2402,14 @@ void vkr_dis_process(VkrDis* d, VkCommandBuffer cmd, VkImage source, uint32_t wi
         // The packed field, how well the next frame confirms each vector (both from the refined
         // field) and the overlay history (from the colour pair) are independent of each other,
         // so they share one barrier.
-        dis_dispatch(d, cmd, d->pass_pack.pipeline, d->pack_set, w, h);
-        dis_fill_pass(d, cmd, slot, 0, w, h);
+        // The pack keeps the previous pair's field for the fill's acceleration estimate; it is
+        // that pair's only when that pair computed one.
+        const int had_prior = d->prior_valid ? 1 : 0;
+        vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_pack.pipeline);
+        vkd.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->vr_pipeline_layout, 0, 1,
+                                  &d->pack_set, 0, NULL);
+        vkd.CmdDispatch(cmd, (w + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE,
+                        (h + DIS_LOCAL_SIZE - 1) / DIS_LOCAL_SIZE, 1);
         d->prior_valid = true;
 
         vkd.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->pass_hist.pipeline);
@@ -2405,8 +2423,12 @@ void vkr_dis_process(VkrDis* d, VkCommandBuffer cmd, VkImage source, uint32_t wi
         d->hist_valid = true;
         dis_compute_barrier(cmd);
 
-        // The field the interpolation uses, its unconfirmed vectors replaced (dis_fill.comp).
-        dis_fill_pass(d, cmd, slot, 1, w, h);
+        // How well the next frame confirms each vector - after the pack has kept the previous
+        // pair's - then the field the interpolation uses, unconfirmed vectors replaced
+        // (dis_fill.comp).
+        dis_fill_pass(d, cmd, slot, 0, had_prior, w, h);
+        dis_compute_barrier(cmd);
+        dis_fill_pass(d, cmd, slot, 1, had_prior, w, h);
         dis_compute_barrier(cmd);
 
         // Which real frame a true occlusion takes, and how sure, per level-0 texel.

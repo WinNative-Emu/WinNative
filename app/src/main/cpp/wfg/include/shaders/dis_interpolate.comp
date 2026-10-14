@@ -93,8 +93,9 @@ layout(constant_id = 0) const int manualFlowFilter = 0;
 #define OCCL_HI 0.60
 #endif
 
-vec2 sampleFlow(vec2 uv) {
-    if (manualFlowFilter == 0) return textureLod(flowTex, uv, 0.0).xy;
+// The field in xy and the acceleration (dis_fill.comp) in zw, one fetch.
+vec4 sampleFlow4(vec2 uv) {
+    if (manualFlowFilter == 0) return textureLod(flowTex, uv, 0.0);
 
     vec2 sz = vec2(textureSize(flowTex, 0));
     vec2 p = uv * sz - 0.5;
@@ -102,11 +103,15 @@ vec2 sampleFlow(vec2 uv) {
     ivec2 i0 = ivec2(floor(p));
     ivec2 mx = ivec2(sz) - 1;
 
-    vec2 a = texelFetch(flowTex, clamp(i0,                ivec2(0), mx), 0).xy;
-    vec2 b = texelFetch(flowTex, clamp(i0 + ivec2(1, 0), ivec2(0), mx), 0).xy;
-    vec2 c = texelFetch(flowTex, clamp(i0 + ivec2(0, 1), ivec2(0), mx), 0).xy;
-    vec2 e = texelFetch(flowTex, clamp(i0 + ivec2(1, 1), ivec2(0), mx), 0).xy;
+    vec4 a = texelFetch(flowTex, clamp(i0,                ivec2(0), mx), 0);
+    vec4 b = texelFetch(flowTex, clamp(i0 + ivec2(1, 0), ivec2(0), mx), 0);
+    vec4 c = texelFetch(flowTex, clamp(i0 + ivec2(0, 1), ivec2(0), mx), 0);
+    vec4 e = texelFetch(flowTex, clamp(i0 + ivec2(1, 1), ivec2(0), mx), 0);
     return mix(mix(a, b, frac.x), mix(c, e, frac.x), frac.y);
+}
+
+vec2 sampleFlow(vec2 uv) {
+    return sampleFlow4(uv).xy;
 }
 
 float maxChannel(vec3 v) {
@@ -168,7 +173,8 @@ void main() {
     vec2 eased = ramp * ramp * (3.0 - 2.0 * ramp);
     float edgeMix = min(eased.x, eased.y);
 
-    vec2 f = sampleFlow(uv);
+    vec4 f4 = sampleFlow4(uv);
+    vec2 f = f4.xy;
     if (edgeMix < 1.0) {
         vec2 fInner = sampleFlow(clamp(uv, guard, 1.0 - guard));
         f = mix(fInner, f, edgeMix);
@@ -241,8 +247,12 @@ void main() {
         return;
     }
 
-    vec2 uv0 = uv - pc.t * fa;
-    vec2 uv1 = uv + (1.0 - pc.t) * fa;
+    // Where the content is at t, with the pair's acceleration (dis_fill.comp): a turn speeding up
+    // or slowing down does not cover t of its way by time t.
+    vec2 acc = f4.zw * edgeMix;
+    if (any(isnan(acc)) || any(isinf(acc))) acc = vec2(0.0);
+    vec2 uv0 = uv - (pc.t * fa + 0.5 * (pc.t * pc.t - pc.t) * acc);
+    vec2 uv1 = uv0 + fa;
 
     vec3 c0 = warpSample(prevColor, uv0, vec2(size));
     vec3 c1 = warpSample(nextColor, uv1, vec2(size));

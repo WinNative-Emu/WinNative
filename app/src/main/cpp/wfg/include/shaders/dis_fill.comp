@@ -37,10 +37,12 @@ layout(set = 0, binding = 3) uniform sampler2D nextLuma;
 layout(set = 0, binding = 4) uniform sampler2D flowRaw;    // refined level-0 field, for mode 0
 layout(set = 0, binding = 5) uniform sampler2D histTex;    // overlay history (dis_hist.comp)
 layout(set = 0, binding = 8, r32f) uniform writeonly image2D consOut;
-layout(set = 0, binding = 9, rg16f) uniform writeonly image2D flowOut;
+layout(set = 0, binding = 6) uniform sampler2D flowPrevTex; // the previous pair's field
+layout(set = 0, binding = 9, rgba16f) uniform writeonly image2D flowOut;   // xy field, zw acceleration
 
 layout(push_constant) uniform PC {
     int mode;
+    int accel;     // flowPrevTex holds the previous pair's field
 } pc;
 
 // Confirmation error below which a vector is trusted, and above which it is replaced outright.
@@ -58,6 +60,13 @@ layout(push_constant) uniform PC {
 #ifndef FILL_WALK
 #define FILL_WALK 24
 #endif
+// Acceleration below / above which (in flow texels) none / all of it is applied.
+#ifndef ACCEL_LO
+#define ACCEL_LO 0.5
+#endif
+#ifndef ACCEL_HI
+#define ACCEL_HI 1.5
+#endif
 // Cost of a texel of walk, in luma steps crossed.
 #ifndef FILL_STEP_COST
 #define FILL_STEP_COST 2.0
@@ -65,6 +74,64 @@ layout(push_constant) uniform PC {
 
 bool finite2(vec2 v) {
     return !(any(isnan(v)) || any(isinf(v)));
+}
+
+// Acceleration of the content at p over the pair, for a motion that is not uniform within it:
+// a camera turn speeding up or slowing down covers less or more than t of the pair's way by
+// time t, and on a turn's ramp a linear split puts the generated frame several pixels off -
+// as bad as repeating a frame on sharp texture. The content came into this pair's first frame
+// moving with the previous pair's vector (looked up where it came from, two fixed-point steps),
+// and leaves with this pair's: the difference is the acceleration a in the position
+// d(t) = f t + a (t^2 - t) / 2. Estimation noise between two fields of a steady motion stays
+// out: below half a flow texel nothing is applied.
+// Where the content at uv came from in the previous pair's field: two fixed-point steps of
+// y = uv - v(y) from the given start. z is how well the next frame confirmed that vector then.
+vec3 previousVector(vec2 uv, vec2 start) {
+    vec2 v = textureLod(flowPrevTex, clamp(uv - start, vec2(0.0), vec2(1.0)), 0.0).xy;
+    v = textureLod(flowPrevTex, clamp(uv - v, vec2(0.0), vec2(1.0)), 0.0).xy;
+    return textureLod(flowPrevTex, clamp(uv - v, vec2(0.0), vec2(1.0)), 0.0).xyz;
+}
+
+vec2 accelerationAt(vec2 uv, ivec2 sz) {
+    vec2 f = textureLod(flowIn, uv, 0.0).xy;
+    if (!finite2(f)) return vec2(0.0);
+    // Two starts: uv itself, and where the content would have been had it kept this pair's
+    // motion. Starting at uv, a texel just ahead of a moving object reads the background there
+    // and the lookup never leaves it - a whole object speed of false acceleration. Of the two,
+    // the smaller acceleration is the explanation to keep.
+    vec3 p0 = previousVector(uv, vec2(0.0));
+    vec3 p1 = previousVector(uv, f);
+    vec2 a0 = f - p0.xy;
+    vec2 a1 = f - p1.xy;
+    if (!finite2(a0)) a0 = vec2(1e9);
+    if (!finite2(a1)) a1 = vec2(1e9);
+    bool first = dot(a0, a0) <= dot(a1, a1);
+    vec2 a = first ? a0 : a1;
+    if (dot(a, a) >= 1e8) return vec2(0.0);
+    // Not from a vector the next frame did not confirm then either - the pair across a scene
+    // cut, content that was going out of view: its difference to this one is no acceleration.
+    return a * (1.0 - smoothstep(FILL_LO, FILL_HI, first ? p0.z : p1.z));
+}
+
+vec2 median3(vec2 a, vec2 b, vec2 c) {
+    return max(min(a, b), min(max(a, b), c));
+}
+
+vec2 acceleration(ivec2 p, ivec2 sz) {
+    if (pc.accel == 0) return vec2(0.0);
+    // A camera's acceleration is the same over large parts of the frame; where the two fields
+    // meet a different layer - an object's edge, a cut, something that wrapped round - the
+    // difference is not an acceleration at all. The median of the texel and its neighbours two
+    // texels away on either axis keeps the first and drops the second.
+    vec2 uv = (vec2(p) + 0.5) / vec2(sz);
+    vec2 o = 2.0 / vec2(sz);
+    vec2 c = accelerationAt(uv, sz);
+    vec2 h = median3(c, accelerationAt(uv - vec2(o.x, 0.0), sz), accelerationAt(uv + vec2(o.x, 0.0), sz));
+    vec2 w = median3(c, accelerationAt(uv - vec2(0.0, o.y), sz), accelerationAt(uv + vec2(0.0, o.y), sz));
+    vec2 a = median3(c, h, w);
+    // Only for a vector the next frame confirms.
+    float trust = 1.0 - smoothstep(FILL_LO, FILL_HI, texelFetch(consTex, p, 0).r);
+    return a * trust * smoothstep(ACCEL_LO, ACCEL_HI, length(a * vec2(sz)));
 }
 
 void main() {
@@ -136,5 +203,5 @@ void main() {
         }
         f = mix(f, best, replace);
     }
-    imageStore(flowOut, p, vec4(f, 0.0, 0.0));
+    imageStore(flowOut, p, vec4(f, acceleration(p, sz)));
 }
