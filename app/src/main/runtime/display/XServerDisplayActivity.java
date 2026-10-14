@@ -55,6 +55,7 @@ import com.winlator.cmod.feature.stores.steam.enums.Marker;
 import com.winlator.cmod.feature.stores.steam.utils.MarkerUtils;
 import com.winlator.cmod.feature.stores.steam.utils.PrefManager;
 import com.winlator.cmod.feature.stores.steam.utils.SteamUtils;
+import com.winlator.cmod.feature.stores.steam.workshop.WorkshopModsGenerator;
 
 import androidx.preference.PreferenceManager;
 import com.winlator.cmod.R;
@@ -7715,6 +7716,10 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                             .installSteampipeBridgeIntoApp(this, gameDir);
                     com.winlator.cmod.feature.stores.steam.utils.SteamUtils
                             .invalidateInstallScan(this, appId, gameDir);
+                    setupSteamSettingsForAllDirs(gameDir, appId, language, isOfflineMode,
+                            useSteamInput, ticketBase64);
+                    SteamUtils.enrichSteamSettings(this, appId,
+                            new File(gameInstallPath, "steam_settings"));
                     Log.d("XServerDisplayActivity",
                             "Bionic Steam: " + steampipeSwapped
                             + " steam_api*.dll(s) replaced with steampipe bridge");
@@ -12397,6 +12402,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
 
         if (hasSteamDll) {
             SteamUtils.writeCompleteSettingsDir(dir, appId, language, isOffline, useSteamInput, ticketBase64);
+            WorkshopModsGenerator.INSTANCE.generate(this, appId, new File(dir, "steam_settings"));
         }
 
         for (File file : files) {
@@ -13590,6 +13596,8 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     Log.w("XServerDisplayActivity", "Failed to copy ACF to container steamapps", e);
                 }
             }
+
+            WorkshopModsGenerator.INSTANCE.syncToSteamLibrary(this, appId, steamappsDir);
 
             ensureSteamLibraryFoldersConfig(steamDir, steamappsDir);
 
