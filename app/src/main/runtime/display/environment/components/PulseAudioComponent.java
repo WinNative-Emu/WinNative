@@ -232,7 +232,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
     if (allPids == null) return;
     boolean killed = false;
     for (String pidStr : allPids) {
-      String cmdline = readProcCmdline(pidStr);
+      String cmdline = ProcessHelper.readProcCmdline(pidStr);
       if (cmdline.contains("libpulseaudio.so")) {
         try {
           ProcessHelper.killProcess(Integer.parseInt(pidStr));
@@ -247,15 +247,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-    }
-  }
-
-  private static String readProcCmdline(String pid) {
-    try (FileInputStream fr = new FileInputStream("/proc/" + pid + "/cmdline")) {
-      byte[] bytes = fr.readAllBytes();
-      return new String(bytes, StandardCharsets.UTF_8).replace('\0', ' ');
-    } catch (IOException e) {
-      return "";
     }
   }
 

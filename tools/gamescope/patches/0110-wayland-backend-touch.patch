@@ -1,0 +1,121 @@
+diff --git a/src/Backends/WaylandBackend.cpp b/src/Backends/WaylandBackend.cpp
+index d74268b..bf72267 100644
+--- a/src/Backends/WaylandBackend.cpp
++++ b/src/Backends/WaylandBackend.cpp
+@@ -601,6 +601,17 @@ namespace gamescope
+         void Wayland_Keyboard_RepeatInfo( wl_keyboard *pKeyboard, int32_t nRate, int32_t nDelay );
+         static const wl_keyboard_listener s_KeyboardListener;
+ 
++        // Touch from the host compositor (DroidDeck): each finger goes to wlserver's touch path,
++        // the one a Steam Deck's touchscreen drives, instead of being dropped.
++        void Wayland_Touch_Down( wl_touch *pTouch, uint32_t uSerial, uint32_t uTime, wl_surface *pSurface, int32_t nId, wl_fixed_t fX, wl_fixed_t fY );
++        void Wayland_Touch_Up( wl_touch *pTouch, uint32_t uSerial, uint32_t uTime, int32_t nId );
++        void Wayland_Touch_Motion( wl_touch *pTouch, uint32_t uTime, int32_t nId, wl_fixed_t fX, wl_fixed_t fY );
++        void Wayland_Touch_Frame( wl_touch *pTouch );
++        void Wayland_Touch_Cancel( wl_touch *pTouch );
++        static const wl_touch_listener s_TouchListener;
++        bool TouchToOutput( wl_surface *pSurface, wl_fixed_t fX, wl_fixed_t fY, double *pflX, double *pflY );
++        std::unordered_map<int32_t, wl_surface *> m_TouchSurfaces;
++
+ 	    void Wayland_RelativePointer_RelativeMotion( zwp_relative_pointer_v1 *pRelativePointer, uint32_t uTimeHi, uint32_t uTimeLo, wl_fixed_t fDx, wl_fixed_t fDy, wl_fixed_t fDxUnaccel, wl_fixed_t fDyUnaccel );
+         static const zwp_relative_pointer_v1_listener s_RelativePointerListener;
+     };
+@@ -636,6 +647,16 @@ namespace gamescope
+         .modifiers     = WAYLAND_USERDATA_TO_THIS( CWaylandInputThread, Wayland_Keyboard_Modifiers ),
+         .repeat_info   = WAYLAND_USERDATA_TO_THIS( CWaylandInputThread, Wayland_Keyboard_RepeatInfo ),
+     };
++    const wl_touch_listener CWaylandInputThread::s_TouchListener =
++    {
++        .down          = WAYLAND_USERDATA_TO_THIS( CWaylandInputThread, Wayland_Touch_Down ),
++        .up            = WAYLAND_USERDATA_TO_THIS( CWaylandInputThread, Wayland_Touch_Up ),
++        .motion        = WAYLAND_USERDATA_TO_THIS( CWaylandInputThread, Wayland_Touch_Motion ),
++        .frame         = WAYLAND_USERDATA_TO_THIS( CWaylandInputThread, Wayland_Touch_Frame ),
++        .cancel        = WAYLAND_USERDATA_TO_THIS( CWaylandInputThread, Wayland_Touch_Cancel ),
++        .shape         = WAYLAND_NULL(),
++        .orientation   = WAYLAND_NULL(),
++    };
+     const zwp_relative_pointer_v1_listener CWaylandInputThread::s_RelativePointerListener =
+     {
+         .relative_motion = WAYLAND_USERDATA_TO_THIS( CWaylandInputThread, Wayland_RelativePointer_RelativeMotion ),
+@@ -3067,6 +3088,81 @@ namespace gamescope
+                 wl_keyboard_add_listener( m_pKeyboard, &s_KeyboardListener, this );
+             }
+         }
++
++        if ( !!( uCapabilities & WL_SEAT_CAPABILITY_TOUCH ) != !!m_pTouch )
++        {
++            if ( m_pTouch )
++            {
++                wl_touch_release( m_pTouch );
++                m_pTouch = nullptr;
++                m_TouchSurfaces.clear();
++            }
++            else
++            {
++                m_pTouch = wl_seat_get_touch( m_pSeat );
++                wl_touch_add_listener( m_pTouch, &s_TouchListener, this );
++            }
++        }
++    }
++
++    // Touch
++
++    bool CWaylandInputThread::TouchToOutput( wl_surface *pSurface, wl_fixed_t fX, wl_fixed_t fY, double *pflX, double *pflY )
++    {
++        if ( !pSurface || !IsGamescopeToplevel( pSurface ) )
++            return false;
++        CWaylandPlane *pPlane = (CWaylandPlane *)wl_surface_get_user_data( pSurface );
++        if ( !pPlane )
++            return false;
++        auto oState = pPlane->GetCurrentState();
++        if ( !oState || !g_nOutputWidth || !g_nOutputHeight )
++            return false;
++        uint32_t uScale = oState->uFractionalScale;
++        *pflX = ( wl_fixed_to_double( fX ) * uScale / 120.0 + oState->nDestX ) / g_nOutputWidth;
++        *pflY = ( wl_fixed_to_double( fY ) * uScale / 120.0 + oState->nDestY ) / g_nOutputHeight;
++        return true;
++    }
++    // Touch ids are offset by one: the nested pointer already moves wlserver's touch 0.
++    void CWaylandInputThread::Wayland_Touch_Down( wl_touch *pTouch, uint32_t uSerial, uint32_t uTime, wl_surface *pSurface, int32_t nId, wl_fixed_t fX, wl_fixed_t fY )
++    {
++        double flX, flY;
++        if ( !TouchToOutput( pSurface, fX, fY, &flX, &flY ) )
++            return;
++        m_TouchSurfaces[ nId ] = pSurface;
++        wlserver_lock();
++        wlserver_touchdown( flX, flY, nId + 1, ++m_uFakeTimestamp );
++        wlserver_unlock();
++    }
++    void CWaylandInputThread::Wayland_Touch_Up( wl_touch *pTouch, uint32_t uSerial, uint32_t uTime, int32_t nId )
++    {
++        if ( m_TouchSurfaces.erase( nId ) == 0 )
++            return;
++        wlserver_lock();
++        wlserver_touchup( nId + 1, ++m_uFakeTimestamp );
++        wlserver_unlock();
++    }
++    void CWaylandInputThread::Wayland_Touch_Motion( wl_touch *pTouch, uint32_t uTime, int32_t nId, wl_fixed_t fX, wl_fixed_t fY )
++    {
++        auto it = m_TouchSurfaces.find( nId );
++        if ( it == m_TouchSurfaces.end() )
++            return;
++        double flX, flY;
++        if ( !TouchToOutput( it->second, fX, fY, &flX, &flY ) )
++            return;
++        wlserver_lock();
++        wlserver_touchmotion( flX, flY, nId + 1, ++m_uFakeTimestamp );
++        wlserver_unlock();
++    }
++    void CWaylandInputThread::Wayland_Touch_Frame( wl_touch *pTouch )
++    {
++    }
++    void CWaylandInputThread::Wayland_Touch_Cancel( wl_touch *pTouch )
++    {
++        wlserver_lock();
++        for ( auto &[ nId, pSurface ] : m_TouchSurfaces )
++            wlserver_touchup( nId + 1, ++m_uFakeTimestamp );
++        wlserver_unlock();
++        m_TouchSurfaces.clear();
+     }
+ 
+     void CWaylandInputThread::Wayland_Seat_Name( wl_seat *pSeat, const char *pName )

@@ -815,11 +815,14 @@ public abstract class ProcessHelper {
       byte[] data = new byte[8192];
       int nRead;
       while ((nRead = fr.read(data)) != -1) buffer.write(data, 0, nRead);
-      byte[] bytes = buffer.toByteArray();
-      return new String(bytes, StandardCharsets.UTF_8).replace('\0', ' ');
+      return new String(buffer.toByteArray(), StandardCharsets.UTF_8).replace('\0', ' ');
     } catch (IOException e) {
       return "";
     }
+  }
+
+  public static String readProcCmdline(String pid) {
+    return readProcCmdline(new File("/proc"), pid);
   }
 
   private static String getStatProcessName(String statData) {

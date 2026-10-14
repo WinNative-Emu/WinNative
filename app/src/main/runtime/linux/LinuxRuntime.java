@@ -44,12 +44,19 @@ public final class LinuxRuntime {
   public static final String DRIVER_ICD = "freedreno_icd.json";
   public static final String DRIVER_VERSION_FILE = "version";
   public static final String DRIVER_NAME_FILE = "name";
+  /** In the session's XDG_RUNTIME_DIR: the app asks the Steam client for a clean exit (winnative-session). */
+  public static final String STEAM_STOP_REQUEST = "winnative-steam-stop";
+  /** Starts of the Steam client that have shown nothing yet (winnative-steam-install repairs it). */
+  private static final String STEAM_UNCONFIRMED = "root/.local/share/Steam/package/winnative-unconfirmed";
   /** Refreshed into the rootfs at every session start; see {@link #syncSessionFiles}. */
 
   private static final String[] SESSION_FILES = {
     "usr/lib/libvulkan_freedreno.so",
+    "usr/local/lib/libwnaudit.so",
+    "usr/local/lib/libwnfastpath.so",
     "usr/local/lib/libwninput.so",
     "usr/local/lib/libwnsession.so",
+    "usr/local/bin/gamescope",
     "usr/local/bin/winnative-directaudio",
     "usr/local/bin/winnative-epic-launch",
     "usr/local/bin/winnative-netmanager",
@@ -80,11 +87,14 @@ public final class LinuxRuntime {
     EnvVars host = new EnvVars();
     host.put("PROOT_LOADER", prootLoader(context).getPath());
     host.put("PROOT_TMP_DIR", context.getCacheDir().getPath());
-    String noSeccomp = sessionEnv.get("PROOT_NO_SECCOMP");
-    if ("1".equals(noSeccomp) || "true".equalsIgnoreCase(noSeccomp) || "on".equalsIgnoreCase(noSeccomp)) {
-      host.put("PROOT_NO_SECCOMP", "1");
-    }
+    if (noSeccomp(sessionEnv)) host.put("PROOT_NO_SECCOMP", "1");
     return host;
+  }
+
+  /** Whether the container asks for proot without its seccomp filter. */
+  public static boolean noSeccomp(EnvVars sessionEnv) {
+    String noSeccomp = sessionEnv.get("PROOT_NO_SECCOMP");
+    return "1".equals(noSeccomp) || "true".equalsIgnoreCase(noSeccomp) || "on".equalsIgnoreCase(noSeccomp);
   }
 
   /** The rootfs is present with gamescope and the session script the launcher hands control to. */
@@ -134,29 +144,36 @@ public final class LinuxRuntime {
     return manifests.length > 0 ? manifests[0] : null;
   }
 
+  /** The proot command line running {@code guestCommand} inside the rootfs with {@code binds}. */
+  public static List<String> command(Context context, List<String> binds, List<String> guestCommand) {
+    List<String> cmd = new ArrayList<>();
+    cmd.add(prootBinary(context).getPath());
+    cmd.add("--kill-on-exit");
+    cmd.add("-r");
+    cmd.add(rootDir(context).getPath());
+    cmd.add("-w");
+    cmd.add("/root");
+    for (String spec : binds) bind(cmd, spec);
+    cmd.addAll(guestCommand);
+    return cmd;
+  }
+
   /**
-   * The proot command line running {@code guestCommand} inside the rootfs. Host paths the session
-   * needs (the app's files directory for the compositor and audio sockets, external storage for the
-   * user's games) are bound at their own paths so nothing on either side needs translating; @binds
-   * adds {@code host:guest} pairs. Android has no /dev/shm; a directory under the cache stands in
-   * for it, which glibc's shm_open and Chromium's shared memory are content with.
+   * The {@code host:guest} (or same-path) bind specs of a session, in proot's order. Host paths the
+   * session needs (the app's files directory for the compositor and audio sockets, external storage
+   * for the user's games) are bound at their own paths so nothing on either side needs translating;
+   * @extraBinds adds {@code host:guest} pairs. Android has no /dev/shm; a directory under the cache
+   * stands in for it, which glibc's shm_open and Chromium's shared memory are content with.
    */
-  public static List<String> command(
+  public static List<String> binds(
       Context context,
       ImageFs imageFs,
       File runtimeDir,
       File externalStorage,
       File inputDir,
-      List<String> binds,
-      List<String> guestCommand) {
+      List<String> extraBinds) {
     File root = rootDir(context);
     List<String> cmd = new ArrayList<>();
-    cmd.add(prootBinary(context).getPath());
-    cmd.add("--kill-on-exit");
-    cmd.add("-r");
-    cmd.add(root.getPath());
-    cmd.add("-w");
-    cmd.add("/root");
     bind(cmd, "/dev");
     bind(cmd, "/proc");
     bind(cmd, "/sys");
@@ -180,7 +197,7 @@ public final class LinuxRuntime {
     if (inputDir != null && inputDir.isDirectory()) {
       bind(cmd, inputDir.getPath() + ":/dev/input");
     }
-    for (String spec : binds) {
+    for (String spec : extraBinds) {
       bind(cmd, spec);
     }
     // Android denies apps these; glibc, Steam and libcap read them at startup.
@@ -218,8 +235,9 @@ public final class LinuxRuntime {
       }
     }
     bindGpuNode(context, cmd);
-    cmd.addAll(guestCommand);
-    return cmd;
+    List<String> specs = new ArrayList<>();
+    for (int i = 0; i + 1 < cmd.size(); i += 2) specs.add(cmd.get(i + 1));
+    return specs;
   }
 
   /**
@@ -289,15 +307,16 @@ public final class LinuxRuntime {
 
   /**
    * The session's own files, refreshed from the app's copies: the Vulkan driver, the preload
-   * libraries that {@code /etc/ld.so.preload} names, and the scripts the session runs.
+   * libraries that {@code /etc/ld.so.preload} names, the app's gamescope (tools/gamescope) and the
+   * scripts the session runs.
    *
    * They have to match the build that starts the session - a rootfs installed by an earlier one
    * carries older copies, and the device has no way to replace them from outside the app. They are
    * copied in whole rather than compared: the driver's 15 MB takes well under a second, and each
    * copy lands through a rename, so a library another session still has mapped keeps the file
-   * it opened.
+   * it opened. {@code fastPath}: the session takes proot's fast path, see {@link ProotFastPath}.
    */
-  public static void syncSessionFiles(Context context) throws IOException {
+  public static void syncSessionFiles(Context context, boolean fastPath) throws IOException {
     File root = rootDir(context);
     for (String path : SESSION_FILES) {
       File target = new File(root, path);
@@ -320,6 +339,30 @@ public final class LinuxRuntime {
         if (!installed) staged.delete();
       }
       if (!installed) throw new IOException("could not install " + path);
+    }
+    // What every process in the session preloads. LD_PRELOAD in the environment would not survive:
+    // the Steam client rebuilds it for each process it starts and appends its overlay without a
+    // separator. The fast path goes last, so the others' opens and stats reach it through
+    // RTLD_NEXT; it stays idle in any process its proot did not describe to it.
+    String preload = "/usr/local/lib/libwnsession.so\n/usr/local/lib/libwninput.so\n"
+        + (fastPath ? ProotFastPath.LIBRARY + "\n" : "");
+    File etc = new File(root, "etc");
+    File staged = new File(etc, "ld.so.preload.staged");
+    boolean written = false;
+    try {
+      Files.write(staged.toPath(), preload.getBytes(StandardCharsets.UTF_8));
+      written = staged.renameTo(new File(etc, "ld.so.preload"));
+    } finally {
+      if (!written) staged.delete();
+    }
+    if (!written) throw new IOException("could not write etc/ld.so.preload");
+  }
+
+  /** Worker thread. The Steam client reached the screen: its starts so far are not failures. */
+  public static void steamClientShown(Context context) {
+    File unconfirmed = new File(rootDir(context), STEAM_UNCONFIRMED);
+    if (unconfirmed.exists() && !unconfirmed.delete()) {
+      android.util.Log.w("LinuxRuntime", "could not clear " + unconfirmed);
     }
   }
 

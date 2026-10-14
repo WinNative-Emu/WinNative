@@ -165,6 +165,9 @@ int vkp_surface_rotation_degrees(void);
 ANativeWindow *vkp_window(void);
 /* Fire the one-shot first-frame notification (layer mode presents outside vkp_render). */
 void vkp_signal_first_frame(void);
+/* A new session under a compositor that has already presented: re-arms the one-shot above.
+ * Compositor thread. */
+void vkp_reset_first_frame(void);
 
 /* ---- the compositor pass into a layer buffer (sc_layer.c; compositor thread) ----
  * Screen effects on the game's own Android layer: compose `draws` into the scene image and run the

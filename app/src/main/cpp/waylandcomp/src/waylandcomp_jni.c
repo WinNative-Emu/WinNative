@@ -249,6 +249,21 @@ Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeIsRunning
     return r ? JNI_TRUE : JNI_FALSE;
 }
 
+/* setpriority() on one of the app's own processes or threads, only ever raising it (no cgroup move,
+ * unlike android.os.Process.setThreadPriority). Returns the nice it is left at; 100 = unknown. */
+JNIEXPORT jint JNICALL
+Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeRaisePriority(JNIEnv *env, jclass clazz,
+                                                                                     jint tid, jint nice) {
+    (void)env; (void)clazz;
+    errno = 0;
+    int before = getpriority(PRIO_PROCESS, (id_t)tid);
+    if (before == -1 && errno != 0) return 100;
+    if (before > nice) setpriority(PRIO_PROCESS, (id_t)tid, nice);
+    errno = 0;
+    int after = getpriority(PRIO_PROCESS, (id_t)tid);
+    return after == -1 && errno != 0 ? 100 : after;
+}
+
 /* Where session logs go (one file per session); empty/null = logcat only. Any thread, before the start. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_runtime_display_wayland_WaylandCompositor_nativeSetLogDir(JNIEnv *env, jclass clazz,

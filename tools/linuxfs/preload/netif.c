@@ -18,6 +18,7 @@
 #include <net/if_arp.h>
 #include <netpacket/packet.h>
 #include <netinet/in.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +26,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 
 #define LINK_FILE "/etc/winnative-net"
@@ -32,6 +34,7 @@
 #define LO_INDEX 1
 #define LO_MTU 65536
 #define MAX_ADDRS 16
+#define FRESH_NS 1000000000LL
 
 struct link_addr {
     int family;
@@ -58,10 +61,11 @@ static int parse_addr(const char *text, struct link_addr *out) {
     return 1;
 }
 
-/* Read on every call: the app rewrites the file when the device changes network. */
-static int load_link(struct link *link) {
-    typedef FILE *(*fopen_fn)(const char *, const char *);
-    fopen_fn real_fopen = (fopen_fn) dlsym(RTLD_NEXT, "fopen");
+typedef FILE *(*fopen_fn)(const char *, const char *);
+
+static int read_link(struct link *link) {
+    static fopen_fn real_fopen;
+    if (real_fopen == NULL) real_fopen = (fopen_fn) dlsym(RTLD_NEXT, "fopen");
     FILE *f = real_fopen ? real_fopen(LINK_FILE, "re") : NULL;
     if (f == NULL) return 0;
 
@@ -89,6 +93,50 @@ static int load_link(struct link *link) {
     fclose(f);
     return link->name[0] != '\0' && link->index > LO_INDEX && link->addr_count > 0;
 }
+
+static long long now_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
+    return ts.tv_sec * 1000000000LL + ts.tv_nsec;
+}
+
+static int fresh(long long *at) {
+    long long then = __atomic_load_n(at, __ATOMIC_RELAXED);
+    return then != 0 && now_ns() - then < FRESH_NS;
+}
+
+/* Wine's network driver reads the link several times for each table it builds, and some games
+ * have it build them all hundreds of times a second. The app rewrites the file when the device
+ * changes network, so a reading stands for a second. */
+static pthread_mutex_t link_lock = PTHREAD_MUTEX_INITIALIZER;
+static struct link link_read;
+static int link_ok;
+static long long link_at;
+
+static int load_link(struct link *link) {
+    pthread_mutex_lock(&link_lock);
+    if (!fresh(&link_at)) {
+        link_ok = read_link(&link_read);
+        __atomic_store_n(&link_at, now_ns(), __ATOMIC_RELAXED);
+    }
+    int ok = link_ok;
+    if (ok) *link = link_read;
+    pthread_mutex_unlock(&link_lock);
+    return ok;
+}
+
+/* See drm.c: a fork must not leave the lock held by a thread the child does not have. */
+static void link_lock_before_fork(void) { pthread_mutex_lock(&link_lock); }
+static void link_unlock_after_fork(void) { pthread_mutex_unlock(&link_lock); }
+static void link_reset_after_fork(void) { pthread_mutex_init(&link_lock, NULL); }
+
+__attribute__((constructor)) static void install_link_fork_handlers(void) {
+    pthread_atfork(link_lock_before_fork, link_unlock_after_fork, link_reset_after_fork);
+}
+
+/* When the kernel's own list was of no use, it is not asked again for a second: each asking binds
+ * a netlink socket, a stop in the tracer, only to be refused again. */
+static long long ifaddrs_unusable_at, nameindex_unusable_at;
 
 static void prefix_mask(int family, unsigned prefix, unsigned char *out) {
     int len = family == AF_INET ? 4 : 16;
@@ -165,25 +213,35 @@ static int real_list_usable(const struct ifaddrs *list) {
     return 0;
 }
 
+typedef void (*freeifaddrs_fn)(struct ifaddrs *);
+static freeifaddrs_fn real_freeifaddrs;
+
 int getifaddrs(struct ifaddrs **out) {
     typedef int (*getifaddrs_fn)(struct ifaddrs **);
-    typedef void (*freeifaddrs_fn)(struct ifaddrs *);
-    getifaddrs_fn real = (getifaddrs_fn) dlsym(RTLD_NEXT, "getifaddrs");
+    static getifaddrs_fn real;
+    if (real == NULL) real = (getifaddrs_fn) dlsym(RTLD_NEXT, "getifaddrs");
+    if (real_freeifaddrs == NULL) real_freeifaddrs = (freeifaddrs_fn) dlsym(RTLD_NEXT, "freeifaddrs");
     struct ifaddrs *list = NULL;
-    int rc = real(&list);
-    int saved = errno;
-    if (rc == 0 && real_list_usable(list)) {
-        *out = list;
-        return 0;
+    int asked = !fresh(&ifaddrs_unusable_at);
+    int rc = -1, saved = errno;
+    if (asked) {
+        rc = real(&list);
+        saved = errno;
+        if (rc == 0 && real_list_usable(list)) {
+            *out = list;
+            return 0;
+        }
     }
 
     struct link link;
     if (!load_link(&link)) {
+        if (!asked) return real(out);
         if (rc == 0) *out = list;
         errno = saved;
         return rc;
     }
-    if (rc == 0 && list) ((freeifaddrs_fn) dlsym(RTLD_NEXT, "freeifaddrs"))(list);
+    if (asked) __atomic_store_n(&ifaddrs_unusable_at, now_ns(), __ATOMIC_RELAXED);
+    if (rc == 0 && list) real_freeifaddrs(list);
 
     /* A leading slot keeps fill_entry()'s back link in bounds; the list starts after it. */
     struct entry *block = calloc((size_t) link.addr_count + 5, sizeof(*block));
@@ -207,13 +265,13 @@ int getifaddrs(struct ifaddrs **out) {
 }
 
 void freeifaddrs(struct ifaddrs *list) {
-    typedef void (*freeifaddrs_fn)(struct ifaddrs *);
     if (list == NULL) return;
     if (list->ifa_data == list) {
         free((struct entry *) list - 1);
         return;
     }
-    ((freeifaddrs_fn) dlsym(RTLD_NEXT, "freeifaddrs"))(list);
+    if (real_freeifaddrs == NULL) real_freeifaddrs = (freeifaddrs_fn) dlsym(RTLD_NEXT, "freeifaddrs");
+    real_freeifaddrs(list);
 }
 
 /* Names live in the same allocation as the array, right behind it; glibc strdup()s each one. */
@@ -224,14 +282,27 @@ struct name_block {
 
 struct if_nameindex *if_nameindex(void) {
     typedef struct if_nameindex *(*if_nameindex_fn)(void);
-    struct if_nameindex *list = ((if_nameindex_fn) dlsym(RTLD_NEXT, "if_nameindex"))();
+    static if_nameindex_fn real;
+    if (real == NULL) real = (if_nameindex_fn) dlsym(RTLD_NEXT, "if_nameindex");
+    struct if_nameindex *list = NULL;
+    int asked = !fresh(&nameindex_unusable_at);
     int saved = errno;
-    if (list && list[0].if_index != 0) return list;
+    if (asked) {
+        list = real();
+        saved = errno;
+        if (list && list[0].if_index != 0) return list;
+    }
 
     struct link link;
     struct name_block *block;
-    if (!load_link(&link) || (block = calloc(1, sizeof(*block))) == NULL) {
+    if (!load_link(&link)) {
+        if (!asked) return real();
         errno = saved;
+        return list;
+    }
+    if (asked) __atomic_store_n(&nameindex_unusable_at, now_ns(), __ATOMIC_RELAXED);
+    if ((block = calloc(1, sizeof(*block))) == NULL) {
+        if (asked) errno = saved;
         return list;
     }
     if (list) if_freenameindex(list);
@@ -346,6 +417,11 @@ static int is_link_query(unsigned long request) {
         || request == SIOCGIFBRDADDR;
 }
 
+void wn_kgsl_chip_id_fixup(unsigned long request, void *arg, int rc) __attribute__((visibility("hidden"))); /* kgslid.c */
+int wn_kgsl_poll(int (*real)(int, unsigned long, void *), int fd, unsigned long request,
+                 void *arg, int *rc) __attribute__((visibility("hidden")));
+int wn_drm_gem_close(int fd, unsigned long request, void *arg, int *rc) __attribute__((visibility("hidden")));
+
 /* Every DRM and evdev call comes through here, so the lookup is done once. Two threads racing
  * to store it store the same pointer. */
 int ioctl(int fd, unsigned long request, ...) {
@@ -356,8 +432,11 @@ int ioctl(int fd, unsigned long request, ...) {
     void *arg = va_arg(ap, void *);
     va_end(ap);
 
+    int rc;
+    if (wn_drm_gem_close(fd, request, arg, &rc)) return rc;
     if (real == NULL) real = (ioctl_fn) dlsym(RTLD_NEXT, "ioctl");
-    int rc = real(fd, request, arg);
+    if (!wn_kgsl_poll(real, fd, request, arg, &rc)) rc = real(fd, request, arg);
+    wn_kgsl_chip_id_fixup(request, arg, rc);
     if (arg == NULL || !is_link_query(request)) return rc;
     int saved = errno;
     if (answer_ifreq(request, (struct ifreq *) arg, rc)) return 0;
@@ -476,8 +555,7 @@ static FILE *synthesize(const char *table) {
 /* tracer.c */
 int wn_status_without_tracer(const char *path, int flags) __attribute__((visibility("hidden")));
 
-static FILE *open_stream(const char *symbol, const char *path, const char *mode) {
-    typedef FILE *(*fopen_fn)(const char *, const char *);
+static FILE *open_stream(fopen_fn real, const char *path, const char *mode) {
     int status = mode && mode[0] == 'r' && !strchr(mode, '+')
             ? wn_status_without_tracer(path, O_RDONLY | O_CLOEXEC) : -1;
     if (status >= 0) {
@@ -485,7 +563,7 @@ static FILE *open_stream(const char *symbol, const char *path, const char *mode)
         if (copy == NULL) close(status);
         return copy;
     }
-    FILE *f = ((fopen_fn) dlsym(RTLD_NEXT, symbol))(path, mode);
+    FILE *f = real(path, mode);
     if (f || path == NULL || mode == NULL || mode[0] != 'r') return f;
     int saved = errno;
     const char *table = denied_table(path);
@@ -495,9 +573,13 @@ static FILE *open_stream(const char *symbol, const char *path, const char *mode)
 }
 
 FILE *fopen(const char *path, const char *mode) {
-    return open_stream("fopen", path, mode);
+    static fopen_fn real;
+    if (real == NULL) real = (fopen_fn) dlsym(RTLD_NEXT, "fopen");
+    return open_stream(real, path, mode);
 }
 
 FILE *fopen64(const char *path, const char *mode) {
-    return open_stream("fopen64", path, mode);
+    static fopen_fn real;
+    if (real == NULL) real = (fopen_fn) dlsym(RTLD_NEXT, "fopen64");
+    return open_stream(real, path, mode);
 }

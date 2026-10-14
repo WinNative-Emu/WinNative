@@ -1,0 +1,45 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: WinNative <maxjivi05@users.noreply.github.com>
+Date: Sat, 10 Oct 2026 00:00:00 +0000
+Subject: [PATCH] tracees die with the tracer
+ (PTRACE_O_EXITKILL)
+
+---
+ src/compat.h       | 6 ++++++
+ src/tracee/event.c | 3 ++-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/compat.h b/src/compat.h
+index f69bc3f..afa1061 100644
+--- a/src/compat.h
++++ b/src/compat.h
+@@ -135,6 +135,12 @@
+ #    ifndef PTRACE_O_TRACESECCOMP
+ #        define PTRACE_O_TRACESECCOMP	0x00000080
+ #    endif
++/* A tracee that outlives the tracer keeps the seccomp filter with nobody to
++ * answer it: every filtered syscall fails with ENOSYS and the process spins for
++ * good, or holds a parent waiting on it forever.  */
++#    ifndef PTRACE_O_EXITKILL
++#        define PTRACE_O_EXITKILL	0x00100000
++#    endif
+ #    ifndef PTRACE_EVENT_FORK
+ #        define PTRACE_EVENT_FORK	1
+ #    endif
+diff --git a/src/tracee/event.c b/src/tracee/event.c
+index d2b4547..04cb064 100644
+--- a/src/tracee/event.c
++++ b/src/tracee/event.c
+@@ -443,7 +443,8 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
+ 				PTRACE_O_TRACEVFORKDONE	|
+ 				PTRACE_O_TRACEEXEC	|
+ 				PTRACE_O_TRACECLONE	|
+-				PTRACE_O_TRACEEXIT);
++				PTRACE_O_TRACEEXIT	|
++				PTRACE_O_EXITKILL);
+ 
+ 			/* Distinguish some events from others and
+ 			 * automatically trace each new process with
+-- 
+2.43.0
+

@@ -20,49 +20,55 @@
  * 02110-1301 USA.
  */
 
-#include <assert.h>    /* assert(3), */
-#include <errno.h>     /* E*, */
-#include <fcntl.h>     /* open(2), O_*, */
-#include <limits.h>    /* PATH_MAX, */
-#include <stdio.h>     /* sscanf(3), */
-#include <string.h>    /* string(3), */
-#include <sys/param.h> /* MAXSYMLINKS, */
-#include <sys/stat.h>  /* lstat(2), S_ISREG(), */
 #include <sys/types.h> /* pid_t */
+#include <limits.h>    /* PATH_MAX, */
+#include <sys/param.h> /* MAXSYMLINKS, */
+#include <errno.h>     /* E*, */
+#include <fcntl.h>
+#include <sys/stat.h>  /* lstat(2), S_ISREG(), */
 #include <unistd.h>    /* access(2), lstat(2), */
+#include <string.h>    /* string(3), */
+#include <assert.h>    /* assert(3), */
+#include <stdio.h>     /* sscanf(3), */
 
-#include "path/binding.h"
 #include "path/canon.h"
-#include "path/glue.h"
 #include "path/path.h"
+#include "path/binding.h"
+#include "path/glue.h"
 #include "path/proc.h"
+#include "path/f2fs-bug.h"
+#include "extension/extension.h"
 
 /**
  * Put an end-of-string ('\0') right before the last component of @path.
  */
-static inline void pop_component(char *path) {
-  int offset;
+static inline void pop_component(char *path)
+{
+	int offset;
 
-  offset = strlen(path) - 1;
-  assert(offset >= 0);
+	/* Sanity checks. */
+	assert(path != NULL);
 
-  /* Don't pop over "/", it doesn't mean anything. */
-  if (offset == 0) {
-    assert(path[0] == '/' && path[1] == '\0');
-    return;
-  }
+	offset = strlen(path) - 1;
+	assert(offset >= 0);
 
-  /* Skip trailing path separators. */
-  while (offset > 1 && path[offset] == '/')
-    offset--;
+	/* Don't pop over "/", it doesn't mean anything. */
+	if (offset == 0) {
+		assert(path[0] == '/' && path[1] == '\0');
+		return;
+	}
 
-  /* Search for the previous path separator. */
-  while (offset > 1 && path[offset] != '/')
-    offset--;
+	/* Skip trailing path separators. */
+	while (offset > 1 && path[offset] == '/')
+		offset--;
 
-  /* Cut the end of the string before the last component. */
-  path[offset] = '\0';
-  assert(path[0] == '/');
+	/* Search for the previous path separator. */
+	while (offset > 1 && path[offset] != '/')
+		offset--;
+
+	/* Cut the end of the string before the last component. */
+	path[offset] = '\0';
+	assert(path[0] == '/');
 }
 
 /**
@@ -79,40 +85,46 @@ static inline void pop_component(char *path) {
  *
  *     - 0 otherwise.
  */
-static inline Finality next_component(char component[NAME_MAX],
-                                      const char **cursor) {
-  const char *start;
-  ptrdiff_t length;
-  bool want_dir;
+static inline Finality next_component(char component[NAME_MAX], const char **cursor)
+{
+	const char *start;
+	ptrdiff_t length;
+	bool want_dir;
 
-  /* Skip leading path separators. */
-  while (**cursor == '/')
-    (*cursor)++;
+	/* Sanity checks. */
+	assert(component != NULL);
+	assert(cursor    != NULL);
 
-  /* Find the next component. */
-  start = *cursor;
-  while (**cursor != '\0' && **cursor != '/')
-    (*cursor)++;
-  length = *cursor - start;
+	/* Skip leading path separators. */
+	while (**cursor != '\0' && **cursor == '/')
+		(*cursor)++;
 
-  if (length >= NAME_MAX)
-    return -ENAMETOOLONG;
+	/* Find the next component. */
+	start = *cursor;
+	while (**cursor != '\0' && **cursor != '/')
+		(*cursor)++;
+	length = *cursor - start;
 
-  /* Extract the component. */
-  strncpy(component, start, length);
-  component[length] = '\0';
+	if (length >= NAME_MAX)
+		return -ENAMETOOLONG;
 
-  /* Check if a [link to a] directory is expected. */
-  want_dir = (**cursor == '/');
+	/* Extract the component. */
+	strncpy(component, start, length);
+	component[length] = '\0';
 
-  /* Skip trailing path separators. */
-  while (**cursor == '/')
-    (*cursor)++;
+	/* Check if a [link to a] directory is expected. */
+	want_dir = (**cursor == '/');
 
-  if (**cursor == '\0')
-    return (want_dir ? FINAL_SLASH : FINAL_NORMAL);
+	/* Skip trailing path separators. */
+	while (**cursor != '\0' && **cursor == '/')
+		(*cursor)++;
 
-  return NOT_FINAL;
+	if (**cursor == '\0')
+		return (want_dir
+			? FINAL_SLASH
+			: FINAL_NORMAL);
+
+	return NOT_FINAL;
 }
 
 /**
@@ -122,128 +134,142 @@ static inline Finality next_component(char component[NAME_MAX],
  * (returned value is 1), otherwise it returns -errno (-ENOENT or
  * -ENOTDIR).
  */
-static inline int substitute_binding_stat(Tracee *tracee, Finality finality,
-                                          const char guest_path[PATH_MAX],
-                                          char host_path[PATH_MAX]) {
-  struct stat statl;
-  int status;
+static inline int substitute_binding_stat(Tracee *tracee, Finality finality, bool deref_final,
+					unsigned int recursion_level,
+					const char guest_path[PATH_MAX], char host_path[PATH_MAX])
+{
+	struct stat statl;
+	int status;
 
-  strcpy(host_path, guest_path);
-  status = substitute_binding(tracee, GUEST, host_path);
-  if (status < 0)
-    return status;
+	strcpy(host_path, guest_path);
+	status = substitute_binding(tracee, GUEST, host_path);
+	if (status < 0)
+		return status;
 
-  statl.st_mode = 0;
-  status = lstat(host_path, &statl);
+	/* Don't notify extensions during the initialization of a binding.  */
+	if (tracee->glue_type == 0) {
+		status = notify_extensions(tracee, HOST_PATH, (intptr_t)host_path,
+					IS_FINAL(finality) && recursion_level == 0);
+		if (status < 0)
+			return status;
+	}
 
-  /* Build the glue between the hostfs and the guestfs during
-   * the initialization of a binding.  */
-  if (status < 0 && tracee->glue_type != 0) {
-    statl.st_mode = build_glue(tracee, guest_path, host_path, finality);
-    if (statl.st_mode == 0)
-      status = -1;
-  }
+	if (finality == FINAL_NORMAL && !deref_final && tracee->glue_type == 0)
+		return 0;
 
-  /* Return an error if a non-final component isn't a directory
-   * nor a symlink.  The error depends on why the component
-   * could not be accessed (ENOENT, EACCES, ...), otherwise the
-   * error is "Not a directory".  */
-  if (!IS_FINAL(finality) && !S_ISDIR(statl.st_mode) && !S_ISLNK(statl.st_mode))
-    return (status < 0 ? -ENOENT : -ENOTDIR);
+	statl.st_mode = 0;
+	if (should_skip_file_access_due_to_f2fs_bug(tracee, host_path)) {
+		status = -ENOENT;
+	} else {
+		status = lstat(host_path, &statl);
+		/* /linkerconfig directory is present and accessible on Android,
+		 * but cannot be stat()'d, use hardcoded stat if access was denied
+		 *
+		 * https://github.com/termux/proot/issues/254
+		 */
+		if (status < 0 && errno == EACCES && strcmp(host_path, "/linkerconfig") == 0) {
+			status = 0;
+			statl.st_mode = S_IFDIR;
+		}
+	}
 
-  return (S_ISLNK(statl.st_mode) ? 1 : 0);
+	/* Build the glue between the hostfs and the guestfs during
+	 * the initialization of a binding.  */
+	if (status < 0 && tracee->glue_type != 0) {
+		statl.st_mode = build_glue(tracee, guest_path, host_path, finality);
+		if (statl.st_mode == 0)
+			status = -1;
+	}
+
+	/* Return an error if a non-final component isn't a
+	 * directory nor a symlink.  The error is "No such
+	 * file or directory" if this component doesn't exist,
+	 * otherwise the error is "Not a directory".  */
+	if (!IS_FINAL(finality) && !S_ISDIR(statl.st_mode) && !S_ISLNK(statl.st_mode))
+		return (status < 0 ? -ENOENT : -ENOTDIR);
+
+	return (S_ISLNK(statl.st_mode) ? 1 : 0);
 }
 
-/* Below this many directories, lstat(2)-ing each costs less than
- * resolve_parent_at_once().  */
 #define RESOLVE_AT_ONCE_MIN_DEPTH 3
 
-/**
- * Canonicalize at once the directory holding the last component of
- * the absolute @user_path, instead of with an lstat(2) per component:
- * the kernel resolves it, and it is canonical if the kernel's path is
- * the one PRoot would build, ie. no link on the way.  Only for a
- * lexically clean path under the rootfs binding alone.  This function
- * returns the offset of the last component in @user_path and puts the
- * directory in @guest_path, or returns 0 when the component-wise walk
- * has to be used.
- */
 static size_t resolve_parent_at_once(Tracee *tracee, const char *user_path,
-                                     char guest_path[PATH_MAX]) {
-  char parent[PATH_MAX];
-  char expected[PATH_MAX];
-  char resolved[PATH_MAX];
-  char link[32];
-  const Binding *binding;
-  const char *last;
-  const char *cursor;
-  size_t parent_length;
-  size_t prefix_length;
-  size_t expected_length;
-  ssize_t length;
-  int depth;
-  int fd;
+				     char guest_path[PATH_MAX])
+{
+	char parent[PATH_MAX];
+	char expected[PATH_MAX];
+	char resolved[PATH_MAX];
+	char link[32];
+	const Binding *binding;
+	const char *last;
+	const char *cursor;
+	size_t parent_length;
+	size_t prefix_length;
+	size_t expected_length;
+	ssize_t length;
+	int depth;
+	int fd;
 
-  if (tracee->glue_type != 0)
-    return 0;
+	if (tracee->glue_type != 0 || f2fs_bug_workaround_active(tracee))
+		return 0;
 
-  last = strrchr(user_path, '/');
-  if (last == NULL || last == user_path || last[1] == '\0' ||
-      strcmp(last + 1, ".") == 0 || strcmp(last + 1, "..") == 0)
-    return 0;
+	last = strrchr(user_path, '/');
+	if (last == NULL || last == user_path || last[1] == '\0'
+	    || strcmp(last + 1, ".") == 0 || strcmp(last + 1, "..") == 0)
+		return 0;
 
-  parent_length = last - user_path;
-  if (parent_length >= PATH_MAX)
-    return 0;
+	parent_length = last - user_path;
+	if (parent_length >= PATH_MAX)
+		return 0;
 
-  /* No empty, "." or ".." component.  */
-  depth = 0;
-  for (cursor = user_path; cursor < last;) {
-    const char *end;
+	depth = 0;
+	for (cursor = user_path; cursor < last; ) {
+		const char *end;
 
-    end = memchr(cursor + 1, '/', last - cursor);
-    if (end == NULL)
-      end = last;
-    if (end == cursor + 1 || (end == cursor + 2 && cursor[1] == '.') ||
-        (end == cursor + 3 && cursor[1] == '.' && cursor[2] == '.'))
-      return 0;
-    depth++;
-    cursor = end;
-  }
-  if (depth < RESOLVE_AT_ONCE_MIN_DEPTH)
-    return 0;
+		end = memchr(cursor + 1, '/', last - cursor);
+		if (end == NULL)
+			end = last;
+		if (end == cursor + 1
+		    || (end == cursor + 2 && cursor[1] == '.')
+		    || (end == cursor + 3 && cursor[1] == '.' && cursor[2] == '.'))
+			return 0;
+		depth++;
+		cursor = end;
+	}
+	if (depth < RESOLVE_AT_ONCE_MIN_DEPTH)
+		return 0;
 
-  memcpy(parent, user_path, parent_length);
-  parent[parent_length] = '\0';
+	memcpy(parent, user_path, parent_length);
+	parent[parent_length] = '\0';
 
-  /* Bindings are ordered deepest first, so the rootfs binding
-   * matching means no other binding is on the way.  */
-  binding = get_binding(tracee, GUEST, parent);
-  if (binding == NULL || binding->guest.length != 1)
-    return 0;
+	binding = get_binding(tracee, GUEST, parent);
+	if (binding == NULL || binding->guest.length != 1)
+		return 0;
 
-  /* A rootfs at "/" adds no prefix.  */
-  prefix_length = (binding->host.length == 1 ? 0 : binding->host.length);
-  expected_length = prefix_length + parent_length;
-  if (expected_length >= PATH_MAX)
-    return 0;
-  memcpy(expected, binding->host.path, prefix_length);
-  strcpy(expected + prefix_length, parent);
+	prefix_length = (binding->host.length == 1 ? 0 : binding->host.length);
+	expected_length = prefix_length + parent_length;
+	if (expected_length >= PATH_MAX)
+		return 0;
+	memcpy(expected, binding->host.path, prefix_length);
+	strcpy(expected + prefix_length, parent);
 
-  fd = open(expected, O_PATH | O_DIRECTORY | O_CLOEXEC);
-  if (fd < 0)
-    return 0;
+	fd = open(expected, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (fd < 0)
+		return 0;
 
-  snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
-  length = readlink(link, resolved, sizeof(resolved));
-  close(fd);
+	snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
+	length = readlink(link, resolved, sizeof(resolved));
+	close(fd);
 
-  if (length < 0 || (size_t)length != expected_length ||
-      memcmp(resolved, expected, expected_length) != 0)
-    return 0;
+	if (length < 0 || (size_t) length != expected_length
+	    || memcmp(resolved, expected, expected_length) != 0)
+		return 0;
 
-  strcpy(guest_path, parent);
-  return last + 1 - user_path;
+	if (notify_extensions(tracee, HOST_PATH, (intptr_t) expected, false) < 0)
+		return 0;
+
+	strcpy(guest_path, parent);
+	return last + 1 - user_path;
 }
 
 /**
@@ -257,193 +283,185 @@ static size_t resolve_parent_at_once(Tracee *tracee, const char *user_path,
  * occured, otherwise it returns 0.
  */
 int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
-                 char guest_path[PATH_MAX], unsigned int recursion_level) {
-  char scratch_path[PATH_MAX];
-  char host_path[PATH_MAX];
-  Finality finality;
-  const char *cursor;
-  size_t offset;
-  int status;
+		 char guest_path[PATH_MAX], unsigned int recursion_level)
+{
+	char scratch_path[PATH_MAX];
+	Finality finality;
+	const char *cursor;
+	int status;
 
-  /* Avoid infinite loop on circular links.  */
-  if (recursion_level > MAXSYMLINKS)
-    return -ELOOP;
+	/* Avoid infinite loop on circular links.  */
+	if (recursion_level > MAXSYMLINKS)
+		return -ELOOP;
 
-  if (user_path[0] != '/') {
-    /* Ensure 'guest_path' contains an absolute base of
-     * the relative `user_path`.  */
-    if (guest_path[0] != '/')
-      return -EINVAL;
-  } else
-    strcpy(guest_path, "/");
+	/* Sanity checks.  */
+	assert(user_path != NULL);
+	assert(guest_path != NULL);
+	assert(user_path != guest_path);
 
-  offset = (user_path[0] == '/'
-                ? resolve_parent_at_once(tracee, user_path, guest_path)
-                : 0);
-  if (offset == 0) {
-    /* Resolve bindings for the initial '/' component or user_path,
-     * which is not handled in the loop below.
-     * In particular HOST_PATH extensions are called from there.  */
-    status = substitute_binding_stat(tracee, NOT_FINAL, guest_path, host_path);
-    if (status < 0)
-      return status;
-  }
+	if (strnlen(guest_path, PATH_MAX) >= PATH_MAX)
+		return -ENAMETOOLONG;
 
-  /* Canonicalize recursely 'user_path' into 'guest_path'.  */
-  cursor = user_path + offset;
-  finality = NOT_FINAL;
-  while (!IS_FINAL(finality)) {
-    Comparison comparison;
-    char component[NAME_MAX];
+	if (user_path[0] != '/') {
+		/* Ensure 'guest_path' contains an absolute base of
+		 * the relative `user_path`.  */
+		if (guest_path[0] != '/')
+			return -EINVAL;
+	}
+	else
+		strcpy(guest_path, "/");
 
-    finality = next_component(component, &cursor);
-    status = (int)finality;
-    if (status < 0)
-      return status;
+	/* Canonicalize recursely 'user_path' into 'guest_path'.  */
+	cursor = user_path;
+	if (user_path[0] == '/')
+		cursor += resolve_parent_at_once(tracee, user_path, guest_path);
+	finality = NOT_FINAL;
+	while (!IS_FINAL(finality)) {
+		Comparison comparison;
+		char component[NAME_MAX];
+		char host_path[PATH_MAX];
 
-    if (strcmp(component, ".") == 0) {
-      if (IS_FINAL(finality))
-        finality = FINAL_DOT;
-      continue;
-    }
+		finality = next_component(component, &cursor);
+		status = (int) finality;
+		if (status < 0)
+			return status;
 
-    if (strcmp(component, "..") == 0) {
-      pop_component(guest_path);
-      if (IS_FINAL(finality))
-        finality = FINAL_SLASH;
-      continue;
-    }
+		if (strcmp(component, ".") == 0) {
+			if (IS_FINAL(finality))
+				finality = FINAL_DOT;
+			continue;
+		}
 
-    join_paths(scratch_path, guest_path, component);
+		if (strcmp(component, "..") == 0) {
+			pop_component(guest_path);
+			if (IS_FINAL(finality))
+				finality = FINAL_SLASH;
+			continue;
+		}
 
-    /* A final component that is not dereferenced needs no
-     * lstat(2): whether it is a link only matters to follow
-     * it.  Glue is still built from that lstat(2).  */
-    if (finality == FINAL_NORMAL && !deref_final && tracee->glue_type == 0) {
-      strcpy(host_path, scratch_path);
-      status = substitute_binding(tracee, GUEST, host_path);
-      if (status < 0)
-        return status;
+		status = join_paths(2, scratch_path, guest_path, component);
+		if (status < 0)
+			return status;
 
-      strcpy(scratch_path, guest_path);
-      join_paths(guest_path, scratch_path, component);
-      continue;
-    }
+		/* Resolve bindings and check that a non-final
+		 * component exists and either is a directory or is a
+		 * symlink.  For this latter case, we check that the
+		 * symlink points to a directory once it is
+		 * canonicalized, at the end of this loop.  */
+		status = substitute_binding_stat(tracee, finality, deref_final, recursion_level, scratch_path, host_path);
+		if (status < 0)
+			return status;
 
-    /* Resolve bindings and check that a non-final
-     * component exists and either is a directory or is a
-     * symlink.  For this latter case, we check that the
-     * symlink points to a directory once it is
-     * canonicalized, at the end of this loop.  */
-    status = substitute_binding_stat(tracee, finality, scratch_path, host_path);
-    if (status < 0)
-      return status;
+		/* Nothing special to do if it's not a link or if we
+		 * explicitly ask to not dereference 'user_path', as
+		 * required by syscalls like lstat(2). Obviously, this
+		 * later condition does not apply to intermediate path
+		 * components.  Errors are explicitly ignored since
+		 * they should be handled by the caller. */
+		if (status <= 0 || (finality == FINAL_NORMAL && !deref_final)) {
+			strcpy(scratch_path, guest_path);
+			status = join_paths(2, guest_path, scratch_path, component);
+			if (status < 0)
+				return status;
+			continue;
+		}
 
-    /* Nothing special to do if it's not a link or if we
-     * explicitly ask to not dereference 'user_path', as
-     * required by syscalls like lstat(2). Obviously, this
-     * later condition does not apply to intermediate path
-     * components.  Errors are explicitly ignored since
-     * they should be handled by the caller. */
-    if (status <= 0 || (finality == FINAL_NORMAL && !deref_final)) {
-      strcpy(scratch_path, guest_path);
-      join_paths(guest_path, scratch_path, component);
-      continue;
-    }
+		/* It's a link, so we have to dereference *and*
+		 * canonicalize to ensure we are not going outside the
+		 * new root.  */
+		comparison = compare_paths("/proc", guest_path);
+		switch (comparison) {
+		case PATHS_ARE_EQUAL:
+		case PATH1_IS_PREFIX:
+			/* Some links in "/proc" are generated
+			 * dynamically by the kernel.  PRoot has to
+			 * emulate some of them.  */
+			status = readlink_proc(tracee, scratch_path,
+					       guest_path, component, comparison);
+			switch (status) {
+			case CANONICALIZE:
+				/* The symlink is already dereferenced,
+				 * now canonicalize it.  */
+				goto canon;
 
-    /* It's a link, so we have to dereference *and*
-     * canonicalize to ensure we are not going outside the
-     * new root.  */
-    comparison = compare_paths("/proc", guest_path);
-    switch (comparison) {
-    case PATHS_ARE_EQUAL:
-    case PATH1_IS_PREFIX:
-      /* Some links in "/proc" are generated
-       * dynamically by the kernel.  PRoot has to
-       * emulate some of them.  */
-      status = readlink_proc(tracee, scratch_path, guest_path, component,
-                             comparison);
-      switch (status) {
-      case CANONICALIZE:
-        /* The symlink is already dereferenced,
-         * now canonicalize it.  */
-        goto canon;
+			case DONT_CANONICALIZE:
+				/* If and only very final, this symlink
+				 * shouldn't be dereferenced nor canonicalized.  */
+				if (finality == FINAL_NORMAL) {
+					strcpy(guest_path, scratch_path);
+					return 0;
+				}
+				break;
 
-      case DONT_CANONICALIZE:
-        /* If and only very final, this symlink
-         * shouldn't be dereferenced nor canonicalized.  */
-        if (finality == FINAL_NORMAL) {
-          strcpy(guest_path, scratch_path);
-          return 0;
-        }
-        break;
+			default:
+				if (status < 0)
+					return status;
+			}
 
-      default:
-        if (status < 0)
-          return status;
-      }
+		default:
+			break;
+		}
 
-    default:
-      break;
-    }
+		status = readlink(host_path, scratch_path, sizeof(scratch_path));
+		if (status < 0)
+			return status;
+		else if (status == sizeof(scratch_path))
+			return -ENAMETOOLONG;
+		scratch_path[status] = '\0';
 
-    status = readlink(host_path, scratch_path, sizeof(scratch_path));
-    if (status < 0)
-      return status;
-    else if (status == sizeof(scratch_path))
-      return -ENAMETOOLONG;
-    scratch_path[status] = '\0';
+		/* Remove the leading "root" part if needed, it's
+		 * useful for "/proc/self/cwd/" for instance.  */
+		status = detranslate_path(tracee, scratch_path, host_path);
+		if (status < 0)
+			return status;
 
-    /* Remove the leading "root" part if needed, it's
-     * useful for "/proc/self/cwd/" for instance.  */
-    status = detranslate_path(tracee, scratch_path, host_path);
-    if (status < 0)
-      return status;
+	canon:
+		/* Canonicalize recursively the referee in case it
+		 * is/contains a link, moreover if it is not an
+		 * absolute link then it is relative to
+		 * 'guest_path'. */
+		status = canonicalize(tracee, scratch_path, true, guest_path, recursion_level + 1);
+		if (status < 0)
+			return status;
 
-  canon:
-    /* Canonicalize recursively the referee in case it
-     * is/contains a link, moreover if it is not an
-     * absolute link then it is relative to
-     * 'guest_path'. */
-    status = canonicalize(tracee, scratch_path, true, guest_path,
-                          recursion_level + 1);
-    if (status < 0)
-      return status;
+		/* Check that a non-final canonicalized/dereferenced
+		 * symlink exists and is a directory.  */
+		status = substitute_binding_stat(tracee, finality, deref_final, recursion_level, guest_path, host_path);
+		if (status < 0)
+			return status;
 
-    /* Check that a non-final canonicalized/dereferenced
-     * symlink exists and is a directory.  */
-    status = substitute_binding_stat(tracee, finality, guest_path, host_path);
-    if (status < 0)
-      return status;
+		/* Here, 'guest_path' shouldn't be a symlink anymore,
+		 * unless it is a named file descriptor.  */
+		assert(status != 1 || sscanf(guest_path, "/proc/%*d/fd/%d", &status) == 1);
+	}
 
-    /* Here, 'guest_path' shouldn't be a symlink anymore,
-     * unless it is a named file descriptor.  */
-    assert(status != 1 || sscanf(guest_path, "/proc/%*d/fd/%d", &status) == 1);
-  }
+	/* At the exit stage of the first level of recursion,
+	 * `guest_path` is fully canonicalized but a terminating '/'
+	 * or a terminating '.' may be required to keep the initial
+	 * semantic of `user_path`.  */
+	if (recursion_level == 0) {
+		switch (finality) {
+		case FINAL_NORMAL:
+			break;
 
-  /* At the exit stage of the first level of recursion,
-   * `guest_path` is fully canonicalized but a terminating '/'
-   * or a terminating '.' may be required to keep the initial
-   * semantic of `user_path`.  */
-  if (recursion_level == 0) {
-    switch (finality) {
-    case FINAL_NORMAL:
-      break;
+		case FINAL_SLASH:
+			strcpy(scratch_path, guest_path);
+			status = join_paths(2, guest_path, scratch_path, "");
+			if (status < 0)
+				return status;
+			break;
 
-    case FINAL_SLASH:
-      strcpy(scratch_path, guest_path);
-      join_paths(guest_path, scratch_path, "");
-      break;
+		case FINAL_DOT:
+			strcpy(scratch_path, guest_path);
+			status = join_paths(2, guest_path, scratch_path, ".");
+			if (status < 0)
+				return status;
+			break;
 
-    case FINAL_DOT:
-      strcpy(scratch_path, guest_path);
-      join_paths(guest_path, scratch_path, ".");
-      break;
+		default:
+			assert(0);
+		}
+	}
 
-    default:
-      assert(0);
-    }
-  }
-
-  return 0;
+	return 0;
 }

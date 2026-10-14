@@ -81,6 +81,16 @@ if [ -f "$fake" ]; then
     *) LD_PRELOAD="$fake${LD_PRELOAD:+:$LD_PRELOAD}"; export LD_PRELOAD ;;
   esac
 fi
+# ld.so looks every library up along the game's search path (its own directory, Steam's runtime
+# and video directories, Proton's), and under proot each miss is a round trip to the tracer. With
+# the fast path, the audit module skips the misses it can prove (tools/linuxfs/fastpath/audit.c).
+audit=/usr/local/lib/libwnaudit.so
+if [ -n "${PROOT_FP_KEY:-}" ] && [ -f "$audit" ]; then
+  case ":${LD_AUDIT:-}:" in
+    *":$audit:"*) ;;
+    *) LD_AUDIT="$audit${LD_AUDIT:+:$LD_AUDIT}"; export LD_AUDIT ;;
+  esac
+fi
 if [ -n "${WN_LOG:-}" ] && [ "${WN_PROTON_LOG:-0}" = 1 ]; then
   export PROTON_LOG=${PROTON_LOG:-1}
   export PROTON_LOG_DIR=${PROTON_LOG_DIR:-$(dirname "$WN_LOG")}

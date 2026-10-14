@@ -125,13 +125,22 @@ aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread -o rootfs/usr/local/lib/l
 # SDL through /dev/input nodes backed by the app's input rings.
 aarch64-linux-gnu-g++ -shared -fPIC -O2 -Wall -Wno-attributes -Wno-nonnull-compare -pthread \
   -o rootfs/usr/local/lib/libwninput.so "$here/../../app/src/main/cpp/winlator/fakeinput.cpp" -ldl
+# proot's fast path: path syscalls answered inside each process (see fastpath/fastpath.c), and the
+# audit module that spares ld.so's library search the misses it can prove.
+aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread -o rootfs/usr/local/lib/libwnfastpath.so \
+  "$here/fastpath/fastpath.c" -ldl
+aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -nostdlib -ffreestanding -fno-stack-protector \
+  -fno-tree-loop-distribute-patterns -Wl,-z,defs -o rootfs/usr/local/lib/libwnaudit.so "$here/fastpath/audit.c"
 aarch64-linux-gnu-strip rootfs/usr/local/lib/libwnsession.so rootfs/usr/local/lib/libwninput.so
-# The app ships the same two, the Vulkan driver and the session's scripts, and refreshes them into
-# an installed rootfs at every session start, so a build and the rootfs it boots never disagree
-# about them.
+aarch64-linux-gnu-strip --strip-unneeded rootfs/usr/local/lib/libwnfastpath.so rootfs/usr/local/lib/libwnaudit.so
+# The app ships the same libraries, the Vulkan driver and the session's scripts, and refreshes
+# them into an installed rootfs at every session start, so a build and the rootfs it boots never
+# disagree about them.
 install -Dm644 rootfs/usr/lib/libvulkan_freedreno.so "$here/../../app/src/main/assets/linuxfs/usr/lib/libvulkan_freedreno.so"
 install -Dm644 rootfs/usr/local/lib/libwnsession.so "$here/../../app/src/main/assets/linuxfs/usr/local/lib/libwnsession.so"
 install -Dm644 rootfs/usr/local/lib/libwninput.so "$here/../../app/src/main/assets/linuxfs/usr/local/lib/libwninput.so"
+install -Dm644 rootfs/usr/local/lib/libwnfastpath.so "$here/../../app/src/main/assets/linuxfs/usr/local/lib/libwnfastpath.so"
+install -Dm644 rootfs/usr/local/lib/libwnaudit.so "$here/../../app/src/main/assets/linuxfs/usr/local/lib/libwnaudit.so"
 for script in "$here"/overlay/usr/local/bin/winnative-*; do
   install -Dm644 "$script" "$here/../../app/src/main/assets/linuxfs/usr/local/bin/$(basename "$script")"
 done
