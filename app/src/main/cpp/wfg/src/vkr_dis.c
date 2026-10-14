@@ -100,6 +100,10 @@
 
 #define DIS_RATIO_HYST 0.10f
 
+// Source rate below which frame generation stops, and above which it starts again.
+#define DIS_MIN_SOURCE_FPS_OFF 20.0f
+#define DIS_MIN_SOURCE_FPS_ON 24.0f
+
 #define DIS_VR_ALPHA 20.0f
 #define DIS_VR_DELTA 5.0f
 #define DIS_VR_GAMMA 10.0f
@@ -1970,8 +1974,15 @@ uint32_t vkr_dis_plan(VkrDis* d, uint32_t capacity, uint64_t source_frames) {
     }
 
     const int cur = d->planned_gen > (int)capacity ? (int)capacity : d->planned_gen;
-    const bool generate = cur > 0 ? (ratio >= DIS_MIN_GEN_RATIO - DIS_RATIO_HYST)
-                                  : (ratio >= DIS_MIN_GEN_RATIO);
+    // Not from a game below ~20 fps. Measured from 15, 20, 24 and 30 fps to 120 Hz: a fast camera
+    // turn from 24 fps still interpolates (19.96 dB against 12.4 for repeating the frame), from
+    // 20 fps it collapses to the repeat (13.1 against 12.1) - the motion between two real frames
+    // outruns the search - and every generated frame also waits for the next real one, 50-66 ms
+    // there. Off below 20, back on above 24, so a game around the limit does not flicker on and off.
+    const bool fast_enough = cur > 0 ? source_rate >= DIS_MIN_SOURCE_FPS_OFF
+                                     : source_rate >= DIS_MIN_SOURCE_FPS_ON;
+    const bool generate = fast_enough && (cur > 0 ? (ratio >= DIS_MIN_GEN_RATIO - DIS_RATIO_HYST)
+                                                  : (ratio >= DIS_MIN_GEN_RATIO));
 
     int raw = 0;
     if (generate) {

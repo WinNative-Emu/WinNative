@@ -42,7 +42,7 @@ that ship with the APK — so it works on a fresh install with no Steam account 
 | Adaptive Target | LSFG | Aim for a specific output rate (60/90/120/144/165) instead of a fixed multiplier |
 | Flow Scale | LSFG | 25–100%, resolution of the optical-flow pyramid; lower is cheaper and softer |
 | Resolution Scale | WFG | Fast / Balance — 180 / 252 pixels on the frame's **shorter** side |
-| Target FPS | WFG | Max refresh rate, or a specific one (60/90/120/144/165) |
+| Target FPS | WFG | Max refresh rate, or a specific one (60/90/120/144/165). Generation pauses while the game runs below ~20 fps and resumes above 24 fps: below that a fast camera turn outruns the motion search and every frame waits 50+ ms for the next real one |
 | Show flow | WFG | Debug view: renders the estimated motion field instead of the frame |
 | FPS Limiter | Both | Caps the game's own frame rate, from 15 fps upward |
 
