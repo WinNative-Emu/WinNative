@@ -429,7 +429,6 @@ typedef struct VkRenderer {
     struct VkrDis*    dis;
     bool              dis_requested;
     uint32_t          dis_scale;
-    VkFence           dis_flush_fence;  // mid-frame submit for DIS's hardware motion hint
     uint32_t          dis_target_fps;
     bool              dis_debug_flow;
     uint64_t          sgsr1_dbg_sig;

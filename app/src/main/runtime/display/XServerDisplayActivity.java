@@ -523,7 +523,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
     private Thread waylandRendererThread;
     /* The process behind the window the compositor is showing, from the compositor itself. */
     private volatile int waylandGamePid;
-    private static final int[] DIS_FLOW_MIN_SIDES = {180, 252, 360};
+    private static final int[] DIS_FLOW_MIN_SIDES = {180, 252};
     private static final int DIS_FRAME_GEN_SCALE_DEFAULT = 180;
 
     private int disFrameGenScale = DIS_FRAME_GEN_SCALE_DEFAULT;

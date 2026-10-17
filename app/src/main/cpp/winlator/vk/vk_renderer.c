@@ -1924,10 +1924,6 @@ static void destroy_dis(VkRenderer* r) {
     if (!r->dis) return;
     vkr_dis_destroy(r->dis);
     r->dis = NULL;
-    if (r->dis_flush_fence) {
-        vkDestroyFence(r->device, r->dis_flush_fence, NULL);
-        r->dis_flush_fence = VK_NULL_HANDLE;
-    }
     r->framegen_real_frames = 0;
     r->framegen_made_frames = 0;
     r->framegen_draw_ns = 0;
@@ -1936,45 +1932,12 @@ static void destroy_dis(VkRenderer* r) {
     r->framegen_timed_frames = 0;
 }
 
-// VkrDisFlushFn: DIS needs this frame's pixels on the CPU mid-frame for the hardware motion
-// estimator. What has been recorded by then is the scene pass into the composite target and
-// DIS's own copies - no swapchain image, no semaphore - so it is submitted on its own and the
-// same buffer is begun again; acquire waits and present signals all stay on the frame's submit.
-static VkCommandBuffer dis_flush_frame(void* user, VkCommandBuffer cmd) {
-    VkRenderer* r = (VkRenderer*)user;
-    if (!r->dis_flush_fence) {
-        VkFenceCreateInfo fci = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        if (vkCreateFence(r->device, &fci, NULL, &r->dis_flush_fence) != VK_SUCCESS) {
-            r->dis_flush_fence = VK_NULL_HANDLE;
-        }
-    }
-    vkEndCommandBuffer(cmd);
-    VkSubmitInfo si = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &cmd;
-    if (r->dis_flush_fence) vkResetFences(r->device, 1, &r->dis_flush_fence);
-    pthread_mutex_lock(&r->queue_mutex);
-    VkResult sr = vkQueueSubmit(r->graphics_queue, 1, &si, r->dis_flush_fence);
-    if (sr != VK_SUCCESS || !r->dis_flush_fence) vkQueueWaitIdle(r->graphics_queue);
-    pthread_mutex_unlock(&r->queue_mutex);
-    if (sr == VK_SUCCESS && r->dis_flush_fence) {
-        vkWaitForFences(r->device, 1, &r->dis_flush_fence, VK_TRUE, UINT64_MAX);
-    } else if (sr != VK_SUCCESS) {
-        VK_LOGW("OpenFlow mid-frame submit -> %d", (int)sr);
-    }
-    vkResetCommandBuffer(cmd, 0);
-    VkCommandBufferBeginInfo bi = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cmd, &bi);
-    return cmd;
-}
-
 static void create_dis(VkRenderer* r) {
     if (r->dis || !r->device || !r->physical_device) return;
 
     r->dis = vkr_dis_create(r->device, r->physical_device);
     if (!r->dis) {
-        VK_LOGW("OpenFlow shaders unavailable; frame generation stays off");
+        VK_LOGW("WFG shaders unavailable; frame generation stays off");
         return;
     }
     vkr_dis_configure(r->dis, r->dis_scale ? r->dis_scale : 180u, r->dis_target_fps,
@@ -2922,9 +2885,8 @@ static bool record_and_submit_frame(VkRenderer* r) {
     if (composite) {
         if ((use_dis || r->lsfg) && framegen_capacity > 0) {
             if (use_dis) {
-                vkr_dis_process_ex(r->dis, f->cmd, composite->image,
-                                   composite->width, composite->height, gen_count,
-                                   dis_flush_frame, r);
+                vkr_dis_process(r->dis, f->cmd, composite->image,
+                                composite->width, composite->height, gen_count);
             } else {
                 vkr_lsfg_process(r->lsfg, f->cmd, composite->image,
                                  r->swapchain_extent.width, r->swapchain_extent.height, gen_count);
@@ -2951,19 +2913,27 @@ static bool record_and_submit_frame(VkRenderer* r) {
                                       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                                       VK_ACCESS_SHADER_WRITE_BIT, 0);
+                } else if (use_dis) {
+                    // DIS scales its interpolated content rect into whatever target it is given
+                    // and fills the strips around it from the composite, so it goes straight
+                    // into the swapchain image: no composite target and second full-frame blit.
+                    vkr_dis_generate_into(r->dis, f->cmd, g, idx,
+                                          r->swapchain_images[idx], VK_NULL_HANDLE,
+                                          r->swapchain_extent.width,
+                                          r->swapchain_extent.height,
+                                          composite->image);
+                    vkr_image_barrier(f->cmd, r->swapchain_images[idx],
+                                      VK_IMAGE_LAYOUT_GENERAL,
+                                      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                      VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                      VK_ACCESS_TRANSFER_WRITE_BIT, 0);
                 } else {
                     VkCompositeTarget* gt = &r->composite[VK_FRAMES_IN_FLIGHT + g];
-                    if (use_dis) {
-                        vkr_dis_generate_into(r->dis, f->cmd, g, VK_FRAMES_IN_FLIGHT + g,
-                                              gt->image, gt->view,
-                                              gt->width, gt->height,
-                                              composite->image);
-                    } else {
-                        vkr_lsfg_generate_into(r->lsfg, f->cmd, g, VK_FRAMES_IN_FLIGHT + g,
-                                               gt->image, gt->view,
-                                               r->swapchain_extent.width,
-                                               r->swapchain_extent.height);
-                    }
+                    vkr_lsfg_generate_into(r->lsfg, f->cmd, g, VK_FRAMES_IN_FLIGHT + g,
+                                           gt->image, gt->view,
+                                           r->swapchain_extent.width,
+                                           r->swapchain_extent.height);
                     blit_composite_to_swapchain(r, f->cmd, gt, r->swapchain_images[idx]);
                 }
             }
@@ -3979,7 +3949,7 @@ JNIEXPORT void JNICALL JNI_FN(nativeSetDisFrameGenerationEnabled)(JNIEnv* env, j
     }
     framegen_rebuild_swapchain(r);
     pthread_mutex_unlock(&r->render_mutex);
-    VK_LOGI("OpenFlow frame generation composite path %s (supported=%d)",
+    VK_LOGI("WFG frame generation composite path %s (supported=%d)",
             want ? "enabled" : "disabled", (int)r->framegen_supported);
 }
 

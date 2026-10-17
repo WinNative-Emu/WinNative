@@ -87,7 +87,6 @@ struct FgPresenter {
 
     VkCommandPool command_pool;
     FgFrame frames[FG_FRAMES_IN_FLIGHT];
-    VkFence flush_fence;
     uint32_t frame_index;
 
     FgTarget targets[FG_MAX_TARGETS];
@@ -541,9 +540,6 @@ static bool fg_create_frames(FgPresenter* fg) {
     cpi.queueFamilyIndex = fg->queue_family;
     if (vkCreateCommandPool(fg->device, &cpi, NULL, &fg->command_pool) != VK_SUCCESS) return false;
 
-    VkFenceCreateInfo ffi = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-    if (vkCreateFence(fg->device, &ffi, NULL, &fg->flush_fence) != VK_SUCCESS) return false;
-
     for (uint32_t i = 0; i < FG_FRAMES_IN_FLIGHT; i++) {
         FgFrame* f = &fg->frames[i];
 
@@ -737,7 +733,7 @@ static bool fg_engine_acquire(FgPresenter* fg) {
         if (fg->dis) return true;
         fg->dis = vkr_dis_create(fg->device, fg->physical_device);
         if (!fg->dis) {
-            FG_LOGW("OpenFlow optical flow is unavailable on this device");
+            FG_LOGW("WFG optical flow is unavailable on this device");
             return false;
         }
         return true;
@@ -756,7 +752,7 @@ static bool fg_engine_ready(const FgPresenter* fg) {
 }
 
 static const char* fg_engine_name(uint32_t engine) {
-    return engine == FG_ENGINE_DIS ? "OpenFlow" : "LSFG";
+    return engine == FG_ENGINE_DIS ? "WFG" : "LSFG";
 }
 
 static void fg_apply_config(FgPresenter* fg) {
@@ -806,30 +802,6 @@ static void fg_renew_semaphore(FgPresenter* fg, VkSemaphore* handle) {
     if (vkCreateSemaphore(fg->device, &sci, NULL, &fresh) != VK_SUCCESS) return;
     if (*handle) fg->retired[fg->retired_count++] = *handle;
     *handle = fresh;
-}
-
-// VkrDisFlushFn: DIS needs this frame's pixels on the CPU mid-frame for the hardware motion
-// estimator. Everything recorded so far - the source blit and DIS's copies - touches no
-// swapchain image and waits on no semaphore, so it goes out on its own; the same buffer is then
-// begun again for the rest of the frame, which keeps every semaphore on the final submit.
-static VkCommandBuffer fg_dis_flush(void* user, VkCommandBuffer cmd) {
-    FgPresenter* fg = (FgPresenter*)user;
-    vkEndCommandBuffer(cmd);
-    VkSubmitInfo si = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &cmd;
-    vkResetFences(fg->device, 1, &fg->flush_fence);
-    if (vkQueueSubmit(fg->queue, 1, &si, fg->flush_fence) == VK_SUCCESS) {
-        vkWaitForFences(fg->device, 1, &fg->flush_fence, VK_TRUE, UINT64_MAX);
-    } else {
-        FG_LOGW("OpenFlow mid-frame submit failed");
-        vkDeviceWaitIdle(fg->device);
-    }
-    vkResetCommandBuffer(cmd, 0);
-    VkCommandBufferBeginInfo bi = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cmd, &bi);
-    return cmd;
 }
 
 static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* image) {
@@ -907,8 +879,8 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT);
 
     if (fg->active_engine == FG_ENGINE_DIS) {
-        vkr_dis_process_ex(fg->dis, f->cmd, composite->image, fg->extent.width,
-                           fg->extent.height, gen_count, fg_dis_flush, fg);
+        vkr_dis_process(fg->dis, f->cmd, composite->image, fg->extent.width,
+                        fg->extent.height, gen_count);
     } else if (fg->lsfg) {
         vkr_lsfg_process(fg->lsfg, f->cmd, composite->image, fg->extent.width, fg->extent.height,
                          gen_count);
@@ -917,17 +889,18 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
     for (uint32_t g = 0; g < gen_count; g++) {
         FgTarget* generated = &fg->targets[FG_FRAMES_IN_FLIGHT + g];
         if (fg->active_engine == FG_ENGINE_DIS) {
-            vkr_dis_generate_into(fg->dis, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
-                                  generated->view, fg->extent.width, fg->extent.height,
+            // DIS blits its interpolated frame into whatever target it is given, so it goes
+            // straight into the swapchain image, without a generated target and second blit.
+            vkr_dis_generate_into(fg->dis, f->cmd, g, gen_index[g], fg->swapchain_images[gen_index[g]],
+                                  VK_NULL_HANDLE, fg->extent.width, fg->extent.height,
                                   VK_NULL_HANDLE);
-            fg_barrier(f->cmd, generated->image, VK_IMAGE_LAYOUT_GENERAL,
-                       VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                       VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-                       VK_ACCESS_TRANSFER_READ_BIT);
-        } else {
-            vkr_lsfg_generate_into(fg->lsfg, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
-                                   generated->view, fg->extent.width, fg->extent.height);
+            fg_barrier(f->cmd, fg->swapchain_images[gen_index[g]], VK_IMAGE_LAYOUT_GENERAL,
+                       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+            continue;
         }
+        vkr_lsfg_generate_into(fg->lsfg, f->cmd, g, FG_FRAMES_IN_FLIGHT + g, generated->image,
+                               generated->view, fg->extent.width, fg->extent.height);
         fg_barrier(f->cmd, fg->swapchain_images[gen_index[g]], VK_IMAGE_LAYOUT_UNDEFINED,
                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -1357,7 +1330,6 @@ void fg_destroy(FgPresenter* fg) {
             vkDestroySemaphore(fg->device, fg->retired[i], NULL);
         }
         fg->retired_count = 0;
-        if (fg->flush_fence) vkDestroyFence(fg->device, fg->flush_fence, NULL);
         if (fg->command_pool) vkDestroyCommandPool(fg->device, fg->command_pool, NULL);
         vkDestroyDevice(fg->device, NULL);
     }

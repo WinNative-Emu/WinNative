@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// OpenFlow frame generation: a Vulkan compute realisation of Dense Inverse Search
+// WFG frame generation: a Vulkan compute realisation of Dense Inverse Search
 // optical flow. The algorithm and its reference implementation come from
 // OpenCV's DISOpticalFlow, which adopted Till Kroeger's original OF_DIS.
 // See CREDITS.md for the full attribution.
@@ -46,25 +46,6 @@ uint32_t vkr_dis_plan(VkrDis* dis, uint32_t capacity, uint64_t source_frames);
 
 void vkr_dis_process(VkrDis* dis, VkCommandBuffer cmd, VkImage source,
                      uint32_t width, uint32_t height, uint32_t generations);
-
-// Submits `cmd` (ended by the callee, no semaphores), waits for it on the CPU, and returns a
-// command buffer in the recording state for the rest of the frame - `cmd` itself reset and begun
-// again is fine. VK_NULL_HANDLE on failure.
-typedef VkCommandBuffer (*VkrDisFlushFn)(void* user, VkCommandBuffer cmd);
-
-// As vkr_dis_process, and when the GLES driver offers GL_QCOM_motion_estimation, seeds the flow
-// with a hardware estimate. That needs this frame's pixels mid-frame, so DIS calls `flush` once
-// and records the rest into the buffer it returns; the caller continues with - and finally
-// submits - the returned buffer. With flush NULL, or without the extension, this is exactly
-// vkr_dis_process and returns `cmd`.
-VkCommandBuffer vkr_dis_process_ex(VkrDis* dis, VkCommandBuffer cmd, VkImage source,
-                                   uint32_t width, uint32_t height, uint32_t generations,
-                                   VkrDisFlushFn flush, void* flush_user);
-
-// Hardware motion hint on or off (default off, or debug.winnative.dis.hwme=1); takes effect at
-// the next resource build.
-void vkr_dis_set_hw_motion(VkrDis* dis, bool enabled);
-bool vkr_dis_hw_motion_active(const VkrDis* dis);
 
 void vkr_dis_generate_into(VkrDis* dis, VkCommandBuffer cmd, uint32_t generation,
                            uint32_t target_index, VkImage target_image,
