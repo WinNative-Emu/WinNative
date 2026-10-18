@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // WFG, Farneback flow: sums the horizontally summed equations of dis_fb_hsum vertically
 // across the window and solves G d = h for this texel's displacement.

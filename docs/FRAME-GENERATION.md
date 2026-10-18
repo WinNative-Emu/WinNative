@@ -28,7 +28,7 @@ the shaders import successfully.
 
 ## WFG — WinNative/Winlator Frame Generator
 
-**Nothing to buy, nothing to import.** WFG (WinNative/Winlator Frame Generator, GPL-3.0) is a
+**Nothing to buy, nothing to import.** WFG (WinNative/Winlator Frame Generator, MIT) is a
 complete open-source Dense Inverse Search frame generator built into WinNative — compute shaders
 that ship with the APK — so it works on a fresh install with no Steam account and no
 `Lossless.dll`. Turn it on in the **FG** tab and it runs.

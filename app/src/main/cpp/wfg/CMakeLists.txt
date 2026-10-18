@@ -1,7 +1,7 @@
-# WFG (WinNative/Winlator Frame Generator, GPL-3.0): Dense Inverse Search (DIS) optical flow and
-# the frame interpolator built on it, as one static library. libwinlator (X11 compositor,
-# standalone presenter) and libwnwayland (Wayland compositor) both link it; each keeps its own
-# VkDispatch, which the objects here resolve against at link time.
+# WFG (WinNative/Winlator Frame Generator, MIT - see LICENSE here): Dense Inverse Search (DIS)
+# optical flow and the frame interpolator built on it, as one static library. libwinlator (X11
+# compositor, standalone presenter) and libwnwayland (Wayland compositor) both link it; each keeps
+# its own VkDispatch, which the objects here resolve against at link time.
 #
 # Layout:
 #   include/vkr_dis.h      public API

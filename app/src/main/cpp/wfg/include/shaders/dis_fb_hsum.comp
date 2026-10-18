@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // WFG, Farneback flow: the per-texel displacement equations of one iteration, summed
 // across the window horizontally (dis_fb_vsolve sums them vertically and solves).

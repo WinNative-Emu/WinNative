@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: Copyright 2026 qwertypower (DEVAR Entertainment LLC)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // WFG frame generation: a Vulkan compute realisation of Dense Inverse Search
 // optical flow. The algorithm and its reference implementation come from

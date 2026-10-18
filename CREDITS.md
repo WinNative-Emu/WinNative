@@ -57,8 +57,8 @@ corresponding source for every copyleft component is available from the projects
   [Eden Emulator Project](https://git.eden-emu.dev/eden-emu/eden) (GPL-3.0-or-later) — the Vulkan
   port of that chain that WinNative's frame generation is derived from.
   See [what came from Camille LaVey's Eden port](#frame-generation--what-came-from-camille-laveys-eden-port)
-- **WFG** (WinNative/Winlator Frame Generator, GPL-3.0; DIS optical flow) by **qwertypower**
-  ([DEVAR Entertainment LLC](https://devar.ai/)) (GPL-3.0) — a complete open-source implementation
+- **WFG** (WinNative/Winlator Frame Generator; DIS optical flow) by **qwertypower**
+  ([DEVAR Entertainment LLC](https://devar.ai/)) (MIT) — a complete open-source implementation
   of a Dense Inverse Search frame generator, the second frame generation engine in WinNative and
   the one that needs no shaders from anywhere else.
   See [the fully open-source engine](#dis-frame-generation--the-fully-open-source-engine)
@@ -122,7 +122,9 @@ wiring the chain into WinNative's compositor and swapchain (`vkr_lsfg.*`).
 ## WFG (WinNative/Winlator Frame Generator) — the fully open-source engine
 
 WinNative's second frame generator is a complete open-source implementation of **Dense Inverse
-Search** optical flow, contributed by **qwertypower** (DEVAR Entertainment LLC) under GPL-3.0.
+Search** optical flow, contributed by **qwertypower** (DEVAR Entertainment LLC) under the MIT
+license (`app/src/main/cpp/wfg/LICENSE`); the rest of WinNative, including the compositor code that
+calls it, stays GPL-3.0.
 
 Unlike the Lossless Scaling path it depends on nothing the user has to own or install. The whole
 chain ships with the APK as fourteen compute shaders and runs in the same Vulkan compositor, so
