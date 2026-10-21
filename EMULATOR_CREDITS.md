@@ -60,7 +60,11 @@ Each core is shipped as an unmodified `arm64-v8a` build and loaded through Libre
 
 ## Frame generation
 
-Frame generation is a port of the Lossless Scaling compute chain to Vulkan. WinNative did not
+WinNative has two frame generation engines.
+
+### LSFG
+
+LSFG is a port of the Lossless Scaling compute chain to Vulkan. WinNative did not
 port it from scratch: it derives from **Camille LaVey**'s port in the **Eden Emulator Project**,
 which in turn derives from **lsfg-vk**. Both are GPL-3.0-or-later, and both copyright notices are
 preserved in the header of every file that carries their work.
@@ -80,6 +84,21 @@ probing (`lsfg_probe`) and compositor integration (`vkr_lsfg`).
 
 The frame generation shaders themselves are **not** redistributed. They are read at runtime from
 the user's own Lossless Scaling installation, which they must own separately on Steam.
+
+### WFG
+
+**WFG** (WinNative/Winlator Frame Generator) is the second engine, written for WinNative by
+**qwertypower** (DEVAR Entertainment LLC) and licensed under the **MIT** license — see
+[`app/src/main/cpp/wfg/LICENSE`](app/src/main/cpp/wfg/LICENSE). It is a Vulkan compute
+implementation of two published optical-flow methods plus the frame interpolation built on them,
+and ships with the APK: nothing is read from anywhere else. The compositor code that calls it is
+part of WinNative and stays GPL-3.0.
+
+| Component | Role | License | Source |
+| --- | --- | --- | --- |
+| WFG (qwertypower, DEVAR Entertainment LLC) | Hybrid Farneback/DIS optical flow, occlusion handling, interpolation and pacing (`app/src/main/cpp/wfg`) | MIT | this repository |
+| OpenCV (`DISOpticalFlow`, `calcOpticalFlowFarneback`) | Reference implementations WFG follows for DIS and Farneback | Apache-2.0 | https://github.com/opencv/opencv |
+| Dense Inverse Search (Kroeger et al., ECCV 2016) | The DIS algorithm; no code from the authors' OF_DIS (GPL-3.0) is used | — | https://github.com/tikroeger/OF_DIS |
 
 ## Frontend, achievements, and supporting libraries
 

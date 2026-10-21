@@ -71,3 +71,5 @@ acknowledgments, including exactly which files came from which upstream project,
 GPL corresponding-source statement.
 
 WinNative is released under the **GNU General Public License v3.0** — see [LICENSE](LICENSE).
+The WFG frame generator in `app/src/main/cpp/wfg` is by **qwertypower** (DEVAR Entertainment LLC) and
+is MIT-licensed — see [its LICENSE](app/src/main/cpp/wfg/LICENSE).
