@@ -303,6 +303,7 @@ internal fun HUDPaneContent(
                     bgAlpha = state.mangoHudBgAlpha,
                     hudScale = state.mangoHudScale,
                     locked = state.mangoHudLocked,
+                    fexStatsAvailable = state.fexStatsAvailable,
                     onToggle = listener::onMangoHudElementToggled,
                     onAlphaChanged = listener::onMangoHudAlphaChanged,
                     onBgAlphaChanged = listener::onMangoHudBackgroundAlphaChanged,
@@ -512,6 +513,7 @@ internal fun MangoHudSettingsDialog(
     bgAlpha: Float,
     hudScale: Float,
     locked: Boolean,
+    fexStatsAvailable: Boolean,
     onToggle: (Int, Boolean) -> Unit,
     onAlphaChanged: (Float) -> Unit,
     onBgAlphaChanged: (Float) -> Unit,
@@ -542,6 +544,16 @@ internal fun MangoHudSettingsDialog(
             stringResource(R.string.mango_hud_element_duration),
             stringResource(R.string.mango_hud_element_clock),
             stringResource(R.string.mango_hud_element_throttle),
+            stringResource(R.string.mango_hud_group_fex),
+            stringResource(R.string.mango_hud_element_fex_version),
+            stringResource(R.string.mango_hud_element_fex_app_type),
+            stringResource(R.string.mango_hud_element_fex_hot_threads),
+            stringResource(R.string.mango_hud_element_fex_jit_load),
+            stringResource(R.string.mango_hud_element_fex_sigbus),
+            stringResource(R.string.mango_hud_element_fex_smc),
+            stringResource(R.string.mango_hud_element_fex_softfloat),
+            stringResource(R.string.mango_hud_element_fex_cache_miss),
+            stringResource(R.string.mango_hud_element_fex_disk_cache),
         )
     // Display groups (label res -> element indices), decoupled from index order.
     val groups =
@@ -551,7 +563,12 @@ internal fun MangoHudSettingsDialog(
             R.string.mango_hud_group_memory to listOf(4, 14),
             R.string.session_drawer_hud_element_fps to listOf(6, 7, 8),
             R.string.mango_hud_group_system to listOf(5, 13, 15, 16, 17, 18, 19),
-        )
+        ) +
+        if (fexStatsAvailable) {
+            listOf(R.string.mango_hud_group_fex to listOf(21, 22, 23, 24, 25, 26, 27, 28, 29))
+        } else {
+            emptyList()
+        }
 
     // stableCursor: track the selected slot by identity, not by spatial index —
     // scrolling reshuffles item positions and index-based tracking jumps to the
