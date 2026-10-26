@@ -1100,7 +1100,7 @@
     <string name="setup_wizard_loading_components">正在載入元件\u2026</string>
     <string name="setup_wizard_no_components_available">此類別沒有可用的元件。</string>
     <string name="setup_wizard_default_settings">預設設定</string>
-    <string name="setup_wizard_containers_description">開啟每個容器並設定您希望每個新遊戲繼承的預設值。新遊戲預設將以 x86-64 容器為目標。</string>
+    <string name="setup_wizard_containers_description">開啟每個容器並設定您希望每個新遊戲繼承的預設值。點擊某個容器即可將其設為預設容器，新遊戲將使用該預設容器。</string>
     <string name="setup_wizard_store_sign_in_optional">商店登入為選填。每次登入完成後都會返回此頁面。</string>
     <string name="setup_wizard_granted">已授予</string>
     <string name="setup_wizard_grant">授予</string>
@@ -2765,6 +2765,11 @@
     <string name="settings_frame_generation_updated">已從 %1$s 更新。</string>
     <string name="settings_frame_generation_not_owned">影格生成使用 Lossless Scaling 的著色器。請使用目前登入的帳號在 Steam 上購買以啟用此功能。</string>
     <string name="settings_frame_generation_locate">選擇 Lossless.dll…</string>
+    <string name="containers_set_default">設為預設</string>
+    <string name="containers_default_badge">預設 (%1$s)</string>
+    <string name="containers_set_default_success">已將 %1$s 容器設為新遊戲預設。不影響已有遊戲。</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">使用 Lossless Scaling 為此主機插入額外影格。</string>
     <string name="retro_gs_frame_generation_unsupported">此 GPU 未提供 Lossless Scaling 著色器所需的 Vulkan 功能。</string>
     <string name="itch_store_title">itch.io</string>

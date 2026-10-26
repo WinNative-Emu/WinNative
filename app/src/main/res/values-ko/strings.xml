@@ -1100,7 +1100,7 @@
     <string name="setup_wizard_loading_components">구성 요소 로딩 중\u2026</string>
     <string name="setup_wizard_no_components_available">이 카테고리에 사용 가능한 구성 요소가 없습니다.</string>
     <string name="setup_wizard_default_settings">기본 설정</string>
-    <string name="setup_wizard_containers_description">각 컨테이너를 열고 모든 새 게임에 상속될 기본값을 설정하세요. 새 게임은 기본적으로 x86-64 컨테이너를 대상으로 합니다.</string>
+    <string name="setup_wizard_containers_description">각 컨테이너를 열고 모든 새 게임에 상속될 기본값을 설정하세요. 컨테이너를 탭하여 기본값으로 설정하면 새 게임이 해당 기본 컨테이너를 사용합니다.</string>
     <string name="setup_wizard_store_sign_in_optional">스토어 로그인은 선택 사항입니다. 각 로그인은 완료 후 여기로 돌아옵니다.</string>
     <string name="setup_wizard_granted">허용됨</string>
     <string name="setup_wizard_grant">허용</string>
@@ -2767,6 +2767,11 @@
     <string name="settings_frame_generation_updated">%1$s에서 업데이트했습니다.</string>
     <string name="settings_frame_generation_not_owned">프레임 생성은 Lossless Scaling의 셰이더를 사용합니다. 사용하려면 로그인한 계정으로 Steam에서 구매하세요.</string>
     <string name="settings_frame_generation_locate">Lossless.dll 선택…</string>
+    <string name="containers_set_default">기본값으로 설정</string>
+    <string name="containers_default_badge">기본값 (%1$s)</string>
+    <string name="containers_set_default_success">%1$s 컨테이너를 새 게임의 기본값으로 설정했습니다. 기존 게임은 영향받지 않습니다.</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">Lossless Scaling으로 이 콘솔의 추가 프레임을 생성합니다.</string>
     <string name="retro_gs_frame_generation_unsupported">이 GPU는 Lossless Scaling 셰이더에 필요한 Vulkan 기능을 제공하지 않습니다.</string>
     <string name="itch_store_title">itch.io</string>

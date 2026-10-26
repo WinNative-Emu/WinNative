@@ -1170,7 +1170,7 @@
     <string name="setup_wizard_no_components_available">इस श्रेणी के लिए कोई घटक उपलब्ध नहीं है.</string>
     <string name="setup_wizard_default_settings">डिफ़ॉल्ट सेटिंग्स</string>
     <string name="setup_wizard_containers">कंटेनर सेटअप</string>
-    <string name="setup_wizard_containers_description">प्रत्येक कंटेनर खोलें और डिफ़ॉल्ट सेट करें जिसे आप हर नए गेम को प्राप्त करना चाहते हैं। नए गेम डिफ़ॉल्ट रूप से x86-64 कंटेनर को लक्षित करेंगे।</string>
+    <string name="setup_wizard_containers_description">प्रत्येक कंटेनर खोलें और डिफ़ॉल्ट सेट करें जिसे आप हर नए गेम को प्राप्त करना चाहते हैं। किसी कंटेनर को डिफ़ॉल्ट बनाने के लिए उसे टैप करें; नए गेम उस डिफ़ॉल्ट कंटेनर का उपयोग करेंगे।</string>
     <string name="setup_wizard_store_sign_in_optional">स्टोर साइन-इन वैकल्पिक है. प्रत्येक साइन-इन समाप्त होने पर यहीं लौटता है।</string>
     <string name="setup_wizard_granted">अनुमति मिल गई</string>
     <string name="setup_wizard_grant">अनुमति दें</string>
@@ -2662,6 +2662,11 @@
     <string name="settings_frame_generation_updated">%1$s से अपडेट किया गया।</string>
     <string name="settings_frame_generation_not_owned">फ़्रेम जनरेशन Lossless Scaling के शेडर उपयोग करता है। इसे सक्षम करने के लिए साइन-इन खाते से Steam पर इसे खरीदें।</string>
     <string name="settings_frame_generation_locate">Lossless.dll चुनें…</string>
+    <string name="containers_set_default">डिफ़ॉल्ट के रूप में सेट करें</string>
+    <string name="containers_default_badge">डिफ़ॉल्ट (%1$s)</string>
+    <string name="containers_set_default_success">%1$s कंटेनर नए गेम के लिए डिफ़ॉल्ट सेट किया गया। मौजूदा गेम प्रभावित नहीं होंगे।</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">Lossless Scaling से इस कंसोल के लिए अतिरिक्त फ़्रेम बनाता है।</string>
     <string name="retro_gs_frame_generation_unsupported">यह GPU वे Vulkan सुविधाएँ नहीं देता जो Lossless Scaling शेडर के लिए ज़रूरी हैं।</string>
     <string name="itch_store_title">itch.io</string>

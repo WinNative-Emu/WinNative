@@ -1391,7 +1391,7 @@ Asennuspolku:
     <string name="setup_wizard_no_components_available">Tälle luokalle ei ole saatavilla komponentteja.</string>
     <string name="setup_wizard_default_settings">Oletusasetukset</string>
     <string name="setup_wizard_containers">Säiliön määritys</string>
-    <string name="setup_wizard_containers_description">Avaa jokainen säiliö ja aseta oletukset, jotka haluat jokaisen uuden pelin perivän. Uudet pelit kohdistetaan oletuksena x86-64-säiliöön.</string>
+    <string name="setup_wizard_containers_description">Avaa jokainen säiliö ja aseta oletukset, jotka haluat jokaisen uuden pelin perivän. Napauta säiliötä tehdäksesi siitä oletuksen; uudet pelit käyttävät tätä oletussäiliötä.</string>
     <string name="setup_wizard_store_sign_in_optional">Kauppaan kirjautuminen on valinnaista. Jokainen kirjautuminen palaa tänne, kun se on valmis.</string>
     <string name="setup_wizard_granted">Myönnetty</string>
     <string name="setup_wizard_grant">Myönnä</string>
@@ -2764,6 +2764,11 @@ Asennuspolku:
     <string name="settings_frame_generation_updated">Päivitetty kohteesta %1$s.</string>
     <string name="settings_frame_generation_not_owned">Ruudun generointi käyttää Lossless Scalingin varjostimia. Osta se Steamista kirjautuneella tilillä ottaaksesi tämän käyttöön.</string>
     <string name="settings_frame_generation_locate">Valitse Lossless.dll…</string>
+    <string name="containers_set_default">Aseta oletukseksi</string>
+    <string name="containers_default_badge">Oletus (%1$s)</string>
+    <string name="containers_set_default_success">%1$s-säilö asetettu oletukseksi uusille peleille. Olemassa oleviin ei vaikuteta.</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">Interpoloi tälle konsolille lisäruutuja Lossless Scalingilla.</string>
     <string name="retro_gs_frame_generation_unsupported">Tämä näytönohjain ei tarjoa Vulkan-ominaisuuksia, joita Lossless Scaling -varjostimet vaativat.</string>
     <string name="itch_store_title">itch.io</string>

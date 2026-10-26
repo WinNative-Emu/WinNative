@@ -1391,7 +1391,7 @@ Yüklü konum:
     <string name="setup_wizard_no_components_available">Bu kategori için kullanılabilir bileşen yok.</string>
     <string name="setup_wizard_default_settings">Varsayılan Ayarlar</string>
     <string name="setup_wizard_containers">Kapsayıcı Kurulumu</string>
-    <string name="setup_wizard_containers_description">Her kapsayıcıyı açın ve her yeni oyunun devralmasını istediğiniz varsayılanları ayarlayın. Yeni oyunlar varsayılan olarak x86-64 kapsayıcısını hedefler.</string>
+    <string name="setup_wizard_containers_description">Her kapsayıcıyı açın ve her yeni oyunun devralmasını istediğiniz varsayılanları ayarlayın. Bir kapsayıcıya dokunarak onu varsayılan yapın; yeni oyunlar bu varsayılan kapsayıcıyı kullanır.</string>
     <string name="setup_wizard_store_sign_in_optional">Mağaza girişi isteğe bağlıdır. Her giriş, tamamlandığında buraya döner.</string>
     <string name="setup_wizard_granted">Verildi</string>
     <string name="setup_wizard_grant">Ver</string>
@@ -2764,6 +2764,11 @@ Yüklü konum:
     <string name="settings_frame_generation_updated">%1$s kaynağından güncellendi.</string>
     <string name="settings_frame_generation_not_owned">Kare üretimi Lossless Scaling gölgelendiricilerini kullanır. Bunu etkinleştirmek için oturum açmış hesapla Steam\'den satın alın.</string>
     <string name="settings_frame_generation_locate">Lossless.dll seç…</string>
+    <string name="containers_set_default">Varsayılan yap</string>
+    <string name="containers_default_badge">Varsayılan (%1$s)</string>
+    <string name="containers_set_default_success">%1$s kapsayıcısı yeni oyunlar için varsayılan yapıldı. Mevcut oyunlar etkilenmez.</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">Bu konsol için Lossless Scaling ile ek kareler üretir.</string>
     <string name="retro_gs_frame_generation_unsupported">Bu GPU, Lossless Scaling gölgelendiricilerinin gerektirdiği Vulkan özelliklerini sunmuyor.</string>
     <string name="itch_store_title">itch.io</string>

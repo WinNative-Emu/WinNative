@@ -1100,7 +1100,7 @@ Caminho instalado:
     <string name="setup_wizard_loading_components">Carregando componentes\u2026</string>
     <string name="setup_wizard_no_components_available">Nenhum componente disponivel para esta categoria.</string>
     <string name="setup_wizard_default_settings">Configuracoes Padrao</string>
-    <string name="setup_wizard_containers_description">Abra cada container e defina os padroes que deseja que cada novo jogo herde. Novos jogos usarao o container x86-64 por padrao.</string>
+    <string name="setup_wizard_containers_description">Abra cada container e defina os padrões que deseja que cada novo jogo herde. Toque em um container para torná-lo o padrão; os novos jogos usam esse container padrão.</string>
     <string name="setup_wizard_store_sign_in_optional">O login na loja e opcional. Cada login retorna aqui quando terminar.</string>
     <string name="setup_wizard_granted">Concedido</string>
     <string name="setup_wizard_grant">Conceder</string>
@@ -2766,6 +2766,11 @@ Caminho instalado:
     <string name="settings_frame_generation_updated">Atualizado de %1$s.</string>
     <string name="settings_frame_generation_not_owned">A geração de quadros usa shaders do Lossless Scaling. Compre-o na Steam com a conta conectada para ativar isso.</string>
     <string name="settings_frame_generation_locate">Selecionar Lossless.dll…</string>
+    <string name="containers_set_default">Definir como padrão</string>
+    <string name="containers_default_badge">Padrão (%1$s)</string>
+    <string name="containers_set_default_success">Contêiner %1$s definido como padrão para novos jogos. Jogos existentes não são afetados.</string>
+    <string name="container_config_arch_x86_64">x86-64</string>
+    <string name="container_config_arch_arm64">ARM64EC</string>
     <string name="retro_gs_frame_generation_subtitle">Interpola quadros extras para este console com o Lossless Scaling.</string>
     <string name="retro_gs_frame_generation_unsupported">Esta GPU não expõe os recursos do Vulkan que os shaders do Lossless Scaling exigem.</string>
     <string name="itch_store_title">itch.io</string>
