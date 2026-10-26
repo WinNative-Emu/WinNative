@@ -56,19 +56,26 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-const val XSERVER_DRAWER_EDGE_SWIPE_DP = 35
+const val XSERVER_DRAWER_EDGE_SWIPE_DP = 24
 
 // Horizontal swipe distance to open the drawer; shared with XServerDisplayActivity.
-const val XSERVER_DRAWER_OPEN_TRIGGER_DP = 32
+// 16dp: a short swipe from the edge reliably opens (was 32dp) so you no longer have to
+// drag toward the middle for the drawer to appear.
+const val XSERVER_DRAWER_OPEN_TRIGGER_DP = 16
 
-// Open only on a clearly rightward swipe: dx must exceed this * |dy| (~27deg of horizontal).
-const val XSERVER_DRAWER_OPEN_HORIZONTAL_RATIO = 2f
+// Open only on a clearly horizontal swipe: dx must exceed this * |dy| (~27deg of horizontal).
+// 1.5f: tolerate a slightly diagonal swipe (was 2f) so an imperfect angle doesn't bounce back.
+const val XSERVER_DRAWER_OPEN_HORIZONTAL_RATIO = 1.5f
 
 private val DrawerWidth = 300.dp
 private val DrawerStartPadding = 6.dp
 private val DrawerVerticalPadding = 6.dp
 private const val DrawerSettleAnimationMs = 200
-private const val DrawerOpenSettleThreshold = 0.4f
+// Dragging out any visible amount of the drawer keeps it open. The settle check is
+// drawerProgress >= this, and progress = draggedPx / drawerWidthPx (~300dp), so 0 means
+// “as soon as the gesture was claimed (past the open trigger) it stays open”; a positive
+// value would again bounce back for anything dragged less than threshold × width.
+private const val DrawerOpenSettleThreshold = 0f
 private const val DrawerCloseSettleThreshold = 0.65f
 private val DrawerSettleAnimationSpec =
     tween<Float>(
@@ -118,6 +125,10 @@ private fun XServerDisplayHost(
     val animationScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val viewConfiguration = LocalViewConfiguration.current
+    val screenWidthPx =
+        with(density) {
+            androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp.toPx()
+        }
     val closedFallbackPx = with(density) { -(DrawerWidth + DrawerStartPadding).toPx() }
     var drawerOffsetPx by remember { mutableFloatStateOf(closedFallbackPx) }
     var drawerWidthPx by remember { mutableFloatStateOf(0f) }
@@ -128,6 +139,16 @@ private fun XServerDisplayHost(
             closedFallbackPx
         }
     val drawerOpenOffset = 0f
+    var lastSide by remember {
+        androidx.compose.runtime.mutableStateOf<com.winlator.cmod.runtime.display.DrawerSide?>(
+            null,
+        )
+    }
+    LaunchedEffect(stateHolder.openSide) {
+        if (stateHolder.openSide != null) {
+            lastSide = stateHolder.openSide
+        }
+    }
     // "Engaged" = on or sliding onto the screen; drives the card-reveal animation (the content itself is always composed).
     val drawerEngaged = drawerWidthPx <= 0f ||
         drawerOffsetPx > drawerClosedOffset + 1f ||
@@ -150,7 +171,6 @@ private fun XServerDisplayHost(
     }
 
     LaunchedEffect(stateHolder.isDrawerOpen, drawerWidthPx) {
-        if (drawerWidthPx <= 0f) return@LaunchedEffect
         val target = if (stateHolder.isDrawerOpen) drawerOpenOffset else drawerClosedOffset
         if (drawerOffsetPx != target) {
             callbacks.onDrawerSlide()
@@ -191,17 +211,30 @@ private fun XServerDisplayHost(
 
                             val edgeWidthPx = XSERVER_DRAWER_EDGE_SWIPE_DP.dp.toPx()
                             val openTriggerPx = XSERVER_DRAWER_OPEN_TRIGGER_DP.dp.toPx()
+                            val drawerOpen = stateHolder.isDrawerOpen
+                            val sheetAtRight =
+                                (stateHolder.openSide ?: lastSide) ==
+                                    com.winlator.cmod.runtime.display.DrawerSide.RIGHT
+                            val sheetLeftPx = screenWidthPx - drawerWidthPx
                             val canStartFromHere =
-                                if (stateHolder.isDrawerOpen) {
-                                    down.position.x >= drawerWidthPx &&
-                                        down.position.x <= drawerWidthPx + edgeWidthPx
+                                if (drawerOpen) {
+                                    if (sheetAtRight) {
+                                        down.position.x >= sheetLeftPx - edgeWidthPx &&
+                                            down.position.x <= sheetLeftPx
+                                    } else {
+                                        down.position.x >= drawerWidthPx &&
+                                            down.position.x <= drawerWidthPx + edgeWidthPx
+                                    }
                                 } else {
-                                    down.position.x <= edgeWidthPx
+                                    down.position.x <= edgeWidthPx ||
+                                        down.position.x >= screenWidthPx - edgeWidthPx
                                 }
                             if (!canStartFromHere) {
-                                if (stateHolder.isDrawerOpen && down.position.x > drawerWidthPx
-                                    && !callbacks.isControllerConnected()) {
-                                    stateHolder.closeDrawer()
+                                if (drawerOpen && !callbacks.isControllerConnected()) {
+                                    val outside =
+                                        if (sheetAtRight) down.position.x < sheetLeftPx
+                                        else down.position.x > drawerWidthPx
+                                    if (outside) stateHolder.closeDrawer()
                                 }
                                 return@awaitEachGesture
                             }
@@ -222,16 +255,27 @@ private fun XServerDisplayHost(
                                 totalDy += delta.y
 
                                 if (!gestureClaimed) {
-                                    if (abs(totalDy) > viewConfiguration.touchSlop && abs(totalDy) > abs(totalDx)) {
+                                    // Only an *obviously* vertical drag cancels the gesture; a slightly
+                                    // diagonal swipe (dy up to 2x dx) still counts as horizontal so a
+                                    // not-quite-straight swipe opens instead of bouncing back.
+                                    if (abs(totalDy) > viewConfiguration.touchSlop &&
+                                        abs(totalDy) > abs(totalDx) * 2f
+                                    ) {
                                         cancelledByVerticalDrag = true
                                         break
                                     }
                                     val horizontalDragClaimed =
                                         if (stateHolder.isDrawerOpen) {
-                                            totalDx < -viewConfiguration.touchSlop && abs(totalDx) > abs(totalDy)
+                                            val closeDx = if (sheetAtRight) totalDx > 0f else totalDx < 0f
+                                            abs(totalDx) > viewConfiguration.touchSlop &&
+                                                abs(totalDx) > abs(totalDy) &&
+                                                closeDx
                                         } else {
-                                            totalDx > openTriggerPx &&
-                                                totalDx > abs(totalDy) * XSERVER_DRAWER_OPEN_HORIZONTAL_RATIO
+                                            val openDx = if (sheetAtRight) totalDx < 0f else totalDx > 0f
+                                            abs(totalDx) > openTriggerPx &&
+                                                abs(totalDx) >
+                                                    abs(totalDy) * XSERVER_DRAWER_OPEN_HORIZONTAL_RATIO &&
+                                                openDx
                                         }
                                     if (horizontalDragClaimed) {
                                         gestureClaimed = true
@@ -343,6 +387,8 @@ private fun XServerDisplayHost(
             }
 
             // Closed, the sheet sits flush on the edge and its rounded corners leak a hairline.
+            val openRight =
+                (stateHolder.openSide ?: lastSide) == com.winlator.cmod.runtime.display.DrawerSide.RIGHT
             if (drawerContentComposed) {
                 ModalDrawerSheet(
                     drawerShape = RoundedCornerShape(20.dp),
@@ -353,14 +399,20 @@ private fun XServerDisplayHost(
                     modifier =
                         Modifier
                             .zIndex(2f)
-                            .padding(start = DrawerStartPadding, top = drawerTopInset, bottom = DrawerVerticalPadding)
+                            .then(if (openRight) Modifier.align(Alignment.CenterEnd) else Modifier)
+                            .padding(
+                                start = if (openRight) 0.dp else DrawerStartPadding,
+                                end = if (openRight) DrawerStartPadding else 0.dp,
+                                top = drawerTopInset,
+                                bottom = DrawerVerticalPadding,
+                            )
                             .fillMaxHeight()
                             .width(scaledDrawerWidth)
                             .offset {
-                                androidx.compose.ui.unit.IntOffset(
-                                    drawerOffsetPx.roundToInt(),
-                                    0,
-                                )
+                                val effective =
+                                    if (stateHolder.isDrawerOpen) drawerOffsetPx else drawerClosedOffset
+                                val dx = effective.roundToInt()
+                                androidx.compose.ui.unit.IntOffset(if (openRight) -dx else dx, 0)
                             },
                 ) {
                     XServerDrawerContent(
@@ -371,6 +423,11 @@ private fun XServerDisplayHost(
                         onOpenPaneChange = { stateHolder.setOpenPaneAndNotify(it) },
                         listener = listener,
                         onDismiss = { stateHolder.closeDrawer() },
+                        openSide = stateHolder.openSide,
+                        onDrawerLayoutChanged = { newItems, newPaneSides ->
+                            stateHolder.state =
+                                stateHolder.state.copy(items = newItems, paneSides = newPaneSides)
+                        },
                         revealCards = drawerEngaged,
                         menuNavRegion = stateHolder.menuNavRegion,
                         menuNavIndex = stateHolder.menuNavIndex,
