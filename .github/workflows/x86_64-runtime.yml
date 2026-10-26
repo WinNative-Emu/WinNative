@@ -1,0 +1,232 @@
+name: x86_64 runtime (experimental)
+
+# Builds what a native x86_64 Android host (Windows Subsystem for Android, Android-x86/BlissOS,
+# ChromeOS, the Android Emulator) needs and this repository cannot ship yet:
+#   * a native x86_64-linux-android Wine (.wcp), reusing WinNative-Emu/proton-wine's build scripts
+#     (the same ones that build the published x86_64 and ARM64EC packages),
+#   * the SysV shared-memory shim (libandroid-sysvshm.so),
+#   * a base imagefs-x86_64.tzst assembled from the x86_64 Termux sysroot that Wine builds against.
+# Run it by hand: Actions > x86_64 runtime (experimental) > Run workflow. Nothing is published
+# automatically. See docs/X86_64-WSA.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      wine_ref:
+        description: 'WinNative-Emu/proton-wine branch, tag or commit to build'
+        required: true
+        default: proton_11.0
+      version_label:
+        description: 'Version used in the package names and profile.json'
+        required: true
+        default: 11.0-1
+      prefix_pack:
+        description: 'Prefix pack asset in the proton-wine "Assets" release'
+        required: true
+        default: prefixPack-x86_64-11.txz
+      page_size:
+        description: '4k = Android API 28 baseline. 16k = API 35 with 16 KB memory pages.'
+        type: choice
+        options: [ '4k', '16k' ]
+        default: '4k'
+      build_imagefs:
+        description: 'Also assemble a base imagefs-x86_64.tzst'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  ASSETS_URL: https://github.com/WinNative-Emu/proton-wine/releases/download/Assets
+
+jobs:
+  wine:
+    name: Wine and SysV shim (x86_64-linux-android)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      VERSION_LABEL: ${{ inputs.version_label }}
+      PAGE_FLAG: ${{ inputs.page_size == '16k' && '--enable-16kb-pages' || '' }}
+    steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
+          df -h /
+
+      - name: Check out WinNative-Emu/proton-wine
+        uses: actions/checkout@v4
+        with:
+          repository: WinNative-Emu/proton-wine
+          ref: ${{ inputs.wine_ref }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install build dependencies
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential git wget curl unzip flex bison gettext autoconf automake libtool \
+            pkg-config mingw-w64 gcc-multilib g++-multilib \
+            libfreetype6-dev libfreetype6-dev:i386 libpng-dev libpng-dev:i386 \
+            zlib1g-dev zlib1g-dev:i386
+
+      - name: Download and extract the x86_64 sysroot
+        run: |
+          mkdir -p "$HOME/termuxfs/x86_64"
+          cd "$HOME/termuxfs/x86_64"
+          wget -q "$ASSETS_URL/termuxfs-x86_64.tar"
+          tar -xf termuxfs-x86_64.tar
+          rm termuxfs-x86_64.tar
+
+      - name: Cache Android NDK r27d
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: ~/Android/Sdk/ndk/27.3.13750724
+          key: android-ndk-r27d
+      - name: Install Android NDK r27d
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/Android/Sdk/ndk"
+          cd "$HOME/Android/Sdk/ndk"
+          wget -q https://dl.google.com/android/repository/android-ndk-r27d-linux.zip
+          unzip -q android-ndk-r27d-linux.zip
+          mv android-ndk-r27d 27.3.13750724
+
+      - name: Cache LLVM MinGW
+        id: cache-llvm-mingw
+        uses: actions/cache@v4
+        with:
+          path: ~/toolchains/llvm-mingw-20250920-ucrt-ubuntu-22.04-x86_64
+          key: bylaws-llvm-mingw-20250920
+      - name: Install LLVM MinGW
+        if: steps.cache-llvm-mingw.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/toolchains"
+          cd "$HOME/toolchains"
+          wget -q https://github.com/bylaws/llvm-mingw/releases/download/20250920/llvm-mingw-20250920-ucrt-ubuntu-22.04-x86_64.tar.xz
+          tar -xf llvm-mingw-20250920-ucrt-ubuntu-22.04-x86_64.tar.xz
+
+      - name: Autogen
+        run: bash build-scripts/build-step0-autogen.sh
+
+      - name: Cache wine-tools
+        id: cache-wine-tools
+        uses: actions/cache@v4
+        with:
+          path: wine-tools
+          key: wine-tools-${{ hashFiles('configure.ac', 'configure') }}
+      - name: Build wine-tools (step 0)
+        if: steps.cache-wine-tools.outputs.cache-hit != 'true'
+        run: bash build-scripts/build-step0.sh
+
+      # Not a link-time dependency of Wine (the x86_64 script never links it); the app preloads it at
+      # run time. The published workflow skips it for x86_64, so failure here must not fail the job.
+      - name: Build the SysV shared-memory shim
+        continue-on-error: true
+        run: |
+          # PAGE_FLAG is empty or a single flag, so it must stay unquoted.
+          # shellcheck disable=SC2086
+          bash build-scripts/build-step-x86_64.sh $PAGE_FLAG --build-sysvshm
+
+      - name: Configure
+        run: |
+          # PAGE_FLAG is empty or a single flag, so it must stay unquoted.
+          # shellcheck disable=SC2086
+          bash build-scripts/build-step-x86_64.sh $PAGE_FLAG --configure
+      - name: Build
+        run: |
+          # PAGE_FLAG is empty or a single flag, so it must stay unquoted.
+          # shellcheck disable=SC2086
+          bash build-scripts/build-step-x86_64.sh $PAGE_FLAG --build
+      - name: Install
+        run: |
+          # PAGE_FLAG is empty or a single flag, so it must stay unquoted.
+          # shellcheck disable=SC2086
+          bash build-scripts/build-step-x86_64.sh $PAGE_FLAG --install
+
+      - name: Collect the SysV shim
+        if: always()
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/out/sysvshm"
+          find "$HOME/termuxfs/x86_64" "$GITHUB_WORKSPACE/android" -name 'libandroid-sysvshm*.so' -type f \
+            -print -exec cp {} "$GITHUB_WORKSPACE/out/sysvshm/" \; 2>/dev/null || true
+          ls -la "$GITHUB_WORKSPACE/out/sysvshm"
+
+      - name: Download the prefix pack
+        run: wget -q "$ASSETS_URL/${{ inputs.prefix_pack }}" -O "$GITHUB_WORKSPACE/prefixPack.txz"
+
+      - name: Generate profile.json files
+        run: |
+          cat > "$GITHUB_WORKSPACE/profile.json" <<JSON
+          {
+            "type": "Proton",
+            "versionName": "${VERSION_LABEL}-x86_64",
+            "versionCode": 1,
+            "description": "Proton ${VERSION_LABEL} x86_64 (native bionic build)",
+            "files": [],
+            "wine": { "binPath": "bin", "libPath": "lib", "prefixPack": "prefixPack.txz" }
+          }
+          JSON
+          sed 's/"type": "Proton"/"type": "Wine"/; s/"versionCode": 1/"versionCode": 0/' \
+            "$GITHUB_WORKSPACE/profile.json" > "$GITHUB_WORKSPACE/profile-wine.json"
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          cd "$HOME/compiled-files-x86_64"
+          cp "$GITHUB_WORKSPACE/prefixPack.txz" "$GITHUB_WORKSPACE/profile.json" .
+          tar cJf "$GITHUB_WORKSPACE/proton-${VERSION_LABEL}-x86_64.wcp" bin lib share prefixPack.txz profile.json
+          cp "$GITHUB_WORKSPACE/profile-wine.json" profile.json
+          tar cJf "$GITHUB_WORKSPACE/proton-wine-${VERSION_LABEL}-x86_64.wcp.xz" bin lib share prefixPack.txz profile.json
+          ls -lh "$GITHUB_WORKSPACE"/proton-*
+
+      - name: Upload Wine packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: proton-x86_64
+          path: |
+            proton-*-x86_64.wcp
+            proton-wine-*-x86_64.wcp.xz
+          retention-days: 30
+          if-no-files-found: error
+      - name: Upload the SysV shim
+        uses: actions/upload-artifact@v4
+        with:
+          name: sysvshm-x86_64
+          path: out/sysvshm/*.so
+          retention-days: 30
+          if-no-files-found: warn
+
+  imagefs:
+    name: Base imagefs-x86_64.tzst
+    needs: wine
+    if: ${{ !cancelled() && inputs.build_imagefs }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install zstd
+        run: sudo apt-get update && sudo apt-get install -y zstd
+      - name: Download the x86_64 sysroot
+        run: wget -q "$ASSETS_URL/termuxfs-x86_64.tar" -O "$RUNNER_TEMP/termuxfs-x86_64.tar"
+      - name: Assemble
+        run: |
+          mkdir -p out
+          bash tools/x86_64/assemble-imagefs.sh "$RUNNER_TEMP/termuxfs-x86_64.tar" out
+      - name: Report
+        if: always()
+        run: cat out/imagefs-report.txt >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload imagefs
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagefs-x86_64
+          path: out/imagefs-x86_64.tzst
+          retention-days: 30
+          if-no-files-found: error
+          compression-level: 0
