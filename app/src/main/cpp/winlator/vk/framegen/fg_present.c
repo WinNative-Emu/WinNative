@@ -134,6 +134,10 @@ struct FgPresenter {
     uint64_t log_real;
     uint64_t log_generated;
     uint64_t acquire_misses;
+    // Present-queue model (see fg_record_and_present): when the last presented image would be
+    // shown, and the generated frames left out to drain the queue.
+    uint64_t queue_end_ns;
+    uint64_t trimmed;
 };
 
 static void fg_reset_swapchain(FgPresenter* fg);
@@ -804,6 +808,12 @@ static void fg_renew_semaphore(FgPresenter* fg, VkSemaphore* handle) {
     *handle = fresh;
 }
 
+static uint64_t fg_now_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
+}
+
 static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* image) {
     FgFrame* f = &fg->frames[fg->frame_index];
 
@@ -822,12 +832,31 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
     }
 
     uint32_t image_index = 0;
+    const uint64_t acquire_begin_ns = fg_now_ns();
     VkResult acq = vkAcquireNextImageKHR(fg->device, fg->swapchain, UINT64_MAX, f->acquire,
                                          VK_NULL_HANDLE, &image_index);
     if (acq != VK_SUCCESS && acq != VK_SUBOPTIMAL_KHR) {
         AImage_delete(image);
         if (acq == VK_ERROR_OUT_OF_DATE_KHR) fg_reset_swapchain(fg);
         return;
+    }
+
+    // Keep the present queue short (see vk_renderer.c): FIFO shows one image per refresh and
+    // only the swapchain size bounds the queue, so output even slightly faster than the display
+    // fills it and every frame reaches the screen up to ~80 ms late. While more than two images
+    // wait beyond the next refresh, one generated frame per pair is left out until it drains.
+    const uint64_t period_ns = fg->refresh_rate > 1.0f ? (uint64_t)(1.0e9f / fg->refresh_rate) : 0;
+    if (period_ns > 0) {
+        const uint64_t now_ns = fg_now_ns();
+        if (now_ns - acquire_begin_ns > period_ns / 2 && fg->queue_end_ns < now_ns + 2 * period_ns) {
+            fg->queue_end_ns = now_ns + 2 * period_ns;
+        }
+        const uint64_t ahead = fg->queue_end_ns > now_ns + period_ns
+            ? (fg->queue_end_ns - now_ns - period_ns) / period_ns : 0;
+        if (ahead > 2 && planned > 0) {
+            planned--;
+            fg->trimmed++;
+        }
     }
 
     uint64_t gen_timeout = FG_ACQUIRE_TIMEOUT_MAX_NS;
@@ -983,6 +1012,15 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
     VkResult pr = vkQueuePresentKHR(fg->queue, &pi);
     if (pr == VK_ERROR_OUT_OF_DATE_KHR) out_of_date = true;
 
+    // The queue model: each image presented leaves the queue one refresh after the one before.
+    if (period_ns > 0) {
+        const uint64_t now_ns = fg_now_ns();
+        for (uint32_t i = 0; i < gen_count + 1; i++) {
+            const uint64_t next = fg->queue_end_ns + period_ns;
+            fg->queue_end_ns = next > now_ns + period_ns ? next : now_ns + period_ns;
+        }
+    }
+
     fg->real_frames++;
     fg->generated_frames += gen_count;
     if ((fg->real_frames % FG_TELEMETRY_FRAMES) == 0) {
@@ -990,12 +1028,13 @@ static void fg_record_and_present(FgPresenter* fg, FgImport* source, AImage* ima
         const uint64_t d_gen = fg->generated_frames - fg->log_generated;
         fg->log_real = fg->real_frames;
         fg->log_generated = fg->generated_frames;
-        FG_LOGI("framegen[%s] real=%llu made=%llu ratio=%.2f planned=%u got=%u images=%u div=%u misses=%llu",
+        FG_LOGI("framegen[%s] real=%llu made=%llu ratio=%.2f planned=%u got=%u images=%u div=%u "
+                "misses=%llu trimmed=%llu",
                 fg_engine_name(fg->active_engine),
                 (unsigned long long)fg->real_frames, (unsigned long long)fg->generated_frames,
                 d_real ? (double)(d_real + d_gen) / (double)d_real : 0.0, planned, gen_count,
                 fg->swapchain_image_count, fg->source_divisor,
-                (unsigned long long)fg->acquire_misses);
+                (unsigned long long)fg->acquire_misses, (unsigned long long)fg->trimmed);
     }
 
     fg->frame_index = (fg->frame_index + 1) % FG_FRAMES_IN_FLIGHT;

@@ -443,6 +443,14 @@ typedef struct VkRenderer {
     uint64_t          framegen_log_made;
     uint64_t          framegen_made_frames;
     uint64_t          framegen_acquire_misses;
+    // Present-queue model for frame generation: FIFO shows one image per refresh, so the queue
+    // drains at the display rate while each draw adds its real frame and its generated ones.
+    uint64_t          framegen_queue_end_ns;   // when the last presented image would be shown
+    uint64_t          framegen_seen_source;    // game frame count at the last draw
+    uint64_t          framegen_trimmed;        // generated frames left out to drain the queue
+    uint64_t          framegen_same_source;    // draws without a new game frame
+    uint64_t          framegen_ahead_sum;
+    uint64_t          framegen_ahead_n;
     uint64_t          framegen_draw_ns;
     uint64_t          framegen_gap_ns;
     uint64_t          framegen_last_end_ns;
