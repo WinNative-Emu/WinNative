@@ -1,8 +1,8 @@
 package com.winlator.cmod.runtime.audio.directaudio
 
 import android.content.Context
-import android.util.Log
 import com.winlator.cmod.runtime.display.environment.EnvironmentComponent
+import com.winlator.cmod.runtime.system.LogManager
 import com.winlator.cmod.shared.io.FileUtils
 import java.io.File
 import java.io.IOException
@@ -21,10 +21,10 @@ class DirectAudioHost(
     override fun start() {
         val dir = socket.parentFile
         if (dir != null && !dir.isDirectory && !dir.mkdirs()) {
-            Log.w(TAG, "Could not create $dir")
+            LogManager.logW(TAG, "Could not create $dir")
             return
         }
-        if (!nativeStart(socket.path, allowCapture)) Log.w(TAG, "DirectAudio host did not start")
+        if (!nativeStart(socket.path, allowCapture)) LogManager.logW(TAG, "DirectAudio host did not start")
     }
 
     override fun stop() {

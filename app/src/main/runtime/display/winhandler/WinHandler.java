@@ -30,6 +30,7 @@ import com.winlator.cmod.runtime.input.controls.GamepadState;
 import com.winlator.cmod.runtime.input.controls.SteamControllerBackend;
 import com.winlator.cmod.runtime.input.rumble.GamepadRumbleManager;
 import com.winlator.cmod.runtime.input.rumble.GcmRumbleMode;
+import com.winlator.cmod.runtime.system.LogManager;
 import com.winlator.cmod.shared.util.StringUtils;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -58,6 +59,7 @@ import java.util.concurrent.TimeUnit;
 import com.winlator.cmod.runtime.display.renderer.VulkanRenderer;
 
 public class WinHandler {
+  private static final String TAG = "WinHandler";
   private static final short CLIENT_PORT = 7946;
   public static final byte DEFAULT_INPUT_TYPE = 4;
   public static final byte FLAG_INPUT_TYPE_DINPUT = 8;
@@ -202,7 +204,7 @@ public class WinHandler {
 
   public int preAssignConnectedControllers() {
     if (this.fakeInputBasePath == null || this.fakeInputBasePath.isEmpty()) {
-      Log.w("WinHandler", "Skipping pre-assignment: fake input path is not set yet.");
+      Log.w(TAG, "Skipping pre-assignment: fake input path is not set yet.");
       return 0;
     }
 
@@ -217,7 +219,7 @@ public class WinHandler {
     }
 
     GamepadIdentityStore.configurePreAssignedControllers(this.controllers, this.deviceToSlot);
-    Log.d("WinHandler", "Pre-assigned " + assignedCount + " controller(s) before Wine startup.");
+    Log.d(TAG, "Pre-assigned " + assignedCount + " controller(s) before Wine startup.");
     return assignedCount;
   }
 
@@ -264,7 +266,7 @@ public class WinHandler {
       String descriptor = descriptorOf(deviceId);
       if (descriptor == null || !this.descriptorToSlot.containsKey(descriptor)) {
         Log.d(
-            "WinHandler",
+            TAG,
             "Ignoring device " + deviceId + " from " + source + ": slot limit reached.");
         return false;
       }
@@ -285,7 +287,7 @@ public class WinHandler {
     int slot = assignSlot(deviceId);
     if (slot >= 0) {
       Log.d(
-          "WinHandler",
+          TAG,
           "Auto-assigned device " + deviceId + " to slot " + slot + " via " + source + ".");
       return true;
     }
@@ -725,21 +727,13 @@ public class WinHandler {
   public void representVirtualGamepad() {
     Integer slot = this.deviceToSlot.get(OSC_DEVICE_ID);
     if (slot == null || slot < 0 || slot >= MAX_CONTROLLERS) {
+      LogManager.log(TAG, "No slot for virtual gamepad. Slot value: " + slot);
       return;
-    }
-    if (slotsOutliveDevices()) {
-      ensureWriterForSlot(slot);
-      if (this.writers[slot] != null) this.writers[slot].requestFullResend();
-      return;
-    }
-    if (this.writers[slot] != null) {
-      this.writers[slot].destroy();
-      this.writers[slot] = null;
     }
     ensureWriterForSlot(slot);
     if (this.writers[slot] != null) {
       this.writers[slot].requestFullResend();
-      Log.d("WinHandler", "Re-presented virtual gamepad on slot " + slot + ".");
+      LogManager.log(TAG, "Re-presented virtual gamepad on slot " + slot + ".");
     }
   }
 
@@ -1058,7 +1052,7 @@ public class WinHandler {
     }
 
     Log.d(
-        "WinHandler",
+        TAG,
         "Moved virtual gamepad from slot " + currentSlot + " to slot " + targetSlot + ".");
     return true;
   }
@@ -1098,7 +1092,7 @@ public class WinHandler {
     this.inputHandler.postDelayed(
         this.pendingVirtualGamepadRebalance, VIRTUAL_REBALANCE_AFTER_PHYSICAL_DISCONNECT_MS);
     Log.d(
-        "WinHandler",
+        TAG,
         "Scheduled virtual gamepad slot rebalance after physical disconnect.");
   }
 
@@ -1108,7 +1102,7 @@ public class WinHandler {
       android.view.InputDevice physicalDevice = android.view.InputDevice.getDevice(deviceId);
       if (!ExternalController.isGameController(physicalDevice)) {
         Log.d(
-            "WinHandler",
+            TAG,
             "Ignoring stale controller device " + deviceId + ": device is no longer connected.");
         return -1;
       }
@@ -1142,7 +1136,7 @@ public class WinHandler {
         this.deviceToSlot.put(deviceId, descriptorSlot);
         this.deviceToDescriptor.put(deviceId, descriptor);
         Log.d(
-            "WinHandler",
+            TAG,
             "Mapped device "
                 + deviceId
                 + " to existing slot "
@@ -1158,16 +1152,16 @@ public class WinHandler {
       int virtualSlot = findPreferredVirtualSlot(null);
       if (virtualSlot >= 0) {
         bindDeviceToSlot(deviceId, null, virtualSlot);
-        Log.d("WinHandler", "Assigned virtual gamepad to slot " + virtualSlot + ".");
+        Log.d(TAG, "Assigned virtual gamepad to slot " + virtualSlot + ".");
         return virtualSlot;
       }
-      Log.w("WinHandler", "No slots available for virtual gamepad.");
+      Log.w(TAG, "No slots available for virtual gamepad.");
       return -1;
     }
 
     int preferredPhysicalSlot = findLowestAvailablePhysicalSlot();
     if (preferredPhysicalSlot < 0) {
-      Log.w("WinHandler", "No slots available for device " + deviceId);
+      Log.w(TAG, "No slots available for device " + deviceId);
       return -1;
     }
 
@@ -1179,7 +1173,7 @@ public class WinHandler {
 
     bindDeviceToSlot(deviceId, descriptor, preferredPhysicalSlot);
     Log.d(
-        "WinHandler",
+        TAG,
         "Assigned device "
             + deviceId
             + " to slot "
@@ -1227,10 +1221,10 @@ public class WinHandler {
         }
         this.usedSlots.remove(slot);
         GamepadIdentityStore.refreshSlot(slot, null);
-        Log.d("WinHandler", "Device " + deviceId + " disconnected. Slot " + slot + " released.");
+        Log.d(TAG, "Device " + deviceId + " disconnected. Slot " + slot + " released.");
       } else {
         Log.d(
-            "WinHandler",
+            TAG,
             "Device "
                 + deviceId
                 + " removed but slot "
@@ -1268,7 +1262,7 @@ public class WinHandler {
     pendingDeviceReleases.put(deviceId, release);
     this.inputHandler.postDelayed(release, PHYSICAL_DISCONNECT_DEBOUNCE_MS);
     Log.d(
-        "WinHandler",
+        TAG,
         "Device "
             + deviceId
             + " removed; scheduling slot release in "
@@ -1293,13 +1287,13 @@ public class WinHandler {
   public void setXInputDisabled(boolean disabled) {
     this.xinputDisabled = disabled;
     this.xinputDisabledInitialized = true;
-    Log.d("WinHandler", "XInput Disabled set to: " + this.xinputDisabled);
+    Log.d(TAG, "XInput Disabled set to: " + this.xinputDisabled);
   }
 
   public void setFakeInputPath(String fakeInputPath) {
     if (fakeInputPath != null && !fakeInputPath.isEmpty()) {
       this.fakeInputBasePath = fakeInputPath;
-      Log.d("WinHandler", "FakeInputWriter base path set: " + fakeInputPath);
+      Log.d(TAG, "FakeInputWriter base path set: " + fakeInputPath);
       startVibrationListener();
       if (this.gcmRumbleMode != GcmRumbleMode.DISABLED) {
         this.gamepadRumbleManager.requestPermissionIfNeeded();
@@ -1319,7 +1313,7 @@ public class WinHandler {
           try {
             this.vibrationServer = new LocalServerSocket("winlator_vibration");
             Log.d(
-                "WinHandler",
+                TAG,
                 "Vibration listener started on abstract socket: winlator_vibration");
 
             while (this.vibrationRunning) {
@@ -1337,12 +1331,12 @@ public class WinHandler {
                 }
                 client.close();
               } catch (IOException e) {
-                if (this.vibrationRunning) Log.e("WinHandler", "Vibration client error: " + e.getMessage());
+                if (this.vibrationRunning) Log.e(TAG, "Vibration client error: " + e.getMessage());
               }
             }
           } catch (IOException e) {
             if (this.vibrationRunning) {
-              Log.e("WinHandler", "Vibration listener error: " + e.getMessage());
+              Log.e(TAG, "Vibration listener error: " + e.getMessage());
             }
           }
         });

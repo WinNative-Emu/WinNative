@@ -3,6 +3,7 @@ package com.winlator.cmod.feature.stores.steam.workshop
 import android.content.Context
 import android.system.Os
 import android.system.OsConstants
+import com.winlator.cmod.feature.stores.steam.utils.KeyValue
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -150,6 +151,138 @@ object WorkshopModsGenerator {
         modsJsonFile.writeText(modsJson.toString(2), Charsets.UTF_8)
         Timber.tag(TAG).i("Wrote mods.json with %d mod(s) for app %d", writtenIds.size, appId)
         return writtenIds.size
+    }
+
+    fun syncToSteamLibrary(context: Context, appId: Int, steamappsDir: File): Int {
+        val stagedIds = installedItemIds(context, appId)
+        val workshopDir = File(steamappsDir, "workshop")
+        val libraryContentDir = File(workshopDir, "content/$appId")
+        val managedIds = symlinkedIds(libraryContentDir) + stagedIds
+        pruneLinks(libraryContentDir, stagedIds)
+        val entries = LinkedHashMap<Long, JSONObject>()
+        if (stagedIds.isNotEmpty()) {
+            libraryContentDir.mkdirs()
+            for (id in stagedIds) {
+                val content = contentDir(context, appId, id)
+                if (!content.isDirectory) continue
+                val meta =
+                    try {
+                        JSONObject(metaFile(context, appId, id).readText())
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).w(e, "Skipping workshop item %d — unreadable meta", id)
+                        continue
+                    }
+                linkContent(content, File(libraryContentDir, id.toString()))
+                entries[id] = meta
+            }
+        }
+        if (managedIds.isEmpty()) return entries.size
+        val acfFile = File(workshopDir, "appworkshop_$appId.acf")
+        if (writeAppWorkshopAcf(appId, acfFile, managedIds, entries)) {
+            Timber.tag(TAG).i("Synced %d workshop item(s) into %s", entries.size, libraryContentDir)
+        }
+        return entries.size
+    }
+
+    private fun writeAppWorkshopAcf(
+        appId: Int,
+        acfFile: File,
+        managedIds: Set<Long>,
+        entries: Map<Long, JSONObject>,
+    ): Boolean {
+        val text = if (acfFile.isFile) runCatching { acfFile.readText() }.getOrNull()?.takeIf { it.isNotBlank() } else null
+        val root =
+            if (text == null) {
+                KeyValue("AppWorkshop").also { it.isSection = true }
+            } else {
+                val parsed = if (text.trimStart().startsWith("\"")) KeyValue.loadFromString(text) else null
+                if (parsed == null || !"AppWorkshop".equals(parsed.name, ignoreCase = true)) {
+                    Timber.tag(TAG).w("Leaving %s untouched — unparseable", acfFile.name)
+                    return false
+                }
+                parsed
+            }
+        root.isSection = true
+        setLeaf(root, "appid", appId.toString())
+        setLeaf(root, "NeedsUpdate", "0")
+        setLeaf(root, "NeedsDownload", "0")
+        if (root["TimeLastAppRan"].asString() == null) setLeaf(root, "TimeLastAppRan", "0")
+
+        val installed = resolveOrCreateSection(root, "WorkshopItemsInstalled")
+        val details = resolveOrCreateSection(root, "WorkshopItemDetails")
+        for (id in managedIds) {
+            val key = id.toString()
+            installed.children.removeAll { it.name == key }
+            details.children.removeAll { it.name == key }
+            val meta = entries[id] ?: continue
+            val size = meta.optLong("fileSize", 0L)
+            val timeUpdated = meta.optLong("timeUpdated", 0L)
+            val manifest = meta.optLong("manifestId", 0L)
+            installed.children.add(
+                KeyValue(key).also { node ->
+                    node.isSection = true
+                    node.children.add(KeyValue("size", size.toString()))
+                    node.children.add(KeyValue("timeupdated", timeUpdated.toString()))
+                    node.children.add(KeyValue("manifest", manifest.toString()))
+                },
+            )
+            details.children.add(
+                KeyValue(key).also { node ->
+                    node.isSection = true
+                    node.children.add(KeyValue("manifest", manifest.toString()))
+                    node.children.add(KeyValue("timeupdated", timeUpdated.toString()))
+                    node.children.add(KeyValue("timetouched", timeUpdated.toString()))
+                },
+            )
+        }
+        val sizeOnDisk = installed.children.sumOf { it["size"].asString()?.toLongOrNull() ?: 0L }
+        setLeaf(root, "SizeOnDisk", sizeOnDisk.toString())
+        val updated =
+            installed.children.maxOfOrNull { it["timeupdated"].asString()?.toLongOrNull() ?: 0L } ?: 0L
+        val stamp = if (updated > 0) updated else System.currentTimeMillis() / 1000
+        setLeaf(root, "TimeLastUpdated", stamp.toString())
+        acfFile.parentFile?.mkdirs()
+        return runCatching { acfFile.writeText(root.serialize(), Charsets.UTF_8) }.isSuccess
+    }
+
+    private fun setLeaf(parent: KeyValue, name: String, value: String) {
+        val leaf = parent.children.firstOrNull { it.name.equals(name, ignoreCase = true) }
+        if (leaf != null) {
+            leaf.value = value
+        } else {
+            parent.children.add(KeyValue(name, value))
+        }
+    }
+
+    private fun resolveOrCreateSection(parent: KeyValue, name: String): KeyValue {
+        val existing = parent.children.firstOrNull { it.name.equals(name, ignoreCase = true) }
+        if (existing != null) return existing
+        return KeyValue(name).also {
+            it.isSection = true
+            parent.children.add(it)
+        }
+    }
+
+    private fun symlinkedIds(dir: File): Set<Long> =
+        dir
+            .listFiles()
+            .orEmpty()
+            .filter { isSymlink(it) }
+            .mapNotNull { it.name.toLongOrNull() }
+            .toSet()
+
+    private fun pruneLinks(dir: File, ids: Set<Long>) {
+        val keep = ids.mapTo(HashSet()) { it.toString() }
+        dir.listFiles()?.forEach { child ->
+            if (child.name !in keep && isSymlink(child)) {
+                runCatching { Os.remove(child.absolutePath) }
+            }
+        }
+    }
+
+    private fun isSymlink(path: File): Boolean {
+        val st = runCatching { Os.lstat(path.absolutePath) }.getOrNull() ?: return false
+        return OsConstants.S_ISLNK(st.st_mode)
     }
 
     /**

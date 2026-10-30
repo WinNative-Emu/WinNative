@@ -9,6 +9,7 @@ microphone, and what the app does to select and configure it.
 > DirectAudio by The412Banner (https://github.com/The412Banner/directaudio)
 
 Bundled artifacts, checksums and the LGPL source offer: [`app/src/main/assets/directaudio/PROVENANCE.md`](../app/src/main/assets/directaudio/PROVENANCE.md).
+Bundled version: **1.4.0**.
 
 ---
 
@@ -37,8 +38,8 @@ than the microphone.
 
 **DirectAudio.** There is no daemon in the path at all — the driver talks AAudio directly from
 Wine's unixlib, so it is both the mmdevapi backend and the device layer. The capture half of
-the WASAPI vtable was always wired; v1.3.2 exposes the endpoint and backs it with a real AAudio
-input stream.
+the WASAPI vtable was always wired; from v1.3.2 on the driver exposes the endpoint and backs it
+with a real AAudio input stream.
 
 ---
 
@@ -81,22 +82,47 @@ All host-side logic lives in
 
 ### Driver selection and overlay
 
-Two axes decide which bundled build is installed:
+Three things decide which bundled build is installed:
 
-- **mmdevapi unixlib ABI** — the driver plugs straight into mmdevapi's unixlib table, so the
-  build that fits is a property of the Proton binary, not of its version string. Both the driver
-  and every Proton's own `winealsa.so` export `__wine_unix_call_funcs`, whose size is that table:
-  **36** entries for Proton 9.0 and 10.0-4, **37** for Proton 11.x. `DirectAudioDriver` reads the
-  count out of `<layer>/lib/wine/aarch64-unix/winealsa.so` and picks the bundled build whose own
-  unixlib reports the same count. No version parsing, so custom, GE and beta Protons work on the
-  same footing as the stock ones, and a Proton whose table matches neither build is refused
-  instead of being handed a mismatched driver.
-- **Kernel page size** — `sdk35` for a 16 KB-page kernel (`p_align` 0x4000), `sdk28` for the
+- **mmdevapi interface.** The driver plugs straight into mmdevapi's unixlib call table, so
+  the build that fits is a property of the Proton binary, not of its version string. There are
+  three interfaces:
+
+  | Set | Interface | Layers |
+  | --- | --- | --- |
+  | `wine10` | Wine 10 | Proton 9.0, Proton 10.0-4, GE-Proton 10.0-34 |
+  | `wine11` | Wine 11 (classic) | Proton 11.0-1 / 11.0-2, GE-Proton 11.0-3 … 7.1 |
+  | `wine11-systhread` | Wine 11, system-thread | Proton-CachyOS 11.0-20260703 / 11.0-20261005 |
+
+- **Table size.** Both the driver and every Proton's own `winealsa.so` / `winepulse.so` export
+  `__wine_unix_call_funcs`, whose size is that table: **36** entries for Proton 9.0 and
+  10.0-4, **37** for Proton 11.x and for the CachyOS layers. `DirectAudioDriver` reads the
+  count out of `<layer>/lib/wine/aarch64-unix/winealsa.so` (or `winepulse.so`) and only
+  accepts a bundled build whose own unixlib reports the same count.
+- **Kernel page size.** `sdk35` for a 16 KB-page kernel (`p_align` 0x4000), `sdk28` for the
   classic 4 KB (0x1000), read via `Os.sysconf(_SC_PAGESIZE)`. Loading the wrong one fails to map.
-  Nothing else in the app needed page size before, so the check is new.
 
-The `wine10`/`wine11` asset names are historical — the wine10 build serves Proton 9.0 as well,
-which the old version table refused outright.
+**The table size alone cannot pick the interface.** The system-thread interface replaces
+`main_loop` + `timer_loop` with `main_loop_start` + `main_loop_stop` (the driver spawns its own
+timer thread), so its table has the **same 37 entries** as classic Wine 11 while entries 3–9
+are shifted by one. A classic driver loaded into a system-thread layer passes the size check,
+but every call from `get_endpoint_ids` on is routed to the wrong function: mmdevapi registers
+an endpoint with an empty device name (`0,` instead of `0,aaudio`) and faults in `wcsdup` while
+enumerating the next one, so the game dies at startup. The interface is therefore read from the
+layer's own unixlibs instead: a system-thread layer's `winealsa.so` / `winepulse.so` **import
+`PsCreateSystemThread`**, a classic one does not. The selection is:
+
+```
+host       = hostInterface(<layer>/lib/wine)      // entry count + imports PsCreateSystemThread
+candidates = host.systhread ? [wine11-systhread]  // never a classic build
+                            : [wine11, wine10]    // never the system-thread build
+bundled    = first candidate whose own unixlib has host.abi entries
+```
+
+No version parsing, so custom, GE and beta Protons work on the same footing as the stock ones,
+and a Proton whose table matches no candidate is refused instead of being handed a mismatched
+driver. The `wine10`/`wine11` asset names are historical — the wine10 build serves Proton 9.0
+as well, which the old version table refused outright.
 
 A Wine 11 `.drv` has **no PE export table**, and that is correct: Wine 11's own `winealsa.drv`
 and `winepulse.drv` have exactly the same shape, because the `.drv` is a generic unixlib host
@@ -104,7 +130,9 @@ there and the driver logic lives entirely in the `.so`. Only Wine 10 and earlier
 `get_device_guid` / `get_device_name_from_guid` through PE exports.
 
 The complete 3-file set is then overlaid onto the container's Wine layer, stamped by bundled
-version + variant so it is a no-op on every launch after the first:
+version + set + table size + page size (`<version>-<set>-abi<N>-<sdk>`) so it is a no-op on every
+launch after the first, and re-overlays when the bundled version, the layer's interface or the
+page size changes:
 
 ```
 lib/wine/aarch64-windows/winedirectaudio.drv   arm64ec PE  — 64-bit guest games
@@ -112,7 +140,7 @@ lib/wine/i386-windows/winedirectaudio.drv      32-bit PE   — wow64 guest games
 lib/wine/aarch64-unix/winedirectaudio.so       bionic unixlib — the AAudio backend
 ```
 
-Which PE the loader picks is decided by the **guest game's** bitness, not the device, so both PE
+Which PE loads is decided by the **guest game's** bitness, not the device, so both PE
 halves are always installed alongside the shared unixlib.
 
 ### Making the unixlib loadable (the AAudio bridge)
@@ -134,7 +162,9 @@ pattern was built with them; `winedirectaudio.drv` is new, so it is absent and t
 identical to a missing-dependency problem and is easy to misdiagnose as an AAudio/linker issue.
 
 `DirectAudioDriver.mirrorIntoPrefix()` therefore copies both PE halves from the layer into the prefix
-after the overlay, size-gated so it is a no-op once staged. This is the same thing
+after the overlay. A file already in the prefix is only kept when its **contents** match the layer's
+(a size check is not enough: the PE halves of two interface builds can have the same size), so it is
+a no-op once staged and a switch between layers restages correctly. This is the same thing
 `WinComponentSetup.restoreWineBuiltinDllFiles` does for the stock builtins, and it is what makes the
 driver work on a container created before DirectAudio existed.
 
@@ -158,7 +188,7 @@ This is host-side only: the shipped driver zips stay byte-verbatim (see `assets/
 the rename happens on-device, and nothing is baked into a specific Proton build. A future driver
 that folds the bridge into the unixlib itself — removing both the rename and the separate shim — is
 staged at https://github.com/WinNative-Emu/directaudio (`winnative/self-contained-aaudio`); once its
-CI builds the four artifacts and they are device-verified, dropping them here retires both pieces
+CI builds the artifacts and they are device-verified, dropping them here retires both pieces
 above.
 
 ### Driver activation
@@ -177,11 +207,11 @@ cannot complete, drops the launch back to `Container.DEFAULT_AUDIO_DRIVER` — t
 names PulseAudio, the PulseAudio component is added like any other launch, and a toast says why.
 The container's own saved choice is untouched, so the next launch retries the install.
 
-`install()` reports that honestly: no bundled build matching the layer's unixlib ABI, a failed
-stage into the prefix, or a unixlib with neither `libaaudio.so` nor `libwaudio.so` in its dynamic
-section all return `false` rather than logging and returning success. A refused driver is also
-deleted from `system32`/`syswow64`, so a prefix staged by an earlier build does not keep a dead
-`winedirectaudio.drv` around.
+`install()` reports that honestly: no bundled build matching the layer's interface and unixlib
+ABI, a failed stage into the prefix, or a unixlib with neither `libaaudio.so` nor `libwaudio.so`
+in its dynamic section all return `false` rather than logging and returning success. A refused
+driver is also deleted from `system32`/`syswow64`, so a prefix staged by an earlier build does
+not keep a dead `winedirectaudio.drv` around.
 
 Order matters: `resolveAudioDriver()` runs **after** `setupWineSystemFiles()`, because
 `ensureWinePrefixReady()` can move a broken `.wine` aside and extract a fresh prefix. Staging
@@ -203,6 +233,15 @@ is actually granted. That second condition matters: setting the gate without the
 would advertise a capture endpoint the AAudio input cannot open, which is precisely the
 black-screen condition above. Withholding it degrades to render-only instead.
 
+### Logging
+
+The Kotlin and Java side logs through `LogManager` (tags `DirectAudio`, `DirectAudioHost`,
+`GuestLauncher`, `XServerDisplayActivity`), so the lines honour the app's log toggles and tag
+filters and end up in the shareable log files. Diagnostic `D`/`I` lines use the lambda variants,
+which cost nothing when logging is off; warnings and errors use the plain variants so failures
+always reach logcat. The native shim (`wn_aaudio_shim.c`) still logs under `wn-aaudio-shim`
+through `__android_log_print`, which `LogManager` cannot see.
+
 ---
 
 ## Verifying on a device
@@ -215,6 +254,17 @@ first thing to check when audio is present but wrong:
 capture open: req 48000/float/2ch preset=voicecomm perf=1 - got rate=48000 ch=1 fmt=2
 capture start
 ```
+
+To confirm the right build was picked, look for the install line before the Wine session starts:
+
+```
+host abi=37 systhread=true -> wine11-systhread
+```
+
+and, with `WINEDEBUG=+loaddll,+mmdevapi` (the `+` form: `err+mmdevapi` only enables the `err`
+class and prints nothing), check the endpoint key. A correct enumeration reports
+`Found matching device key L"0,aaudio"`; `L"0,"` means the driver's table is out of step with
+mmdevapi's.
 
 Upstream validated a real microphone recording and TF2's Options → Voice mic-test meter on an
 AYANEO Pocket FIT (Adreno 750, Android 14). Reproduce that first.
@@ -231,7 +281,9 @@ the stream.
   for aarch64 glibc against the headers of Valve's Wine 11 (pinned commit), and links it with
   `wn_aaudio_client.c`: the 27 `AAudio_*` entry points, implemented as a client of the app. The
   result ships as `assets/directaudio/linux/winedirectaudio.so`; the two PE halves are upstream's
-  own, taken from the `wine11` archive.
+  own, taken from the `wine11` archive. The unixlib was built from release 1.3.2 and has not been
+  rebuilt for 1.4.0; the PE halves come from the bundled (1.4.0) `wine11` set, which upstream
+  reports as unchanged for classic Wine 11.
 - `DirectAudioHost` (`libwnaudiohost.so`) listens on a unix socket inside the session. One
   connection is one stream: open/start/stop/close go over the socket, the PCM goes through a ring
   in `ASharedMemory` whose descriptor rides on the open reply, and the real AAudio data callback
@@ -265,13 +317,18 @@ Upstream's own honest list, plus what applies on the WinNative side:
 | **Device spread** | AAudio input under FEX is proven on one device. WinNative's spread is much wider. |
 | **Background microphone** | Android 9+ silences mic input for apps with no foreground process, regardless of target SDK. `SessionKeepAliveService` is declared `specialUse\|dataSync` with no `microphone` foreground-service type — fine while the game is foregrounded, silent when it is not. |
 | **`targetSdk 28`** | Android 14's foreground-service-type enforcement does not apply at this target. Add the `microphone` FGS type when the target is raised. |
+| **GameScope and system-thread Protons** | `winnative-directaudio` still picks Protons by unixlib table size alone, which cannot tell classic Wine 11 from the system-thread interface (see above). A system-thread Proton installed in a GameScope session would be handed the classic driver. There is no system-thread build of the Linux unixlib either. |
+| **New interfaces** | Any future mmdevapi change that keeps the table size is invisible to the size check. A new interface needs a new set, a new candidate tag and its own discriminator in `DirectAudioDriver`. |
 
 ## Updating the bundled driver
 
 1. Download the new release artifacts into `app/src/main/assets/directaudio/` (command in
-   `PROVENANCE.md`), and refresh the checksums recorded there.
+   `PROVENANCE.md`; one zip per interface and page size, six today), and refresh the checksums,
+   release and commit recorded there.
 2. Bump `BUNDLED_VERSION` in `DirectAudioDriver.kt` so existing containers re-overlay.
 3. Copy `COPYING`, `NOTICE` and `AUTHORS` again if upstream changed them.
+4. If the release adds an interface, add its tag to the candidates in `bundledDriverFor()` and
+   teach `hostInterface()` how to recognise it, then document it in the table above.
 
 If you ever need to build from source rather than ship his binaries, upstream's `INTEGRATION.md`
 has the recipe: add the repo as a submodule at `dlls/winedirectaudio.drv` in the Proton tree —

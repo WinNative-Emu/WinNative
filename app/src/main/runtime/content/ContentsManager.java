@@ -7,10 +7,15 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.util.Log;
 import androidx.annotation.NonNull;
+
+import com.winlator.cmod.runtime.system.LogManager;
 import com.winlator.cmod.shared.io.FileUtils;
 import com.winlator.cmod.shared.io.TarCompressorUtils;
 import com.winlator.cmod.shared.util.OnExtractFileListener;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,8 +27,12 @@ import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.io.RandomAccessFile;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
 public class ContentsManager {
+  private static final String TAG = "ContentsManager";
   public static final String PROFILE_NAME = "profile.json";
   public static final String REMOTE_PROFILES =
       "https://raw.githubusercontent.com/nicholasx417/WinNative-Components/refs/heads/main/contents.json";
@@ -58,6 +67,16 @@ public class ContentsManager {
   };
   private Map<String, String> dirTemplateMap;
   private Map<ContentProfile.ContentType, List<String>> trustedFilesMap;
+  private static final int ET_DYN = 3;
+  private static final int EM_AARCH64 = 183;
+  private static final int MAX_SCAN_DEPTH = 6;
+
+  // A Wine layer built with the FEX unixlib loader patch contains these strings in its ntdll.so.
+  // To find one for a new layer, diff `strings -a ntdll.so` against a layer without unixlib.
+  private static final String[] UNIXLIB_LOADER_MARKERS = {"load_unixlib_by_name"};
+
+  // Detection results per install dir; cleared whenever content is installed or removed.
+  private static final Map<String, Boolean> unixLibsCache = new ConcurrentHashMap<>();
 
   private SharedPreferences preferences;
 
@@ -384,6 +403,7 @@ public class ContentsManager {
 
     repairInstalledContentPermissions(profile);
     com.winlator.cmod.runtime.display.wayland.WineWaylandSupport.invalidate();
+    unixLibsCache.clear();
     callback.onSucceed(profile);
   }
 
@@ -649,6 +669,7 @@ public class ContentsManager {
 
   public void removeContent(ContentProfile profile) {
     FileUtils.delete(getInstallDir(context, profile));
+    unixLibsCache.clear();
     forgetRemoteProfileAliases(profile);
     syncContents();
     com.winlator.cmod.runtime.display.wayland.WineWaylandSupport.invalidate();
@@ -787,28 +808,162 @@ public class ContentsManager {
     return null;
   }
 
-  public boolean profileHasUnixLibs(ContentProfile profile) {
-    if (profile == null) return false;
-    return dirContainsSharedObject(getInstallDir(context, profile));
-  }
-
   public boolean fexcoreVersionHasUnixLibs(String fexcoreVersion) {
-    if (fexcoreVersion == null || fexcoreVersion.isEmpty()) return false;
-    return profileHasUnixLibs(getProfileByEntryName("fexcore-" + fexcoreVersion));
+    return shipsUnixLibs(
+            findInstalledDir(context, ContentProfile.ContentType.CONTENT_TYPE_FEXCORE, fexcoreVersion));
   }
 
-  private static boolean dirContainsSharedObject(File dir) {
-    if (dir == null) return false;
+  /** True if the package contains at least one aarch64 ELF shared object (a Wine unixlib). */
+  public static boolean shipsUnixLibs(File installDir) {
+    return detectCached(
+            "package",
+            installDir,
+            dir -> {
+              File unixLib = findAarch64SharedObject(dir, 0);
+              if (unixLib != null) LogManager.log(TAG, "UnixLibs: matched " + unixLib.getName());
+              return unixLib != null;
+            });
+  }
+
+  /** True if the Wine/Proton layer's unix-side ntdll contains the FEX unixlib loader. */
+  public static boolean wineHasUnixLibLoader(File installDir) {
+    return detectCached(
+            "wine",
+            installDir,
+            dir -> {
+              File unixDir = findDirNamed(dir, "aarch64-unix", 0);
+              File ntdll = unixDir == null ? null : new File(unixDir, "ntdll.so");
+              if (ntdll == null || !ntdll.isFile()) {
+                LogManager.logW(TAG, "UnixLibs: ntdll.so not found in aarch64-unix of " + dir.getName());
+                return false;
+              }
+              boolean found = fileContainsAnyMarker(ntdll, UNIXLIB_LOADER_MARKERS);
+              LogManager.log(
+                      TAG, "UnixLibs: loader marker " + (found ? "found" : "absent") + " in " + ntdll.getPath());
+              return found;
+            });
+  }
+
+  private static boolean detectCached(String kind, File installDir, Predicate<File> detector) {
+    if (installDir == null || !installDir.isDirectory()) {
+      LogManager.log(TAG, "UnixLibs: " + kind + " install dir not found (bundled or not installed): " + installDir);
+      return false;
+    }
+    return unixLibsCache.computeIfAbsent(
+            kind + "|" + installDir.getAbsolutePath(),
+            key -> {
+              boolean result = detector.test(installDir);
+              LogManager.log(TAG, "UnixLibs: " + kind + " '" + installDir.getName() + "' -> " + result);
+              return result;
+            });
+  }
+
+  /** Resolves an installed content dir from a "verName-verCode" identifier. */
+  public static File findInstalledDir(
+          Context context, ContentProfile.ContentType type, String versionId) {
+    if (type == null || versionId == null || versionId.isEmpty()) return null;
+    File dir = new File(getContentTypeDir(context, type), versionId);
+    return dir.isDirectory() ? dir : null;
+  }
+
+  /** Same, from a full entry name such as "Proton-10.0-arm64ec-1". */
+  public static File findInstalledDirByEntryName(Context context, String entryName) {
+    if (entryName == null) return null;
+    int dash = entryName.indexOf('-');
+    if (dash <= 0) return null;
+    return findInstalledDir(
+            context,
+            ContentProfile.ContentType.getTypeByName(entryName.substring(0, dash)),
+            entryName.substring(dash + 1));
+  }
+
+  private static File findAarch64SharedObject(File dir, int depth) {
+    if (depth > MAX_SCAN_DEPTH) return null;
     File[] files = dir.listFiles();
-    if (files == null) return false;
+    if (files == null) return null;
     for (File file : files) {
       if (file.isDirectory()) {
-        if (dirContainsSharedObject(file)) return true;
-      } else if (isSharedObject(file.getName())) {
-        return true;
+        File match = findAarch64SharedObject(file, depth + 1);
+        if (match != null) return match;
+      } else if (isAarch64SharedObject(file)) {
+        return file;
       }
     }
+    return null;
+  }
+
+  private static File findDirNamed(File dir, String name, int depth) {
+    if (depth > MAX_SCAN_DEPTH) return null;
+    File[] children = dir.listFiles(File::isDirectory);
+    if (children == null) return null;
+    for (File child : children) {
+      if (child.getName().equals(name)) return child;
+      File found = findDirNamed(child, name, depth + 1);
+      if (found != null) return found;
+    }
+    return null;
+  }
+
+  /** Checks the ELF header itself, so the file name does not matter. */
+  private static boolean isAarch64SharedObject(File file) {
+    if (file.length() < 20) return false;
+    byte[] h = new byte[20];
+    try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+      raf.readFully(h);
+    } catch (IOException e) {
+      LogManager.logW(TAG, "UnixLibs: cannot read ELF header of " + file.getPath(), e);
+      return false;
+    }
+    boolean elf = h[0] == 0x7F && h[1] == 'E' && h[2] == 'L' && h[3] == 'F';
+    if (!elf || h[5] != 1) return false; // ELF magic, little-endian only
+    int type = (h[16] & 0xFF) | ((h[17] & 0xFF) << 8);
+    int machine = (h[18] & 0xFF) | ((h[19] & 0xFF) << 8);
+    return type == ET_DYN && machine == EM_AARCH64;
+  }
+
+  /** Streams the file in chunks, keeping an overlap so a marker split across chunks is still found. */
+  private static boolean fileContainsAnyMarker(File file, String[] markers) {
+    byte[][] patterns = new byte[markers.length][];
+    int maxLen = 0;
+    for (int i = 0; i < markers.length; i++) {
+      patterns[i] = markers[i].getBytes(StandardCharsets.US_ASCII);
+      maxLen = Math.max(maxLen, patterns[i].length);
+    }
+    final int chunk = 64 * 1024;
+    byte[] buf = new byte[chunk + maxLen];
+    int carry = 0;
+    try (FileInputStream in = new FileInputStream(file)) {
+      int read;
+      while ((read = in.read(buf, carry, chunk)) > 0) {
+        int end = carry + read;
+        for (byte[] pattern : patterns) if (contains(buf, end, pattern)) return true;
+        carry = Math.min(maxLen - 1, end);
+        System.arraycopy(buf, end - carry, buf, 0, carry);
+      }
+    } catch (IOException e) {
+      LogManager.logW(TAG, "UnixLibs: cannot scan " + file.getPath(), e);
+    }
     return false;
+  }
+
+  private static boolean contains(byte[] data, int len, byte[] pattern) {
+    outer:
+    for (int i = 0; i <= len - pattern.length; i++) {
+      for (int j = 0; j < pattern.length; j++) {
+        if (data[i + j] != pattern[j]) continue outer;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  private static List<ContentProfile.ContentFile> getUnixLibFiles(ContentProfile profile) {
+    List<ContentProfile.ContentFile> unixLibs = new ArrayList<>();
+    if (profile == null || profile.fileList == null) return unixLibs;
+    for (ContentProfile.ContentFile contentFile : profile.fileList) {
+      if (isSharedObject(new File(contentFile.target).getName())) unixLibs.add(contentFile);
+    }
+    return unixLibs;
   }
 
   private static boolean isSharedObject(String name) {
@@ -817,36 +972,39 @@ public class ContentsManager {
   }
 
   public void removeAppliedUnixLibs(ContentProfile profile) {
-    if (profile == null || profile.fileList == null) return;
-    for (ContentProfile.ContentFile contentFile : profile.fileList) {
-      if (!isSharedObject(new File(contentFile.target).getName())) continue;
-      File targetFile = new File(getPathFromTemplate(contentFile.target));
+    for (ContentProfile.ContentFile unixLib : getUnixLibFiles(profile)) {
+      File targetFile = new File(getPathFromTemplate(unixLib.target));
       if (targetFile.exists() && targetFile.delete()) {
-        Log.i("ContentsManager", "UnixLibs: removed " + targetFile.getName());
+        LogManager.logI(TAG, "UnixLibs: removed applied " + targetFile.getName());
       }
     }
   }
 
   public void copyUnixLibsToDir(ContentProfile profile, File destDir) {
-    if (profile == null || profile.fileList == null) return;
-    for (ContentProfile.ContentFile contentFile : profile.fileList) {
-      String name = new File(contentFile.target).getName();
-      if (!isSharedObject(name)) continue;
-      File sourceFile = new File(getInstallDir(context, profile), contentFile.source);
-      if (!sourceFile.exists()) continue;
-      File destFile = new File(destDir, name);
-      FileUtils.copy(sourceFile, destFile);
-      FileUtils.chmod(destFile, 0771);
+    if (profile == null) return;
+    File installDir = getInstallDir(context, profile);
+    for (ContentProfile.ContentFile unixLib : getUnixLibFiles(profile)) {
+      File sourceFile = new File(installDir, unixLib.source);
+      if (!sourceFile.exists()) {
+        LogManager.logW(TAG, "UnixLibs: source missing, not copied: " + sourceFile.getPath());
+        continue;
+      }
+      File destFile = new File(destDir, new File(unixLib.target).getName());
+      if (FileUtils.copy(sourceFile, destFile)) {
+        FileUtils.chmod(destFile, 0771);
+        LogManager.logI(TAG, "UnixLibs: copied " + destFile.getName() + " to " + destDir.getPath());
+      } else {
+        LogManager.logW(TAG, "UnixLibs: failed to copy " + sourceFile.getPath() + " to " + destFile.getPath());
+      }
     }
   }
 
   public void deleteUnixLibsFromDir(ContentProfile profile, File destDir) {
-    if (profile == null || profile.fileList == null) return;
-    for (ContentProfile.ContentFile contentFile : profile.fileList) {
-      String name = new File(contentFile.target).getName();
-      if (!isSharedObject(name)) continue;
-      File destFile = new File(destDir, name);
-      if (destFile.exists()) destFile.delete();
+    for (ContentProfile.ContentFile unixLib : getUnixLibFiles(profile)) {
+      File destFile = new File(destDir, new File(unixLib.target).getName());
+      if (destFile.exists() && destFile.delete()) {
+        LogManager.logI(TAG, "UnixLibs: deleted " + destFile.getName() + " from " + destDir.getPath());
+      }
     }
   }
 
