@@ -70,8 +70,8 @@ object LogManager {
     private val DEVELOPER_TAGS: Set<String> = setOf(
         "WinlatorLifecycle",
         "OomProtectCheck",
-        "GuestProgramLauncherComponent",
         "XServerLeakCheck",
+        "wn-aaudio-shim",
     )
 
     private const val EVENT_WATCH_TIMEOUT_MS = 90 * 60 * 1000L // 1.5 hours

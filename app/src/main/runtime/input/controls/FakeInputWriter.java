@@ -1,6 +1,9 @@
 package com.winlator.cmod.runtime.input.controls;
 
 import android.util.Log;
+
+import com.winlator.cmod.runtime.system.LogManager;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -450,30 +453,24 @@ public class FakeInputWriter {
   }
 
   public synchronized boolean open() {
-    if (this.destroyed) {
-      return false;
-    }
-    if (this.isOpen) {
-      return true;
-    }
+    if (this.destroyed) return false;
+    if (this.isOpen) return true;
     try {
-      this.eventFile.getParentFile().mkdirs();
-      if (!this.eventFile.exists()) {
-        this.eventFile.createNewFile();
-      }
+      // Activate the ring first: once the node is visible, a guest that opens it
+      // must already capture the final ring generation.
       if (!activateRingSlot()) {
-        if (this.eventFile.exists()) {
-          this.eventFile.delete();
-        }
-        Log.e(TAG, "Failed to open fake input mmap ring: " + this.eventFile.getAbsolutePath());
+        LogManager.logE(TAG, "Failed to open fake input mmap ring: " + this.eventFile.getAbsolutePath());
         return false;
       }
+      File parent = this.eventFile.getParentFile();
+      if (parent != null) parent.mkdirs();
+      if (!this.eventFile.exists()) this.eventFile.createNewFile();
       this.isOpen = true;
       this.pendingFullResend = true;
-      Log.i(TAG, "Opened fake input: " + this.eventFile.getAbsolutePath());
+      LogManager.logI(TAG, "Opened fake input: " + this.eventFile.getAbsolutePath());
       return true;
     } catch (IOException e) {
-      Log.e(TAG, "Failed to open: " + e.getMessage());
+      LogManager.logE(TAG, "Failed to open: " + e.getMessage());
       return false;
     }
   }
@@ -554,12 +551,10 @@ public class FakeInputWriter {
 
   public synchronized void destroy() {
     this.destroyed = true;
-    reset();
-    close();
-    deactivateRingSlot();
-    if (this.eventFile != null && this.eventFile.exists()) {
+    // Hide the node first so no guest can open it after the ring is invalidated.
+    if (this.eventFile.exists()) {
       boolean deleted = this.eventFile.delete();
-      Log.i(
+      LogManager.logI(
           TAG,
           "Deleted fake input discovery node: "
               + this.eventFile.getAbsolutePath()
@@ -567,6 +562,9 @@ public class FakeInputWriter {
               + deleted
               + ")");
     }
+    reset();
+    close();
+    deactivateRingSlot();
   }
 
   private void writeEvent(short type, short code, int value) {

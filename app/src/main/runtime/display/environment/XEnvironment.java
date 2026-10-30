@@ -5,6 +5,7 @@ import android.util.Log;
 import com.winlator.cmod.runtime.audio.alsaserver.ALSAClient;
 import com.winlator.cmod.runtime.display.environment.components.GuestProgramLauncherComponent;
 import com.winlator.cmod.runtime.display.environment.components.PulseAudioComponent;
+import com.winlator.cmod.runtime.system.LogManager;
 import com.winlator.cmod.shared.io.FileUtils;
 import java.io.File;
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class XEnvironment implements Iterable<EnvironmentComponent> {
   private static final String TAG = "XEnvironment";
@@ -64,7 +66,7 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
 
   public void startEnvironmentComponents() {
     FileUtils.clear(getTmpDir());
-    Log.d(TAG, "Starting " + components.size() + " environment component(s)");
+    LogManager.log(TAG, "Starting " + components.size() + " environment component(s)");
 
     // GuestProgramLauncherComponent forks the game process and reads every
     // other component's sockets/state — it must start LAST and remain serial.
@@ -82,32 +84,34 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
 
     if (parallelStart.size() <= 1) {
       for (EnvironmentComponent c : parallelStart) {
-        Log.d(TAG, "Starting component " + c.getClass().getSimpleName());
+        LogManager.log(TAG, "Starting component " + c.getClass().getSimpleName());
         c.start();
       }
     } else {
+      String lastCompName = "Empty";
       ExecutorService pool = Executors.newFixedThreadPool(parallelStart.size());
       ArrayList<Future<?>> futures = new ArrayList<>(parallelStart.size());
       for (EnvironmentComponent c : parallelStart) {
         final EnvironmentComponent comp = c;
+        lastCompName = comp.getClass().getSimpleName();
         futures.add(pool.submit(() -> {
-          Log.d(TAG, "Starting component " + comp.getClass().getSimpleName());
+          LogManager.log(TAG, "Starting component " + comp.getClass().getSimpleName());
           comp.start();
         }));
       }
       pool.shutdown();
       for (Future<?> f : futures) {
         try { f.get(); } catch (Throwable t) {
-          Log.e(TAG, "Component start failed", t);
+          LogManager.logE(TAG, "Component start failed: " + lastCompName + " (guest will still launch)", t);
         }
       }
     }
 
     if (launcher != null) {
-      Log.d(TAG, "Starting component " + launcher.getClass().getSimpleName());
+      LogManager.log(TAG, "Starting component " + launcher.getClass().getSimpleName());
       launcher.start();
     }
-    Log.d(TAG, "Environment component startup finished");
+    LogManager.log(TAG, "Environment component startup finished");
   }
 
   public void stopEnvironmentComponents() {

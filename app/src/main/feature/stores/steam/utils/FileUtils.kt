@@ -94,7 +94,7 @@ object FileUtils {
             output.flush()
             output.close()
         } catch (e: Exception) {
-            Timber.e("%s encounted an issue in writeStringToFile()", errorTag)
+            Timber.e("%s encountered an issue in writeStringToFile()", errorTag)
             Timber.e(errorMsg?.invoke(e) ?: "Error writing to file: $e")
         }
     }

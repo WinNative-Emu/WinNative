@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,7 +40,6 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -49,7 +47,6 @@ import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import com.winlator.cmod.runtime.display.environment.components.NetworkingSettings
 import com.winlator.cmod.shared.ui.layout.isPortraitLayout
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -94,7 +91,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import com.winlator.cmod.runtime.container.Container
-import com.winlator.cmod.runtime.content.DriverPackages
 import com.winlator.cmod.runtime.display.wayland.WineWaylandSupport
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -161,13 +157,11 @@ import com.winlator.cmod.shared.framegen.FrameGenPreset
 import com.winlator.cmod.shared.theme.GameSettingsStyle
 import com.winlator.cmod.runtime.wine.WineThemeManager
 import com.winlator.cmod.runtime.display.environment.ImageFs
-import com.winlator.cmod.runtime.display.lsfg.LosslessScaling
 import com.winlator.cmod.shared.android.DirectoryPickerDialog
 import com.winlator.cmod.shared.ui.dialog.findActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -175,8 +169,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import com.winlator.cmod.shared.ui.focus.controllerFocusBorder
-import com.winlator.cmod.shared.ui.focus.controllerFocusGlow
+import com.winlator.cmod.runtime.content.ContentProfile
+import com.winlator.cmod.runtime.content.ContentsManager
 import com.winlator.cmod.shared.ui.focus.controllerSliderEscape
 import com.winlator.cmod.shared.ui.focus.controllerTextFieldEscape
 import com.winlator.cmod.shared.ui.outlinedSwitchColors
@@ -5513,13 +5507,19 @@ private fun AdvancedSection(
 
     // FEXCore — hidden when FEXCore isn't explicitly in either slot.
     if (state.showFexcoreFrame.value) {
-        val fexVersionUnix = state.fexcoreVersionEntries.value
-            .getOrNull(state.selectedFexcoreVersion.intValue)
-            ?.contains("unix", ignoreCase = true) == true
-        val protonUnix = state.wineVersionDisplay.value.contains("unix", ignoreCase = true) ||
-            state.wineVersionEntries.value.getOrNull(state.selectedWineVersion.intValue)
-                ?.contains("unix", ignoreCase = true) == true
-        val unixCompatible = fexVersionUnix && protonUnix
+        val unixContext = LocalContext.current
+        val fexVersion =
+            state.fexcoreVersionEntries.value.getOrNull(state.selectedFexcoreVersion.intValue).orEmpty()
+        val wineIdentifier = displayServerWineIdentifier(state)
+        val unixCompatible by produceState(false, fexVersion, wineIdentifier) {
+            value = withContext(Dispatchers.IO) {
+                ContentsManager.shipsUnixLibs(
+                    ContentsManager.findInstalledDir(
+                        unixContext, ContentProfile.ContentType.CONTENT_TYPE_FEXCORE, fexVersion)) &&
+                        ContentsManager.wineHasUnixLibLoader(
+                            ContentsManager.findInstalledDirByEntryName(unixContext, wineIdentifier))
+            }
+        }
 
         val fexcoreUsage = emulatorUsageLabel(state, setOf("fexcore"))
         EmulatorSectionHeader(stringResource(R.string.container_fexcore_config), fexcoreUsage)
