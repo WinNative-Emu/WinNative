@@ -1901,6 +1901,9 @@ static void destroy_lsfg(VkRenderer* r) {
     r->framegen_real_frames = 0;
     r->framegen_made_frames = 0;
     r->framegen_draw_ns = 0;
+    r->framegen_queue_end_ns = 0;
+    r->framegen_trimmed = 0;
+    r->framegen_same_source = 0;
     r->framegen_gap_ns = 0;
     r->framegen_last_end_ns = 0;
     r->framegen_timed_frames = 0;
@@ -1927,6 +1930,9 @@ static void destroy_dis(VkRenderer* r) {
     r->framegen_real_frames = 0;
     r->framegen_made_frames = 0;
     r->framegen_draw_ns = 0;
+    r->framegen_queue_end_ns = 0;
+    r->framegen_trimmed = 0;
+    r->framegen_same_source = 0;
     r->framegen_gap_ns = 0;
     r->framegen_last_end_ns = 0;
     r->framegen_timed_frames = 0;
@@ -2709,8 +2715,10 @@ static bool record_and_submit_frame(VkRenderer* r) {
     VkCompositeTarget* composite = via_composite ? &r->composite[r->frame_index] : NULL;
 
     uint32_t image_index = 0;
+    const uint64_t acquire_begin_ns = vkr_monotonic_ns();
     VkResult acq = vkAcquireNextImageKHR(r->device, r->swapchain, UINT64_MAX,
                                          f->image_available, VK_NULL_HANDLE, &image_index);
+    const uint64_t real_acquire_wait_ns = vkr_monotonic_ns() - acquire_begin_ns;
     bool recreate_after_present = false;
     if (acq == VK_ERROR_OUT_OF_DATE_KHR) {
         r->surface_ready = false;
@@ -2738,6 +2746,42 @@ static bool record_and_submit_frame(VkRenderer* r) {
         }
         if (gen_acquire_timeout > VK_FRAMEGEN_ACQUIRE_TIMEOUT_MAX_NS) {
             gen_acquire_timeout = VK_FRAMEGEN_ACQUIRE_TIMEOUT_MAX_NS;
+        }
+    }
+
+    // Keep the present queue short. FIFO shows one image per refresh and nothing else bounds
+    // the queue but the swapchain's dozen images, so a game even slightly faster than the
+    // output cadence (60.5 fps doubled on 120 Hz), a draw without a new game frame, or a burst
+    // after a stall fills it, and from then on every frame - the game's own included - reaches
+    // the display up to ~80 ms late: input lag that a game held exactly at 30 fps never shows.
+    // A draw without a new game frame generates nothing (there is no new motion to show), and
+    // while more than two images wait beyond the next refresh one generated frame per pair is
+    // left out until the queue drains - one at a time, so the motion cadence stays even.
+    const uint64_t source_frames = __atomic_load_n(&r->framegen_source_frames, __ATOMIC_RELAXED);
+    const bool new_source_frame = source_frames != r->framegen_seen_source;
+    r->framegen_seen_source = source_frames;
+    const uint64_t refresh_period_ns =
+        r->framegen_refresh_rate > 1.0f ? (uint64_t)(1.0e9f / r->framegen_refresh_rate) : 0;
+    if (framegen_planned > 0 && !new_source_frame) {
+        framegen_planned = 0;
+        r->framegen_same_source++;
+    }
+    if (refresh_period_ns > 0) {
+        const uint64_t now_ns = vkr_monotonic_ns();
+        // A real acquire that blocked means the queue is at least that full, whatever the model.
+        if (real_acquire_wait_ns > refresh_period_ns / 2 &&
+            r->framegen_queue_end_ns < now_ns + 2 * refresh_period_ns) {
+            r->framegen_queue_end_ns = now_ns + 2 * refresh_period_ns;
+        }
+        const uint64_t ahead = r->framegen_queue_end_ns > now_ns + refresh_period_ns
+            ? (r->framegen_queue_end_ns - now_ns - refresh_period_ns) / refresh_period_ns : 0;
+        if (framegen_planned > 0) {
+            r->framegen_ahead_sum += ahead;
+            r->framegen_ahead_n++;
+            if (ahead > 2) {
+                framegen_planned--;
+                r->framegen_trimmed++;
+            }
         }
     }
 
@@ -2951,7 +2995,8 @@ static bool record_and_submit_frame(VkRenderer* r) {
                 r->framegen_gap_ns = 0;
                 r->framegen_timed_frames = 0;
                 VK_LOGI("framegen delivered real=%llu made=%llu ratio=%.2f planned=%u got=%u "
-                        "misses=%llu timeout=%.1fms images=%u capacity=%u draw=%.2fms gap=%.2fms",
+                        "misses=%llu timeout=%.1fms images=%u capacity=%u draw=%.2fms gap=%.2fms "
+                        "queue=%.2f trimmed=%llu same=%llu",
                         (unsigned long long)r->framegen_real_frames,
                         (unsigned long long)r->framegen_made_frames,
                         d_real ? (double)d_made / (double)d_real : 0.0,
@@ -2959,7 +3004,13 @@ static bool record_and_submit_frame(VkRenderer* r) {
                         (unsigned long long)r->framegen_acquire_misses,
                         (double)gen_acquire_timeout / 1000000.0,
                         r->swapchain_image_count, framegen_capacity,
-                        draw_ms, gap_ms);
+                        draw_ms, gap_ms,
+                        r->framegen_ahead_n ? (double)r->framegen_ahead_sum /
+                                                  (double)r->framegen_ahead_n : 0.0,
+                        (unsigned long long)r->framegen_trimmed,
+                        (unsigned long long)r->framegen_same_source);
+                r->framegen_ahead_sum = 0;
+                r->framegen_ahead_n = 0;
             }
         }
 
@@ -3126,6 +3177,7 @@ static bool record_and_submit_frame(VkRenderer* r) {
     pi.pImageIndices = &image_index;
 
     bool gen_present_out_of_date = false;
+    uint32_t presented_now = 0;
     pthread_mutex_lock(&r->queue_mutex);
     for (uint32_t g = 0; g < gen_count; g++) {
         VkPresentInfoKHR gpi = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
@@ -3143,11 +3195,22 @@ static bool record_and_submit_frame(VkRenderer* r) {
             }
         } else {
             __atomic_fetch_add(&r->presented_frames, 1, __ATOMIC_RELAXED);
+            presented_now++;
         }
     }
     VkResult pr = vkQueuePresentKHR(r->graphics_queue, &pi);
     if (pr == VK_SUCCESS || pr == VK_SUBOPTIMAL_KHR) {
         __atomic_fetch_add(&r->presented_frames, 1, __ATOMIC_RELAXED);
+        presented_now++;
+    }
+    // The queue model: each image presented leaves the queue one refresh after the one before.
+    if (refresh_period_ns > 0) {
+        const uint64_t now_ns = vkr_monotonic_ns();
+        for (uint32_t i = 0; i < presented_now; i++) {
+            const uint64_t next = r->framegen_queue_end_ns + refresh_period_ns;
+            r->framegen_queue_end_ns = next > now_ns + refresh_period_ns ? next
+                                                                          : now_ns + refresh_period_ns;
+        }
     }
     // Present the mirror separately so its result doesn't disturb the display recreate logic below.
     if (rec_this_frame) {
