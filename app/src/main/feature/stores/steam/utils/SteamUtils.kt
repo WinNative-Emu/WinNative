@@ -22,6 +22,7 @@ import com.winlator.cmod.runtime.wine.WineRegistryEditor
 import com.winlator.cmod.feature.stores.steam.enums.EOSType
 import com.winlator.cmod.feature.stores.steam.enums.EPersonaState
 import com.winlator.cmod.feature.stores.steam.service.SteamService.Companion.getOwnedAppDlc
+import com.winlator.cmod.runtime.system.LogManager
 import kotlinx.coroutines.runBlocking
 import okhttp3.Call
 import okhttp3.Callback
@@ -46,6 +47,8 @@ import java.nio.file.StandardOpenOption
 import java.util.concurrent.TimeUnit
 
 object SteamUtils {
+    private const val TAG = "SteamUtils"
+
     private fun coreSteamClientFiles(): Array<String> =
         arrayOf(
             "GameOverlayRenderer.dll",
@@ -618,42 +621,40 @@ object SteamUtils {
      */
     @JvmStatic
     fun restoreOriginalExecutable(
-        context: Context,
         steamAppId: Int,
+        gameInstallPath: String,
+        relativeExecutablePath: String,
     ) {
-        Timber.i("Starting restoreOriginalExecutable for appId: $steamAppId")
-        var restoredCount = 0
+        if (gameInstallPath.isBlank() || relativeExecutablePath.isBlank()) {
+            LogManager.logW(TAG, "Missing game or executable path for appId=$steamAppId; skipping original executable restore")
+            return
+        }
 
-        val imageFs = ImageFs.find(context)
-        val dosDevicesRoot = File(imageFs.wineprefix, "dosdevices")
-        val dosDevicesPath =
-            dosDevicesRoot
-                .listFiles()
-                ?.firstOrNull { it.isDirectory && it.name.matches(Regex("[a-z]:")) && it.name != "c:" && it.name != "z:" }
-                ?: File(dosDevicesRoot, "f:")
+        try {
+            val gameDir = File(gameInstallPath).canonicalFile
+            val executable =
+                File(gameDir, relativeExecutablePath.replace("\\", "/")).canonicalFile
 
-        dosDevicesPath
-            .walkTopDown()
-            .maxDepth(10)
-            .filter { it.isFile && it.name.endsWith(".original.exe", ignoreCase = true) }
-            .forEach { file ->
-                try {
-                    val origPath = file.toPath()
-                    val originalPath = origPath.parent.resolve(origPath.fileName.toString().removeSuffix(".original.exe"))
-
-                    if (Files.exists(originalPath)) {
-                        Files.delete(originalPath)
-                    }
-
-                    Files.copy(origPath, originalPath, StandardCopyOption.REPLACE_EXISTING)
-                    Timber.i("Restored ${originalPath.fileName} from backup")
-                    restoredCount++
-                } catch (e: Exception) {
-                    Timber.w(e, "Failed to restore ${file.name} from backup")
-                }
+            if (!executable.toPath().startsWith(gameDir.toPath())) {
+                LogManager.logW(TAG, "Executable path is outside the game directory for appId=$steamAppId; skipping restore")
+                return
             }
 
-        Timber.i("Finished restoreOriginalExecutable for appId: $steamAppId. Restored $restoredCount executable(s)")
+            val backup = File(executable.parentFile, executable.name + ".original.exe")
+            if (!backup.isFile) {
+                LogManager.logI(TAG) { "No original executable backup found for appId=$steamAppId" }
+                return
+            }
+
+            Files.copy(
+                backup.toPath(),
+                executable.toPath(),
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+            LogManager.logI(TAG) { "Restored ${executable.name} from backup for appId=$steamAppId" }
+        } catch (e: Exception) {
+            LogManager.logW(TAG, "Failed to restore original executable for appId=$steamAppId", e)
+        }
     }
 
     /**

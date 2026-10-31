@@ -7677,7 +7677,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                 MarkerUtils.INSTANCE.removeMarker(gameInstallPath, Marker.STEAM_DRM_PATCHED);
                 MarkerUtils.INSTANCE.removeMarker(gameInstallPath, Marker.STEAM_DRM_UNPACK_CHECKED);
 
-                SteamUtils.restoreOriginalExecutable(this, appId);
+                SteamUtils.restoreOriginalExecutable(appId, gameInstallPath, container.getExecutablePath());
 
                 boolean bionicRuntimeOk = com.winlator.cmod.feature.stores.steam.wnsteam
                         .WnSteamAssetsInstaller.INSTANCE.installBionicRuntime(this);
@@ -7784,7 +7784,7 @@ public class XServerDisplayActivity extends FixedFontScaleAppCompatActivity
                     if (unpackFiles) {
                         SteamUtils.restoreUnpackedExecutable(this, appId);
                     } else {
-                        SteamUtils.restoreOriginalExecutable(this, appId);
+                        SteamUtils.restoreOriginalExecutable(appId, gameInstallPath, container.getExecutablePath());
                     }
 
                     SteamUtils.restoreSteamclientFiles(this, appId);
