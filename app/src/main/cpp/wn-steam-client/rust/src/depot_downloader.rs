@@ -9,6 +9,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
+/// Sentinel worker count that switches the writer into adaptive mode: hosts
+/// are scored by measured throughput (Valve-client / GameHub style) instead of
+/// being round-robined. Mirrors the "Adaptive" entry in the app's download
+/// speed setting.
+pub const ADAPTIVE_WORKERS_SENTINEL: u32 = 100;
+
+/// Worker count used when adaptive mode is selected.
+pub const ADAPTIVE_DEFAULT_WORKERS: u32 = 32;
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct DepotSpec {
     pub depot_id: u32,
@@ -425,6 +434,7 @@ pub fn download_resolved_depots(
         None,
         "",
         None,
+        false,
     )
 }
 
@@ -449,6 +459,7 @@ pub fn download_resolved_depots_with_cancel(
         None,
         "",
         None,
+        false,
     )
 }
 
@@ -464,6 +475,7 @@ pub fn download_resolved_depots_with_cancel_progress(
     code_refresher: Option<ManifestCodeRefresher<'_>>,
     cdn_auth_token: &str,
     token_refresher: Option<CdnAuthTokenRefresher<'_>>,
+    adaptive: bool,
 ) -> DepotDownloadResult {
     if let Err(error) = validate_resolved_download_inputs(install_dir, depots, servers) {
         return error;
@@ -616,6 +628,7 @@ pub fn download_resolved_depots_with_cancel_progress(
                 cancel,
                 on_progress: Some(chunk_progress),
                 cdn_auth_token,
+                adaptive,
                 ..Default::default()
             },
         );

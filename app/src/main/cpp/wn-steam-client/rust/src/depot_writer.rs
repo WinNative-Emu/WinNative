@@ -1,6 +1,7 @@
 use crate::cdn_client::{CdnClient, CdnConnection};
 use crate::content_manifest::{ChunkData, ContentManifest};
 use crate::depot_chunk::process_depot_chunk;
+use crate::host_scheduler::HostScheduler;
 use crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -60,6 +61,9 @@ pub struct DepotWriteOptions<'a> {
     pub max_workers: u32,
     pub cancel: Option<&'a AtomicBool>,
     pub on_progress: Option<DepotChunkProgressCallback<'a>>,
+    /// Score hosts by measured throughput and steer chunks at the fast ones
+    /// instead of round-robining over the whole list.
+    pub adaptive: bool,
 }
 
 impl Default for DepotWriteOptions<'_> {
@@ -70,6 +74,7 @@ impl Default for DepotWriteOptions<'_> {
             max_workers: 8,
             cancel: None,
             on_progress: None,
+            adaptive: false,
         }
     }
 }
@@ -308,6 +313,7 @@ pub fn write_depot_sequential(
             options.cdn_auth_token,
             job_index % servers.len(),
             options.timeout,
+            None,
         ) {
             Ok(bytes) => {
                 bytes_written += bytes;
@@ -364,6 +370,12 @@ fn write_depot_parallel(
         let raw = c as *const AtomicBool;
         unsafe { raw.as_ref() }.unwrap()
     });
+    // Adaptive scheduling (Valve-client/GameHub style): measure each content
+    // server's throughput and steer chunks at the fast ones, cooling down the
+    // hosts that fail instead of round-robining into blackholed edges.
+    let scheduler: Option<Arc<HostScheduler>> = options
+        .adaptive
+        .then(|| Arc::new(HostScheduler::new(servers.len())));
     // SAFETY: we only spawn scoped threads so all `'a` references outlive joins.
     let scope_result = thread::scope(|scope| -> DepotWriteResult {
         let mut handles = Vec::with_capacity(worker_count);
@@ -378,6 +390,7 @@ fn write_depot_parallel(
             let target_dir_ref = target_dir;
             let cdn_ref = cdn;
             let servers_ref = servers;
+            let scheduler_ref = scheduler.clone();
             let progress = options.on_progress;
             handles.push(scope.spawn(move || {
                 let mut conn = cdn_ref.open_connection();
@@ -426,7 +439,13 @@ fn write_depot_parallel(
                         conn = cdn_ref.open_connection();
                         slow_chunks = 0;
                     }
-                    let start_server = (idx + worker_server_bias) % servers_ref.len();
+                    let start_server = match scheduler_ref
+                        .as_ref()
+                        .and_then(|scheduler| scheduler.pick())
+                    {
+                        Some(host) => host,
+                        None => (idx + worker_server_bias) % servers_ref.len(),
+                    };
                     let started = Instant::now();
                     match fetch_process_write_chunk(
                         cdn_ref,
@@ -440,6 +459,7 @@ fn write_depot_parallel(
                         &cdn_auth_token,
                         start_server,
                         timeout,
+                        scheduler_ref.as_deref(),
                     ) {
                         Ok(bytes) => {
                             if started.elapsed()
@@ -481,6 +501,12 @@ fn write_depot_parallel(
     });
     if !scope_result.ok() {
         return scope_result;
+    }
+
+    if let Some(scheduler) = scheduler.as_ref() {
+        for row in scheduler.summary() {
+            crate::depot_downloader::log_line(&format!("cdn host score {row}"));
+        }
     }
 
     for file in &manifest.files {
@@ -563,6 +589,7 @@ pub fn fetch_process_write_chunk(
     cdn_auth_token: &str,
     start_server_index: usize,
     timeout: Duration,
+    scheduler: Option<&HostScheduler>,
 ) -> Result<u64, String> {
     if servers.is_empty() {
         return Err("write_depot: no CDN servers".to_string());
@@ -578,13 +605,25 @@ pub fn fetch_process_write_chunk(
     let path = join_target_path(target_dir, &file.filename);
     let mut last_error = String::new();
     let attempt_indices = chunk_attempt_server_indices(start_server_index, servers.len());
-    for (attempt, server_idx) in attempt_indices.into_iter().enumerate() {
+    let mut scheduled_tried: Vec<usize> = Vec::new();
+    for (attempt, fallback_server_idx) in attempt_indices.into_iter().enumerate() {
         if attempt > 0 {
             thread::sleep(Duration::from_millis(retry_backoff_millis(attempt as u32)));
             if let Some(connection) = conn.as_deref_mut() {
                 *connection = cdn.open_connection();
             }
         }
+        // With a scheduler the retry walks to the next best *measured* host
+        // instead of the next index in the list.
+        let server_idx = match scheduler {
+            Some(scheduler) => match scheduler.pick_excluding(&scheduled_tried) {
+                Some(host) => host,
+                None => break,
+            },
+            None => fallback_server_idx,
+        };
+        scheduled_tried.push(server_idx);
+        let started = Instant::now();
         let fetched = match conn.as_deref_mut() {
             Some(connection) => cdn.fetch_chunk_with_connection(
                 connection,
@@ -602,9 +641,16 @@ pub fn fetch_process_write_chunk(
                 timeout,
             ),
         };
+        let elapsed = started.elapsed();
         if !fetched.ok() {
+            if let Some(scheduler) = scheduler {
+                scheduler.record_failure(server_idx);
+            }
             last_error = fetched.error;
             continue;
+        }
+        if let Some(scheduler) = scheduler {
+            scheduler.record_success(server_idx, fetched.data.len() as u64, elapsed);
         }
         match process_and_write_chunk(&path, chunk, &fetched.data, depot_key) {
             Ok(bytes) => return Ok(bytes),

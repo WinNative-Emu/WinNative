@@ -3354,7 +3354,13 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
     };
     let app_id = app_id.max(0) as u32;
     let fresh = fresh != JNI_FALSE;
-    let max_workers = max_workers.max(1) as u32;
+    let requested_workers = max_workers.max(1) as u32;
+    let adaptive = requested_workers >= crate::depot_downloader::ADAPTIVE_WORKERS_SENTINEL;
+    let max_workers = if adaptive {
+        crate::depot_downloader::ADAPTIVE_DEFAULT_WORKERS
+    } else {
+        requested_workers
+    };
     handle.download_cancel.store(false, Ordering::Relaxed);
     let download_cancel = Arc::clone(&handle.download_cancel);
 
@@ -3525,6 +3531,7 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
                 Some(code_refresher_cb),
                 &cdn_auth_token,
                 Some(token_refresher_cb),
+                adaptive,
             );
         dispatch_download_complete(listener, result);
     });

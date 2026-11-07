@@ -27,6 +27,7 @@ pub mod emsg;
 pub mod encrypted_channel;
 pub mod handshake_messages;
 pub mod heartbeat;
+pub mod host_scheduler;
 pub mod jni;
 pub mod job_manager;
 pub mod key_dictionary;
