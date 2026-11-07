@@ -121,21 +121,47 @@ jobs:
 
       - name: Verify APK
         run: |
-          set -euo pipefail
+          # Deliberately not using `set -e`: an unexpected non-zero status in a
+          # helper command used to abort this step silently. Check explicitly and
+          # always print what was decided.
+          set -uo pipefail
           apk="app/build/outputs/apk/standard/release/app-standard-release.apk"
-          test -f "$apk" || { echo "::error::APK not found at $apk"; exit 1; }
-          badging=$(find "$ANDROID_SDK_ROOT/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)/aapt2
-          "$badging" dump badging "$apk" > badging.txt
+          if [ ! -f "$apk" ]; then
+            echo "APK directory contents:"
+            ls -R app/build/outputs/apk || true
+            echo "::error::APK not found at $apk"
+            exit 1
+          fi
+          echo "APK: $apk ($(stat -c%s "$apk") bytes)"
+
+          build_tools="$(ls -d "$ANDROID_SDK_ROOT"/build-tools/* 2>/dev/null | sort -V | tail -1)"
+          echo "build-tools: ${build_tools:-<none>}"
+          if [ -z "${build_tools:-}" ] || [ ! -x "$build_tools/aapt2" ]; then
+            echo "::error::aapt2 not found under $ANDROID_SDK_ROOT/build-tools"
+            exit 1
+          fi
+          if ! "$build_tools/aapt2" dump badging "$apk" > badging.txt; then
+            echo "::error::aapt2 dump badging failed"
+            exit 1
+          fi
           if grep -q "application-debuggable" badging.txt; then
             echo "::error::release APK is debuggable; Android would show the 16 KB compatibility warning"
             exit 1
           fi
+          echo "APK is not debuggable"
+
           # libwnsteam.so is produced by cargo, which drives the NDK linker
           # itself; a regression there would silently fall back to 4 KB pages.
-          rm -rf apk-lib && mkdir apk-lib
-          unzip -o -q "$apk" 'lib/arm64-v8a/libwnsteam.so' -d apk-lib
-          readelf=$(find "$ANDROID_SDK_ROOT/ndk/27.3.13750724" -name llvm-readelf | head -1)
-          align=$("$readelf" -lW apk-lib/lib/arm64-v8a/libwnsteam.so | awk '/LOAD/{print $NF; exit}')
+          rm -rf apk-lib
+          mkdir -p apk-lib
+          unzip -o -q "$apk" "lib/arm64-v8a/libwnsteam.so" -d apk-lib
+          readelf_bin="$(ls -d "$ANDROID_SDK_ROOT"/ndk/27.3.13750724/toolchains/llvm/prebuilt/*/bin/llvm-readelf 2>/dev/null | head -1)"
+          echo "llvm-readelf: ${readelf_bin:-<none>}"
+          if [ -z "${readelf_bin:-}" ] || [ ! -x "$readelf_bin" ]; then
+            echo "::error::llvm-readelf not found in NDK 27.3.13750724"
+            exit 1
+          fi
+          align="$("$readelf_bin" -lW apk-lib/lib/arm64-v8a/libwnsteam.so | awk '/LOAD/{print $NF; exit}')"
           echo "libwnsteam.so LOAD align: $align"
           if [ "$align" != "0x4000" ]; then
             echo "::error::libwnsteam.so is not 16 KB aligned (align=$align)"
