@@ -31,6 +31,11 @@ const SCORE_NEW_SAMPLE_WEIGHT: f64 = 0.35;
 /// Every Nth pick samples a host other than the current best.
 const EXPLORATION_PERIOD: usize = 8;
 
+/// Throughput assumed for a host that has not produced a sample yet. Low
+/// enough that measured hosts keep most of the workers, high enough that an
+/// unmeasured host still gets probed.
+const UNMEASURED_HOST_SCORE_BPS: f64 = 1_000_000.0;
+
 #[derive(Clone, Copy, Debug, Default)]
 struct HostEntry {
     score_bytes_per_sec: f64,
@@ -120,21 +125,25 @@ impl HostScheduler {
             inner.exploration_cursor = inner.exploration_cursor.wrapping_add(1);
             idx
         } else {
+            // Allocate concurrency in proportion to measured throughput: divide
+            // each host's score by the number of transfers already in flight on
+            // it. A host that is twice as fast therefore holds roughly twice as
+            // many workers, which is what keeps a 4-host pool from starving when
+            // one host is far quicker than the others.
             let mut best: Option<(usize, f64)> = None;
             for idx in 0..count {
                 let entry = &inner.entries[idx];
                 if !usable(entry, idx) {
                     continue;
                 }
-                // Unknown hosts start at a neutral score so they get sampled
-                // once instead of being starved by measured hosts.
-                let score = if entry.has_sample {
+                let base = if entry.has_sample {
                     entry.score_bytes_per_sec
                 } else {
-                    f64::INFINITY
+                    UNMEASURED_HOST_SCORE_BPS
                 };
-                if best.is_none_or(|(_, best_score)| score > best_score) {
-                    best = Some((idx, score));
+                let marginal = base / (entry.in_flight as f64 + 1.0);
+                if best.is_none_or(|(_, best_marginal)| marginal > best_marginal) {
+                    best = Some((idx, marginal));
                 }
             }
             best.map(|(idx, _)| idx)?
@@ -186,6 +195,23 @@ impl HostScheduler {
         // Halve the estimate so a host that starts failing loses its lead even
         // before the cooldown is consulted.
         entry.score_bytes_per_sec *= 0.5;
+    }
+
+    /// Immediately parks a host for `duration`. Used by the pre-flight reachability
+    /// probe so a blackholed host never receives a single chunk request during
+    /// the fragile start of a download.
+    pub fn quarantine(&self, host: usize, duration: Duration) {
+        let mut inner = self.inner.lock().expect("host scheduler poisoned");
+        let Some(entry) = inner.entries.get_mut(host) else {
+            return;
+        };
+        entry.failures = entry.failures.saturating_add(1);
+        entry.consecutive_failures = entry.consecutive_failures.saturating_add(1);
+        entry.score_bytes_per_sec = 0.0;
+        // has_sample stays false so the host is not treated as a measured zero:
+        // it is re-probed once the quarantine expires.
+        entry.has_sample = false;
+        entry.cooldown_until = Some(Instant::now() + duration);
     }
 
     /// Estimated throughput in bytes/sec, or None when the host never succeeded.
@@ -253,13 +279,42 @@ mod tests {
     }
 
     #[test]
-    fn sampling_an_unmeasured_host_comes_before_measured_ones() {
+    fn measured_host_leads_but_unmeasured_hosts_still_get_probed() {
         let scheduler = HostScheduler::new(2);
-        scheduler.record_success(0, 1_000_000, fast_seconds(10));
-        // Host 1 has no sample yet, so it should be picked first.
-        assert_eq!(scheduler.pick(), Some(1));
-        scheduler.record_success(1, 1_000_000, fast_seconds(200));
+        scheduler.record_success(0, 1_000_000, fast_seconds(10)); // ~100 MB/s
+
+        // The measured host wins the greedy picks.
         assert_eq!(scheduler.pick(), Some(0));
+
+        // Exploration still reaches the unmeasured host within one period.
+        let mut saw_unmeasured = false;
+        for _ in 0..EXPLORATION_PERIOD {
+            if scheduler.pick() == Some(1) {
+                saw_unmeasured = true;
+            }
+        }
+        assert!(saw_unmeasured, "exploration must probe the unmeasured host");
+    }
+
+    #[test]
+    fn concurrency_is_allocated_in_proportion_to_measured_throughput() {
+        let scheduler = HostScheduler::new(2);
+        // Host 0 is 4x faster than host 1.
+        scheduler.record_success(0, 4_000_000, fast_seconds(100));
+        scheduler.record_success(1, 1_000_000, fast_seconds(100));
+
+        // Do not record outcomes, so in_flight accumulates exactly like a wave
+        // of workers asking for work.
+        let mut picks = [0usize; 2];
+        for _ in 0..24 {
+            if let Some(host) = scheduler.pick() {
+                picks[host] += 1;
+            }
+        }
+        assert!(
+            picks[0] > picks[1] * 2,
+            "fast host must hold more workers: {picks:?}"
+        );
     }
 
     #[test]
@@ -324,6 +379,18 @@ mod tests {
         assert_eq!(rows.len(), 2);
         assert!(rows[0].starts_with("host#1"), "{rows:?}");
         assert!(rows[0].contains("Mbps"));
+    }
+
+    #[test]
+    fn quarantine_parks_a_host_until_it_expires() {
+        let scheduler = HostScheduler::new(2);
+        scheduler.quarantine(0, Duration::from_millis(40));
+        // Host 0 must be skipped while parked.
+        for _ in 0..EXPLORATION_PERIOD {
+            assert_eq!(scheduler.pick(), Some(1));
+        }
+        std::thread::sleep(Duration::from_millis(50));
+        assert!(scheduler.pick().is_some());
     }
 
     #[test]

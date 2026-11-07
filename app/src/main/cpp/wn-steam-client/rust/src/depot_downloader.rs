@@ -16,7 +16,7 @@ use std::time::Duration;
 pub const ADAPTIVE_WORKERS_SENTINEL: u32 = 100;
 
 /// Worker count used when adaptive mode is selected.
-pub const ADAPTIVE_DEFAULT_WORKERS: u32 = 32;
+pub const ADAPTIVE_DEFAULT_WORKERS: u32 = 64;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct DepotSpec {

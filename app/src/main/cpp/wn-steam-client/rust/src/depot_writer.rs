@@ -5,6 +5,7 @@ use crate::host_scheduler::HostScheduler;
 use crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
+use std::net::{TcpStream, ToSocketAddrs};
 use std::path::{Component, Path};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -349,6 +350,71 @@ pub fn write_depot_sequential(
     }
 }
 
+/// How long a pre-flight probe waits for a TCP connection.
+const PROBE_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
+/// How long an unreachable host stays parked after the pre-flight probe.
+const PROBE_QUARANTINE: Duration = Duration::from_secs(180);
+/// Parallel probe threads (one per group of hosts).
+const PROBE_THREADS: usize = 8;
+
+/// Cheap pre-flight reachability probe over the usable content servers.
+///
+/// A mainland-China CM hands out a list that mixes reachable Asia-Pacific edges
+/// with hosts that are DNS-poisoned or TCP-blackholed. Without this probe the
+/// first wave of workers spends its connect timeout on those hosts before the
+/// scheduler can learn they are dead, which cost roughly half of the attainable
+/// throughput during the first 30 s of a download. Probe them once up front and
+/// park the unreachable ones.
+fn probe_content_servers(scheduler: &HostScheduler, servers: &[CContentServerDirectoryServerInfo]) {
+    if servers.is_empty() {
+        return;
+    }
+    thread::scope(|scope| {
+        for (group_index, group) in servers.chunks(PROBE_THREADS.max(1)).enumerate() {
+            let base = group_index * PROBE_THREADS.max(1);
+            let scheduler = scheduler;
+            scope.spawn(move || {
+                for (offset, server) in group.iter().enumerate() {
+                    if !content_server_reachable(server) {
+                        scheduler.quarantine(base + offset, PROBE_QUARANTINE);
+                        crate::depot_downloader::log_line(&format!(
+                            "cdn host probe: host#{}({}) unreachable, parked for {}s",
+                            base + offset,
+                            content_server_label(server),
+                            PROBE_QUARANTINE.as_secs()
+                        ));
+                    }
+                }
+            });
+        }
+    });
+}
+
+fn content_server_label(server: &CContentServerDirectoryServerInfo) -> &str {
+    if !server.host.is_empty() {
+        &server.host
+    } else {
+        &server.vhost
+    }
+}
+
+fn content_server_reachable(server: &CContentServerDirectoryServerInfo) -> bool {
+    let host = content_server_label(server);
+    if host.is_empty() {
+        return false;
+    }
+    let endpoint = format!("{}:{}", host, server.port());
+    let Ok(addrs) = endpoint.to_socket_addrs() else {
+        return false;
+    };
+    for addr in addrs {
+        if TcpStream::connect_timeout(&addr, PROBE_CONNECT_TIMEOUT).is_ok() {
+            return true;
+        }
+    }
+    false
+}
+
 fn write_depot_parallel(
     manifest: &ContentManifest,
     depot_key: &[u8],
@@ -376,6 +442,9 @@ fn write_depot_parallel(
     let scheduler: Option<Arc<HostScheduler>> = options
         .adaptive
         .then(|| Arc::new(HostScheduler::new(servers.len())));
+    if let Some(scheduler) = scheduler.as_ref() {
+        probe_content_servers(scheduler, servers);
+    }
     // SAFETY: we only spawn scoped threads so all `'a` references outlive joins.
     let scope_result = thread::scope(|scope| -> DepotWriteResult {
         let mut handles = Vec::with_capacity(worker_count);

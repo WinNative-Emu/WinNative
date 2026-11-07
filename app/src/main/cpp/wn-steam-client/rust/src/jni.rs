@@ -1828,29 +1828,46 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
     let ca_bundle_path = jstring_to_string(&mut env, &ca_bundle_path).unwrap_or_default();
     let directory = crate::steam_directory::SteamDirectoryClient::new(ca_bundle_path);
     let result = directory.fetch(0, crate::steam_directory::DEFAULT_TIMEOUT);
-    let directory_url = if result.ok() {
+
+    // Collect every advertised CM, least loaded first. Reconnect attempts then
+    // walk the list instead of retrying the same endpoint forever: on some
+    // networks several CMs are blackholed, so pinning the first entry made
+    // logon fail in a loop even though another entry in the same response was
+    // reachable.
+    let mut candidates: Vec<(f32, String)> = if result.ok() {
         result
             .servers
-            .into_iter()
-            .find_map(|server| {
+            .iter()
+            .filter_map(|server| {
                 let url = server.websocket_url();
-                (!url.is_empty()).then_some(url)
+                (!url.is_empty()).then_some((server.weighted_load, url))
             })
-            .unwrap_or_default()
+            .collect()
     } else {
-        String::new()
+        Vec::new()
     };
-    let url = if !directory_url.is_empty() {
-        directory_url
-    } else {
-        crate::cm_server_list::hardcoded_fallback_servers()
+    if candidates.is_empty() {
+        candidates = crate::cm_server_list::hardcoded_fallback_servers()
             .into_iter()
-            .find_map(|server| {
+            .filter_map(|server| {
                 let url = server.websocket_url();
-                (!url.is_empty()).then_some(url)
+                (!url.is_empty()).then_some((0.0f32, url))
             })
-            .unwrap_or_default()
-    };
+            .collect();
+    }
+    if candidates.is_empty() {
+        return new_string_or_null(&mut env, "");
+    }
+    candidates.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    static CM_PICK_ROTATION: std::sync::atomic::AtomicUsize =
+        std::sync::atomic::AtomicUsize::new(0);
+    let rotation = CM_PICK_ROTATION.fetch_add(1, Ordering::Relaxed) % candidates.len();
+    let url = candidates[rotation].1.clone();
+    crate::depot_downloader::log_line(&format!(
+        "CM pick #{rotation}/{} -> {url}",
+        candidates.len()
+    ));
     new_string_or_null(&mut env, &url)
 }
 
