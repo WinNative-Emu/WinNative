@@ -106,3 +106,9 @@
 -dontwarn androidx.window.sidecar.SidecarInterface
 -dontwarn androidx.window.sidecar.SidecarProvider
 -dontwarn androidx.window.sidecar.SidecarWindowLayoutInfo
+
+# snakeyaml's optional JavaBeans introspection path is unreachable on Android
+# (java.beans.* is not part of the platform), but R8 still resolves its
+# references and fails the release build without these suppressions.
+-dontwarn java.beans.**
+-dontwarn org.yaml.snakeyaml.introspector.**

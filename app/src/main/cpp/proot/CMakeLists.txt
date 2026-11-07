@@ -20,7 +20,11 @@ add_executable(libproot-loader.so
 target_include_directories(libproot-loader.so PRIVATE src)
 target_compile_definitions(libproot-loader.so PRIVATE ${PROOT_DEFINES})
 target_compile_options(libproot-loader.so PRIVATE ${PROOT_CFLAGS} -fPIC -ffreestanding -fno-stack-protector)
+# Release builds add -Wl,--gc-sections; without a GC root the linker discards the
+# unreferenced pokedata_workaround stub that loader-info.cmake measures, which made
+# assembleRelease fail. -u keeps it in the image on every build type.
 target_link_options(libproot-loader.so PRIVATE -static -nostdlib -no-pie
+                    -Wl,--undefined=pokedata_workaround
                     -Wl,--build-id=none,-Ttext=0x2000000000,--rosegment,-z,noexecstack)
 
 # tracee/mem.c finds the loader's pokedata_workaround stub by its offset from _start.

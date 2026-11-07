@@ -56,6 +56,10 @@ set(WNSTEAM_RUST_OUT "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libwnsteam.so")
 set(WNSTEAM_RUST_LINKER
     "${ANDROID_NDK}/toolchains/llvm/prebuilt/${WNSTEAM_NDK_HOST_TAG}/bin/${WNSTEAM_RUST_TARGET}${WNSTEAM_ANDROID_API}-clang${WNSTEAM_LINKER_SUFFIX}")
 
+# Android 15+ ships 16 KB page-size kernels. Cargo drives the NDK linker itself
+# and therefore does not inherit Gradle's CMake linker flags, so ask for 16 KB
+# LOAD alignment explicitly here; otherwise libwnsteam.so would be the only ELF
+# in the APK still built for 4 KB pages.
 add_custom_command(
     OUTPUT "${WNSTEAM_RUST_OUT}"
     COMMAND "${CMAKE_COMMAND}" -E env
@@ -64,6 +68,7 @@ add_custom_command(
         "AR_aarch64_linux_android=${ANDROID_NDK}/toolchains/llvm/prebuilt/${WNSTEAM_NDK_HOST_TAG}/bin/llvm-ar${WNSTEAM_AR_SUFFIX}"
         "${CARGO_EXECUTABLE}" rustc --release --target "${WNSTEAM_RUST_TARGET}" --lib --
         -Clink-arg=-Wl,-soname,libwnsteam.so
+        -Clink-arg=-Wl,-z,max-page-size=16384
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${WNSTEAM_RUST_LIB}"
         "${WNSTEAM_RUST_OUT}"
