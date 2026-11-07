@@ -188,6 +188,8 @@ fun StoresScreen(
             16 to stringResource(R.string.stores_accounts_download_speed_balanced),
             24 to stringResource(R.string.stores_accounts_download_speed_standard),
             32 to stringResource(R.string.stores_accounts_download_speed_performance),
+            48 to stringResource(R.string.stores_accounts_download_speed_turbo),
+            64 to stringResource(R.string.stores_accounts_download_speed_maximum),
         )
 
     CompositionLocalProvider(LocalPaneNav provides contentNav) {

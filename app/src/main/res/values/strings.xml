@@ -299,6 +299,8 @@
     <string name="stores_accounts_download_speed_balanced">Balanced</string>
     <string name="stores_accounts_download_speed_standard">Standard</string>
     <string name="stores_accounts_download_speed_performance">Performance</string>
+    <string name="stores_accounts_download_speed_turbo">Turbo</string>
+    <string name="stores_accounts_download_speed_maximum">Maximum</string>
     <string name="stores_accounts_download_server_auto_detected">Auto-detected: %1$s</string>
     <string name="stores_accounts_download_server_subtitle">Steam CDN region for game downloads</string>
     <string name="stores_accounts_sign_out_confirm">Sign out of %1$s?</string>
