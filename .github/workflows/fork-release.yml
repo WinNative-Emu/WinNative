@@ -1,0 +1,170 @@
+name: Build APK and publish release
+
+# Builds a signed *release* APK on GitHub's runners and publishes it as a
+# GitHub Release asset. The existing release.yml only builds debug APKs and
+# needs a maintainer keystore, so forks had no way to ship a non-debuggable
+# build from CI.
+#
+# Signing: set the KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS /
+# KEY_PASSWORD repository secrets to sign with a stable key. Without them a
+# throwaway key is generated so the build still succeeds; the release notes
+# record which key was used so users know whether they can install it over an
+# existing copy.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag to publish, e.g. fork-v1.0.0 (default: fork-<run number>)'
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'fork-v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fork-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+
+      - name: Pull LFS files
+        run: git lfs pull
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install Rust Android target
+        run: rustup target add aarch64-linux-android
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK and CMake
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "ndk;27.3.13750724" "cmake;3.22.1" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Configure signing
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > release.jks
+            store_password="${KEYSTORE_PASSWORD:?KEYSTORE_PASSWORD is required with KEYSTORE_BASE64}"
+            key_password="${KEY_PASSWORD:-$store_password}"
+            key_alias="${KEY_ALIAS:?KEY_ALIAS is required with KEYSTORE_BASE64}"
+            printf 'CI signed with the repository keystore secret.\n' > signing-note.txt
+            echo "stable=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No KEYSTORE_BASE64 secret; generating a throwaway signing key. Users cannot install this APK over an existing copy signed with a different key."
+            keytool -genkeypair -keystore release.jks -alias winnative \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass ephemeral123 -keypass ephemeral123 \
+              -dname "CN=WinNative CI (ephemeral), OU=CI, O=CI, L=CI, C=CI" >/dev/null 2>&1
+            store_password=ephemeral123
+            key_password=ephemeral123
+            key_alias=winnative
+            printf 'Signed with a throwaway CI key; uninstall any existing copy first.\n' > signing-note.txt
+            echo "stable=no" >> "$GITHUB_OUTPUT"
+          fi
+          cat > signing.properties <<EOF
+          storeFile=release.jks
+          storePassword=${store_password}
+          keyAlias=${key_alias}
+          keyPassword=${key_password}
+          EOF
+          chmod 600 signing.properties
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleStandardRelease --build-cache --parallel -x lint
+
+      - name: Verify APK
+        run: |
+          set -euo pipefail
+          apk="app/build/outputs/apk/standard/release/app-standard-release.apk"
+          test -f "$apk" || { echo "::error::APK not found at $apk"; exit 1; }
+          badging=$(find "$ANDROID_SDK_ROOT/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)/aapt2
+          "$badging" dump badging "$apk" > badging.txt
+          if grep -q "application-debuggable" badging.txt; then
+            echo "::error::release APK is debuggable; Android would show the 16 KB compatibility warning"
+            exit 1
+          fi
+          # libwnsteam.so is produced by cargo, which drives the NDK linker
+          # itself; a regression there would silently fall back to 4 KB pages.
+          rm -rf apk-lib && mkdir apk-lib
+          unzip -o -q "$apk" 'lib/arm64-v8a/libwnsteam.so' -d apk-lib
+          readelf=$(find "$ANDROID_SDK_ROOT/ndk/27.3.13750724" -name llvm-readelf | head -1)
+          align=$("$readelf" -lW apk-lib/lib/arm64-v8a/libwnsteam.so | awk '/LOAD/{print $NF; exit}')
+          echo "libwnsteam.so LOAD align: $align"
+          if [ "$align" != "0x4000" ]; then
+            echo "::error::libwnsteam.so is not 16 KB aligned (align=$align)"
+            exit 1
+          fi
+
+      - name: Work out release tag
+        id: tag
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.version }}"
+          if [ -z "$tag" ]; then
+            if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+              tag="${GITHUB_REF_NAME}"
+            else
+              tag="fork-${GITHUB_RUN_NUMBER}"
+            fi
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: WinNative ${{ steps.tag.outputs.tag }}
+          draft: false
+          prerelease: true
+          body: |
+            Release APK built from `${{ github.sha }}` by the
+            `Build APK and publish release` workflow on GitHub's runners.
+
+            - flavour: `standard` (application id `com.winnative.cmod`)
+            - build type: **release** (not debuggable, so Android does not show the
+              16 KB page-size compatibility warning)
+            - Steam download fixes: CDN auth token (`GetCDNAuthToken#1`), logon
+              `cell_id` reuse, Asia-Pacific CDN fallback, adaptive host scheduling
+              with a pre-flight reachability probe
+
+            $(cat signing-note.txt)
+
+            `libcrypto.so`, `libssl.so` and `libcurl.so` still come from the
+            `com.android.ndk.thirdparty` prefab artefacts, which are built for
+            4 KB pages; devices booted with a 16 KB page-size kernel are
+            therefore not supported yet.
+          files: app/build/outputs/apk/standard/release/app-standard-release.apk
+          fail_on_unmatched_files: true
