@@ -54,14 +54,28 @@ jobs:
       - name: Install Rust Android target
         run: rustup target add aarch64-linux-android
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
+      # The ubuntu-latest image already ships an Android SDK; android-actions/
+      # setup-android@v3 fails on it because it insists on installing the
+      # long-removed `tools` package. Use the preinstalled SDK like the other
+      # workflows in this repository do.
       - name: Install NDK and CMake
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "ndk;27.3.13750724" "cmake;3.22.1" "platforms;android-35" "build-tools;35.0.0"
+          sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [ -z "$sdk" ] || [ ! -d "$sdk" ]; then
+            echo "::error::No Android SDK on this runner (ANDROID_SDK_ROOT/ANDROID_HOME unset)"
+            exit 1
+          fi
+          echo "ANDROID_SDK_ROOT=$sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
+          sdkmanager_bin="$(find "$sdk/cmdline-tools" -maxdepth 3 -name sdkmanager -type f 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$sdkmanager_bin" ]; then
+            echo "::warning::sdkmanager not found under $sdk; letting Gradle install NDK and CMake"
+            exit 0
+          fi
+          echo "Using $sdkmanager_bin"
+          yes | "$sdkmanager_bin" --licenses >/dev/null 2>&1 || true
+          "$sdkmanager_bin" "ndk;27.3.13750724" "cmake;3.22.1" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
