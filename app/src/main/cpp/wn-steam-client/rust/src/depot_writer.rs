@@ -13,7 +13,6 @@ use std::time::{Duration, Instant};
 pub const DEPOT_FILE_FLAG_EXECUTABLE: u32 = 32;
 pub const DEPOT_FILE_FLAG_DIRECTORY: u32 = 64;
 pub const DEPOT_FILE_FLAG_SYMLINK: u32 = 512;
-pub const MAX_CHUNK_ATTEMPTS: u32 = 5;
 const RESIZE_BUFFER_BYTES: usize = 256 * 1024;
 const ERRNO_EPERM: i32 = 1;
 const ERRNO_EACCES: i32 = 13;
@@ -108,18 +107,18 @@ pub fn retry_backoff_millis(attempt: u32) -> u64 {
 pub fn chunk_attempt_server_indices(
     start_server_index: usize,
     server_count: usize,
-    attempts: u32,
 ) -> Vec<usize> {
-    if server_count == 0 || attempts == 0 {
+    if server_count == 0 {
         return Vec::new();
     }
-    let mut out = Vec::with_capacity(attempts as usize);
-    let mut server_index = start_server_index % server_count;
-    for attempt in 0..attempts {
-        if attempt > 0 && server_count > 1 {
-            server_index = (server_index + 1) % server_count;
-        }
-        out.push(server_index);
+    // Sweep every server exactly once, starting from `start_server_index` and
+    // wrapping around. This guarantees the China-only fallback servers (kept at
+    // the tail of the usable-server list) are actually reached when the global
+    // CDN nodes fail fast (connection reset / timeout on restricted networks).
+    let mut out = Vec::with_capacity(server_count);
+    let start = start_server_index % server_count;
+    for offset in 0..server_count {
+        out.push((start + offset) % server_count);
     }
     out
 }
@@ -578,11 +577,8 @@ pub fn fetch_process_write_chunk(
         .ok_or_else(|| "write_depot: bad chunk index".to_string())?;
     let path = join_target_path(target_dir, &file.filename);
     let mut last_error = String::new();
-    for (attempt, server_idx) in
-        chunk_attempt_server_indices(start_server_index, servers.len(), MAX_CHUNK_ATTEMPTS)
-            .into_iter()
-            .enumerate()
-    {
+    let attempt_indices = chunk_attempt_server_indices(start_server_index, servers.len());
+    for (attempt, server_idx) in attempt_indices.into_iter().enumerate() {
         if attempt > 0 {
             thread::sleep(Duration::from_millis(retry_backoff_millis(attempt as u32)));
             if let Some(connection) = conn.as_deref_mut() {
@@ -616,8 +612,10 @@ pub fn fetch_process_write_chunk(
         }
     }
     Err(format!(
-        "write_depot: chunk for '{}' failed after {} attempts: {}",
-        file.filename, MAX_CHUNK_ATTEMPTS, last_error
+        "write_depot: chunk for '{}' failed after trying all {} servers: {}",
+        file.filename,
+        servers.len(),
+        last_error
     ))
 }
 
@@ -925,16 +923,16 @@ mod tests {
         assert_eq!(retry_backoff_millis(1), 300);
         assert_eq!(retry_backoff_millis(2), 600);
         assert_eq!(retry_backoff_millis(5), 4000);
-        assert_eq!(MAX_CHUNK_ATTEMPTS, 5);
         assert_eq!(SLOW_CHUNK_ROTATE_THRESHOLD_SECS, 8);
     }
 
     #[test]
-    fn chunk_retry_rotates_across_servers_like_cpp_worker() {
-        assert_eq!(chunk_attempt_server_indices(0, 3, 5), [0, 1, 2, 0, 1]);
-        assert_eq!(chunk_attempt_server_indices(2, 3, 5), [2, 0, 1, 2, 0]);
-        assert_eq!(chunk_attempt_server_indices(0, 1, 5), [0, 0, 0, 0, 0]);
-        assert!(chunk_attempt_server_indices(0, 0, 5).is_empty());
+    fn chunk_retry_sweeps_every_server_starting_from_bias() {
+        assert_eq!(chunk_attempt_server_indices(0, 3), [0, 1, 2]);
+        assert_eq!(chunk_attempt_server_indices(2, 3), [2, 0, 1]);
+        assert_eq!(chunk_attempt_server_indices(1, 1), [0]);
+        assert_eq!(chunk_attempt_server_indices(5, 3), [2, 0, 1]);
+        assert!(chunk_attempt_server_indices(0, 0).is_empty());
         assert!(!should_rotate_after_slow_chunks(2, 3));
         assert!(should_rotate_after_slow_chunks(3, 3));
         assert!(!should_rotate_after_slow_chunks(3, 1));

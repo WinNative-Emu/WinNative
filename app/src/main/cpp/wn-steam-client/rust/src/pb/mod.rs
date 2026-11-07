@@ -8,6 +8,7 @@ pub mod cmsg_client_change_status;
 pub mod cmsg_client_friends_list;
 pub mod cmsg_client_games_played;
 pub mod cmsg_client_get_app_ownership_ticket;
+pub mod cmsg_client_get_cdn_auth_token;
 pub mod cmsg_client_get_depot_decryption_key;
 pub mod cmsg_client_get_user_stats;
 pub mod cmsg_client_kick_playing_session;

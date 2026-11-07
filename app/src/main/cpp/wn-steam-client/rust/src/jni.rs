@@ -1241,11 +1241,60 @@ fn request_cdn_servers(
     runtime: &Arc<CMClientRuntime>,
     timeout: Duration,
 ) -> Option<Vec<crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo>> {
+    // Use the cell_id the CM handed back at logon (like the desktop client /
+    // SteamKit does) rather than 0. A concrete cell_id makes the directory
+    // service return the correct regional edge pool instead of a fallback
+    // China-only partner list.
+    let cell_id = runtime.core().cell_id();
     let body = request_authed_service_body(runtime, timeout, |core, job_id| {
-        core.build_get_cdn_servers_call(0, job_id)
+        core.build_get_cdn_servers_call(cell_id, job_id)
     })?;
-    crate::pb::ccontentserverdirectory::CContentServerDirectoryGetServersForSteamPipeResponse::deserialize(&body)
-        .map(|response| response.servers)
+    let servers = crate::pb::ccontentserverdirectory::CContentServerDirectoryGetServersForSteamPipeResponse::deserialize(&body)
+        .map(|response| response.servers)?;
+    // Diagnose restricted networks: log every node the CM offered, including
+    // its china-only flag, so a 403 from the wrong CDN pool is explainable
+    // from logcat alone.
+    for server in &servers {
+        crate::depot_downloader::log_line(&format!(
+            "CM cdn server: host={} vhost={} type={} china_only={} https={} allowed_apps={}",
+            server.host,
+            server.vhost,
+            server.server_type,
+            server.steam_china_only,
+            server.https_support,
+            server.allowed_app_ids.len(),
+        ));
+    }
+    Some(servers)
+}
+
+fn request_cdn_auth_token(
+    runtime: &Arc<CMClientRuntime>,
+    app_id: u32,
+    depot_id: u32,
+    host_name: &str,
+    timeout: Duration,
+) -> Option<String> {
+    crate::depot_downloader::log_line(&format!(
+        "requesting CDN auth token for app {app_id} depot {depot_id} host {host_name}"
+    ));
+    let body = request_authed_service_body(runtime, timeout, |core, job_id| {
+        core.build_get_cdn_auth_token(app_id, depot_id, host_name, job_id)
+    })?;
+    let response =
+        crate::pb::cmsg_client_get_cdn_auth_token::CMsgClientGetCdnAuthTokenResponse::deserialize(&body)?;
+    if !response.token.is_empty() {
+        crate::depot_downloader::log_line(&format!(
+            "CDN auth token acquired for host {host_name} ({} chars)",
+            response.token.len()
+        ));
+        Some(response.token)
+    } else {
+        crate::depot_downloader::log_line(&format!(
+            "CDN auth token empty for host {host_name}"
+        ));
+        None
+    }
 }
 
 const ERESULT_OK: i32 = 1;
@@ -3327,6 +3376,17 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
             );
             return;
         };
+        // Region-restricted CDN pools (e.g. the Perfect World partner CDNs the
+        // CM hands out on mainland-Chinese networks) reject tokenless
+        // manifest/chunk requests with HTTP 403. Provide a per-host token
+        // refresher that the downloader invokes lazily; on failure it falls
+        // back to an empty token, which the global Valve CDN pool still honours.
+        let cdn_auth_token = String::new();
+        let token_refresher = |depot_id: u32, host_name: &str| -> Option<String> {
+            request_cdn_auth_token(&runtime, app_id, depot_id, host_name, timeout)
+        };
+        let token_refresher_cb: crate::depot_downloader::CdnAuthTokenRefresher =
+            &token_refresher;
         let config_dir = std::path::Path::new(&install_dir).join(".DepotDownloader");
         let installed_cfg = crate::depot_config::DepotConfigStore::load(&config_dir);
         let mut resolved = Vec::with_capacity(specs.len());
@@ -3463,6 +3523,8 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
                 Some(download_cancel.as_ref()),
                 Some(progress_cb),
                 Some(code_refresher_cb),
+                &cdn_auth_token,
+                Some(token_refresher_cb),
             );
         dispatch_download_complete(listener, result);
     });
