@@ -292,7 +292,7 @@ impl CdnClient {
         if http_status != 200 {
             return CdnManifestResult {
                 http_status,
-                error: "non-200 HTTP status".to_string(),
+                error: format!("non-200 HTTP status ({http_status})"),
                 ..Default::default()
             };
         }
@@ -327,7 +327,7 @@ impl CdnClient {
         if http_status != 200 {
             return CdnChunkResult {
                 http_status,
-                error: "non-200 HTTP status".to_string(),
+                error: format!("non-200 HTTP status ({http_status})"),
                 ..Default::default()
             };
         }
@@ -388,7 +388,7 @@ impl CdnClient {
             .get(url)
             .timeout(timeout)
             .send()
-            .map_err(|err| format!("http get: {err}"))?;
+            .map_err(|err| format_http_error("http get", &err))?;
         let http_status = response.status().as_u16() as i32;
         let content_length = response.content_length();
         let body = response
@@ -438,6 +438,24 @@ struct HttpResponse {
     http_status: i32,
     content_length: Option<u64>,
     body: Vec<u8>,
+}
+
+/// Expand a reqwest error into its full source chain so a TLS/connect failure
+/// on a restricted network is diagnosable from a single log line (reqwest's
+/// `Display` collapses everything into a terse "error sending request").
+fn format_http_error(context: &str, err: &reqwest::Error) -> String {
+    let mut out = format!("{context}: {err}");
+    let mut source = std::error::Error::source(err);
+    let mut depth = 0;
+    while let Some(next) = source {
+        out.push_str(&format!(" | caused by: {next}"));
+        source = next.source();
+        depth += 1;
+        if depth > 8 {
+            break;
+        }
+    }
+    out
 }
 
 impl CdnChunkResult {
@@ -636,7 +654,7 @@ mod tests {
         assert!(chunk.ok());
         assert_eq!(
             CdnClient::validate_chunk_response(404, vec![], None).error,
-            "non-200 HTTP status"
+            "non-200 HTTP status (404)"
         );
     }
 

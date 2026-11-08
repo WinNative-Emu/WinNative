@@ -131,23 +131,32 @@ fn promote_expired(entries: &mut [Entry], bad_memory: Duration) {
     }
 }
 
+/// Connection managers used when the directory request fails.
+///
+/// These must be real CM pool members (`cmp*`), not the `ext*` websocket edge
+/// hosts: the `ext*` entries only relay a client towards a CM and are not
+/// usable as the session endpoint, so logging on through them never completes.
+/// The ports are the ones the directory advertises for these datacenters; the
+/// selector additionally probes 443/27018/27019 for every host.
 pub fn hardcoded_fallback_servers() -> Vec<CmServer> {
-    const FALLBACK: &[(&str, &str)] = &[
-        ("ext1-sea1.steamserver.net", "sea1"),
-        ("ext2-sea1.steamserver.net", "sea1"),
-        ("ext1-iad1.steamserver.net", "iad1"),
-        ("ext2-iad1.steamserver.net", "iad1"),
-        ("ext1-fra1.steamserver.net", "fra1"),
-        ("ext2-fra1.steamserver.net", "fra1"),
-        ("ext1-lax1.steamserver.net", "lax1"),
-        ("ext1-sgp1.steamserver.net", "sgp1"),
+    const FALLBACK: &[(&str, &str, u16)] = &[
+        ("cmp1-hkg1.steamserver.net", "hkg1", 27023),
+        ("cmp2-hkg1.steamserver.net", "hkg1", 27023),
+        ("cmp3-hkg1.steamserver.net", "hkg1", 27020),
+        ("cmp1-hkg1.steamserver.net", "hkg1", 443),
+        ("cmp2-hkg1.steamserver.net", "hkg1", 443),
+        ("cmp3-hkg1.steamserver.net", "hkg1", 443),
+        ("cmp1-sgp1.steamserver.net", "sgp1", 27023),
+        ("cmp2-sgp1.steamserver.net", "sgp1", 27020),
+        ("cmp1-sha1.steamchina.com", "sha1", 443),
+        ("cmp2-sha1.steamchina.com", "sha1", 443),
     ];
     FALLBACK
         .iter()
-        .map(|(host, dc)| CmServer {
-            endpoint: format!("{host}:443"),
+        .map(|(host, dc, port)| CmServer {
+            endpoint: format!("{host}:{port}"),
             host: (*host).to_string(),
-            port: 443,
+            port: *port,
             transport: CmTransport::WebSocket,
             realm: "steamglobal".to_string(),
             datacenter: (*dc).to_string(),

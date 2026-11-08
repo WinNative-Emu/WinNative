@@ -1,9 +1,11 @@
 use crate::cdn_client::{CdnClient, CdnConnection};
 use crate::content_manifest::{ChunkData, ContentManifest};
 use crate::depot_chunk::process_depot_chunk;
+use crate::host_scheduler::HostScheduler;
 use crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
+use std::net::{TcpStream, ToSocketAddrs};
 use std::path::{Component, Path};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -13,7 +15,6 @@ use std::time::{Duration, Instant};
 pub const DEPOT_FILE_FLAG_EXECUTABLE: u32 = 32;
 pub const DEPOT_FILE_FLAG_DIRECTORY: u32 = 64;
 pub const DEPOT_FILE_FLAG_SYMLINK: u32 = 512;
-pub const MAX_CHUNK_ATTEMPTS: u32 = 5;
 const RESIZE_BUFFER_BYTES: usize = 256 * 1024;
 const ERRNO_EPERM: i32 = 1;
 const ERRNO_EACCES: i32 = 13;
@@ -61,6 +62,9 @@ pub struct DepotWriteOptions<'a> {
     pub max_workers: u32,
     pub cancel: Option<&'a AtomicBool>,
     pub on_progress: Option<DepotChunkProgressCallback<'a>>,
+    /// Score hosts by measured throughput and steer chunks at the fast ones
+    /// instead of round-robining over the whole list.
+    pub adaptive: bool,
 }
 
 impl Default for DepotWriteOptions<'_> {
@@ -71,6 +75,7 @@ impl Default for DepotWriteOptions<'_> {
             max_workers: 8,
             cancel: None,
             on_progress: None,
+            adaptive: false,
         }
     }
 }
@@ -108,18 +113,18 @@ pub fn retry_backoff_millis(attempt: u32) -> u64 {
 pub fn chunk_attempt_server_indices(
     start_server_index: usize,
     server_count: usize,
-    attempts: u32,
 ) -> Vec<usize> {
-    if server_count == 0 || attempts == 0 {
+    if server_count == 0 {
         return Vec::new();
     }
-    let mut out = Vec::with_capacity(attempts as usize);
-    let mut server_index = start_server_index % server_count;
-    for attempt in 0..attempts {
-        if attempt > 0 && server_count > 1 {
-            server_index = (server_index + 1) % server_count;
-        }
-        out.push(server_index);
+    // Sweep every server exactly once, starting from `start_server_index` and
+    // wrapping around. This guarantees the China-only fallback servers (kept at
+    // the tail of the usable-server list) are actually reached when the global
+    // CDN nodes fail fast (connection reset / timeout on restricted networks).
+    let mut out = Vec::with_capacity(server_count);
+    let start = start_server_index % server_count;
+    for offset in 0..server_count {
+        out.push((start + offset) % server_count);
     }
     out
 }
@@ -309,6 +314,7 @@ pub fn write_depot_sequential(
             options.cdn_auth_token,
             job_index % servers.len(),
             options.timeout,
+            None,
         ) {
             Ok(bytes) => {
                 bytes_written += bytes;
@@ -344,6 +350,71 @@ pub fn write_depot_sequential(
     }
 }
 
+/// How long a pre-flight probe waits for a TCP connection.
+const PROBE_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
+/// How long an unreachable host stays parked after the pre-flight probe.
+const PROBE_QUARANTINE: Duration = Duration::from_secs(180);
+/// Parallel probe threads (one per group of hosts).
+const PROBE_THREADS: usize = 8;
+
+/// Cheap pre-flight reachability probe over the usable content servers.
+///
+/// A mainland-China CM hands out a list that mixes reachable Asia-Pacific edges
+/// with hosts that are DNS-poisoned or TCP-blackholed. Without this probe the
+/// first wave of workers spends its connect timeout on those hosts before the
+/// scheduler can learn they are dead, which cost roughly half of the attainable
+/// throughput during the first 30 s of a download. Probe them once up front and
+/// park the unreachable ones.
+fn probe_content_servers(scheduler: &HostScheduler, servers: &[CContentServerDirectoryServerInfo]) {
+    if servers.is_empty() {
+        return;
+    }
+    thread::scope(|scope| {
+        for (group_index, group) in servers.chunks(PROBE_THREADS.max(1)).enumerate() {
+            let base = group_index * PROBE_THREADS.max(1);
+            let scheduler = scheduler;
+            scope.spawn(move || {
+                for (offset, server) in group.iter().enumerate() {
+                    if !content_server_reachable(server) {
+                        scheduler.quarantine(base + offset, PROBE_QUARANTINE);
+                        crate::depot_downloader::log_line(&format!(
+                            "cdn host probe: host#{}({}) unreachable, parked for {}s",
+                            base + offset,
+                            content_server_label(server),
+                            PROBE_QUARANTINE.as_secs()
+                        ));
+                    }
+                }
+            });
+        }
+    });
+}
+
+fn content_server_label(server: &CContentServerDirectoryServerInfo) -> &str {
+    if !server.host.is_empty() {
+        &server.host
+    } else {
+        &server.vhost
+    }
+}
+
+fn content_server_reachable(server: &CContentServerDirectoryServerInfo) -> bool {
+    let host = content_server_label(server);
+    if host.is_empty() {
+        return false;
+    }
+    let endpoint = format!("{}:{}", host, server.port());
+    let Ok(addrs) = endpoint.to_socket_addrs() else {
+        return false;
+    };
+    for addr in addrs {
+        if TcpStream::connect_timeout(&addr, PROBE_CONNECT_TIMEOUT).is_ok() {
+            return true;
+        }
+    }
+    false
+}
+
 fn write_depot_parallel(
     manifest: &ContentManifest,
     depot_key: &[u8],
@@ -365,6 +436,15 @@ fn write_depot_parallel(
         let raw = c as *const AtomicBool;
         unsafe { raw.as_ref() }.unwrap()
     });
+    // Adaptive scheduling (Valve-client/GameHub style): measure each content
+    // server's throughput and steer chunks at the fast ones, cooling down the
+    // hosts that fail instead of round-robining into blackholed edges.
+    let scheduler: Option<Arc<HostScheduler>> = options
+        .adaptive
+        .then(|| Arc::new(HostScheduler::new(servers.len())));
+    if let Some(scheduler) = scheduler.as_ref() {
+        probe_content_servers(scheduler, servers);
+    }
     // SAFETY: we only spawn scoped threads so all `'a` references outlive joins.
     let scope_result = thread::scope(|scope| -> DepotWriteResult {
         let mut handles = Vec::with_capacity(worker_count);
@@ -379,6 +459,7 @@ fn write_depot_parallel(
             let target_dir_ref = target_dir;
             let cdn_ref = cdn;
             let servers_ref = servers;
+            let scheduler_ref = scheduler.clone();
             let progress = options.on_progress;
             handles.push(scope.spawn(move || {
                 let mut conn = cdn_ref.open_connection();
@@ -427,7 +508,13 @@ fn write_depot_parallel(
                         conn = cdn_ref.open_connection();
                         slow_chunks = 0;
                     }
-                    let start_server = (idx + worker_server_bias) % servers_ref.len();
+                    let start_server = match scheduler_ref
+                        .as_ref()
+                        .and_then(|scheduler| scheduler.pick())
+                    {
+                        Some(host) => host,
+                        None => (idx + worker_server_bias) % servers_ref.len(),
+                    };
                     let started = Instant::now();
                     match fetch_process_write_chunk(
                         cdn_ref,
@@ -441,6 +528,7 @@ fn write_depot_parallel(
                         &cdn_auth_token,
                         start_server,
                         timeout,
+                        scheduler_ref.as_deref(),
                     ) {
                         Ok(bytes) => {
                             if started.elapsed()
@@ -482,6 +570,12 @@ fn write_depot_parallel(
     });
     if !scope_result.ok() {
         return scope_result;
+    }
+
+    if let Some(scheduler) = scheduler.as_ref() {
+        for row in scheduler.summary() {
+            crate::depot_downloader::log_line(&format!("cdn host score {row}"));
+        }
     }
 
     for file in &manifest.files {
@@ -564,6 +658,7 @@ pub fn fetch_process_write_chunk(
     cdn_auth_token: &str,
     start_server_index: usize,
     timeout: Duration,
+    scheduler: Option<&HostScheduler>,
 ) -> Result<u64, String> {
     if servers.is_empty() {
         return Err("write_depot: no CDN servers".to_string());
@@ -578,17 +673,26 @@ pub fn fetch_process_write_chunk(
         .ok_or_else(|| "write_depot: bad chunk index".to_string())?;
     let path = join_target_path(target_dir, &file.filename);
     let mut last_error = String::new();
-    for (attempt, server_idx) in
-        chunk_attempt_server_indices(start_server_index, servers.len(), MAX_CHUNK_ATTEMPTS)
-            .into_iter()
-            .enumerate()
-    {
+    let attempt_indices = chunk_attempt_server_indices(start_server_index, servers.len());
+    let mut scheduled_tried: Vec<usize> = Vec::new();
+    for (attempt, fallback_server_idx) in attempt_indices.into_iter().enumerate() {
         if attempt > 0 {
             thread::sleep(Duration::from_millis(retry_backoff_millis(attempt as u32)));
             if let Some(connection) = conn.as_deref_mut() {
                 *connection = cdn.open_connection();
             }
         }
+        // With a scheduler the retry walks to the next best *measured* host
+        // instead of the next index in the list.
+        let server_idx = match scheduler {
+            Some(scheduler) => match scheduler.pick_excluding(&scheduled_tried) {
+                Some(host) => host,
+                None => break,
+            },
+            None => fallback_server_idx,
+        };
+        scheduled_tried.push(server_idx);
+        let started = Instant::now();
         let fetched = match conn.as_deref_mut() {
             Some(connection) => cdn.fetch_chunk_with_connection(
                 connection,
@@ -606,9 +710,16 @@ pub fn fetch_process_write_chunk(
                 timeout,
             ),
         };
+        let elapsed = started.elapsed();
         if !fetched.ok() {
+            if let Some(scheduler) = scheduler {
+                scheduler.record_failure(server_idx);
+            }
             last_error = fetched.error;
             continue;
+        }
+        if let Some(scheduler) = scheduler {
+            scheduler.record_success(server_idx, fetched.data.len() as u64, elapsed);
         }
         match process_and_write_chunk(&path, chunk, &fetched.data, depot_key) {
             Ok(bytes) => return Ok(bytes),
@@ -616,8 +727,10 @@ pub fn fetch_process_write_chunk(
         }
     }
     Err(format!(
-        "write_depot: chunk for '{}' failed after {} attempts: {}",
-        file.filename, MAX_CHUNK_ATTEMPTS, last_error
+        "write_depot: chunk for '{}' failed after trying all {} servers: {}",
+        file.filename,
+        servers.len(),
+        last_error
     ))
 }
 
@@ -925,16 +1038,16 @@ mod tests {
         assert_eq!(retry_backoff_millis(1), 300);
         assert_eq!(retry_backoff_millis(2), 600);
         assert_eq!(retry_backoff_millis(5), 4000);
-        assert_eq!(MAX_CHUNK_ATTEMPTS, 5);
         assert_eq!(SLOW_CHUNK_ROTATE_THRESHOLD_SECS, 8);
     }
 
     #[test]
-    fn chunk_retry_rotates_across_servers_like_cpp_worker() {
-        assert_eq!(chunk_attempt_server_indices(0, 3, 5), [0, 1, 2, 0, 1]);
-        assert_eq!(chunk_attempt_server_indices(2, 3, 5), [2, 0, 1, 2, 0]);
-        assert_eq!(chunk_attempt_server_indices(0, 1, 5), [0, 0, 0, 0, 0]);
-        assert!(chunk_attempt_server_indices(0, 0, 5).is_empty());
+    fn chunk_retry_sweeps_every_server_starting_from_bias() {
+        assert_eq!(chunk_attempt_server_indices(0, 3), [0, 1, 2]);
+        assert_eq!(chunk_attempt_server_indices(2, 3), [2, 0, 1]);
+        assert_eq!(chunk_attempt_server_indices(1, 1), [0]);
+        assert_eq!(chunk_attempt_server_indices(5, 3), [2, 0, 1]);
+        assert!(chunk_attempt_server_indices(0, 0).is_empty());
         assert!(!should_rotate_after_slow_chunks(2, 3));
         assert!(should_rotate_after_slow_chunks(3, 3));
         assert!(!should_rotate_after_slow_chunks(3, 1));

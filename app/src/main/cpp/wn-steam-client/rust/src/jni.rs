@@ -1241,11 +1241,60 @@ fn request_cdn_servers(
     runtime: &Arc<CMClientRuntime>,
     timeout: Duration,
 ) -> Option<Vec<crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo>> {
+    // Use the cell_id the CM handed back at logon (like the desktop client /
+    // SteamKit does) rather than 0. A concrete cell_id makes the directory
+    // service return the correct regional edge pool instead of a fallback
+    // China-only partner list.
+    let cell_id = runtime.core().cell_id();
     let body = request_authed_service_body(runtime, timeout, |core, job_id| {
-        core.build_get_cdn_servers_call(0, job_id)
+        core.build_get_cdn_servers_call(cell_id, job_id)
     })?;
-    crate::pb::ccontentserverdirectory::CContentServerDirectoryGetServersForSteamPipeResponse::deserialize(&body)
-        .map(|response| response.servers)
+    let servers = crate::pb::ccontentserverdirectory::CContentServerDirectoryGetServersForSteamPipeResponse::deserialize(&body)
+        .map(|response| response.servers)?;
+    // Diagnose restricted networks: log every node the CM offered, including
+    // its china-only flag, so a 403 from the wrong CDN pool is explainable
+    // from logcat alone.
+    for server in &servers {
+        crate::depot_downloader::log_line(&format!(
+            "CM cdn server: host={} vhost={} type={} china_only={} https={} allowed_apps={}",
+            server.host,
+            server.vhost,
+            server.server_type,
+            server.steam_china_only,
+            server.https_support,
+            server.allowed_app_ids.len(),
+        ));
+    }
+    Some(servers)
+}
+
+fn request_cdn_auth_token(
+    runtime: &Arc<CMClientRuntime>,
+    app_id: u32,
+    depot_id: u32,
+    host_name: &str,
+    timeout: Duration,
+) -> Option<String> {
+    crate::depot_downloader::log_line(&format!(
+        "requesting CDN auth token for app {app_id} depot {depot_id} host {host_name}"
+    ));
+    let body = request_authed_service_body(runtime, timeout, |core, job_id| {
+        core.build_get_cdn_auth_token(app_id, depot_id, host_name, job_id)
+    })?;
+    let response =
+        crate::pb::cmsg_client_get_cdn_auth_token::CMsgClientGetCdnAuthTokenResponse::deserialize(&body)?;
+    if !response.token.is_empty() {
+        crate::depot_downloader::log_line(&format!(
+            "CDN auth token acquired for host {host_name} ({} chars)",
+            response.token.len()
+        ));
+        Some(response.token)
+    } else {
+        crate::depot_downloader::log_line(&format!(
+            "CDN auth token empty for host {host_name}"
+        ));
+        None
+    }
 }
 
 const ERESULT_OK: i32 = 1;
@@ -1779,29 +1828,83 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
     let ca_bundle_path = jstring_to_string(&mut env, &ca_bundle_path).unwrap_or_default();
     let directory = crate::steam_directory::SteamDirectoryClient::new(ca_bundle_path);
     let result = directory.fetch(0, crate::steam_directory::DEFAULT_TIMEOUT);
-    let directory_url = if result.ok() {
-        result
-            .servers
-            .into_iter()
-            .find_map(|server| {
-                let url = server.websocket_url();
-                (!url.is_empty()).then_some(url)
-            })
-            .unwrap_or_default()
+
+    // Collect every advertised CM, least loaded first. Reconnect attempts then
+    // walk the list instead of retrying the same endpoint forever: on some
+    // networks several CMs are blackholed, so pinning the first entry made
+    // logon fail in a loop even though another entry in the same response was
+    // reachable.
+    let servers = if result.ok() {
+        crate::depot_downloader::log_line(&format!(
+            "CM directory: {} websocket CMs (http {})",
+            result.servers.len(),
+            result.http_status
+        ));
+        result.servers.clone()
     } else {
-        String::new()
-    };
-    let url = if !directory_url.is_empty() {
-        directory_url
-    } else {
+        // Log why the directory was unusable: without this the client silently
+        // falls back to the built-in list and logon failures look inexplicable.
+        crate::depot_downloader::log_line(&format!(
+            "CM directory failed (http {}): {}; using {} built-in CMs",
+            result.http_status,
+            if result.error.is_empty() {
+                "no servers"
+            } else {
+                result.error.as_str()
+            },
+            crate::cm_server_list::hardcoded_fallback_servers().len()
+        ));
         crate::cm_server_list::hardcoded_fallback_servers()
-            .into_iter()
-            .find_map(|server| {
-                let url = server.websocket_url();
-                (!url.is_empty()).then_some(url)
-            })
-            .unwrap_or_default()
     };
+    let candidates = crate::cm_selector::candidates_for(&servers);
+    if candidates.is_empty() {
+        return new_string_or_null(&mut env, "");
+    }
+
+    // Probe every advertised endpoint in parallel and connect to the closest one,
+    // the same way the official client pings its CM candidates. Endpoints that
+    // recently failed are skipped so reconnects move on instead of hammering the
+    // datacenter that just dropped us.
+    let started = std::time::Instant::now();
+    let pick = crate::cm_selector::pick(&candidates);
+    let elapsed_ms = started.elapsed().as_millis();
+    let (index, url) = match pick {
+        Some((index, rtt)) => {
+            let url = candidates[index].url();
+            crate::depot_downloader::log_line(&format!(
+                "CM pick: {} probes in {} ms -> {} (rtt {} ms, load {:.1})",
+                candidates.len(),
+                elapsed_ms,
+                url,
+                rtt.as_millis(),
+                candidates[index].weighted_load
+            ));
+            (index, url)
+        }
+        None => {
+            // Nothing answered: report the fallback the selector chose so the
+            // caller still sees the endpoint the client will attempt.
+            let fallback = candidates
+                .iter()
+                .enumerate()
+                .min_by(|a, b| {
+                    a.1.weighted_load
+                        .partial_cmp(&b.1.weighted_load)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .map(|(index, _)| index)
+                .unwrap_or(0);
+            let url = candidates[fallback].url();
+            crate::depot_downloader::log_line(&format!(
+                "CM pick: no CM answered among {} candidates in {} ms, falling back to {}",
+                candidates.len(),
+                elapsed_ms,
+                url
+            ));
+            (fallback, url)
+        }
+    };
+    let _ = index;
     new_string_or_null(&mut env, &url)
 }
 
@@ -3305,7 +3408,13 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
     };
     let app_id = app_id.max(0) as u32;
     let fresh = fresh != JNI_FALSE;
-    let max_workers = max_workers.max(1) as u32;
+    let requested_workers = max_workers.max(1) as u32;
+    let adaptive = requested_workers >= crate::depot_downloader::ADAPTIVE_WORKERS_SENTINEL;
+    let max_workers = if adaptive {
+        crate::depot_downloader::ADAPTIVE_DEFAULT_WORKERS
+    } else {
+        requested_workers
+    };
     handle.download_cancel.store(false, Ordering::Relaxed);
     let download_cancel = Arc::clone(&handle.download_cancel);
 
@@ -3327,6 +3436,17 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
             );
             return;
         };
+        // Region-restricted CDN pools (e.g. the Perfect World partner CDNs the
+        // CM hands out on mainland-Chinese networks) reject tokenless
+        // manifest/chunk requests with HTTP 403. Provide a per-host token
+        // refresher that the downloader invokes lazily; on failure it falls
+        // back to an empty token, which the global Valve CDN pool still honours.
+        let cdn_auth_token = String::new();
+        let token_refresher = |depot_id: u32, host_name: &str| -> Option<String> {
+            request_cdn_auth_token(&runtime, app_id, depot_id, host_name, timeout)
+        };
+        let token_refresher_cb: crate::depot_downloader::CdnAuthTokenRefresher =
+            &token_refresher;
         let config_dir = std::path::Path::new(&install_dir).join(".DepotDownloader");
         let installed_cfg = crate::depot_config::DepotConfigStore::load(&config_dir);
         let mut resolved = Vec::with_capacity(specs.len());
@@ -3463,6 +3583,9 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
                 Some(download_cancel.as_ref()),
                 Some(progress_cb),
                 Some(code_refresher_cb),
+                &cdn_auth_token,
+                Some(token_refresher_cb),
+                adaptive,
             );
         dispatch_download_complete(listener, result);
     });

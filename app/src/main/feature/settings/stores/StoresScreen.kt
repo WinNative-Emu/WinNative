@@ -188,6 +188,11 @@ fun StoresScreen(
             16 to stringResource(R.string.stores_accounts_download_speed_balanced),
             24 to stringResource(R.string.stores_accounts_download_speed_standard),
             32 to stringResource(R.string.stores_accounts_download_speed_performance),
+            48 to stringResource(R.string.stores_accounts_download_speed_turbo),
+            64 to stringResource(R.string.stores_accounts_download_speed_maximum),
+            // Sentinel consumed by the native downloader: score CDN hosts by
+            // measured throughput and steer chunks at the fast ones.
+            100 to stringResource(R.string.stores_accounts_download_speed_adaptive),
         )
 
     CompositionLocalProvider(LocalPaneNav provides contentNav) {

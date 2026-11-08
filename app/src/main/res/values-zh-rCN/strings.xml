@@ -297,6 +297,9 @@
     <string name="stores_accounts_download_speed_balanced">平衡</string>
     <string name="stores_accounts_download_speed_standard">标准</string>
     <string name="stores_accounts_download_speed_performance">性能</string>
+    <string name="stores_accounts_download_speed_turbo">极速</string>
+    <string name="stores_accounts_download_speed_maximum">极限</string>
+    <string name="stores_accounts_download_speed_adaptive">自适应（模拟盖世）</string>
     <string name="stores_accounts_download_server_auto_detected">自动检测：%1$s</string>
     <string name="stores_accounts_download_server_subtitle">用于游戏下载的 Steam CDN 区域</string>
     <string name="stores_accounts_sign_out_confirm">退出 %1$s 登录？</string>

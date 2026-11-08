@@ -142,6 +142,7 @@ pub struct CMClientCore {
     session_id: AtomicI32,
     family_group_id: AtomicU64,
     server_realtime: AtomicU32,
+    cell_id: AtomicU32,
     playing_blocked: AtomicBool,
     license_list: Mutex<Vec<License>>,
     friends: Mutex<HashMap<u64, u32>>,
@@ -170,6 +171,7 @@ impl Default for CMClientCore {
             session_id: AtomicI32::new(0),
             family_group_id: AtomicU64::new(0),
             server_realtime: AtomicU32::new(0),
+            cell_id: AtomicU32::new(0),
             playing_blocked: AtomicBool::new(false),
             license_list: Mutex::new(Vec::new()),
             friends: Mutex::new(HashMap::new()),
@@ -202,6 +204,7 @@ impl CMClientCore {
         self.session_id.store(0, Ordering::Relaxed);
         self.family_group_id.store(0, Ordering::Relaxed);
         self.server_realtime.store(0, Ordering::Relaxed);
+        self.cell_id.store(0, Ordering::Relaxed);
         self.outbound_wires
             .lock()
             .expect("outbound queue poisoned")
@@ -222,6 +225,10 @@ impl CMClientCore {
 
     pub fn server_realtime(&self) -> u32 {
         self.server_realtime.load(Ordering::Relaxed)
+    }
+
+    pub fn cell_id(&self) -> u32 {
+        self.cell_id.load(Ordering::Relaxed)
     }
 
     pub fn is_playing_blocked(&self) -> bool {
@@ -721,6 +728,28 @@ impl CMClientCore {
             job_id,
             CMsgClientGetDepotDecryptionKey { depot_id, app_id }.serialize(),
             0,
+        )
+    }
+
+    pub fn build_get_cdn_auth_token(
+        &self,
+        app_id: u32,
+        depot_id: u32,
+        host_name: &str,
+        job_id: u64,
+    ) -> Option<OutboundServiceCall> {
+        if app_id == 0 || depot_id == 0 || host_name.is_empty() {
+            return None;
+        }
+        self.build_authed_service_call(
+            "ContentServerDirectory.GetCDNAuthToken#1",
+            job_id,
+            crate::pb::cmsg_client_get_cdn_auth_token::CMsgClientGetCdnAuthToken {
+                app_id,
+                depot_id,
+                host_name: host_name.to_string(),
+            }
+            .serialize(),
         )
     }
 
@@ -1359,6 +1388,7 @@ impl CMClientCore {
                         .store(resp.family_group_id, Ordering::Relaxed);
                     self.server_realtime
                         .store(resp.rtime32_server_time, Ordering::Relaxed);
+                    self.cell_id.store(resp.cell_id, Ordering::Relaxed);
                     InboundAction::LogonOk
                 } else {
                     InboundAction::LoggedOff
@@ -1373,6 +1403,7 @@ impl CMClientCore {
                 self.session_id.store(0, Ordering::Relaxed);
                 self.family_group_id.store(0, Ordering::Relaxed);
                 self.server_realtime.store(0, Ordering::Relaxed);
+                self.cell_id.store(0, Ordering::Relaxed);
                 InboundAction::LoggedOff
             }
             EMsg::CLIENT_LICENSE_LIST => {
