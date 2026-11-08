@@ -121,9 +121,9 @@ jobs:
 
       - name: Verify APK
         run: |
-          # Deliberately not using `set -e`: an unexpected non-zero status in a
-          # helper command used to abort this step silently. Check explicitly and
-          # always print what was decided.
+          # The runner invokes this script with `bash -e`, so any single failing
+          # command aborts silently. Report the failing line instead.
+          trap 'status=$?; echo "::error::verify APK failed at line $LINENO (status $status)"' ERR
           set -uo pipefail
           apk="app/build/outputs/apk/standard/release/app-standard-release.apk"
           if [ ! -f "$apk" ]; then
@@ -154,17 +154,24 @@ jobs:
           # itself; a regression there would silently fall back to 4 KB pages.
           rm -rf apk-lib
           mkdir -p apk-lib
-          unzip -o -q "$apk" "lib/arm64-v8a/libwnsteam.so" -d apk-lib
+          if ! unzip -o -q "$apk" "lib/arm64-v8a/libwnsteam.so" -d apk-lib; then
+            echo "::error::could not extract libwnsteam.so from the APK"
+            exit 1
+          fi
+          ls -l apk-lib/lib/arm64-v8a/
           readelf_bin="$(ls -d "$ANDROID_SDK_ROOT"/ndk/27.3.13750724/toolchains/llvm/prebuilt/*/bin/llvm-readelf 2>/dev/null | head -1)"
           echo "llvm-readelf: ${readelf_bin:-<none>}"
           if [ -z "${readelf_bin:-}" ] || [ ! -x "$readelf_bin" ]; then
             echo "::error::llvm-readelf not found in NDK 27.3.13750724"
             exit 1
           fi
-          align="$("$readelf_bin" -lW apk-lib/lib/arm64-v8a/libwnsteam.so | awk '/LOAD/{print $NF; exit}')"
-          echo "libwnsteam.so LOAD align: $align"
+          # Write to a file instead of piping into awk: an early awk exit sends
+          # SIGPIPE to readelf and aborts the step under `bash -e`.
+          "$readelf_bin" -lW apk-lib/lib/arm64-v8a/libwnsteam.so > readelf-headers.txt
+          align="$(awk '/LOAD/ { print $NF; exit }' readelf-headers.txt)"
+          echo "libwnsteam.so LOAD align: ${align:-<none>}"
           if [ "$align" != "0x4000" ]; then
-            echo "::error::libwnsteam.so is not 16 KB aligned (align=$align)"
+            echo "::error::libwnsteam.so is not 16 KB aligned (align=${align:-<none>})"
             exit 1
           fi
 

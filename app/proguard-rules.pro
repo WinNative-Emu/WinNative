@@ -112,3 +112,29 @@
 # references and fails the release build without these suppressions.
 -dontwarn java.beans.**
 -dontwarn org.yaml.snakeyaml.introspector.**
+
+# The app talks to its own native code in both directions: ~20 Java/Kotlin
+# classes declare native/external methods that resolve to exported
+# Java_<package>_<class>_<method> symbols, and libwinlator/libwaylandcomp/
+# libwnsteam look callbacks up by name with GetMethodID (for example
+# OnExtractFileListener.onExtractFileProgress, WaylandCompositor.onGameFrame,
+# GPUImage.setStride, XConnectorEpoll.ConnectionHandler.handleNewConnection).
+# Renaming any of those makes the lookup throw NoSuchMethodError at runtime,
+# which is exactly what a release build hit while extracting imagefs.
+# Keep names so the JNI surface stays addressable; shrinking and optimisation
+# still run.
+-dontobfuscate
+
+# R8 cannot see calls that cross the JNI boundary, so it treats every Java method
+# that only native code calls as dead and removes it. That broke imagefs
+# extraction in the first release build: libwinlator looked up
+# OnExtractFileListener.onExtractFileProgress with GetMethodID and got
+# NoSuchMethodError because the method had been shrunk away. The same applies to
+# the other direction - WaylandCompositor's static frame callbacks, the Xconnector
+# connection handlers, GPUImage.setStride, and the Kotlin listeners that the Rust
+# Steam client calls back (onProgress, onComplete, onAuthResult, ...).
+# Keep the app's own classes intact and let R8 shrink only third-party code.
+-keep class com.winlator.** { *; }
+-keep class com.winnative.** { *; }
+-keep class org.love2d.** { *; }
+
