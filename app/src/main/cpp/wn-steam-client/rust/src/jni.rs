@@ -1834,40 +1834,77 @@ pub extern "system" fn Java_com_winlator_cmod_feature_stores_steam_wnsteam_WnSte
     // networks several CMs are blackholed, so pinning the first entry made
     // logon fail in a loop even though another entry in the same response was
     // reachable.
-    let mut candidates: Vec<(f32, String)> = if result.ok() {
-        result
-            .servers
-            .iter()
-            .filter_map(|server| {
-                let url = server.websocket_url();
-                (!url.is_empty()).then_some((server.weighted_load, url))
-            })
-            .collect()
+    let servers = if result.ok() {
+        crate::depot_downloader::log_line(&format!(
+            "CM directory: {} websocket CMs (http {})",
+            result.servers.len(),
+            result.http_status
+        ));
+        result.servers.clone()
     } else {
-        Vec::new()
+        // Log why the directory was unusable: without this the client silently
+        // falls back to the built-in list and logon failures look inexplicable.
+        crate::depot_downloader::log_line(&format!(
+            "CM directory failed (http {}): {}; using {} built-in CMs",
+            result.http_status,
+            if result.error.is_empty() {
+                "no servers"
+            } else {
+                result.error.as_str()
+            },
+            crate::cm_server_list::hardcoded_fallback_servers().len()
+        ));
+        crate::cm_server_list::hardcoded_fallback_servers()
     };
-    if candidates.is_empty() {
-        candidates = crate::cm_server_list::hardcoded_fallback_servers()
-            .into_iter()
-            .filter_map(|server| {
-                let url = server.websocket_url();
-                (!url.is_empty()).then_some((0.0f32, url))
-            })
-            .collect();
-    }
+    let candidates = crate::cm_selector::candidates_for(&servers);
     if candidates.is_empty() {
         return new_string_or_null(&mut env, "");
     }
-    candidates.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
-    static CM_PICK_ROTATION: std::sync::atomic::AtomicUsize =
-        std::sync::atomic::AtomicUsize::new(0);
-    let rotation = CM_PICK_ROTATION.fetch_add(1, Ordering::Relaxed) % candidates.len();
-    let url = candidates[rotation].1.clone();
-    crate::depot_downloader::log_line(&format!(
-        "CM pick #{rotation}/{} -> {url}",
-        candidates.len()
-    ));
+    // Probe every advertised endpoint in parallel and connect to the closest one,
+    // the same way the official client pings its CM candidates. Endpoints that
+    // recently failed are skipped so reconnects move on instead of hammering the
+    // datacenter that just dropped us.
+    let started = std::time::Instant::now();
+    let pick = crate::cm_selector::pick(&candidates);
+    let elapsed_ms = started.elapsed().as_millis();
+    let (index, url) = match pick {
+        Some((index, rtt)) => {
+            let url = candidates[index].url();
+            crate::depot_downloader::log_line(&format!(
+                "CM pick: {} probes in {} ms -> {} (rtt {} ms, load {:.1})",
+                candidates.len(),
+                elapsed_ms,
+                url,
+                rtt.as_millis(),
+                candidates[index].weighted_load
+            ));
+            (index, url)
+        }
+        None => {
+            // Nothing answered: report the fallback the selector chose so the
+            // caller still sees the endpoint the client will attempt.
+            let fallback = candidates
+                .iter()
+                .enumerate()
+                .min_by(|a, b| {
+                    a.1.weighted_load
+                        .partial_cmp(&b.1.weighted_load)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .map(|(index, _)| index)
+                .unwrap_or(0);
+            let url = candidates[fallback].url();
+            crate::depot_downloader::log_line(&format!(
+                "CM pick: no CM answered among {} candidates in {} ms, falling back to {}",
+                candidates.len(),
+                elapsed_ms,
+                url
+            ));
+            (fallback, url)
+        }
+    };
+    let _ = index;
     new_string_or_null(&mut env, &url)
 }
 

@@ -14,6 +14,7 @@ pub mod chat_image;
 pub mod cm_bridge;
 pub mod cm_client;
 pub mod cm_runtime;
+pub mod cm_selector;
 pub mod cm_server;
 pub mod cm_server_list;
 pub mod cmsg_protobuf_header;

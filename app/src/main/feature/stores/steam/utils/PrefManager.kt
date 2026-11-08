@@ -3,9 +3,17 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.security.KeyStore
 import timber.log.Timber
 
 object PrefManager {
+    private const val ENCRYPTED_PREFS_NAME = "PluviaPreferences_enc"
+    private const val PLAIN_PREFS_NAME = "PluviaPreferences_enc_fallback"
+
+    /** Alias androidx.security uses for [MasterKey.Builder]'s default AES256_GCM key. */
+    private const val MASTER_KEY_ALIAS = "_androidx_security_master_key_"
+    private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+
     @Volatile
     private var prefs: SharedPreferences? = null
 
@@ -40,28 +48,62 @@ object PrefManager {
             this.appContext = appContext
             val legacyPrefs = appContext.getSharedPreferences("PluviaPreferences", Context.MODE_PRIVATE)
 
-            val encryptedPrefs =
+            // Creating the encrypted store can fail on a device where the AndroidKeyStore
+            // master key no longer matches the encrypted file: wiping the app's data removes
+            // PluviaPreferences_enc but leaves the key behind on some ROMs, and the key is then
+            // permanently invalidated (KeyPermanentlyInvalidatedException). Retrying once after
+            // deleting both the key and the stale file recovers those installs; if encryption is
+            // still unavailable we fall back to plain preferences instead of refusing to start.
+            var encryptedPrefs: SharedPreferences? = null
+            var lastError: Exception? = null
+            for (attempt in 1..2) {
                 try {
                     val masterKey =
                         MasterKey
                             .Builder(appContext)
                             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                             .build()
-                    EncryptedSharedPreferences.create(
-                        appContext,
-                        "PluviaPreferences_enc",
-                        masterKey,
-                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-                    )
+                    encryptedPrefs =
+                        EncryptedSharedPreferences.create(
+                            appContext,
+                            ENCRYPTED_PREFS_NAME,
+                            masterKey,
+                            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+                        )
+                    break
                 } catch (e: Exception) {
-                    Timber.e(e, "EncryptedSharedPreferences init failed")
-                    throw RuntimeException("Failed to initialize secure storage", e)
+                    lastError = e
+                    Timber.e(e, "EncryptedSharedPreferences init failed (attempt %d)", attempt)
+                    if (attempt == 1) deleteInvalidatedMasterKey(appContext)
                 }
+            }
 
-            prefs = encryptedPrefs
-            migrateLegacyPrefsIfNeeded(legacyPrefs, appContext, encryptedPrefs)
-            return encryptedPrefs
+            val resolvedPrefs =
+                encryptedPrefs
+                    ?: run {
+                        Timber.e(lastError, "Falling back to plain SharedPreferences")
+                        appContext.getSharedPreferences(PLAIN_PREFS_NAME, Context.MODE_PRIVATE)
+                    }
+
+            prefs = resolvedPrefs
+            migrateLegacyPrefsIfNeeded(legacyPrefs, appContext, resolvedPrefs)
+            return resolvedPrefs
+        }
+    }
+
+    /** Removes the encrypted file and its AndroidKeyStore entry so a fresh key can be made. */
+    private fun deleteInvalidatedMasterKey(context: Context) {
+        try {
+            context.deleteSharedPreferences(ENCRYPTED_PREFS_NAME)
+        } catch (e: Exception) {
+            Timber.w(e, "Could not delete the encrypted preferences file")
+        }
+        try {
+            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+            if (keyStore.containsAlias(MASTER_KEY_ALIAS)) keyStore.deleteEntry(MASTER_KEY_ALIAS)
+        } catch (e: Exception) {
+            Timber.w(e, "Could not delete the invalidated master key")
         }
     }
 
